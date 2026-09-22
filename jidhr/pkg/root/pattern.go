@@ -90,10 +90,14 @@ func radicalReadings(c rune, final bool) []rune {
 		// keyed through this same normaliser spells it, because أ folds to ا — the
 		// two are one reading under two spellings and neither is ours to pick.
 		out = append(out, 'ء', 'ا')
-		if final && c == 'ي' {
-			// ى folds to ي too, and a root that ends in ى ends in a weak letter the
-			// spelling does not name.
+		// A weak radical is written as whichever long vowel the form calls for, so
+		// the letter standing here does not say which weak letter the root has:
+		// مدير is د و ر. In the final slot only ي carries that ambiguity, because ى
+		// folds onto it while a و there is written as itself.
+		if c == 'ي' {
 			out = append(out, 'و')
+		} else if !final {
+			out = append(out, 'ي')
 		}
 	case 'ه':
 		if final {
