@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/MohammadBnei/wird/jidhr/pkg/root"
 )
@@ -66,7 +65,7 @@ func (s *server) resolveWord(w http.ResponseWriter, r *http.Request) {
 
 	res, err := s.resolver.Resolve(r.Context(), word, langsOf(query))
 	if err != nil {
-		s.writeResolveError(w, r, word, err)
+		s.writeResolveError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -116,7 +115,7 @@ func (s *server) resolveBatch(w http.ResponseWriter, r *http.Request) {
 		// A corpus that is down is not an answer about ninety-nine words. Reporting
 		// it per word would hand the caller partial results that look complete.
 		if fail.Status == http.StatusInternalServerError {
-			s.writeResolveError(w, r, word, err)
+			s.writeResolveError(w, r, err)
 			return
 		}
 		items = append(items, batchItem{Input: word, Error: &fail})
@@ -134,7 +133,7 @@ type rootResponse struct {
 
 func (s *server) lookupRoot(w http.ResponseWriter, r *http.Request) {
 	letters := strings.TrimSpace(r.PathValue("letters"))
-	if !isArabic(letters) {
+	if !root.ContainsArabicLetter(letters) {
 		writeError(w, apiError{Status: http.StatusBadRequest, Code: "not_arabic",
 			Message: "the path must carry the joined Arabic letters of a root, such as وصي"})
 		return
@@ -191,7 +190,7 @@ func apiErrorFor(err error) apiError {
 	}
 }
 
-func (s *server) writeResolveError(w http.ResponseWriter, r *http.Request, word string, err error) {
+func (s *server) writeResolveError(w http.ResponseWriter, r *http.Request, err error) {
 	fail := apiErrorFor(err)
 	if fail.Status == http.StatusInternalServerError {
 		s.writeInternal(w, r, "resolve a word", err)
@@ -226,7 +225,7 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 func langsOf(query map[string][]string) []string {
 	var langs []string
 	for _, value := range query["lang"] {
-		for _, lang := range strings.Split(value, ",") {
+		for lang := range strings.SplitSeq(value, ",") {
 			if lang = strings.TrimSpace(lang); lang != "" {
 				langs = append(langs, lang)
 			}
@@ -236,15 +235,6 @@ func langsOf(query map[string][]string) []string {
 		return defaultLangs
 	}
 	return langs
-}
-
-func isArabic(s string) bool {
-	for _, r := range s {
-		if unicode.IsLetter(r) && unicode.Is(unicode.Arabic, r) {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *server) authenticated(next http.Handler) http.Handler {

@@ -28,6 +28,7 @@ const (
 	borrowedName    = "إسطنبول"      // good Arabic, no derivable root
 	nonQuranicWord  = "بَرمَجَة"     // Arabic with a root the Qur'an never uses
 	attestedLetters = "وصي"
+	patternOnlyWord = "مالك" // resolves by template alone
 )
 
 func testServer(t *testing.T, store root.Store) *server {
@@ -374,6 +375,30 @@ func TestHealthChecksSurviveTheApiKeyAndTheRateLimit(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: the orchestrator's probe is throttled or rejected, so a healthy process is restarted in a loop", w.Code, http.StatusOK)
 	}
+}
+
+func TestTheRootPathAndTheWordPathAgreeOnWhatCountsAsArabic(t *testing.T) {
+	s := testServer(t, nil)
+
+	for _, input := range []string{"hello", "١٢٣", "ًٌٍ", attestedLetters, patternOnlyWord} {
+		wordStatus, wordBody := get(t, s, wordURL(input))
+		rootStatus, rootBody := get(t, s, "/v1/roots/"+url.PathEscape(input))
+
+		byWord := refusedAsNotArabic(wordStatus, wordBody)
+		byRoot := refusedAsNotArabic(rootStatus, rootBody)
+		if byWord != byRoot {
+			t.Errorf("%q: /v1/root refuses it as non-Arabic: %v; /v1/roots/{letters}: %v — one half of jidhr refuses input the other half answers",
+				input, byWord, byRoot)
+		}
+	}
+}
+
+func refusedAsNotArabic(status int, body map[string]any) bool {
+	if status != http.StatusBadRequest {
+		return false
+	}
+	fail, _ := body["error"].(map[string]any)
+	return fail["code"] == "not_arabic"
 }
 
 // carries reports whether key appears anywhere in a decoded JSON document.
