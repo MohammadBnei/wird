@@ -17,11 +17,13 @@ const (
 // Root identifies an Arabic root. Letters is the joined form and is the key
 // everywhere: in URL paths, in the store, and in the meanings table. Display
 // carries the spaced presentation and is never a key, because two callers
-// percent-encode a spaced string two different ways.
+// percent-encode a spaced string two different ways. Translit is absent rather
+// than empty for a root nobody has transliterated yet, because a blank
+// transliteration is read as a transliteration.
 type Root struct {
 	Letters  string `json:"letters"`
 	Display  string `json:"display"`
-	Translit string `json:"translit"`
+	Translit string `json:"translit,omitempty"`
 }
 
 // QuranStats is absent for a root that does not occur in the Qur'an, so a caller

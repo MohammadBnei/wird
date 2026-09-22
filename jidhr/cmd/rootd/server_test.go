@@ -24,11 +24,12 @@ import (
 const corpusPath = "../../testdata/corpus.json"
 
 const (
-	attestedWord    = "وَتَوَاصَوْا" // an exact Qur'anic spelling
-	borrowedName    = "إسطنبول"      // good Arabic, no derivable root
-	nonQuranicWord  = "بَرمَجَة"     // Arabic with a root the Qur'an never uses
-	attestedLetters = "وصي"
-	patternOnlyWord = "مالك" // resolves by template alone
+	attestedWord       = "وَتَوَاصَوْا" // an exact Qur'anic spelling
+	borrowedName       = "إسطنبول"      // good Arabic, no derivable root
+	nonQuranicWord     = "بَرمَجَة"     // Arabic with a root the Qur'an never uses
+	attestedLetters    = "وصي"
+	patternOnlyWord    = "مالك" // resolves by template alone
+	patternOnlyLetters = "ملك"  // a root the seed corpus does not hold
 )
 
 func testServer(t *testing.T, store root.Store) *server {
@@ -374,6 +375,22 @@ func TestHealthChecksSurviveTheApiKeyAndTheRateLimit(t *testing.T) {
 	s.routes().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: the orchestrator's probe is throttled or rejected, so a healthy process is restarted in a loop", w.Code, http.StatusOK)
+	}
+}
+
+func TestARootTheCorpusHasNoTransliterationForOmitsTheFieldRatherThanShippingItBlank(t *testing.T) {
+	s := testServer(t, nil)
+	status, body := get(t, s, wordURL(patternOnlyWord))
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %v", status, http.StatusOK, body)
+	}
+
+	got, _ := body["root"].(map[string]any)
+	if got["letters"] != patternOnlyLetters {
+		t.Fatalf("letters = %v, want %q", got["letters"], patternOnlyLetters)
+	}
+	if _, present := got["translit"]; present {
+		t.Error("a root nobody has transliterated yet ships an empty translit, which the reader is shown as its transliteration")
 	}
 }
 
