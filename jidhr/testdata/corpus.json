@@ -1,0 +1,85 @@
+{
+  "note": "The corpus a MemoryStore is seeded from. Phase 1 has no ingested data, so these few entries are what the resolution ladder is tested against, and they are also the worked example a caller outside Wird copies to run jidhr with no database.",
+  "roots": [
+    {
+      "letters": "وصي",
+      "display": "و ص ي",
+      "translit": "w-ṣ-y",
+      "quran": {
+        "occurrences": 32
+      }
+    },
+    {
+      "letters": "صبر",
+      "display": "ص ب ر",
+      "translit": "ṣ-b-r",
+      "quran": {
+        "occurrences": 103
+      }
+    },
+    {
+      "letters": "كتب",
+      "display": "ك ت ب",
+      "translit": "k-t-b",
+      "quran": {
+        "occurrences": 319
+      }
+    },
+    {
+      "letters": "برمج",
+      "display": "ب ر م ج",
+      "translit": "b-r-m-j"
+    }
+  ],
+  "entries": [
+    {
+      "surface": "وَتَوَاصَوْا",
+      "lemma": "تَوَاصَى",
+      "form": "VI · perfect · 3rd m. pl.",
+      "root": "وصي"
+    },
+    {
+      "surface": "صَبَرُوا",
+      "lemma": "صَبَرَ",
+      "form": "I · perfect · 3rd m. pl.",
+      "root": "صبر"
+    },
+    {
+      "surface": "بَرمَجَة",
+      "lemma": "بَرمَجَ",
+      "form": "quadriliteral verbal noun",
+      "root": "برمج"
+    }
+  ],
+  "meanings": {
+    "وصي": {
+      "en": {
+        "plain": "To enjoin something on one another; to charge, counsel, bequeath.",
+        "poetic": "A word handed on, the way a rope is passed from hand to hand."
+      },
+      "ar": {
+        "plain": "أن يوصي بعضهم بعضاً؛ العهد والنصيحة.",
+        "poetic": "كلامٌ يُسلَّم كما يُسلَّم الحبل من يدٍ إلى يد."
+      }
+    },
+    "صبر": {
+      "en": {
+        "plain": "To be patient; to hold fast, endure, restrain oneself.",
+        "poetic": "Patience is the rope, not the mood."
+      },
+      "ar": {
+        "plain": "حبس النفس وثباتها على الأمر."
+      }
+    },
+    "كتب": {
+      "en": {
+        "plain": "To write; to prescribe, ordain, set down."
+      }
+    },
+    "برمج": {
+      "en": {
+        "plain": "To program a machine; to draw up a schedule."
+      }
+    }
+  }
+}
