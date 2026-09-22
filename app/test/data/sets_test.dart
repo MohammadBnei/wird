@@ -24,7 +24,7 @@ void main() {
 
   test('the walk resumes after the last aya read, skipping an earlier one the '
       'reader never understood', () async {
-    await markUnderstood(db, 96003);
+    await markSetUnderstood(db, newOpId(), [96003]);
 
     final set = await nextSet(db, ReadingOrder.nuzul);
 

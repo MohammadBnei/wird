@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
@@ -35,9 +36,9 @@ Future<Database> openWird() async {
 /// are there beside it.
 Future<Database> openWirdAt(String path) async {
   final db = await openDatabase(path);
-  // ponytail: the plan's user rows carry a client-minted uuid and a user_id.
-  // There is no account and no outbox until the sync phase, so the aya's own
-  // id is the key; both columns arrive with the op log that needs them.
+  // ponytail: the plan's user rows also carry a user_id. There is no account
+  // until the auth phase, so the aya's own id is the key here; the column
+  // arrives with the sign-in that needs it.
   await db.execute('''
     CREATE TABLE IF NOT EXISTS ayah_understood (
       ayah_id       INTEGER PRIMARY KEY REFERENCES ayahs(id),
@@ -49,14 +50,72 @@ Future<Database> openWirdAt(String path) async {
       reading_order TEXT NOT NULL,
       updated_at    TEXT NOT NULL
     )''');
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS mic_consent (
+      id          INTEGER PRIMARY KEY CHECK (id = 1),
+      state       TEXT NOT NULL,
+      answered_at TEXT NOT NULL
+    )''');
+  // The op id is the primary key rather than a column, so a write that is
+  // replayed — a flush that timed out after the server had already applied it,
+  // a button pressed twice — lands on the same row instead of a second one.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS outbox (
+      client_op_id TEXT PRIMARY KEY,
+      kind         TEXT NOT NULL,
+      body         TEXT NOT NULL,
+      created_at   TEXT NOT NULL
+    )''');
   return db;
 }
 
-Future<void> markUnderstood(Database db, int ayahId) => db.insert(
-  'ayah_understood',
-  {'ayah_id': ayahId, 'understood_at': DateTime.now().toIso8601String()},
-  conflictAlgorithm: ConflictAlgorithm.ignore,
-);
+final _entropy = Random.secure();
+
+/// A version 4 uuid, minted on the device so an op created offline already
+/// carries the identity the server will deduplicate it by.
+String newOpId() {
+  final bytes = List<int>.generate(16, (_) => _entropy.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+}
+
+/// Marks every aya of the set understood and queues the one op that the sync
+/// phase will flush.
+///
+/// Both halves happen under [opId]: a second call with the same id is the same
+/// press or the same replay, and counts once. That is the property the whole
+/// sync design rests on — a double-counted prayer is permanent, and in the one
+/// number the app exists to show.
+Future<void> markSetUnderstood(
+  Database db,
+  String opId,
+  List<int> ayahIds,
+) => db.transaction((txn) async {
+  final seen = await txn.query(
+    'outbox',
+    where: 'client_op_id = ?',
+    whereArgs: [opId],
+    limit: 1,
+  );
+  if (seen.isNotEmpty) return;
+  final at = DateTime.now().toIso8601String();
+  for (final ayahId in ayahIds) {
+    await txn.insert(
+      'ayah_understood',
+      {'ayah_id': ayahId, 'understood_at': at},
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+  await txn.insert('outbox', {
+    'client_op_id': opId,
+    'kind': 'ayah_understood',
+    'body': jsonEncode({'ayah_ids': ayahIds}),
+    'created_at': at,
+  });
+});
 
 Future<ReadingOrder> readingOrder(Database db) async {
   final rows = await db.query('user_prefs', columns: ['reading_order']);
@@ -82,15 +141,12 @@ typedef Kin = ({String text, String? gloss});
 
 class RootDetail {
   const RootDetail({
-    required this.letters,
     required this.display,
     required this.translit,
     required this.occurrences,
     required this.sources,
     required this.kin,
   });
-
-  final String letters;
 
   /// The three radicals spaced apart, the way a lexicon prints them.
   final String display;
@@ -109,19 +165,19 @@ Future<RootDetail?> rootDetail(Database db, String letters) async {
   );
   if (rows.isEmpty) return null;
   final root = rows.first;
-  // ponytail: eight kin, the ceiling the root screen draws on its dial.
-  // The spine layout is what reads all 103 derivatives of a big root.
+  // ponytail: four kin, the number the study panel has room for. The root
+  // screen's dial raises this to eight, and the spine layout is what reads all
+  // 103 derivatives of a big root.
   final kin = await db.rawQuery(
     '''SELECT text_ar, MIN(gloss_en) AS gloss_en
          FROM words
         WHERE root_letters = ?
         GROUP BY text_ar
         ORDER BY COUNT(*) DESC
-        LIMIT 8''',
+        LIMIT 4''',
     [letters],
   );
   return RootDetail(
-    letters: letters,
     display: root['display']! as String,
     translit: root['translit']! as String,
     occurrences: root['quran_occurrences']! as int,

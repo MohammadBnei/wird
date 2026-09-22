@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../data/audio.dart';
 import '../../data/db.dart';
+import '../../data/mic.dart';
 import '../../data/sets.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
@@ -9,14 +13,14 @@ import '../../widgets/nocturne_segmented.dart';
 import '../../widgets/nocturne_tag.dart';
 
 /// Screen 1a — the set the reader studies before praying it.
-///
-/// The recitation bar and "Mark set understood" are drawn disabled: the audio
-/// and the outbox op behind them belong to later phases, and a control that
-/// looks live and does nothing is worse than one that says it is not ready.
 class StudyScreen extends StatefulWidget {
-  const StudyScreen({super.key, required this.db});
+  const StudyScreen({super.key, required this.db, this.audioCache});
 
   final Database db;
+
+  /// Where the recitation is downloaded to. Supplied by the test that has to
+  /// prove the screen works with the radio off.
+  final AudioCache? audioCache;
 
   @override
   State<StudyScreen> createState() => _StudyScreenState();
@@ -28,10 +32,33 @@ class _StudyScreenState extends State<StudyScreen> {
   StudyWord? _word;
   String? _reciter;
   ReadingOrder _order = ReadingOrder.nuzul;
+  MicPermission _mic = MicPermission.notAsked;
+  SetAudio? _audio;
+
+  /// Minted with the set, so two presses of "Mark set understood" carry one
+  /// op id and the set is counted once.
+  String _opId = newOpId();
   bool _loaded = false;
   bool _settingsOpen = false;
   int _display = 0;
   double _arabicSize = 31;
+
+  /// Stand-ins for the set that has no audio yet, so the bar and the ayas
+  /// have something to listen to before the first set is read.
+  static final _silent = ValueNotifier<int?>(null);
+  static final _paused = ValueNotifier<bool>(false);
+
+  String get _micCaption => switch (_mic) {
+    MicPermission.notAsked => 'Voice-follow needs the microphone. Off by '
+        'default; never asked for during a prayer.',
+    MicPermission.granted => 'Microphone allowed. Voice-follow stays off '
+        'until you turn it on.',
+    MicPermission.denied => 'Microphone refused. The prayer screen advances '
+        'on a tap, as it always does.',
+    MicPermission.unavailable =>
+      'This build cannot reach the microphone. The prayer screen advances on '
+          'a tap.',
+  };
 
   bool get _showGloss => _display == 0 || _display == 2;
   bool get _showTranslit => _display == 1 || _display == 2;
@@ -42,10 +69,17 @@ class _StudyScreenState extends State<StudyScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    unawaited(_audio?.dispose());
+    super.dispose();
+  }
+
   Future<void> _load() async {
     final order = await readingOrder(widget.db);
     final set = await nextSet(widget.db, order);
     final reciter = await reciterLabel(widget.db);
+    final mic = await micPermission(widget.db);
     final rooted =
         set?.ayas.expand((a) => a.words).where((w) => w.root != null).toList() ??
         const <StudyWord>[];
@@ -53,15 +87,62 @@ class _StudyScreenState extends State<StudyScreen> {
     final root = first == null
         ? null
         : await rootDetail(widget.db, first.root!);
+    final previous = _audio;
+    final audio = set == null
+        ? null
+        : SetAudio(
+            cache: widget.audioCache ??
+                await AudioCache.beside(await getDatabasesPath()),
+            tracks: await tracksFor(widget.db, [
+              for (final aya in set.ayas) aya.id,
+            ]),
+          );
     if (!mounted) return;
+    unawaited(previous?.dispose());
     setState(() {
       _order = order;
       _set = set;
       _reciter = reciter;
+      _mic = mic;
       _word = first;
       _root = root;
+      _audio = audio;
+      _opId = newOpId();
       _loaded = true;
     });
+    if (audio == null) return;
+    // The download runs behind the set rather than in front of it: the reader
+    // studies while the recitation arrives, and an aeroplane leaves the screen
+    // working with the play button honestly dark.
+    await audio.cache.prefetch([for (final t in audio.tracks) t.relPath]);
+    if (mounted && identical(_audio, audio)) setState(() {});
+  }
+
+  Future<void> _markUnderstood(StudySet set) async {
+    await markSetUnderstood(widget.db, _opId, [
+      for (final aya in set.ayas) aya.id,
+    ]);
+    await _load();
+  }
+
+  /// A long press speaks one word. An aya that was never downloaded shows the
+  /// transliteration instead and plays nothing — it must never spin.
+  Future<void> _speak(StudyWord word) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (await _audio?.playWord(word.id) ?? false) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text(word.translit ?? word.text)),
+    );
+  }
+
+  Future<void> _chooseOrder(ReadingOrder order) async {
+    await setReadingOrder(widget.db, order);
+    await _load();
+  }
+
+  Future<void> _askForMic() async {
+    final answer = await askForMic(widget.db);
+    if (mounted) setState(() => _mic = answer);
   }
 
   /// The panel keeps the root it is showing until the next one has been read,
@@ -108,7 +189,7 @@ class _StudyScreenState extends State<StudyScreen> {
                       ),
                     ),
                   ),
-                  _rootPanel(n),
+                  _rootPanel(n, set),
                 ],
               ),
       ),
@@ -237,6 +318,37 @@ class _StudyScreenState extends State<StudyScreen> {
           selected: _display,
           onChanged: (i) => setState(() => _display = i),
         ),
+        SizedBox(height: n.space('2')),
+        NocturneSegmented(
+          options: const ['Chronological', 'Muṣḥaf'],
+          selected: _order.index,
+          onChanged: (i) => _chooseOrder(ReadingOrder.values[i]),
+        ),
+        SizedBox(height: n.space('1')),
+        Text(
+          'The chronology orders sūras; ayas inside a sūra stay in written '
+          'order.',
+          style: TextStyle(fontSize: 10.5, color: n.textAt(0.42)),
+        ),
+        SizedBox(height: n.space('2')),
+        // Voice-follow is a later phase and off by default. The microphone is
+        // asked for here and only here: the in-prayer screen may not raise a
+        // dialog, so it can never be the screen that asks.
+        Row(
+          spacing: n.space('3'),
+          children: [
+            NocturneButton(
+              onPressed: _askForMic,
+              child: const Text('Allow microphone'),
+            ),
+            Expanded(
+              child: Text(
+                _micCaption,
+                style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
+              ),
+            ),
+          ],
+        ),
         Row(
           children: [
             Text(
@@ -267,40 +379,41 @@ class _StudyScreenState extends State<StudyScreen> {
     ),
   );
 
-  Widget _ayas(Nocturne n, StudySet set) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      n.space('6'),
-      n.space('6'),
-      n.space('6'),
-      n.space('6'),
-    ),
-    child: Column(
-      children: [
-        for (final (i, aya) in set.ayas.indexed) ...[
-          if (i > 0)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: n.space('2')),
-              child: const _DashedRule(),
+  Widget _ayas(Nocturne n, StudySet set) => ValueListenableBuilder<int?>(
+    valueListenable: _audio?.currentWordId ?? _silent,
+    builder: (context, recited, _) => Padding(
+      padding: EdgeInsets.all(n.space('6')),
+      child: Column(
+        children: [
+          for (final (i, aya) in set.ayas.indexed) ...[
+            if (i > 0)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: n.space('2')),
+                child: const _DashedRule(),
+              ),
+            Wrap(
+              textDirection: TextDirection.rtl,
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: n.space('6'),
+              runSpacing: n.space('1'),
+              children: [
+                for (final word in aya.words) _wordTile(n, word, recited),
+                _ayaMark(n, aya.number),
+              ],
             ),
-          Wrap(
-            textDirection: TextDirection.rtl,
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.end,
-            spacing: 14,
-            runSpacing: n.space('1'),
-            children: [
-              for (final word in aya.words) _wordTile(n, word),
-              _ayaMark(n, aya.number),
-            ],
-          ),
+          ],
         ],
-      ],
+      ),
     ),
   );
 
-  Widget _wordTile(Nocturne n, StudyWord word) {
+  Widget _wordTile(Nocturne n, StudyWord word, int? recited) {
     final hasRoot = word.root != null;
-    final underline = !hasRoot
+    final sounding = word.id == recited;
+    final underline = sounding
+        ? n.accent
+        : !hasRoot
         ? Colors.transparent
         : word.id == _word?.id
         ? n.accent
@@ -310,9 +423,14 @@ class _StudyScreenState extends State<StudyScreen> {
       // rather than being matched by position against a different word.
       key: ValueKey(word.id),
       onTap: hasRoot ? () => _openRoot(word) : null,
+      onLongPress: () => _speak(word),
       child: Container(
-        padding: EdgeInsets.fromLTRB(3, n.space('1'), 3, n.space('1')),
+        padding: EdgeInsets.all(n.space('1')),
         decoration: BoxDecoration(
+          color: sounding
+              ? n.accent.withValues(alpha: 0.16)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(n.radius('sm')),
           border: Border(bottom: BorderSide(color: underline, width: 2)),
         ),
         child: Column(
@@ -362,7 +480,7 @@ class _StudyScreenState extends State<StudyScreen> {
   Widget _ayaMark(Nocturne n, int number) => Container(
     width: 26,
     height: 26,
-    margin: const EdgeInsets.only(bottom: 22),
+    margin: EdgeInsets.only(bottom: n.space('8')),
     alignment: Alignment.center,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
@@ -392,14 +510,18 @@ class _StudyScreenState extends State<StudyScreen> {
     child: Row(
       spacing: n.space('3'),
       children: [
-        NocturneButton(
-          variant: NocturneButtonVariant.icon,
-          child: const Icon(Icons.play_arrow),
+        ValueListenableBuilder<bool>(
+          valueListenable: _audio?.playing ?? _paused,
+          builder: (context, playing, _) => NocturneButton(
+            variant: NocturneButtonVariant.icon,
+            onPressed: _audio?.ready ?? false ? _audio!.toggle : null,
+            child: Icon(playing ? Icons.pause : Icons.play_arrow),
+          ),
         ),
         Expanded(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
-            spacing: 2.5,
+            spacing: n.space('1'),
             children: [
               for (final (i, height) in const [20.0, 14.0, 18.0, 9.0, 6.0]
                   .indexed)
@@ -413,25 +535,24 @@ class _StudyScreenState extends State<StudyScreen> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              const Expanded(
+              Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(bottom: 9),
-                  child: _DashedRule(),
+                  padding: EdgeInsets.only(bottom: n.space('3')),
+                  child: const _DashedRule(),
                 ),
               ),
             ],
           ),
         ),
-        if (_reciter != null)
-          Text(
-            _reciter!,
-            style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
-          ),
+        Text(
+          (_audio?.ready ?? false) ? (_reciter ?? '') : 'Not downloaded',
+          style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
+        ),
       ],
     ),
   );
 
-  Widget _rootPanel(Nocturne n) {
+  Widget _rootPanel(Nocturne n, StudySet set) {
     final root = _root;
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -520,7 +641,7 @@ class _StudyScreenState extends State<StudyScreen> {
               children: [
                 // The tag sets everything about its label but the family, so
                 // the Arabic face reaches it through the default style.
-                for (final kin in root.kin.take(4))
+                for (final kin in root.kin)
                   DefaultTextStyle.merge(
                     style: const TextStyle(fontFamily: Nocturne.arabicFamily),
                     child: NocturneTag(
@@ -542,10 +663,11 @@ class _StudyScreenState extends State<StudyScreen> {
               const Expanded(
                 child: NocturneButton(child: Text('Open constellation')),
               ),
-              const Expanded(
+              Expanded(
                 child: NocturneButton(
                   variant: NocturneButtonVariant.primary,
-                  child: Text('Mark set understood'),
+                  onPressed: () => _markUnderstood(set),
+                  child: const Text('Mark set understood'),
                 ),
               ),
             ],
