@@ -29,6 +29,11 @@
       "letters": "برمج",
       "display": "ب ر م ج",
       "translit": "b-r-m-j"
+    },
+    {
+      "note": "No form of this root is attested in the entries below. It is here because the pattern rung answers only for a root the store confirms, so a corpus with no ordinary roots in it can only ever refuse — مالك needs م ل ك on record to resolve at all. It carries no transliteration on purpose: a root nobody has transliterated yet must ship the field absent rather than blank.",
+      "letters": "ملك",
+      "display": "م ل ك"
     }
   ],
   "entries": [
