@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -101,28 +102,43 @@ func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Re
 		}
 	}
 
-	// Rung five, on the normalised word and on nothing else. Running it down the
-	// stems as well defeats its own refusals: matchPattern can only see the
-	// ambiguity inside the stem it is handed, so a loop walks ever more mutilated
-	// stems until one happens to fit a wazn, and it always finds one — تلفزيون
-	// peels to تلفز and reads as form V of ل ف ز, ياباني peels to بني and hands
-	// the reader "to build" for the nisba of Japan. A stem earns its keep against
-	// the store, which can say whether that stem is a word anyone has written; a
-	// template cannot, so a reading that appears only after peeling is a guess
-	// about a guess and this rung is the one that may not guess.
-	letters, err := matchPattern(res.Normalized)
-	switch {
-	case err == nil:
-		return r.fromLetters(ctx, res, letters, MethodPattern, langs)
-	case !errors.Is(err, ErrNotFound):
-		return Result{}, err
+	// Rung five: the templates propose, the store disposes. A template can only say
+	// that a word fits a shape — it has no way to know whether the three letters it
+	// reads out are a root anyone has ever used, and left to assert on its own it
+	// answered صلاة with ص ل ه and ملوك with ل و ك. So the shapes hand over every
+	// reading and the corpus is the evidence: exactly one reading it knows is an
+	// answer, and none or several is a miss naming all of them. With a corpus of
+	// four roots almost everything here is a miss, which is the honest answer for an
+	// engine whose corpus has not been ingested yet, and the rung sharpens by itself
+	// as roots land rather than by growing another guard.
+	//
+	// It runs on the normalised word and on nothing else. Running it down the
+	// stripped stems as well walks ever more mutilated stems until one happens to
+	// fit a wazn, and one always does — تلفزيون peels to تلفز and reads as form V
+	// of ل ف ز — so a reading that appears only after peeling is a guess about a
+	// guess.
+	candidates := matchPattern(res.Normalized)
+	var known []string
+	for _, c := range candidates {
+		_, err := r.store.Root(ctx, c)
+		switch {
+		case err == nil:
+			known = append(known, c)
+		case !errors.Is(err, ErrNotFound):
+			return Result{}, err
+		}
+	}
+	if len(known) == 1 {
+		return r.fromLetters(ctx, res, known[0], MethodPattern, langs)
 	}
 
-	// The readings this rung declined to choose between are the most useful thing
-	// a 404 can carry, so they go in the body rather than into the log.
-	var uncertain *uncertainPatternError
-	if errors.As(err, &uncertain) {
-		considered = append(considered, uncertain.Candidates...)
+	// The readings the store could not confirm are the most useful thing a 404 can
+	// carry, so they go in the body rather than into the log. A reading that is
+	// already there as a stripped stem is not news twice.
+	for _, c := range candidates {
+		if !slices.Contains(considered, c) {
+			considered = append(considered, c)
+		}
 	}
 
 	return Result{}, &NoRootError{Word: word, Normalized: res.Normalized, Candidates: considered}
