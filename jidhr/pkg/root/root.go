@@ -118,12 +118,11 @@ func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Re
 	}
 
 	// Rung five proposes and never disposes. A template can say that a word fits a
-	// shape, and the store can say that three letters are a root somebody uses.
-	// Neither says that this root is the root of THIS word, and reading the second as
-	// an answer to the third is what served ملوك as ل و ك and تونس as ا ن س: real
-	// classical roots, neither of them the root of the word asked about. So the rung
-	// ranks and the caller chooses — a miss carrying every reading, the ones the
-	// corpus attests first.
+	// shape, and the store can answer "is لوك a root?". The question is "is لوك the
+	// root of ملوك?", and taking the store's yes for an answer to it is what served
+	// ملوك as ل و ك and تونس as ا ن س: real classical roots, neither of them the
+	// root of the word asked about. So the rung ranks and the caller chooses — a miss
+	// carrying every reading, the ones the corpus attests first.
 	//
 	// ponytail: the ceiling is that the store answers membership while the question is
 	// identity, and no guard over the letters closes that gap. Phase 3 ingests the
