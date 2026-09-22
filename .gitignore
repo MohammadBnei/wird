@@ -15,4 +15,6 @@ app/ios/.symlinks/
 app/macos/Pods/
 
 *.db
+# The bundled corpus ships inside the app; without it there is no data offline.
+!app/assets/corpus.db
 .DS_Store
