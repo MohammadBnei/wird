@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"slices"
 )
 
 // ErrNotFound is what a Store returns when a lookup matched nothing. It is a miss,
@@ -45,8 +46,25 @@ type Store interface {
 	// EntryByLemma matches a dictionary form by its normalised spelling.
 	EntryByLemma(ctx context.Context, normalized string) (Entry, error)
 
-	// Root returns the root with these joined letters.
+	// Root returns the root with these joined letters. It answers membership —
+	// whether anything in the language is built on these letters — and never
+	// identity, so a yes from it is not a statement about any particular word.
 	Root(ctx context.Context, letters string) (RootRecord, error)
+
+	// Attests returns the roots the corpus records this written form under, spelled
+	// as the corpus spells them. This is the identity question Root cannot answer:
+	// Root says لوك is a root, Attests says whether ملوك is one of its forms, and
+	// reading the first as the second is what once served ملوك as ل و ك.
+	//
+	// A form the corpus never attests returns no roots and a nil error, because an
+	// unattested word is a miss and not a failure. Two roots back means the form is
+	// a genuine homograph and the corpus does not settle it.
+	//
+	// One indexed lookup on the normalised form answers this — a form-to-root table
+	// keyed by that spelling. It deliberately takes no candidate roots to filter by:
+	// the resolver can arrive here holding two dozen readings of one word, and a
+	// lookup per reading is that many round trips for one question.
+	Attests(ctx context.Context, form string) ([]string, error)
 
 	// Meanings returns the authored meanings for a root, keyed by language, for
 	// the languages asked for. A root with nothing authored yet is not an error
@@ -59,6 +77,12 @@ type Corpus struct {
 	Roots    []RootRecord                  `json:"roots"`
 	Entries  []Entry                       `json:"entries"`
 	Meanings map[string]map[string]Meaning `json:"meanings"`
+
+	// Attested maps a written form to the roots the corpus attests it to. Both
+	// sides go in spelled as the corpus spells them and are normalised on the way
+	// into the index, so a fixture carries the corpus's own orthography and makes
+	// no spelling decisions of its own.
+	Attested map[string][]string `json:"attested,omitempty"`
 }
 
 // MemoryStore is a Store held entirely in memory, seeded from a Corpus. It is how
@@ -69,6 +93,7 @@ type MemoryStore struct {
 	byNormalized map[string]Entry
 	byLemma      map[string]Entry
 	roots        map[string]RootRecord
+	attested     map[string][]string
 	meanings     map[string]map[string]Meaning
 }
 
@@ -81,6 +106,7 @@ func NewMemoryStore(c Corpus) *MemoryStore {
 		byNormalized: map[string]Entry{},
 		byLemma:      map[string]Entry{},
 		roots:        map[string]RootRecord{},
+		attested:     map[string][]string{},
 		meanings:     c.Meanings,
 	}
 	for _, r := range c.Roots {
@@ -94,6 +120,23 @@ func NewMemoryStore(c Corpus) *MemoryStore {
 	for _, e := range c.Entries {
 		index(m.byNormalized, normalized(e.Surface), e)
 		index(m.byLemma, normalized(e.Lemma), e)
+	}
+	for form, roots := range c.Attested {
+		key := normalized(form)
+		if key == "" {
+			continue
+		}
+		for _, r := range roots {
+			if !slices.Contains(m.attested[key], r) {
+				m.attested[key] = append(m.attested[key], r)
+			}
+		}
+	}
+	// Two spellings of one form reach the same key in whatever order the map hands
+	// them over, and a resolver that answers a different root on a different run is
+	// worse than one that answers none.
+	for _, roots := range m.attested {
+		slices.Sort(roots)
 	}
 	return m
 }
@@ -157,6 +200,10 @@ func (m *MemoryStore) Root(_ context.Context, letters string) (RootRecord, error
 		return RootRecord{}, ErrNotFound
 	}
 	return r, nil
+}
+
+func (m *MemoryStore) Attests(_ context.Context, form string) ([]string, error) {
+	return m.attested[form], nil
 }
 
 func (m *MemoryStore) Meanings(_ context.Context, letters string, langs []string) (map[string]Meaning, error) {

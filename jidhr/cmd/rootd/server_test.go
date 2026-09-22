@@ -492,6 +492,10 @@ func (s failingStore) EntryByLemma(context.Context, string) (root.Entry, error) 
 	return root.Entry{}, s.err
 }
 
+func (s failingStore) Attests(context.Context, string) ([]string, error) {
+	return nil, s.err
+}
+
 func (s failingStore) Root(context.Context, string) (root.RootRecord, error) {
 	return root.RootRecord{}, s.err
 }

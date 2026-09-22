@@ -11,9 +11,10 @@ const (
 	MethodNormalized Method = "normalized"
 	MethodLemma      Method = "lemma"
 	MethodStripped   Method = "stripped"
-	// MethodPattern is reserved. Rung five proposes readings and ranks them and
-	// answers with none of them, so nothing reports this method until phase 3's
-	// morphology can attest a word form to a root (see Resolve).
+	// MethodPattern names rung five, the last. It is the weakest of the five only
+	// in that the form reached no lexicon entry of its own: the root still comes
+	// from the corpus attesting this very spelling, never from the letters merely
+	// allowing it. The templates rank what a miss reports and decide nothing.
 	MethodPattern Method = "pattern"
 )
 

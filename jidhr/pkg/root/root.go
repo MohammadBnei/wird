@@ -117,34 +117,40 @@ func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Re
 		}
 	}
 
-	// Rung five proposes and never disposes. A template can say that a word fits a
-	// shape, and the store can answer "is لوك a root?". The question is "is لوك the
-	// root of ملوك?", and taking the store's yes for an answer to it is what served
-	// ملوك as ل و ك and تونس as ا ن س: real classical roots, neither of them the
-	// root of the word asked about. So the rung ranks and the caller chooses — a miss
-	// carrying every reading, the ones the corpus attests first.
+	// Rung five, and the only thing it asserts from is attestation: the corpus
+	// having recorded this very form under a root. A template can say that a word
+	// fits a shape and the store can say that لوك is a root; neither says that لوك
+	// is the root of ملوك, and reading the second out of the first is what once
+	// served ملوك as ل و ك and تونس as ا ن س — real classical roots, neither of them
+	// the root of the word asked about. A form the corpus never wrote down stays a
+	// miss however neatly it fits a wazn, which is why growing the corpus does not
+	// make باريس answerable.
 	//
-	// ponytail: the ceiling is that the store answers membership while the question is
-	// identity, and no guard over the letters closes that gap. Phase 3 ingests the
-	// morphology that attests a word form to a root: a Store that can answer
-	// Attests(ctx, form, root) turns this ranking back into an answer, reported as
-	// MethodPattern, for the one reading it confirms. Until that data lands there is
-	// nothing here to assert from.
-	//
-	// It runs on the normalised word and on nothing else. Running it down the
-	// stripped stems as well walks ever more mutilated stems until one happens to
-	// fit a wazn, and one always does — تلفزيون peels to تلفز and reads as form V
-	// of ل ف ز — so a reading that appears only after peeling is a guess about a
-	// guess.
+	// Where attestation and the templates disagree, attestation wins: طاقة is
+	// ط و ق and no shape reaches that, so a rung answering only readings a template
+	// proposed would throw away a corpus fact to keep a tidier story. Two roots
+	// means the corpus itself does not settle the form, and a coin toss between two
+	// attested readings is still a guess, so both go on the table instead.
+	attested, err := r.store.Attests(ctx, res.Normalized)
+	if err != nil {
+		return Result{}, err
+	}
+	if len(attested) == 1 {
+		return r.fromLetters(ctx, res, attested[0], MethodPattern, langs)
+	}
+	considered = append(considered, attested...)
+
+	// The templates run on the normalised word and on nothing else. Running them
+	// down the stripped stems as well walks ever more mutilated stems until one
+	// happens to fit a wazn, and one always does — تلفزيون peels to تلفز and reads
+	// as form V of ل ف ز — so a reading that appears only after peeling is a guess
+	// about a guess.
 	for _, c := range matchPattern(res.Normalized) {
 		if !slices.Contains(considered, c) {
 			considered = append(considered, c)
 		}
 	}
 
-	// ponytail: the corpus sorts the readings it knows from the ones it does not, and
-	// nothing here orders the known ones among themselves — ملوك offers لوك and ملك
-	// and the letters prefer neither. Attestation is that ordering too.
 	var known, shaped []Candidate
 	for _, c := range considered {
 		_, err := r.store.Root(ctx, c)

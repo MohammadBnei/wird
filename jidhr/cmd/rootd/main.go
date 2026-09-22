@@ -20,8 +20,10 @@ func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
 	corpusPath := env("ROOTD_CORPUS", "jidhr/testdata/corpus.json")
-	// ponytail: the whole corpus in memory, read from one JSON file. Swap this for
-	// a Postgres Store once the ETL lands; nothing above it changes, because the
+	// ponytail: the whole corpus in memory, read from one JSON file. The ingested
+	// Qur'anic morphology is jidhr/testdata/quran.json and the authored meanings are
+	// jidhr/testdata/corpus.json; one process serves one of them until a Postgres
+	// Store joins the two. Nothing above here changes when it does, because the
 	// resolver only ever knew a Store.
 	f, err := os.Open(corpusPath)
 	if err != nil {
