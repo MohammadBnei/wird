@@ -12,11 +12,12 @@ global `npm -g`.
 | Go | 1.27.1 | `server/` and `jidhr/`. `net/http` `ServeMux` routing needs the method-pattern syntax. |
 | Docker | 29.8.0 | The only way Postgres 18 and the OIDC stub run locally. |
 | Xcode | active at `/Applications/Xcode.app/Contents/Developer` | `simctl` and `xcodebuild`, which `scripts/device.sh` and any iOS build need. |
-| iOS runtime | 18.6 (22G86) | The e2e target. `iPhone 16` and `iPad Pro 11-inch (M4)` are available on it. The latest runtime is a large download and buys nothing. |
+| iOS runtime | 18.6 (22G86) | `iPhone 16` and `iPad Pro 11-inch (M4)` boot on it under `simctl`. **Xcode 26.6 will not build for any of them**: it wants the iOS 26.5 simulator platform, an 8.5 GB download nobody has authorised, and until then `xcodebuild -showdestinations` reports every iOS destination ineligible. `scripts/device.sh` asks Xcode, not `simctl`, and falls through to the macOS target. |
 | fvm | 4.3.1 | Pins the Flutter SDK per `.fvmrc`. Goldens are renderer- and font-version dependent, so an unpinned `brew upgrade` reddens every screen. |
 | Flutter | 3.47.5 (pinned in `.fvmrc`, **not yet installed**) | The client. Installed in the phase that creates `app/`. |
 | jq | 1.8.2 | `scripts/qa.sh` and `scripts/device.sh` assemble and read JSON with it. |
 | gh | — | Creating and pushing the GitHub repository. |
+| CocoaPods | 1.17.0 | The toolchain the plan calls for on any iOS Flutter build. This app resolves its plugins through Swift Package Manager instead, so nothing needs it today; it stays installed for the first plugin that ships no SPM manifest. |
 
 ## What QA check 7 diffs
 
@@ -25,6 +26,7 @@ installed. Append a line the moment you `brew install` something for Wird, and o
 then — the table above is prose for a human, this list is what the gate can falsify.
 
 <!-- brew-leaves:start -->
+- cocoapods
 - fvm
 - gh
 - go
@@ -32,7 +34,7 @@ then — the table above is prose for a human, this list is what the gate can fa
 <!-- brew-leaves:end -->
 
 Not yet installed, needed by the phase that first uses it: `goose` (migrations,
-phase 5), `cocoapods` (mandatory for any iOS Flutter build, phase 4).
+phase 5).
 
 ## Notes
 
