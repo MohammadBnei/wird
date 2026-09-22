@@ -85,21 +85,37 @@ class StudySet {
 /// order, never after the last understood one: that is what lets the reader
 /// switch between the two orders at any time without losing or re-reading
 /// anything.
-Future<StudySet?> nextSet(Database db, ReadingOrder order) async {
+///
+/// A set is a run of *consecutive unread* ayas: it starts at the first unread
+/// aya and ends at the aya before the next understood one, so nothing already
+/// understood is ever served again.
+///
+/// [alsoUnderstood] reads past ayas that are not marked in the database —
+/// screen 1a computes the set after this one that way, to prefetch it, and
+/// writes nothing.
+Future<StudySet?> nextSet(
+  Database db,
+  ReadingOrder order, {
+  Set<int> alsoUnderstood = const {},
+}) async {
   final key = _orderKey(order);
+  // Ids come from the corpus, never from the reader, so they go in as text.
+  final also = alsoUnderstood.isEmpty
+      ? ''
+      : ' OR a.id IN (${alsoUnderstood.join(',')})';
   final rows = await db.rawQuery('''
     SELECT a.id, a.surah_id, a.number,
            s.name_en, s.name_ar, s.revelation_order, s.revelation_place,
            (SELECT COUNT(*) FROM words w WHERE w.ayah_id = a.id) AS word_count,
-           (u.ayah_id IS NOT NULL) AS understood
+           (u.ayah_id IS NOT NULL$also) AS understood
       FROM ayahs a
       JOIN surahs s ON s.id = a.surah_id
       LEFT JOIN ayah_understood u ON u.ayah_id = a.id
      WHERE $key >= (SELECT MIN($key)
                       FROM ayahs a
                       JOIN surahs s ON s.id = a.surah_id
-                     WHERE NOT EXISTS (SELECT 1 FROM ayah_understood u
-                                        WHERE u.ayah_id = a.id))
+                     WHERE NOT (EXISTS (SELECT 1 FROM ayah_understood u
+                                         WHERE u.ayah_id = a.id)$also))
      ORDER BY $key
      LIMIT $setMaxAyas''');
   if (rows.isEmpty) return null;
@@ -107,6 +123,10 @@ Future<StudySet?> nextSet(Database db, ReadingOrder order) async {
   final taken = <Map<String, Object?>>[];
   var words = 0;
   for (final row in rows) {
+    // The run stops at the first understood aya instead of swallowing it. A
+    // set is what the reader recites in one prayer, so it is consecutive; and
+    // marking out of order leaves holes the walk must not read across.
+    if ((row['understood']! as int) == 1) break;
     final count = row['word_count']! as int;
     // The first aya goes in whatever it costs. 2:282 is 128 words and would
     // otherwise be skipped forever, stalling the walk at the same place.

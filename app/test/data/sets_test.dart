@@ -29,7 +29,59 @@ void main() {
     final set = await nextSet(db, ReadingOrder.nuzul);
 
     expect(set!.ayas.first.id, 96001);
-    expect(set.ayas.singleWhere((a) => a.id == 96003).understood, isTrue);
+    expect(
+      set.ayas.map((a) => a.id),
+      [96001, 96002],
+      reason: 'the run ends at the aya before the one already understood',
+    );
+  });
+
+  test('an aya the reader understood out of order is served again inside a '
+      'later set', () async {
+    // Al-ʿAlaq 1–3 read in order, then aya 5 on its own: aya 4 is the hole.
+    await markSetUnderstood(db, newOpId(), [96001, 96002, 96003]);
+    await markSetUnderstood(db, newOpId(), [96005]);
+
+    expect(
+      (await nextSet(db, ReadingOrder.nuzul))!.ayas.map((a) => a.id),
+      [96004],
+      reason: 'the set is the hole alone, and stops short of aya 5',
+    );
+
+    // Then read on, marking every set understood, and no set may ever hold an
+    // aya the database already has.
+    for (var i = 0; i < 20; i++) {
+      final understood = {
+        for (final r in await db.query('ayah_understood', columns: ['ayah_id']))
+          r['ayah_id']! as int,
+      };
+      final set = await nextSet(db, ReadingOrder.nuzul);
+      if (set == null) break;
+      final ids = [for (final a in set.ayas) a.id];
+      expect(
+        ids.where(understood.contains),
+        isEmpty,
+        reason: '${set.title} re-serves an aya already understood',
+      );
+      await markSetUnderstood(db, newOpId(), ids);
+    }
+  });
+
+  test('the set after this one is computed by writing the current one off as '
+      'understood', () async {
+    final first = await nextSet(db, ReadingOrder.nuzul);
+    final ahead = await nextSet(
+      db,
+      ReadingOrder.nuzul,
+      alsoUnderstood: {for (final a in first!.ayas) a.id},
+    );
+
+    expect(ahead!.ayas.first.id, 96006);
+    expect(
+      await db.query('ayah_understood'),
+      isEmpty,
+      reason: 'reading ahead marks nothing',
+    );
   });
 
   test('the revelation walk falls into Al-Baqara at the end of Al-ʿAlaq '

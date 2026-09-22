@@ -118,16 +118,19 @@ void main() {
     expect(find.text('ق ر أ'), findsOneWidget);
   });
 
-  testWidgets('the aya progress bar marks ayas the reader never understood',
-      (tester) async {
+  testWidgets('the screen puts an aya the reader understood out of order back '
+      'in front of them', (tester) async {
     await markSetUnderstood(db, newOpId(), [96002]);
 
     await openStudy(tester);
 
+    expect(tile(96001001), findsOneWidget);
     expect(
-      find.text('Aya 2 marked understood · aya 1, 3, 4 and 5 open'),
-      findsOneWidget,
+      tile(96002004),
+      findsNothing,
+      reason: 'aya 2 is understood, so the set ends before it',
     );
+    expect(find.text('No aya marked understood yet'), findsOneWidget);
   });
 
   testWidgets('turning the gloss off takes the Arabic with it', (tester) async {
