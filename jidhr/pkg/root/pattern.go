@@ -63,10 +63,11 @@ func expandTemplates(shapes []string) []template {
 	return out
 }
 
-// weakFinals are the letters a defective root writes as its third radical. A
-// spelling that may be hiding one of them yields a reading for each, because
-// nothing in the letters says which.
-var weakFinals = []rune{'و', 'ي'}
+// weakLetters are the letters a root writes where it has a weak radical: a
+// defective root in its third slot, a hollow root in its second. A spelling that
+// may be hiding one of them yields a reading for each, because nothing in the
+// letters says which.
+var weakLetters = []rune{'و', 'ي'}
 
 // radicalReadings lists the radicals a slot may hold, given the letter the
 // normaliser left standing there. The normaliser is keyed for lookup, not for
@@ -104,7 +105,7 @@ func radicalReadings(c rune, final bool) []rune {
 			// ة folds to ه. A feminine ending is not a radical at all, so under this
 			// reading the root's third radical is not written: صلاة is ص ل و wearing
 			// an ending, not ص ل ه.
-			out = append(out, weakFinals...)
+			out = append(out, weakLetters...)
 		}
 	}
 	return out
@@ -183,11 +184,17 @@ func (t template) readings(stem []rune, slots, fixed []int) [][3]int {
 func rootsAt(stem []rune, at [3]int) []string {
 	first, second, third := stem[at[0]], stem[at[1]], stem[at[2]]
 
-	// An alef is never a radical. A root writes its weak letter as و or ي, and the
-	// alef standing in a hollow or defective word is the letter that replaced one of
-	// them — the spelling does not say which, so this is a shape that fits rather
-	// than a reading of it.
-	if first == 'ا' || second == 'ا' || third == 'ا' {
+	// An alef is never a radical, but in the middle slot it is standing in for one:
+	// a hollow root writes its weak radical as the long vowel the form calls for, and
+	// قال is ق و ل with the alef where the و belongs. The spelling does not say which
+	// weak letter it replaced, so the slot reads as both and the store decides — the
+	// same answer the ي of مدير already gets.
+	//
+	// The outer slots get no such reading. An initial alef is the template's own
+	// prefix or a hamza the normaliser flattened, and a final one is a defective
+	// root's third radical, which the weak final readings already reach from the
+	// letters that spell it.
+	if first == 'ا' || third == 'ا' {
 		return nil
 	}
 
@@ -196,12 +203,17 @@ func rootsAt(stem []rune, at [3]int) []string {
 	final := at[2] == len(stem)-1 && at[2] != at[1]
 	thirds := radicalReadings(third, final)
 	if final && thirdRadicalIsOneReadingAmongSeveral(stem, at[2]) {
-		thirds = append(thirds, weakFinals...)
+		thirds = append(thirds, weakLetters...)
+	}
+
+	seconds := radicalReadings(second, false)
+	if second == 'ا' {
+		seconds = weakLetters
 	}
 
 	var out []string
 	for _, f := range radicalReadings(first, false) {
-		for _, s := range radicalReadings(second, false) {
+		for _, s := range seconds {
 			for _, l := range thirds {
 				out = append(out, string([]rune{f, s, l}))
 			}
@@ -246,6 +258,14 @@ func matchPattern(stem string) []string {
 	}
 
 	var out []string
+	// Three letters are normally the root restated, which is why no template spells
+	// one out. A medial alef is the exception: it is not a radical, so these three
+	// letters are not the root they look like, and the roots they can be are the ones
+	// the alef stands in for. That is every form-I hollow verb — قال, باع, نام — and
+	// no longer shape reaches it.
+	if len(letters) == 3 && letters[1] == 'ا' {
+		out = append(out, rootsAt(letters, [3]int{0, 1, 2})...)
+	}
 	for _, t := range templates {
 		for _, reading := range t.apply(letters) {
 			if !slices.Contains(out, reading) {

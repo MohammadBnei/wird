@@ -270,23 +270,31 @@ func TestAnAmbiguousShapeIsRankedByTheCorpusAndStillAnsweredByNeitherReading(t *
 	}
 }
 
-func TestAHollowRootIsUnreachableFromTheSpellingAndIsNotDressedUpAsOneThatIsNot(t *testing.T) {
+func TestAHollowRootIsReadOutOfTheAlefThatSpellsItAndStillIsNotDressedUpAsTheAnswer(t *testing.T) {
 	// The alef of مقام replaced a و or a ي and the spelling does not say which, so
-	// ق و م cannot be read out of it — the corpus holds that root and it still cannot
-	// be reached. What the shape does yield is مقم, and offering that as the answer
-	// would be wrong for half of these words.
+	// this rung owes the caller both readings and owes it no verdict. Naming ق و م is
+	// a proposal the store ranks; answering with it, or with the مقم the shape also
+	// yields, would be wrong for half of these words.
 	r := testResolver(t)
-	for _, c := range []struct{ word, real string }{
-		{"مقام", "قوم"},
-		{"اقام", "قوم"},
-		{"مقاس", "قيس"},
+	for _, c := range []struct {
+		word, real string
+		attested   bool
+	}{
+		{"مقام", "قوم", true},
+		{"اقام", "قوم", true},
+		{"مقاس", "قيس", false},
 	} {
 		miss, ok := missFor(t, r, c.word)
 		if !ok {
 			continue
 		}
-		if _, on := offered(miss, c.real); on {
-			t.Errorf("%s: %v names %s, so a weak radical the spelling never carried was read out of it anyway", c.word, miss.Candidates, c.real)
+		got, on := offered(miss, c.real)
+		if !on {
+			t.Errorf("%s: the miss reports %v and never names %s, so the reader is offered every reading but the right one", c.word, miss.Candidates, c.real)
+			continue
+		}
+		if got.Known != c.attested {
+			t.Errorf("%s: %s came back with attested=%t against a corpus that says otherwise, so the mark cannot be read as evidence", c.word, c.real, got.Known)
 		}
 	}
 }
@@ -333,6 +341,39 @@ func TestEachStandardTemplateIsReadAsItsOwnRootAndNotAsAnotherTemplatesLetters(t
 		got := matchPattern(c.stem)
 		if !slices.Contains(got, c.want) {
 			t.Errorf("%s (%s): the readings are %q and %q is not among them, so a corpus holding that root could never confirm it", c.stem, c.template, got, c.want)
+		}
+	}
+}
+
+// hollow lists words whose middle radical is written as an alef, beside the root
+// each one really has. The bare perfect verbs are the whole of form I and no
+// template spells three letters out, so before the alef was read they were the
+// largest class of words this rung could say nothing at all about.
+var hollow = []struct{ word, root string }{
+	{"قال", "قول"},
+	{"باع", "بيع"},
+	{"سار", "سير"},
+	{"نام", "نوم"},
+	{"خاف", "خوف"},
+	{"قام", "قوم"},
+	{"زار", "زور"},
+	{"طاف", "طوف"},
+	{"عاد", "عود"},
+	{"فاز", "فوز"},
+	{"صام", "صوم"},
+	{"طال", "طول"},
+	{"زاد", "زيد"},
+	{"ضاق", "ضيق"},
+	{"مقام", "قوم"},
+	{"مقال", "قول"},
+	{"استقام", "قوم"},
+}
+
+func TestAHollowVerbProposesTheWeakRootItsAlefStandsForRatherThanNothingAtAll(t *testing.T) {
+	for _, c := range hollow {
+		got := matchPattern(c.word)
+		if !slices.Contains(got, c.root) {
+			t.Errorf("%s: the readings are %q and %q is not among them, so a corpus holding that root could never confirm it", c.word, got, c.root)
 		}
 	}
 }
@@ -398,7 +439,10 @@ func TestEveryLetterTheNormaliserFoldsOntoAnotherIsAFoldThisRungCanReadBackwards
 			continue // the digit folds put nothing in a radical slot
 		}
 		if dst == 'ا' {
-			continue // an alef is never read as a radical at all, in any slot
+			// An alef in a radical slot reads as the weak letters a hollow root writes
+			// there, never as itself and never as the hamza أ folds onto it, so سأل is
+			// the one fold this rung cannot read backwards.
+			continue
 		}
 		if len(radicalReadings(dst, true)) < 2 {
 			t.Errorf("the normaliser folds %s onto %s, and a %s standing in a radical slot is read only as itself — the word's real root is then unreachable", from, to, string(dst))
