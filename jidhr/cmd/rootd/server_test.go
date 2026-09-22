@@ -24,12 +24,12 @@ import (
 const corpusPath = "../../testdata/corpus.json"
 
 const (
-	attestedWord       = "وَتَوَاصَوْا" // an exact Qur'anic spelling
-	borrowedName       = "إسطنبول"      // good Arabic, no derivable root
-	nonQuranicWord     = "بَرمَجَة"     // Arabic with a root the Qur'an never uses
-	attestedLetters    = "وصي"
-	patternOnlyWord    = "مالك" // resolves by template alone
-	patternOnlyLetters = "ملك"  // a root the seed corpus does not hold
+	attestedWord     = "وَتَوَاصَوْا" // an exact Qur'anic spelling
+	borrowedName     = "إسطنبول"      // good Arabic, no derivable root
+	nonQuranicWord   = "بَرمَجَة"     // Arabic with a root the Qur'an never uses
+	attestedLetters  = "وصي"
+	shapeOnlyWord    = "مالك" // good Arabic whose root only a template proposes, so it is never served one
+	untransliterated = "ملك"  // a root the seed corpus records without a transliteration
 )
 
 func testServer(t *testing.T, store root.Store) *server {
@@ -380,24 +380,64 @@ func TestHealthChecksSurviveTheApiKeyAndTheRateLimit(t *testing.T) {
 
 func TestARootTheCorpusHasNoTransliterationForOmitsTheFieldRatherThanShippingItBlank(t *testing.T) {
 	s := testServer(t, nil)
-	status, body := get(t, s, wordURL(patternOnlyWord))
+	status, body := get(t, s, "/v1/roots/"+url.PathEscape(untransliterated))
 	if status != http.StatusOK {
 		t.Fatalf("status = %d, want %d: %v", status, http.StatusOK, body)
 	}
 
 	got, _ := body["root"].(map[string]any)
-	if got["letters"] != patternOnlyLetters {
-		t.Fatalf("letters = %v, want %q", got["letters"], patternOnlyLetters)
+	if got["letters"] != untransliterated {
+		t.Fatalf("letters = %v, want %q", got["letters"], untransliterated)
 	}
 	if _, present := got["translit"]; present {
 		t.Error("a root nobody has transliterated yet ships an empty translit, which the reader is shown as its transliteration")
 	}
 }
 
+func TestAMissTellsTheCallerWhichReadingsTheCorpusKnowsAndWhichOnlyFitAShape(t *testing.T) {
+	// For a word only the templates have anything to say about, the 404 is the whole
+	// answer, so it carries the readings ranked and marked. A bare list of letters
+	// reads as a verdict and its first line reads as the root, which is exactly the
+	// claim this engine cannot make.
+	s := testServer(t, nil)
+	status, body := get(t, s, wordURL(shapeOnlyWord))
+	if status != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d: a reading that merely fits a shape was served as this word's root: %v", status, http.StatusNotFound, body)
+	}
+
+	fail, _ := body["error"].(map[string]any)
+	candidates, _ := fail["candidates"].([]any)
+	if len(candidates) == 0 {
+		t.Fatalf("the 404 names nothing it considered: %v", body)
+	}
+
+	known, shaped := 0, 0
+	for i, entry := range candidates {
+		c, isObject := entry.(map[string]any)
+		if !isObject {
+			t.Fatalf("candidate %d is %v, so the caller cannot tell an attested reading from a shape that fits", i, entry)
+		}
+		if c["letters"] == nil {
+			t.Errorf("candidate %d carries no letters: %v", i, c)
+		}
+		if c["known"] == true {
+			known++
+			if shaped > 0 {
+				t.Errorf("%v is attested and sits below %d readings that are not, so the ranking is not the order the caller reads", c["letters"], shaped)
+			}
+			continue
+		}
+		shaped++
+	}
+	if known == 0 || shaped == 0 {
+		t.Errorf("the 404 reports %d attested and %d unattested readings, so the mark that tells them apart cannot be read: %v", known, shaped, candidates)
+	}
+}
+
 func TestTheRootPathAndTheWordPathAgreeOnWhatCountsAsArabic(t *testing.T) {
 	s := testServer(t, nil)
 
-	for _, input := range []string{"hello", "١٢٣", "ًٌٍ", attestedLetters, patternOnlyWord} {
+	for _, input := range []string{"hello", "١٢٣", "ًٌٍ", attestedLetters, shapeOnlyWord} {
 		wordStatus, wordBody := get(t, s, wordURL(input))
 		rootStatus, rootBody := get(t, s, "/v1/roots/"+url.PathEscape(input))
 

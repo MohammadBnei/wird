@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 )
 
@@ -224,15 +223,13 @@ func TestABorrowedNameIsAMissRatherThanARootFoundByPeelingItUntilAWaznFits(t *te
 }
 
 func TestAMissNamesTheReadingsThePatternRungDeclinedToChooseBetween(t *testing.T) {
-	r := testResolver(t)
-	_, err := r.Resolve(context.Background(), "دعاء", nil)
-	var miss *NoRootError
-	if !errors.As(err, &miss) {
-		t.Fatalf("want a *NoRootError, got %v", err)
+	miss, ok := missFor(t, testResolver(t), "دعاء")
+	if !ok {
+		return
 	}
 	for _, want := range []string{"دعو", "دعي", "دعء"} {
-		if !slices.Contains(miss.Candidates, want) {
-			t.Errorf("the 404 reports %q and drops %q, so the caller is told nothing was found when three readings were on the table and one of them is right", miss.Candidates, want)
+		if _, on := offered(miss, want); !on {
+			t.Errorf("the 404 reports %v and drops %q, so the caller is told nothing was found when three readings were on the table and one of them is right", miss.Candidates, want)
 		}
 	}
 }

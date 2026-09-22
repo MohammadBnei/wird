@@ -159,12 +159,15 @@ func (s *server) lookupRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 // apiError is the published error body. Status is repeated inside it so a batch
-// item can say what its own answer would have been over HTTP.
+// item can say what its own answer would have been over HTTP. Candidates carries
+// what the ladder considered, best first, each reading marked with whether the
+// corpus knows those letters as a root — without that mark a caller reads the top
+// of the list as an answer, which is the one thing a 404 must not be.
 type apiError struct {
-	Status     int      `json:"status"`
-	Code       string   `json:"code"`
-	Message    string   `json:"message"`
-	Candidates []string `json:"candidates,omitempty"`
+	Status     int              `json:"status"`
+	Code       string           `json:"code"`
+	Message    string           `json:"message"`
+	Candidates []root.Candidate `json:"candidates,omitempty"`
 }
 
 // apiErrorFor maps a resolution failure to its status. Bad input and an

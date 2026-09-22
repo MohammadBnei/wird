@@ -24,16 +24,31 @@ var ErrNotArabic = errors.New("jidhr: input is not Arabic")
 // the same status code.
 var ErrNoRoot = errors.New("jidhr: no root found")
 
-// NoRootError carries the forms the ladder actually tried, so a 404 can report
-// what was considered rather than only that nothing worked.
+// Candidate is one thing the ladder put on the table: a form it walked, or a
+// reading the templates proposed. Known says the corpus holds a root with these
+// letters — which is evidence that the reading is a real Arabic root, and never
+// evidence that it is the root of the word asked about.
+type Candidate struct {
+	Letters string `json:"letters"`
+	Known   bool   `json:"known"`
+}
+
+// NoRootError carries everything the ladder considered, so a 404 reports what was
+// on the table rather than only that nothing worked. The candidates the corpus
+// knows come first: they are the likelier guesses, and a caller that cannot tell
+// them apart from a shape that merely fits reads the first line as the answer.
 type NoRootError struct {
 	Word       string
 	Normalized string
-	Candidates []string
+	Candidates []Candidate
 }
 
 func (e *NoRootError) Error() string {
-	return fmt.Sprintf("jidhr: no root found for %q (considered %s)", e.Word, strings.Join(e.Candidates, ", "))
+	letters := make([]string, 0, len(e.Candidates))
+	for _, c := range e.Candidates {
+		letters = append(letters, c.Letters)
+	}
+	return fmt.Sprintf("jidhr: no root found for %q (considered %s)", e.Word, strings.Join(letters, ", "))
 }
 
 func (e *NoRootError) Unwrap() error { return ErrNoRoot }
@@ -102,46 +117,49 @@ func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Re
 		}
 	}
 
-	// Rung five: the templates propose, the store disposes. A template can only say
-	// that a word fits a shape — it has no way to know whether the three letters it
-	// reads out are a root anyone has ever used, and left to assert on its own it
-	// answered صلاة with ص ل ه and ملوك with ل و ك. So the shapes hand over every
-	// reading and the corpus is the evidence: exactly one reading it knows is an
-	// answer, and none or several is a miss naming all of them. With a corpus of
-	// four roots almost everything here is a miss, which is the honest answer for an
-	// engine whose corpus has not been ingested yet, and the rung sharpens by itself
-	// as roots land rather than by growing another guard.
+	// Rung five proposes and never disposes. A template can say that a word fits a
+	// shape, and the store can say that three letters are a root somebody uses.
+	// Neither says that this root is the root of THIS word, and reading the second as
+	// an answer to the third is what served ملوك as ل و ك and تونس as ا ن س: real
+	// classical roots, neither of them the root of the word asked about. So the rung
+	// ranks and the caller chooses — a miss carrying every reading, the ones the
+	// corpus attests first.
+	//
+	// ponytail: the ceiling is that the store answers membership while the question is
+	// identity, and no guard over the letters closes that gap. Phase 3 ingests the
+	// morphology that attests a word form to a root: a Store that can answer
+	// Attests(ctx, form, root) turns this ranking back into an answer, reported as
+	// MethodPattern, for the one reading it confirms. Until that data lands there is
+	// nothing here to assert from.
 	//
 	// It runs on the normalised word and on nothing else. Running it down the
 	// stripped stems as well walks ever more mutilated stems until one happens to
 	// fit a wazn, and one always does — تلفزيون peels to تلفز and reads as form V
 	// of ل ف ز — so a reading that appears only after peeling is a guess about a
 	// guess.
-	candidates := matchPattern(res.Normalized)
-	var known []string
-	for _, c := range candidates {
-		_, err := r.store.Root(ctx, c)
-		switch {
-		case err == nil:
-			known = append(known, c)
-		case !errors.Is(err, ErrNotFound):
-			return Result{}, err
-		}
-	}
-	if len(known) == 1 {
-		return r.fromLetters(ctx, res, known[0], MethodPattern, langs)
-	}
-
-	// The readings the store could not confirm are the most useful thing a 404 can
-	// carry, so they go in the body rather than into the log. A reading that is
-	// already there as a stripped stem is not news twice.
-	for _, c := range candidates {
+	for _, c := range matchPattern(res.Normalized) {
 		if !slices.Contains(considered, c) {
 			considered = append(considered, c)
 		}
 	}
 
-	return Result{}, &NoRootError{Word: word, Normalized: res.Normalized, Candidates: considered}
+	// ponytail: the corpus sorts the readings it knows from the ones it does not, and
+	// nothing here orders the known ones among themselves — ملوك offers لوك and ملك
+	// and the letters prefer neither. Attestation is that ordering too.
+	var known, shaped []Candidate
+	for _, c := range considered {
+		_, err := r.store.Root(ctx, c)
+		switch {
+		case err == nil:
+			known = append(known, Candidate{Letters: c, Known: true})
+		case errors.Is(err, ErrNotFound):
+			shaped = append(shaped, Candidate{Letters: c})
+		default:
+			return Result{}, err
+		}
+	}
+
+	return Result{}, &NoRootError{Word: word, Normalized: res.Normalized, Candidates: append(known, shaped...)}
 }
 
 // lookup runs rungs one to three against one form and reports which rung hit. An

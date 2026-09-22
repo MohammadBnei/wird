@@ -12,8 +12,9 @@ import (
 )
 
 // storeWith seeds a corpus that holds these roots and nothing else, so a test can
-// say exactly what the store knows when the pattern rung asks it. The rung answers
-// from the corpus now, so "what does the corpus hold" is half of every case here.
+// say exactly what the store knows when the pattern rung asks it. The seed corpus
+// testResolver loads is the other half of that: it holds the real roots of the
+// battery below and the traps beside them, which is the shape phase 3 ships.
 func storeWith(letters ...string) *MemoryStore {
 	var c Corpus
 	for _, l := range letters {
@@ -22,47 +23,124 @@ func storeWith(letters ...string) *MemoryStore {
 	return NewMemoryStore(c)
 }
 
-// knownRoots is a corpus of ordinary Arabic roots, the shape phase 3 will have when
-// all 1,651 land. It is what proves this rung still answers: with no roots at all
-// every word below would be a miss, and an engine that can only ever 404 is as
-// broken as one that invents roots.
-var knownRoots = []string{
-	"كتب", "صلو", "حيي", "دعو", "زكو", "امن", "قبل", "نصر", "سجد", "ملك",
-}
-
-func TestAWordOutsideTheQuranicCorpusStillYieldsItsRootFromItsShape(t *testing.T) {
-	r := testResolver(t)
-	got, err := r.Resolve(context.Background(), "مكتوب", []string{"en"})
-	if err != nil {
-		t.Fatalf("a word no corpus table holds resolved to nothing, so jidhr only works on the Qur'an: %v", err)
+// missFor resolves a word the pattern rung must never answer for and returns what
+// it offered instead. A template can say that a word fits a shape and a corpus can
+// say that three letters are a root somebody uses; neither can say that those
+// letters are the root of this word, so every word here comes back as a miss
+// carrying its readings.
+func missFor(t *testing.T, r *Resolver, word string) (*NoRootError, bool) {
+	t.Helper()
+	got, err := r.Resolve(context.Background(), word, nil)
+	if err == nil {
+		t.Errorf("%s was served as the root %q by %q, on no evidence but the shape of the word", word, got.Root.Letters, got.Method)
+		return nil, false
 	}
-	if got.Root.Letters != "كتب" {
-		t.Errorf("root letters = %q, want %q", got.Root.Letters, "كتب")
-	}
-	if got.Method != MethodPattern {
-		t.Errorf("method = %q, want %q: a template match is a derivation and must say so", got.Method, MethodPattern)
-	}
-}
-
-func TestTheSameShapeAnswersWhenTheCorpusKnowsTheRootAndMissesWhenItDoesNotButNamesIt(t *testing.T) {
-	// This pair is the rung. مكتوب fits maf3uul either way and the letters ك ت ب
-	// come out either way; what changes is whether any corpus has ever attested
-	// them as a root. The template proposes, and only the store can dispose.
-	got, err := New(storeWith(knownRoots...)).Resolve(context.Background(), "مكتوب", nil)
-	if err != nil {
-		t.Fatalf("a corpus holding ك ت ب still refused مكتوب, so the rung answers nothing at all: %v", err)
-	}
-	if got.Root.Letters != "كتب" || got.Method != MethodPattern {
-		t.Errorf("root = %q by %q, want %q by %q", got.Root.Letters, got.Method, "كتب", MethodPattern)
-	}
-
-	_, err = New(storeWith()).Resolve(context.Background(), "مكتوب", nil)
 	var miss *NoRootError
 	if !errors.As(err, &miss) {
-		t.Fatalf("a corpus that has never heard of ك ت ب served مكتوب anyway, so the template asserted a root on no evidence: %v", err)
+		t.Errorf("%s: want a miss a caller can read, got %v", word, err)
+		return nil, false
 	}
-	if !slices.Contains(miss.Candidates, "كتب") {
-		t.Errorf("the miss reports %q and never names كتب, so the caller cannot see the reading that was on the table", miss.Candidates)
+	return miss, true
+}
+
+// offered says what the miss reported about these letters: whether they reached the
+// caller at all, and whether they were marked as a root the corpus knows.
+func offered(miss *NoRootError, letters string) (Candidate, bool) {
+	i := slices.IndexFunc(miss.Candidates, func(c Candidate) bool { return c.Letters == letters })
+	if i < 0 {
+		return Candidate{}, false
+	}
+	return miss.Candidates[i], true
+}
+
+// battery is the word list the gate measured the old assert path against, beside
+// the root each word really has. want is empty where no reading of any template can
+// reach that root, and the word is here anyway because it must not be answered with
+// the reading that does fit.
+var battery = []struct{ word, want, why string }{
+	{"ملوك", "ملك", "the م is the first radical and is spelled like maf3al's prefix"},
+	{"مريض", "مرض", "the م is the first radical and the ي is a long vowel"},
+	{"مكتوب", "كتب", "maf3uul, where the م really is the template's"},
+	{"مسجد", "سجد", "maf3al, where the م really is the template's"},
+	{"صلاة", "صلو", "the ة the normaliser wrote as ه is no radical at all"},
+	{"دعاء", "دعو", "a mamduud hamza standing where the weak radical was"},
+	{"مدير", "", "د و ر: the hollow's و is not in the spelling"},
+	{"منير", "", "ن و ر: the hollow's و is not in the spelling"},
+	{"قرآن", "", "ق ر ء: the hamza is not in the spelling that reaches this rung"},
+	{"مصري", "", "a nisba built on a place name, which has no root"},
+	{"مريم", "", "a name"},
+	{"تونس", "", "a name"},
+	{"موسى", "", "a name"},
+}
+
+func TestNoWordIsServedARootItsShapeMerelyFitsEvenWhenTheCorpusKnowsThoseLetters(t *testing.T) {
+	// This is the whole rung in one test. Seven of these words were answered by the
+	// old assert path, and every wrong answer it gave — ل و ك for ملوك, ا ن س for
+	// تونس, و س ي for موسى — is a real classical root that the corpus below holds.
+	// The store was being asked whether لوك is a root when the question was whether
+	// لوك is the root of ملوك, and it cannot tell the two apart.
+	r := testResolver(t)
+	for _, c := range battery {
+		miss, ok := missFor(t, r, c.word)
+		if !ok || c.want == "" {
+			continue
+		}
+		got, on := offered(miss, c.want)
+		if !on {
+			t.Errorf("%s (%s): the miss reports %v and never names %s, so the reader is offered every reading but the right one", c.word, c.why, miss.Candidates, c.want)
+			continue
+		}
+		if !got.Known {
+			t.Errorf("%s: %s reached the caller unmarked although the corpus holds it, so it sits among the shapes that merely fit", c.word, c.want)
+		}
+	}
+}
+
+func TestAMissPutsTheReadingsTheCorpusKnowsAboveTheOnesThatMerelyFitTheShape(t *testing.T) {
+	// The caller is handed a list instead of an answer, so the list carries the
+	// difference between a reading some corpus has attested and three letters that
+	// only fit a shape. Unranked and unmarked, the first line reads as the verdict.
+	miss, ok := missFor(t, testResolver(t), "ملوك")
+	if !ok {
+		return
+	}
+
+	var known, shaped int
+	for i, c := range miss.Candidates {
+		if c.Known {
+			known++
+			if shaped > 0 {
+				t.Errorf("%s is a reading the corpus knows and sits at %d, below %d readings that only fit the shape: %v", c.Letters, i, shaped, miss.Candidates)
+			}
+			continue
+		}
+		shaped++
+	}
+	if known == 0 || shaped == 0 {
+		t.Fatalf("the miss reports %d attested and %d unattested readings, so the ranking it is meant to show cannot be read from it: %v", known, shaped, miss.Candidates)
+	}
+}
+
+func TestTheReadingThatKeepsAWordsOwnFirstLetterIsProposedBesideTheOneThatPeelsIt(t *testing.T) {
+	// ملوك is م ل ك and مريض is م ر ض: the م is the first radical, not the
+	// prefix it is spelled like. The rung read every fixed template letter as
+	// necessarily the template's, so the right reading was never even on the table —
+	// and a corpus that holds ل و ك, a real root meaning to chew, cannot catch that.
+	r := testResolver(t)
+	for _, c := range []struct{ word, radical, affixal string }{
+		{"ملوك", "ملك", "لوك"},
+		{"مريض", "مرض", "ريض"},
+	} {
+		miss, ok := missFor(t, r, c.word)
+		if !ok {
+			continue
+		}
+		if _, on := offered(miss, c.radical); !on {
+			t.Errorf("%s: the miss reports %v and never names %s, so the reading where the first letter is a radical is missing from the word's own candidate set", c.word, miss.Candidates, c.radical)
+		}
+		if _, on := offered(miss, c.affixal); !on {
+			t.Errorf("%s: the miss reports %v and never names %s, so completing the rule cost it the reading it already had", c.word, miss.Candidates, c.affixal)
+		}
 	}
 }
 
@@ -82,117 +160,145 @@ var tamarbuta = []struct{ word, root string }{
 	{"قامة", ""}, // ق و م
 }
 
-func TestAFeminineEndingIsNeverServedAsTheThirdRadicalOfARootNoCorpusHolds(t *testing.T) {
+func TestAFeminineEndingIsNeverServedAsTheThirdRadicalAndTheRootItHidesIsOffered(t *testing.T) {
+	// The ة fold is the reason صلاة cannot be read off its letters: ص ل ه is what
+	// the spelling says and ص ل و is what the word is. Widening the readings to what
+	// the fold could have destroyed is what puts the right one in front of the caller,
+	// and the corpus holding ع و د is what proves the empty rows are unreachable
+	// rather than merely absent.
 	r := testResolver(t)
 	for _, c := range tamarbuta {
-		got, err := r.Resolve(context.Background(), c.word, nil)
-		if err == nil {
-			t.Errorf("%s was served as the root %q, which is its ة normalised to ه and read as a radical", c.word, got.Root.Letters)
+		miss, ok := missFor(t, r, c.word)
+		if !ok {
 			continue
 		}
-		var miss *NoRootError
-		if !errors.As(err, &miss) {
-			t.Errorf("%s: want a miss a caller can read, got %v", c.word, err)
-			continue
-		}
-		if c.root != "" && !slices.Contains(miss.Candidates, c.root) {
-			t.Errorf("%s: the miss reports %q and never names %q, so the fold threw away the reading that is right", c.word, miss.Candidates, c.root)
-		}
-	}
-}
-
-func TestAFeminineNounReachesItsRealRootOnceTheCorpusHoldsIt(t *testing.T) {
-	// The ة fold is the reason صلاة cannot be read off its letters. Widening the
-	// candidate set to the readings the fold could have destroyed is what lets the
-	// corpus recognise the right one.
-	r := New(storeWith(knownRoots...))
-	for _, c := range tamarbuta {
 		if c.root == "" {
+			if got, on := offered(miss, c.root); on && got.Known {
+				t.Errorf("%s: %v names a root the shape cannot reach", c.word, miss.Candidates)
+			}
 			continue
 		}
-		got, err := r.Resolve(context.Background(), c.word, nil)
-		if err != nil {
-			t.Errorf("%s: a corpus holding %s still refused it, so the reading the fold hid was never considered: %v", c.word, c.root, err)
+		got, on := offered(miss, c.root)
+		if !on {
+			t.Errorf("%s: the miss reports %v and never names %s, so the fold threw away the reading that is right", c.word, miss.Candidates, c.root)
 			continue
 		}
-		if got.Root.Letters != c.root {
-			t.Errorf("%s: root = %q, want %q", c.word, got.Root.Letters, c.root)
-		}
-		if got.Method != MethodPattern {
-			t.Errorf("%s: method = %q, want %q", c.word, got.Method, MethodPattern)
+		if !got.Known {
+			t.Errorf("%s: %s reached the caller unmarked although the corpus holds it", c.word, c.root)
 		}
 	}
 }
 
-func TestAWordWhoseFirstLetterIsARadicalMimIsNotServedAsTheTemplatesOwnMim(t *testing.T) {
-	// Every one of these was answered with its first letter thrown away: ملوك came
-	// back as ل و ك when it is م ل ك, مدير as د ي ر when it is د و ر. maf3al fits
-	// all of them and so does the reading where the م is a radical, and no template
-	// can tell the two apart — only a corpus can, and none of these readings is in
-	// one.
+func TestAHamzaSeatIsNotServedAsARadicalWawAndTheSeatsOwnReadingIsMarkedAttested(t *testing.T) {
+	// مؤمن normalises to مومن, and the و a template would call a radical is a seat
+	// the normaliser wrote away. The root is ا م ن, and the corpus holds it.
+	miss, ok := missFor(t, testResolver(t), "مؤمن")
+	if !ok {
+		return
+	}
+	got, on := offered(miss, "امن")
+	if !on {
+		t.Fatalf("the miss reports %v and never names امن, so the seat's own reading was lost with the fold", miss.Candidates)
+	}
+	if !got.Known {
+		t.Error("امن reached the caller unmarked although the corpus holds it, so the reading that is right is indistinguishable from the two that are not")
+	}
+}
+
+func TestTwoReadingsTheCorpusBothKnowsAreBothReportedRatherThanOneOfThemPicked(t *testing.T) {
+	// د ع و and د ع ي are both real roots and دعاء is spelled the same under
+	// either. Evidence for two readings is evidence for neither.
+	miss, ok := missFor(t, testResolver(t), "دعاء")
+	if !ok {
+		return
+	}
+	for _, want := range []string{"دعو", "دعي"} {
+		got, on := offered(miss, want)
+		if !on {
+			t.Errorf("the miss reports %v and drops %s, so the caller cannot see what it was choosing between", miss.Candidates, want)
+			continue
+		}
+		if !got.Known {
+			t.Errorf("%s reached the caller unmarked although the corpus holds it", want)
+		}
+	}
+}
+
+func TestACorpusChangesWhereAReadingSitsAndNeverWhetherItIsTheAnswer(t *testing.T) {
+	// مكتوب fits maf3uul either way and ك ت ب comes out either way. What a corpus
+	// holding that root changes is that the reading is marked attested and ranked
+	// first; what it must never change is the verdict, because no corpus of roots can
+	// say that ك ت ب is the root of this word rather than a root that exists.
+	rich, ok := missFor(t, testResolver(t), "مكتوب")
+	if !ok {
+		return
+	}
+	got, on := offered(rich, "كتب")
+	if !on || !got.Known {
+		t.Fatalf("a corpus holding ك ت ب reported %v: the reading is missing or unmarked, so the caller cannot tell it from a shape that fits", rich.Candidates)
+	}
+	if rich.Candidates[0].Letters != "كتب" {
+		t.Errorf("the attested reading sits behind %s, so the best guess is not the first one a caller reads", rich.Candidates[0].Letters)
+	}
+
+	bare, ok := missFor(t, New(storeWith()), "مكتوب")
+	if !ok {
+		return
+	}
+	got, on = offered(bare, "كتب")
+	if !on {
+		t.Fatalf("a corpus that has never heard of ك ت ب reported %v, so an empty corpus loses the reading instead of ranking it last", bare.Candidates)
+	}
+	if got.Known {
+		t.Error("ك ت ب came back marked attested against a corpus that holds no roots at all, so the mark says nothing")
+	}
+}
+
+func TestAnAmbiguousShapeIsRankedByTheCorpusAndStillAnsweredByNeitherReading(t *testing.T) {
+	// انتصر is form VIII of ن-ص-ر, but it is spelled exactly like form VII of an
+	// imaginary ت-ص-ر. The corpus holds ن ص ر and has never heard of ت ص ر, which
+	// ranks the two and does not decide between them.
+	miss, ok := missFor(t, testResolver(t), "انتصر")
+	if !ok {
+		return
+	}
+	if miss.Candidates[0].Letters != "نصر" || !miss.Candidates[0].Known {
+		t.Errorf("the miss opens with %v, so the reading the corpus attests is not the one the caller reads first", miss.Candidates)
+	}
+	if _, on := offered(miss, "تصر"); !on {
+		t.Errorf("the miss reports %v and drops تصر, so the caller cannot see the other reading of the shape", miss.Candidates)
+	}
+}
+
+func TestAHollowRootIsUnreachableFromTheSpellingAndIsNotDressedUpAsOneThatIsNot(t *testing.T) {
+	// The alef of مقام replaced a و or a ي and the spelling does not say which, so
+	// ق و م cannot be read out of it — the corpus holds that root and it still cannot
+	// be reached. What the shape does yield is مقم, and offering that as the answer
+	// would be wrong for half of these words.
 	r := testResolver(t)
-	for _, word := range []string{"ملوك", "مدير", "مريض", "مصري", "منير", "مرور"} {
-		got, err := r.Resolve(context.Background(), word, nil)
-		if err == nil {
-			t.Errorf("%s was served as the root %q, which is the word with its own first radical peeled off as if it were the template's م", word, got.Root.Letters)
+	for _, c := range []struct{ word, real string }{
+		{"مقام", "قوم"},
+		{"اقام", "قوم"},
+		{"مقاس", "قيس"},
+	} {
+		miss, ok := missFor(t, r, c.word)
+		if !ok {
 			continue
 		}
-		if !errors.Is(err, ErrNoRoot) {
-			t.Errorf("%s: want ErrNoRoot, got %v", word, err)
+		if _, on := offered(miss, c.real); on {
+			t.Errorf("%s: %v names %s, so a weak radical the spelling never carried was read out of it anyway", c.word, miss.Candidates, c.real)
 		}
-	}
-}
-
-func TestAHamzaSeatIsNotServedAsARadicalWawAndReachesTheRealRootWhenTheCorpusHasIt(t *testing.T) {
-	// مؤمن normalises to مومن, and the و the rung would call a radical is a seat the
-	// normaliser wrote away. The root is ا م ن.
-	_, err := testResolver(t).Resolve(context.Background(), "مؤمن", nil)
-	var miss *NoRootError
-	if !errors.As(err, &miss) {
-		t.Fatalf("مؤمن was served a root, and the only evidence for it was a hamza seat the normaliser folded: %v", err)
-	}
-	if !slices.Contains(miss.Candidates, "امن") {
-		t.Errorf("the miss reports %q and never names امن, so the seat's own reading was lost with the fold", miss.Candidates)
-	}
-
-	got, err := New(storeWith(knownRoots...)).Resolve(context.Background(), "مؤمن", nil)
-	if err != nil {
-		t.Fatalf("a corpus holding ا م ن still refused مؤمن: %v", err)
-	}
-	if got.Root.Letters != "امن" {
-		t.Errorf("root = %q, want %q", got.Root.Letters, "امن")
 	}
 }
 
 func TestAProperNounThatHappensToFitAWaznIsAMissRatherThanARoot(t *testing.T) {
-	// A name fits a template as well as a verb does. Nothing in the letters says
-	// otherwise, so the only thing that can refuse مريم is a corpus that has never
-	// recorded ر ي م as the root of anything.
+	// A name fits a template as well as a verb does, and the readings a name yields
+	// are ordinary roots: تونس reads as ا ن س and موسى as و س ي, both of which
+	// this corpus holds. Nothing in the letters and nothing in a list of roots can
+	// refuse them; only a record of which words are built from which root can.
 	r := testResolver(t)
 	for _, word := range []string{"مريم", "موسى", "تونس", "سارة", "باريس", "امريكا"} {
-		got, err := r.Resolve(context.Background(), word, nil)
-		if err == nil {
-			t.Errorf("%s was served as the root %q, so the app teaches a root for a name that has none", word, got.Root.Letters)
-			continue
-		}
-		if !errors.Is(err, ErrNoRoot) {
-			t.Errorf("%s: want ErrNoRoot, got %v", word, err)
-		}
-	}
-}
-
-func TestTwoReadingsTheCorpusBothKnowsAreReportedRatherThanOneOfThemPicked(t *testing.T) {
-	// د ع و and د ع ي are both real roots and دعاء is spelled the same under either.
-	// Evidence for two readings is evidence for neither.
-	_, err := New(storeWith("دعو", "دعي")).Resolve(context.Background(), "دعاء", nil)
-	var miss *NoRootError
-	if !errors.As(err, &miss) {
-		t.Fatalf("one of two attested readings was served as the answer: %v", err)
-	}
-	for _, want := range []string{"دعو", "دعي"} {
-		if !slices.Contains(miss.Candidates, want) {
-			t.Errorf("the miss reports %q and drops %q, so the caller cannot see what it was choosing between", miss.Candidates, want)
-		}
+		missFor(t, r, word)
 	}
 }
 
@@ -241,58 +347,25 @@ func TestAWordWithNoTemplateLettersProposesNothingRatherThanItsOwnThreeLetters(t
 	}
 }
 
-func TestAHollowRootIsAMissBecauseTheSpellingCannotSayWhetherTheMiddleLetterIsWawOrYa(t *testing.T) {
-	r := testResolver(t)
-	for _, word := range []string{"مقام", "اقام", "مقاس"} {
-		got, err := r.Resolve(context.Background(), word, nil)
-		if err == nil {
-			t.Errorf("%q was read as the root %q: the alef replaced a و or a ي and the spelling does not say which, so half of these answers would be wrong", word, got.Root.Letters)
-		}
-	}
-}
-
 func TestADoubledRootSpelledWithOneLetterIsProposedBesideTheOtherReadingAndNotInsteadOfIt(t *testing.T) {
 	// استرد is form X of ر-د-د with the two dals written once. It is spelled exactly
 	// like form VIII of س-ر-د, and nothing but the vowels tells the two apart, so
-	// both go to the store and the store answers.
+	// both go to the store and the store ranks them.
 	got := matchPattern("استرد")
 	for _, want := range []string{"ردد", "سرد"} {
 		if !slices.Contains(got, want) {
 			t.Errorf("the readings are %q and %q is not among them, so a corpus holding that root could never confirm it", got, want)
 		}
 	}
-	if _, err := testResolver(t).Resolve(context.Background(), "استرد", nil); !errors.Is(err, ErrNoRoot) {
-		t.Errorf("استرد resolved although the corpus holds neither reading: %v", err)
-	}
 }
 
 func TestAFormEightVerbWhoseFirstRadicalMergedIntoThePatternIsAMissAndNotThePatternsTaAsARadical(t *testing.T) {
-	// اتصل is و-ص-ل: the waw merged into the ت of افتعل and left no trace of itself.
-	// The shape also reads as form I of ت-ص-ل, which is not a root, and a corpus is
-	// the only thing that knows that.
+	// اتصل is و-ص-ل: the waw merged into the ت of افتعل and left no trace of itself,
+	// so the root is not in the letters at all. The shape also reads as form I of
+	// ت-ص-ل, and the reader may be shown that reading but never told it is the root.
 	r := testResolver(t)
 	for _, word := range []string{"اتصل", "اتفق"} {
-		got, err := r.Resolve(context.Background(), word, nil)
-		if err == nil {
-			t.Errorf("%q was served as the root %q, which is the pattern's own ت promoted to a radical", word, got.Root.Letters)
-		}
-	}
-}
-
-func TestAnAmbiguousShapeReachesTheReaderOnlyAsTheReadingTheCorpusAttests(t *testing.T) {
-	// انتصر is form VIII of ن-ص-ر, but it is spelled exactly like form VII of an
-	// imaginary ت-ص-ر. The letters choose neither; a corpus that holds ن ص ر and
-	// has never heard of ت ص ر chooses for them.
-	if _, err := testResolver(t).Resolve(context.Background(), "انتصر", []string{"en"}); !errors.Is(err, ErrNoRoot) {
-		t.Fatalf("a word with two possible roots resolved against a corpus holding neither, so the app teaches one of them as a fact: %v", err)
-	}
-
-	got, err := New(storeWith(knownRoots...)).Resolve(context.Background(), "انتصر", nil)
-	if err != nil {
-		t.Fatalf("a corpus holding ن ص ر still refused انتصر, so evidence never breaks a tie: %v", err)
-	}
-	if got.Root.Letters != "نصر" {
-		t.Errorf("root = %q, want %q", got.Root.Letters, "نصر")
+		missFor(t, r, word)
 	}
 }
 
@@ -353,18 +426,12 @@ var mamdud = []struct{ word, root string }{
 func TestAMamdudNounIsAMissNamingTheRealRootRatherThanAConfidentRootEndingInHamza(t *testing.T) {
 	r := testResolver(t)
 	for _, c := range mamdud {
-		got, err := r.Resolve(context.Background(), c.word, nil)
-		if err == nil {
-			t.Errorf("%s was served as the root %q, but its hamza is a weak radical hardened by the alef in front of it, not a letter of the root", c.word, got.Root.Letters)
+		miss, ok := missFor(t, r, c.word)
+		if !ok {
 			continue
 		}
-		var miss *NoRootError
-		if !errors.As(err, &miss) {
-			t.Errorf("%s: want a miss a caller can read, got %v", c.word, err)
-			continue
-		}
-		if !slices.Contains(miss.Candidates, c.root) {
-			t.Errorf("%s: the miss reports %q and never names %q, so the reader is told nothing was found when the real root was one of two readings on the table", c.word, miss.Candidates, c.root)
+		if _, on := offered(miss, c.root); !on {
+			t.Errorf("%s: the miss reports %v and never names %s, so the reader is told nothing was found when the real root was one of two readings on the table", c.word, miss.Candidates, c.root)
 		}
 	}
 }
@@ -393,31 +460,12 @@ func TestAFemininePluralIsAMissRatherThanARootEndingInTheSuffixesOwnTa(t *testin
 		{"فتات", "فتي"},
 		{"جهات", ""}, // و ج ه: no reading of this shape reaches it, so a miss is all we owe
 	} {
-		got, err := r.Resolve(context.Background(), c.word, nil)
-		if err == nil {
-			t.Errorf("%s was served as the root %q, which is its feminine plural ending promoted to a radical", c.word, got.Root.Letters)
+		miss, ok := missFor(t, r, c.word)
+		if !ok || c.root == "" {
 			continue
 		}
-		var miss *NoRootError
-		if !errors.As(err, &miss) {
-			t.Errorf("%s: want a miss a caller can read, got %v", c.word, err)
-			continue
+		if _, on := offered(miss, c.root); !on {
+			t.Errorf("%s: the miss reports %v and never names %s", c.word, miss.Candidates, c.root)
 		}
-		if c.root != "" && !slices.Contains(miss.Candidates, c.root) {
-			t.Errorf("%s: the miss reports %q and never names %q", c.word, miss.Candidates, c.root)
-		}
-	}
-}
-
-func TestAWordWithNoAffixesToPeelKeepsItsPatternReading(t *testing.T) {
-	// The rule that stops the ladder walking down the stems until a wazn fits must
-	// not also silence the rung on the word it was handed.
-	r := testResolver(t)
-	got, err := r.Resolve(context.Background(), "مكتوب", nil)
-	if err != nil {
-		t.Fatalf("an ordinary maf3uul stopped resolving, so the pattern rung now refuses everything: %v", err)
-	}
-	if got.Root.Letters != "كتب" || got.Method != MethodPattern {
-		t.Errorf("root = %q by %q, want %q by %q", got.Root.Letters, got.Method, "كتب", MethodPattern)
 	}
 }

@@ -11,7 +11,10 @@ const (
 	MethodNormalized Method = "normalized"
 	MethodLemma      Method = "lemma"
 	MethodStripped   Method = "stripped"
-	MethodPattern    Method = "pattern"
+	// MethodPattern is reserved. Rung five proposes readings and ranks them and
+	// answers with none of them, so nothing reports this method until phase 3's
+	// morphology can attest a word form to a root (see Resolve).
+	MethodPattern Method = "pattern"
 )
 
 // Root identifies an Arabic root. Letters is the joined form and is the key

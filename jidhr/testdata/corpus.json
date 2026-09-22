@@ -1,5 +1,5 @@
 {
-  "note": "The corpus a MemoryStore is seeded from. Phase 1 has no ingested data, so these few entries are what the resolution ladder is tested against, and they are also the worked example a caller outside Wird copies to run jidhr with no database.",
+  "note": "The corpus a MemoryStore is seeded from, and the corpus the tests run against. The entries are the few attested forms phase 1 has; the roots are the real roots of the test battery beside the traps that battery walks into — لوك, ريض, صري, نير, ريم, انس, وسي and دير are all real classical triliterals that a template reads out of ملوك, مريض, مصري, منير, مريم, تونس, موسى and مدير, and every one of them will be among the 1,651 roots phase 3 ships. A test that holds only because a root is missing holds by accident, so they are here from the start. It is also the worked example a caller outside Wird copies to run jidhr with no database.",
   "roots": [
     {
       "letters": "وصي",
@@ -31,9 +31,165 @@
       "translit": "b-r-m-j"
     },
     {
-      "note": "No form of this root is attested in the entries below. It is here because the pattern rung answers only for a root the store confirms, so a corpus with no ordinary roots in it can only ever refuse — مالك needs م ل ك on record to resolve at all. It carries no transliteration on purpose: a root nobody has transliterated yet must ship the field absent rather than blank.",
       "letters": "ملك",
-      "display": "م ل ك"
+      "display": "م ل ك",
+      "note": "No form of this root is attested in the entries below, and it carries no transliteration on purpose: a root nobody has transliterated yet must ship the field absent rather than blank."
+    },
+    {
+      "letters": "صلو",
+      "display": "ص ل و"
+    },
+    {
+      "letters": "حيي",
+      "display": "ح ي ي"
+    },
+    {
+      "letters": "دعو",
+      "display": "د ع و"
+    },
+    {
+      "letters": "دعي",
+      "display": "د ع ي"
+    },
+    {
+      "letters": "زكو",
+      "display": "ز ك و"
+    },
+    {
+      "letters": "امن",
+      "display": "ا م ن"
+    },
+    {
+      "letters": "قبل",
+      "display": "ق ب ل"
+    },
+    {
+      "letters": "نصر",
+      "display": "ن ص ر"
+    },
+    {
+      "letters": "سجد",
+      "display": "س ج د"
+    },
+    {
+      "letters": "مرض",
+      "display": "م ر ض"
+    },
+    {
+      "letters": "دور",
+      "display": "د و ر"
+    },
+    {
+      "letters": "نور",
+      "display": "ن و ر"
+    },
+    {
+      "letters": "قرء",
+      "display": "ق ر ء"
+    },
+    {
+      "letters": "سمو",
+      "display": "س م و"
+    },
+    {
+      "letters": "نسو",
+      "display": "ن س و"
+    },
+    {
+      "letters": "لقي",
+      "display": "ل ق ي"
+    },
+    {
+      "letters": "قضي",
+      "display": "ق ض ي"
+    },
+    {
+      "letters": "عطو",
+      "display": "ع ط و"
+    },
+    {
+      "letters": "رجو",
+      "display": "ر ج و"
+    },
+    {
+      "letters": "وفي",
+      "display": "و ف ي"
+    },
+    {
+      "letters": "بني",
+      "display": "ب ن ي"
+    },
+    {
+      "letters": "شتو",
+      "display": "ش ت و"
+    },
+    {
+      "letters": "غذو",
+      "display": "غ ذ و"
+    },
+    {
+      "letters": "لغو",
+      "display": "ل غ و"
+    },
+    {
+      "letters": "فتي",
+      "display": "ف ت ي"
+    },
+    {
+      "letters": "وجه",
+      "display": "و ج ه"
+    },
+    {
+      "letters": "عود",
+      "display": "ع و د"
+    },
+    {
+      "letters": "حول",
+      "display": "ح و ل"
+    },
+    {
+      "letters": "طوق",
+      "display": "ط و ق"
+    },
+    {
+      "letters": "غيب",
+      "display": "غ ي ب"
+    },
+    {
+      "letters": "قوم",
+      "display": "ق و م"
+    },
+    {
+      "letters": "لوك",
+      "display": "ل و ك"
+    },
+    {
+      "letters": "ريض",
+      "display": "ر ي ض"
+    },
+    {
+      "letters": "صري",
+      "display": "ص ر ي"
+    },
+    {
+      "letters": "نير",
+      "display": "ن ي ر"
+    },
+    {
+      "letters": "ريم",
+      "display": "ر ي م"
+    },
+    {
+      "letters": "انس",
+      "display": "ا ن س"
+    },
+    {
+      "letters": "وسي",
+      "display": "و س ي"
+    },
+    {
+      "letters": "دير",
+      "display": "د ي ر"
     }
   ],
   "entries": [
