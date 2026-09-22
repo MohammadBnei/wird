@@ -106,6 +106,11 @@ func radicalReadings(c rune, final bool) []rune {
 	return out
 }
 
+// longVowels are the letters a template writes to stretch a vowel rather than to
+// spell a radical. They are the only letters that can stand in a radical slot and
+// not be a radical, which is what keeps the readings below finite.
+var longVowels = []rune{'ا', 'و', 'ي'}
+
 // apply reads the radicals a stem puts in this template's slots and returns every
 // root they can be read as. An empty result means the shape does not fit.
 func (t template) apply(stem []rune) []string {
@@ -113,24 +118,67 @@ func (t template) apply(stem []rune) []string {
 	if len(shape) != len(stem) {
 		return nil
 	}
-	var first, second, third rune
+
+	var slots, fixed []int
 	for i, s := range shape {
 		switch s {
-		case 'ف':
-			first = stem[i]
-		case 'ع':
-			second = stem[i]
-		case 'ل':
-			third = stem[i]
+		case 'ف', 'ع', 'ل':
+			slots = append(slots, i)
 		default:
 			if stem[i] != s {
 				return nil
 			}
+			fixed = append(fixed, i)
 		}
 	}
 	if t.doubled {
-		third = second
+		// A doubled root writes its last two radicals once, so the third radical is
+		// the second again and the shape has no ل slot of its own.
+		slots = append(slots, slots[len(slots)-1])
 	}
+
+	var out []string
+	for _, at := range t.readings(stem, slots, fixed) {
+		out = append(out, rootsAt(stem, at)...)
+	}
+	return out
+}
+
+// readings lists the ways this shape can divide a stem into three radicals and the
+// letters that are not radicals at all.
+//
+// The first way is the shape's own: the letters standing in ف, ع and ل. The others
+// are what a fixed template letter costs. The م of مفعل is the template's own م in
+// مكتب and the first radical in ملوك, and the letters alone never say which, so the
+// reading where it is a radical belongs beside the reading where it is not. Three
+// radicals still come out of the stem, so under that reading one letter the shape
+// called a radical is template material instead — and only a long vowel can be:
+// ملوك is م ل ك around a و that the other reading had to call a radical.
+func (t template) readings(stem []rune, slots, fixed []int) [][3]int {
+	out := [][3]int{{slots[0], slots[1], slots[2]}}
+	if t.doubled {
+		// This shape already spends a radical on a letter it does not write. Reading
+		// one of its own letters as a radical on top of that is a guess about a guess.
+		return out
+	}
+	for _, f := range fixed {
+		for k, slot := range slots {
+			if !slices.Contains(longVowels, stem[slot]) {
+				continue
+			}
+			at := append(slices.Delete(slices.Clone(slots), k, k+1), f)
+			slices.Sort(at)
+			out = append(out, [3]int{at[0], at[1], at[2]})
+		}
+	}
+	return out
+}
+
+// rootsAt reads the three letters standing at these positions and returns every
+// root they can be read as. Nothing comes back when they cannot be a root at all.
+func rootsAt(stem []rune, at [3]int) []string {
+	first, second, third := stem[at[0]], stem[at[1]], stem[at[2]]
+
 	// An alef is never a radical. A root writes its weak letter as و or ي, and the
 	// alef standing in a hollow or defective word is the letter that replaced one of
 	// them — the spelling does not say which, so this is a shape that fits rather
@@ -139,11 +187,11 @@ func (t template) apply(stem []rune) []string {
 		return nil
 	}
 
-	// A doubled shape ends in its second radical and مفاعله ends in a letter of its
-	// own, so in neither is the stem's last letter the third radical.
-	thirdIsFinal := shape[len(shape)-1] == 'ل'
-	thirds := radicalReadings(third, thirdIsFinal)
-	if thirdIsFinal && thirdRadicalIsOneReadingAmongSeveral(shape, stem, third) {
+	// A doubled reading ends in its second radical written once more, so its third
+	// radical is never the stem's last letter in its own right.
+	final := at[2] == len(stem)-1 && at[2] != at[1]
+	thirds := radicalReadings(third, final)
+	if final && thirdRadicalIsOneReadingAmongSeveral(stem, at[2]) {
 		thirds = append(thirds, weakFinals...)
 	}
 
@@ -158,7 +206,7 @@ func (t template) apply(stem []rune) []string {
 	return out
 }
 
-// thirdRadicalIsOneReadingAmongSeveral reports whether the letter this shape calls
+// thirdRadicalIsOneReadingAmongSeveral reports whether the letter a reading calls
 // its third radical could just as well be something that is not a radical at all,
 // in which case the weak readings belong beside it.
 //
@@ -168,11 +216,8 @@ func (t template) apply(stem []rune) []string {
 // what دعاء is doing to د ع و. And a stem whose ending is an inflectional suffix the
 // stripper refused to peel is inflection being read as a radical: بنات is ب ن ي
 // wearing the feminine plural, not the root ب ن ت.
-func thirdRadicalIsOneReadingAmongSeveral(shape, stem []rune, third rune) bool {
-	if shape[len(shape)-1] != 'ل' {
-		return false
-	}
-	if third == 'ء' && len(shape) > 1 && shape[len(shape)-2] == 'ا' {
+func thirdRadicalIsOneReadingAmongSeveral(stem []rune, at int) bool {
+	if stem[at] == 'ء' && at > 0 && stem[at-1] == 'ا' {
 		return true
 	}
 	return endsInUnpeelableSuffix(string(stem))
@@ -180,9 +225,10 @@ func thirdRadicalIsOneReadingAmongSeveral(shape, stem []rune, third rune) bool {
 
 // matchPattern returns every root the standard templates can read out of a stem.
 // It proposes; it never chooses. A template can say that a word fits a shape and
-// can never say that the letters it yields are a root anyone has ever used, so the
-// caller takes this set to the store and answers only for a reading the corpus
-// confirms. An empty result means no template fits at all.
+// can never say that the letters it yields are a root anyone has ever used, let
+// alone the root of the word in hand, so the caller takes this set to the store and
+// reports it ranked rather than answering with one of them. An empty result means
+// no template fits at all.
 //
 // The stem is expected in normalised orthography. Quadriliteral roots have no
 // template here, and forms I, II and IX are spelled like the bare root, so a word
