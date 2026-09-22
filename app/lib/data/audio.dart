@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'sets.dart';
+
 /// `ayah_audio.rel_path` is relative on purpose: the reciter's files can move
 /// to another host without an App Store release. This is the bundled default,
 /// which server config overrides.
@@ -78,6 +80,23 @@ Future<List<AyaTrack>> tracksFor(Database db, List<int> ayahIds) async {
       if (paths[id] case final rel?)
         AyaTrack(ayahId: id, relPath: rel, segments: byAya[id] ?? const []),
   ];
+}
+
+/// The recitation files screen 1a keeps on disk: the set being studied and
+/// the set after it. Pinning only the current set leaves the cap free to
+/// evict the very set the reader is about to be handed.
+Future<List<String>> pathsToKeep(
+  Database db,
+  ReadingOrder order,
+  StudySet current,
+) async {
+  final currentIds = [for (final aya in current.ayas) aya.id];
+  final ahead = await nextSet(db, order, alsoUnderstood: currentIds.toSet());
+  final tracks = await tracksFor(db, [
+    ...currentIds,
+    if (ahead != null) for (final aya in ahead.ayas) aya.id,
+  ]);
+  return [for (final track in tracks) track.relPath];
 }
 
 /// The word sounding at [ms] in the track at [index].

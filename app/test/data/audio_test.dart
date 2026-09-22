@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/sets.dart';
 
 import '../corpus.dart';
 import '../offline.dart';
@@ -54,17 +55,64 @@ void main() {
         ..setLastModifiedSync(old);
     }
 
-    // A cap of eight files against five pinned ones and twenty stale ones.
+    // Three files' worth of cap against twenty stale files and five pinned
+    // ones: throwing away every stale file still leaves the cache over the
+    // cap, so eviction reaches the set about to be prayed and has to refuse
+    // it. A roomier cap would pass with or without the pin.
     await AudioCache(
       dir,
-      capBytes: 8 * 1024,
+      capBytes: 3 * 1024,
       fetch: FakeCdn().call,
     ).prefetch(paths);
 
     for (final path in paths) {
-      expect(AudioCache(dir).cached(path), isNotNull);
+      expect(
+        AudioCache(dir).cached(path),
+        isNotNull,
+        reason: '$path was evicted while the reader was about to pray it',
+      );
     }
-    expect(dir.listSync().length, lessThanOrEqualTo(8));
+    expect(
+      dir.listSync().map((f) => f.uri.pathSegments.last).toSet(),
+      {for (final path in paths) path.split('/').last},
+      reason: 'the stale files are gone, so the cache really did evict',
+    );
+  });
+
+  test('the set the reader will be handed next is evicted before they are '
+      'ever served it', () async {
+    final dir = await tempAudioDir();
+    final current = await nextSet(db, ReadingOrder.nuzul);
+    final ahead = await nextSet(
+      db,
+      ReadingOrder.nuzul,
+      alsoUnderstood: {for (final aya in current!.ayas) aya.id},
+    );
+    final aheadPaths = [
+      for (final t in await tracksFor(db, [for (final a in ahead!.ayas) a.id]))
+        t.relPath,
+    ];
+
+    final old = DateTime.now().subtract(const Duration(days: 1));
+    for (var i = 0; i < 20; i++) {
+      File('${dir.path}/old$i.mp3')
+        ..writeAsBytesSync(List.filled(1024, 0))
+        ..setLastModifiedSync(old);
+    }
+
+    // What screen 1a downloads when it opens the set, against a cap that
+    // cannot hold it: everything unpinned goes.
+    await AudioCache(dir, capBytes: 3 * 1024, fetch: FakeCdn().call)
+        .prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
+
+    expect(aheadPaths, hasLength(ahead.ayas.length));
+    for (final path in aheadPaths) {
+      expect(
+        AudioCache(dir).cached(path),
+        isNotNull,
+        reason: '$path is the next set, gone before the reader reached it',
+      );
+    }
   });
 
   test('the highlight lags the recitation by more than the 80 ms a reader can '

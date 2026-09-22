@@ -88,6 +88,9 @@ class _StudyScreenState extends State<StudyScreen> {
         ? null
         : await rootDetail(widget.db, first.root!);
     final previous = _audio;
+    final keep = set == null
+        ? const <String>[]
+        : await pathsToKeep(widget.db, order, set);
     final audio = set == null
         ? null
         : SetAudio(
@@ -114,7 +117,7 @@ class _StudyScreenState extends State<StudyScreen> {
     // The download runs behind the set rather than in front of it: the reader
     // studies while the recitation arrives, and an aeroplane leaves the screen
     // working with the play button honestly dark.
-    await audio.cache.prefetch([for (final t in audio.tracks) t.relPath]);
+    await audio.cache.prefetch(keep);
     if (mounted && identical(_audio, audio)) setState(() {});
   }
 
