@@ -1,0 +1,604 @@
+{
+  "version": 2,
+  "note": "The contract of jidhr's orthographic normaliser. Two implementations read this file: the Go one in jidhr/pkg/root and the Dart one that runs on the device. They must agree exactly — when they drift, recognised speech stops matching text_uthmani and the in-prayer cursor silently never advances — so a change to either starts with a case added here. `remove` and `fold` are complete tables of code points, not a summary: an implementation needs no Unicode database and no access to the Go source to be exactly right. Every input is one token, a word or a fragment copied out of a mushaf, and the format names no language.",
+  "algorithm": [
+    "Iterate the input by Unicode code point. In Dart that is `input.runes`, never `codeUnits`: a mark above U+FFFF is two UTF-16 units, and splitting it leaves two halves of a character that should have been removed whole.",
+    "For each code point, in order: if it falls inside any range of `remove`, emit nothing; else if it is a key of `fold`, emit the code point `fold` maps it to; else emit it unchanged.",
+    "Concatenate what was emitted. Nothing else happens: no reordering, no Unicode composition or decomposition, no case change, no trimming, no length limit, no lookahead — each code point is decided on its own.",
+    "`remove` and `fold` are the contract. Where the prose in `rules` and these two tables disagree, the tables win and the prose is the bug."
+  ],
+  "scope": [
+    "Combining marks are removed only inside the Arabic blocks: U+0600..U+06FF Arabic, U+0750..U+077F Arabic Supplement, U+0870..U+089F Arabic Extended-B, U+08A0..U+08FF Arabic Extended-A, U+10EC0..U+10EFF Arabic Extended-C. Arabic Supplement holds no marks today and contributes no ranges.",
+    "Arabic Extended-B (U+0870..U+089F) is IN scope. It carries Qur'anic annotation marks, and an implementation that leaves them standing produces a key no other implementation reaches. This is stated because it is the block the two normalisers were most likely to split on.",
+    "A combining mark outside those blocks is kept: a Latin combining acute, a Hebrew point, a Devanagari matra all survive untouched.",
+    "Invisible formatting characters are removed everywhere, in every block, not only inside the Arabic ones.",
+    "The Arabic Presentation Forms (U+FB50..U+FDFF and U+FE70..U+FEFF) are NOT folded to their base letters; only U+FEFF, which is an invisible formatting character rather than a ligature, is removed. See `notUnified`.",
+    "The tables below were expanded from Unicode 17.0.0. A future Unicode version adding an Arabic mark is a change to this file, made deliberately with a case, never an implicit change of behaviour."
+  ],
+  "remove": [
+    {
+      "from": "U+00AD",
+      "to": "U+00AD",
+      "rule": "invisible",
+      "what": "soft hyphen"
+    },
+    {
+      "from": "U+0600",
+      "to": "U+0605",
+      "rule": "invisible",
+      "what": "the Arabic number and annotation signs that prefix a numeral"
+    },
+    {
+      "from": "U+0610",
+      "to": "U+061A",
+      "rule": "marks",
+      "what": "Arabic honorifics and Qur'anic annotation signs"
+    },
+    {
+      "from": "U+061C",
+      "to": "U+061C",
+      "rule": "invisible",
+      "what": "Arabic letter mark, a bidi control"
+    },
+    {
+      "from": "U+0640",
+      "to": "U+0640",
+      "rule": "tatweel",
+      "what": "tatweel"
+    },
+    {
+      "from": "U+064B",
+      "to": "U+065F",
+      "rule": "marks",
+      "what": "tanwin, the short vowels, shadda, sukun and the Qur'anic vowel signs"
+    },
+    {
+      "from": "U+0670",
+      "to": "U+0670",
+      "rule": "marks",
+      "what": "the dagger alef"
+    },
+    {
+      "from": "U+06D6",
+      "to": "U+06DC",
+      "rule": "marks",
+      "what": "the Qur'anic recitation marks written above the line"
+    },
+    {
+      "from": "U+06DD",
+      "to": "U+06DD",
+      "rule": "invisible",
+      "what": "end of ayah sign, which encloses the verse number that follows it"
+    },
+    {
+      "from": "U+06DF",
+      "to": "U+06E4",
+      "rule": "marks",
+      "what": "more Qur'anic annotation marks, including the Uthmani small high sukun and madda"
+    },
+    {
+      "from": "U+06E5",
+      "to": "U+06E6",
+      "rule": "smallWawYa",
+      "what": "the Uthmani small waw and small ya"
+    },
+    {
+      "from": "U+06E7",
+      "to": "U+06E8",
+      "rule": "marks",
+      "what": "small high yeh and small high noon"
+    },
+    {
+      "from": "U+06EA",
+      "to": "U+06ED",
+      "rule": "marks",
+      "what": "the empty-centre and small low marks of the Uthmani text"
+    },
+    {
+      "from": "U+070F",
+      "to": "U+070F",
+      "rule": "invisible",
+      "what": "Syriac abbreviation mark"
+    },
+    {
+      "from": "U+0890",
+      "to": "U+0891",
+      "rule": "invisible",
+      "what": "the Arabic pound and piastre marks"
+    },
+    {
+      "from": "U+0897",
+      "to": "U+089F",
+      "rule": "marks",
+      "what": "Arabic Extended-B annotation marks: in scope, see `scope`"
+    },
+    {
+      "from": "U+08CA",
+      "to": "U+08E1",
+      "rule": "marks",
+      "what": "Arabic Extended-A Qur'anic marks"
+    },
+    {
+      "from": "U+08E2",
+      "to": "U+08E2",
+      "rule": "invisible",
+      "what": "disputed end of ayah sign"
+    },
+    {
+      "from": "U+08E3",
+      "to": "U+08FF",
+      "rule": "marks",
+      "what": "the rest of the Arabic Extended-A marks, including the small low marks"
+    },
+    {
+      "from": "U+180E",
+      "to": "U+180E",
+      "rule": "invisible",
+      "what": "Mongolian vowel separator"
+    },
+    {
+      "from": "U+200B",
+      "to": "U+200F",
+      "rule": "invisible",
+      "what": "zero-width space, non-joiner (U+200C), joiner (U+200D) and the two bidi marks"
+    },
+    {
+      "from": "U+202A",
+      "to": "U+202E",
+      "rule": "invisible",
+      "what": "bidi embedding and override controls"
+    },
+    {
+      "from": "U+2060",
+      "to": "U+2064",
+      "rule": "invisible",
+      "what": "word joiner and the invisible operators"
+    },
+    {
+      "from": "U+2066",
+      "to": "U+206F",
+      "rule": "invisible",
+      "what": "bidi isolates and the deprecated format controls"
+    },
+    {
+      "from": "U+FEFF",
+      "to": "U+FEFF",
+      "rule": "invisible",
+      "what": "byte order mark, which leads any file a mushaf was copied out of"
+    },
+    {
+      "from": "U+FFF9",
+      "to": "U+FFFB",
+      "rule": "invisible",
+      "what": "interlinear annotation controls"
+    },
+    {
+      "from": "U+10EFA",
+      "to": "U+10EFF",
+      "rule": "marks",
+      "what": "Arabic Extended-C marks, which live beyond the Basic Multilingual Plane"
+    },
+    {
+      "from": "U+110BD",
+      "to": "U+110BD",
+      "rule": "invisible",
+      "what": "Kaithi number sign"
+    },
+    {
+      "from": "U+110CD",
+      "to": "U+110CD",
+      "rule": "invisible",
+      "what": "Kaithi number sign above"
+    },
+    {
+      "from": "U+13430",
+      "to": "U+1343F",
+      "rule": "invisible",
+      "what": "Egyptian hieroglyph format controls"
+    },
+    {
+      "from": "U+1BCA0",
+      "to": "U+1BCA3",
+      "rule": "invisible",
+      "what": "shorthand format controls"
+    },
+    {
+      "from": "U+1D173",
+      "to": "U+1D17A",
+      "rule": "invisible",
+      "what": "musical notation format controls"
+    },
+    {
+      "from": "U+E0001",
+      "to": "U+E0001",
+      "rule": "invisible",
+      "what": "language tag"
+    },
+    {
+      "from": "U+E0020",
+      "to": "U+E007F",
+      "rule": "invisible",
+      "what": "tag characters"
+    }
+  ],
+  "fold": {
+    "U+0622": "U+0627",
+    "U+0623": "U+0627",
+    "U+0624": "U+0648",
+    "U+0625": "U+0627",
+    "U+0626": "U+064A",
+    "U+0629": "U+0647",
+    "U+0649": "U+064A",
+    "U+0671": "U+0627",
+    "U+0660": "U+0030",
+    "U+0661": "U+0031",
+    "U+0662": "U+0032",
+    "U+0663": "U+0033",
+    "U+0664": "U+0034",
+    "U+0665": "U+0035",
+    "U+0666": "U+0036",
+    "U+0667": "U+0037",
+    "U+0668": "U+0038",
+    "U+0669": "U+0039",
+    "U+06F0": "U+0030",
+    "U+06F1": "U+0031",
+    "U+06F2": "U+0032",
+    "U+06F3": "U+0033",
+    "U+06F4": "U+0034",
+    "U+06F5": "U+0035",
+    "U+06F6": "U+0036",
+    "U+06F7": "U+0037",
+    "U+06F8": "U+0038",
+    "U+06F9": "U+0039"
+  },
+  "rules": [
+    {
+      "id": "marks",
+      "text": "Remove every Arabic combining mark: the short vowels, tanwin, shadda, sukun, the dagger alef and the Qur'anic annotation signs. The exact code points are the `remove` entries whose rule is `marks` — the Unicode Mn characters of the blocks named in `scope`, written out here so that reading this contract needs no Unicode tables."
+    },
+    {
+      "id": "tatweel",
+      "text": "Remove tatweel (U+0640). It stretches a join for typography and carries no sound."
+    },
+    {
+      "id": "alef",
+      "text": "Map alef with madda (U+0622), alef with hamza above (U+0623), alef with hamza below (U+0625) and alef wasla (U+0671) to a bare alef (U+0627)."
+    },
+    {
+      "id": "taMarbuta",
+      "text": "Map ta marbuta (U+0629) to ha (U+0647), so a word ends at one key however the writer spelled it."
+    },
+    {
+      "id": "alefMaqsura",
+      "text": "Map alef maqsura (U+0649) to ya (U+064A), so the dotted and undotted spellings share one key."
+    },
+    {
+      "id": "seatedHamza",
+      "text": "Map hamza on a waw seat (U+0624) to waw (U+0648) and hamza on a ya seat (U+0626) to ya (U+064A)."
+    },
+    {
+      "id": "standaloneHamza",
+      "text": "Keep a standalone hamza (U+0621). It is a letter in its own right: دعا and دعاء are different words with different roots."
+    },
+    {
+      "id": "smallWawYa",
+      "text": "Remove the Uthmani small waw (U+06E5) and small ya (U+06E6). They lengthen a pronoun vowel and are not letters of the word."
+    },
+    {
+      "id": "invisible",
+      "text": "Remove every invisible formatting character: the zero-width non-joiner (U+200C) and joiner (U+200D), the end-of-ayah sign (U+06DD), the byte order mark, the bidi controls and the rest. The exact code points are the `remove` entries whose rule is `invisible` — the Unicode Cf characters, written out here. Unlike the marks these are removed wherever they occur, in any block, because they carry no spelling in any script."
+    },
+    {
+      "id": "digits",
+      "text": "Map the Arabic-Indic digits (U+0660..U+0669) and the extended set a Persian or Urdu keyboard produces (U+06F0..U+06F9) to the Western digits 0..9."
+    },
+    {
+      "id": "other",
+      "text": "Emit every other code point unchanged, whatever block or script it belongs to. `remove` and `fold` are exhaustive: a code point in neither is copied through, and that includes a combining mark outside the blocks named in `scope`, a Latin letter, a Western digit, a space and any punctuation."
+    },
+    {
+      "id": "noStripping",
+      "text": "Never remove a prefix, a suffix or the definite article. Normalisation is orthographic only; peeling affixes is the stripping rung's work, and doing it here would fold الفتح into فتح and report the wrong root as a fact."
+    },
+    {
+      "id": "idempotent",
+      "text": "Normalising a normalised word returns it unchanged. Every `expected` in this file is its own normal form."
+    }
+  ],
+  "cases": [
+    {
+      "input": "هَٰذَا",
+      "expected": "هذا",
+      "rules": [
+        "marks"
+      ],
+      "why": "dagger alef: the superscript alef is a mark, not a letter, and goes with the rest of them"
+    },
+    {
+      "input": "ٱللَّهِ",
+      "expected": "الله",
+      "rules": [
+        "alef",
+        "marks"
+      ],
+      "why": "alef wasla: the connecting alef of the definite article becomes a bare alef"
+    },
+    {
+      "input": "أَحَدٌ",
+      "expected": "احد",
+      "rules": [
+        "alef",
+        "marks"
+      ],
+      "why": "hamza seat: alef with hamza above becomes a bare alef"
+    },
+    {
+      "input": "إِنَّ",
+      "expected": "ان",
+      "rules": [
+        "alef",
+        "marks"
+      ],
+      "why": "hamza seat: alef with hamza below becomes a bare alef"
+    },
+    {
+      "input": "آمَنُوا",
+      "expected": "امنوا",
+      "rules": [
+        "alef",
+        "marks"
+      ],
+      "why": "hamza seat: alef with madda becomes a bare alef"
+    },
+    {
+      "input": "رَحْمَةً",
+      "expected": "رحمه",
+      "rules": [
+        "taMarbuta",
+        "marks"
+      ],
+      "why": "ta marbuta becomes ha, so a word ends at one key however the writer spelled it"
+    },
+    {
+      "input": "رحمه",
+      "expected": "رحمه",
+      "rules": [
+        "taMarbuta",
+        "other"
+      ],
+      "why": "ha stays ha, which is what makes it the key the ta marbuta spelling arrives at"
+    },
+    {
+      "input": "هُدًى",
+      "expected": "هدي",
+      "rules": [
+        "alefMaqsura",
+        "marks"
+      ],
+      "why": "alef maqsura becomes ya, so the dotted and undotted spellings share one key"
+    },
+    {
+      "input": "فِي",
+      "expected": "في",
+      "rules": [
+        "other",
+        "marks"
+      ],
+      "why": "ya stays ya, which is the key the alef maqsura spelling arrives at"
+    },
+    {
+      "input": "ال\u0640رح\u0640من",
+      "expected": "الرحمن",
+      "rules": [
+        "tatweel"
+      ],
+      "why": "tatweel is typographic stretching and carries no sound"
+    },
+    {
+      "input": "مُؤْمِنُونَ",
+      "expected": "مومنون",
+      "rules": [
+        "seatedHamza",
+        "marks"
+      ],
+      "why": "hamza on a waw seat becomes its carrier waw"
+    },
+    {
+      "input": "سَائِلٌ",
+      "expected": "سايل",
+      "rules": [
+        "seatedHamza",
+        "marks"
+      ],
+      "why": "hamza on a ya seat becomes its carrier ya"
+    },
+    {
+      "input": "جَاءَ",
+      "expected": "جاء",
+      "rules": [
+        "standaloneHamza",
+        "marks"
+      ],
+      "why": "a standalone hamza is a letter in its own right and survives"
+    },
+    {
+      "input": "مَآ",
+      "expected": "ما",
+      "rules": [
+        "marks"
+      ],
+      "why": "the Qur'anic madda sign sits above the letter and is a mark, not a letter"
+    },
+    {
+      "input": "ٱلۡحَمۡدُ",
+      "expected": "الحمد",
+      "rules": [
+        "alef",
+        "marks"
+      ],
+      "why": "the Uthmani small-high sukun sign is a Qur'anic mark like any other"
+    },
+    {
+      "input": "وَيَبۡصُطۜ",
+      "expected": "ويبصط",
+      "rules": [
+        "marks"
+      ],
+      "why": "the small high seen marks a recitation variant and is not part of the spelling"
+    },
+    {
+      "input": "ٱلرَّحْمَٰنِ",
+      "expected": "الرحمن",
+      "rules": [
+        "alef",
+        "marks"
+      ],
+      "why": "wasla, shadda and dagger alef can land on one word and it must still reduce to one key"
+    },
+    {
+      "input": "تواصوا",
+      "expected": "تواصوا",
+      "rules": [
+        "idempotent",
+        "other"
+      ],
+      "why": "modern unvowelled spelling is already normal form, so normalising it again changes nothing"
+    },
+    {
+      "input": "وَتَوَاصَوْا",
+      "expected": "وتواصوا",
+      "rules": [
+        "noStripping",
+        "marks"
+      ],
+      "why": "normalisation is orthographic only: an attached waw is a prefix for the stripping rung to peel, not a mark to delete"
+    },
+    {
+      "input": "بِهِ\u06e6",
+      "expected": "به",
+      "rules": [
+        "smallWawYa",
+        "marks"
+      ],
+      "why": "the Uthmani small high ya lengthens a pronoun vowel and is not a letter, so a word carrying it must still reach the plain key"
+    },
+    {
+      "input": "أخر",
+      "expected": "اخر",
+      "rules": [
+        "marks"
+      ],
+      "why": "a hamza written as a combining mark over a bare alef is the same word as one written with the precomposed letter"
+    },
+    {
+      "input": "مس\u200cلم",
+      "expected": "مسلم",
+      "rules": [
+        "invisible"
+      ],
+      "why": "an invisible non-joiner (U+200C) rides along with copied text and would otherwise make a word match nothing at all"
+    },
+    {
+      "input": "٢٨٢",
+      "expected": "282",
+      "rules": [
+        "digits"
+      ],
+      "why": "Arabic-Indic digits key the same as the Western ones, so an ayah typed on either keyboard finds the same place"
+    },
+    {
+      "input": "۵",
+      "expected": "5",
+      "rules": [
+        "digits"
+      ],
+      "why": "the extended digits a Persian or Urdu keyboard produces key the same as the Arabic-Indic ones"
+    },
+    {
+      "input": "الكْتاٰبُ",
+      "expected": "الكتاب",
+      "rules": [
+        "noStripping",
+        "marks"
+      ],
+      "why": "the definite article survives normalisation: peeling it is the stripping rung's work, and folding it here would make الكتاب and كتاب one key"
+    },
+    {
+      "input": "جَاءَا",
+      "expected": "جاءا",
+      "rules": [
+        "standaloneHamza",
+        "marks"
+      ],
+      "why": "a standalone hamza between two alefs is still a letter, so جاءا does not collapse into جاا"
+    },
+    {
+      "input": "دَاوُ\u06e5دَ",
+      "expected": "داود",
+      "rules": [
+        "smallWawYa",
+        "marks"
+      ],
+      "why": "the Uthmani small waw (U+06E5) lengthens a pronoun vowel and is not a letter, so a word carrying it must still reach the plain key"
+    },
+    {
+      "input": "مس\u200dلم",
+      "expected": "مسلم",
+      "rules": [
+        "invisible"
+      ],
+      "why": "a zero-width joiner (U+200D) rides along with copied text just as the non-joiner does, and neither may survive into a key"
+    },
+    {
+      "input": "\u06dd٢",
+      "expected": "2",
+      "rules": [
+        "invisible",
+        "digits"
+      ],
+      "why": "the end-of-ayah sign (U+06DD) is invisible and encloses the verse number that follows it, so a verse marker pasted whole still keys as its number"
+    },
+    {
+      "input": "كتاب\u0898",
+      "expected": "كتاب",
+      "rules": [
+        "marks"
+      ],
+      "why": "a mark from Arabic Extended-B (U+0898) is in scope and goes with every other mark: this is the block the two implementations would otherwise silently disagree about"
+    },
+    {
+      "input": "سبح\ud803\udefd",
+      "expected": "سبح",
+      "rules": [
+        "marks"
+      ],
+      "why": "a mark above U+FFFF (U+10EFD) is still a mark, and an implementation walking UTF-16 code units rather than code points would keep two broken halves of it"
+    },
+    {
+      "input": "cafe\u0301",
+      "expected": "cafe\u0301",
+      "rules": [
+        "other",
+        "idempotent"
+      ],
+      "why": "a combining mark outside the Arabic blocks is left alone, so normalising a word of another language never silently rewrites it"
+    }
+  ],
+  "selfCheck": [
+    "For every case: normalising `input` gives `expected`, exactly.",
+    "For every case: normalising `expected` gives `expected` — normalising twice must change nothing, or the device and the server disagree the moment either stores a value the other already normalised.",
+    "Every `id` in `rules` appears in the `rules` list of at least one case. A rule no case pins is a rule that will drift.",
+    "Every rule named by a case exists in `rules`.",
+    "No code point is both inside a `remove` range and a key of `fold`.",
+    "The `remove` ranges are sorted by `from`, and none overlaps the next.",
+    "Run these six against the tables, not against the implementation. A data file that fails loudly beats prose that fails silently."
+  ],
+  "notUnified": [
+    "The definite article is NOT removed. It is a prefix for the stripping rung to peel; folding it here would make الفتح and فتح one key and hand back the wrong root as an attested fact.",
+    "A standalone hamza (U+0621) is NOT removed or folded. It is a letter: دعا and دعاء are different words with different roots.",
+    "No prefix or suffix is removed. وتواصوا normalises to itself; peeling the waw is rung four's work, and doing it here would report a stripped result as an orthographic one.",
+    "Folding the seated hamzas is known to merge a few distinct roots — سأل (to ask) reaches the same key as سال (to flow). Accepted: modern typing omits the hamza, so refusing the fold loses far more than it saves, and the exact-spelling rung runs first for any form the corpus actually attests.",
+    "The Uthmani spelling ءامنوا does NOT reach the modern آمنوا, and the waw-with-dagger-alef spellings صلوة، زكوة، حيوة do NOT reach صلاة، زكاة، حياة. Both are closed lists of rasm conventions. They are left alone until the corpus exists to measure them, because a wrong fold states a false root where a missing fold only fails to find one.",
+    "The Arabic Presentation Forms are NOT folded to their base letters: U+FEFB, the lam-alef ligature, does not reach لا. Neither a keyboard nor a mushaf produces them, so folding them would need a table nothing in the corpus exercises, and an unexercised table is a guess."
+  ]
+}
