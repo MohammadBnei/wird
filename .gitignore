@@ -1,0 +1,18 @@
+data/raw/
+qa-report.json
+
+# Go
+/bin/
+*.test
+
+# Flutter / Dart
+.fvm/
+.dart_tool/
+app/build/
+app/.flutter-plugins*
+app/ios/Pods/
+app/ios/.symlinks/
+app/macos/Pods/
+
+*.db
+.DS_Store

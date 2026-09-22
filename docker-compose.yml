@@ -1,0 +1,30 @@
+# Local development only. The cluster runs Postgres via pigsty and Authentik as
+# the real IdP; nothing here is a deployment artifact.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: wird
+      POSTGRES_PASSWORD: wird
+      POSTGRES_DB: wird
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wird -d wird"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # Stands in for Authentik so phases 5-10 can authenticate without the cluster.
+  # Serves discovery and JWKS at http://localhost:8082/wird/.well-known/openid-configuration
+  # and signs a token for any login, which is all go-oidc's JWKS validation needs.
+  oidc-stub:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.2
+    ports:
+      - "8082:8080"
+
+volumes:
+  pgdata:
