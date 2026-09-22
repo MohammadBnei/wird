@@ -18,6 +18,19 @@ global `npm -g`.
 | jq | 1.8.2 | `scripts/qa.sh` and `scripts/device.sh` assemble and read JSON with it. |
 | gh | — | Creating and pushing the GitHub repository. |
 
+## What QA check 7 diffs
+
+`scripts/qa.sh` reads the list below and fails when something named here is not
+installed. Append a line the moment you `brew install` something for Wird, and only
+then — the table above is prose for a human, this list is what the gate can falsify.
+
+<!-- brew-leaves:start -->
+- fvm
+- gh
+- go
+- jq
+<!-- brew-leaves:end -->
+
 Not yet installed, needed by the phase that first uses it: `goose` (migrations,
 phase 5), `cocoapods` (mandatory for any iOS Flutter build, phase 4).
 
