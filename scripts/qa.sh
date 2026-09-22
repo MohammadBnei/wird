@@ -94,6 +94,95 @@ gates_all_accounted() {
 	return 1
 }
 
+# Which of the three targets device.sh resolved. Each journey declares what it
+# needs and skips loudly when the target cannot do it, so the answer has to
+# reach the app as more than a device id.
+target_kind() {
+	[ "$1" = macos ] && { echo macos; return; }
+	if xcrun simctl list devices available --json 2>/dev/null |
+		jq -e --arg u "$1" 'any(.devices[][]; .udid == $u)' >/dev/null; then
+		echo simulator
+	else
+		echo iphone
+	fi
+}
+
+# The ledger is what the gate remembers between phases: every journey it has
+# ever seen, against the phases it was skipped in. A journey that ran clears
+# its list. Two phases without a run means it has never run, and a journey that
+# stops being reported altogether has been dropped — both of which read as a
+# pass otherwise.
+JOURNEY_LEDGER="$ROOT/qa-skips.json"
+
+every_journey_still_runs() {
+	local phase=${WIRD_PHASE:-4} next stuck dropped
+	[ -f "$JOURNEY_LEDGER" ] || echo '{}' >"$JOURNEY_LEDGER"
+	dropped=$(jq -r --argjson run "$1" '
+		[keys[] | select(. as $k | $run | map(.journey) | index($k) | not)] | join("; ")' "$JOURNEY_LEDGER")
+	next=$(jq --argjson phase "$phase" --argjson run "$1" '
+		reduce $run[] as $j (.;
+			.[$j.journey] = (if $j.status == "skip"
+				then ((.[$j.journey] // []) + [$phase] | unique)
+				else [] end))' "$JOURNEY_LEDGER")
+	printf '%s\n' "$next" >"$JOURNEY_LEDGER"
+
+	if [ -n "$dropped" ]; then
+		printf 'a journey the gate has run before is no longer in the suite, so the loop it covered is now uncovered: %s\n' "$dropped"
+		return 1
+	fi
+	stuck=$(jq -r 'to_entries
+		| map(select(.value | length >= 2) | "\(.key) — skipped in phases \(.value | join(", "))")
+		| join("; ")' <<<"$next")
+	[ -z "$stuck" ] && return 0
+	printf 'a journey has been skipped on every target for two phases running, so it has never run: %s\n' "$stuck"
+	return 1
+}
+
+# Runs every journey shipped so far, not only the newest, and records each one
+# by name: a run that quietly stopped reporting a journey reads as a pass
+# otherwise.
+run_journeys() {
+	local dev kind out status run count
+	if ! dev=$("$ROOT/scripts/device.sh") || [ -z "$dev" ]; then
+		record "integration journeys" fail "scripts/device.sh resolved no e2e target, so no journey ran"
+		printf 'FAIL  integration journeys — no target\n'
+		failed=1
+		return
+	fi
+	kind=$(target_kind "$dev")
+	printf 'e2e target: %s (%s)\n' "$dev" "$kind"
+
+	out=$(in_app fvm flutter test integration_test/ -d "$dev" --dart-define=WIRD_TARGET="$kind" 2>&1)
+	status=$?
+	run=$(grep -o 'WIRD-JOURNEY {.*}' <<<"$out" | sed 's/^WIRD-JOURNEY //' | jq -s 'unique_by(.journey)')
+
+	if [ "$status" -ne 0 ]; then
+		record "integration journeys on $kind" fail "$out"
+		printf 'FAIL  integration journeys on %s\n%s\n' "$kind" "$out"
+		failed=1
+	elif [ "$(jq length <<<"$run")" -eq 0 ]; then
+		record "integration journeys on $kind" fail "the run exited clean and reported no journey at all, which reads as a pass while nothing was exercised:\n$out"
+		printf 'FAIL  integration journeys on %s — nothing reported\n' "$kind"
+		failed=1
+	fi
+
+	count=$(jq length <<<"$run")
+	for i in $(seq 0 $((count - 1))); do
+		local name reason state
+		name=$(jq -r ".[$i].journey" <<<"$run")
+		state=$(jq -r ".[$i].status" <<<"$run")
+		reason=$(jq -r ".[$i].reason" <<<"$run")
+		if [ "$state" = skip ]; then
+			skip "journey: $name" "$reason"
+		else
+			record "journey: $name" pass "ran on $kind"
+			printf 'PASS  journey: %s\n' "$name"
+		fi
+	done
+
+	check "every journey still runs, and none has been skipped for two phases" every_journey_still_runs "$run"
+}
+
 # 1 — Go builds, vets and tests. ./... is not a valid pattern at a workspace root
 # that is not itself a module (go1.27.1), so each module is named.
 GATE=1
@@ -116,7 +205,7 @@ check "no golden refresh flag" no_golden_refresh
 # 3 — every e2e journey shipped so far, from phase 4 on.
 GATE=3
 if [ -d "$ROOT/app/integration_test" ]; then
-	check "integration journeys" in_app fvm flutter test integration_test/ -d "$("$ROOT/scripts/device.sh")"
+	run_journeys
 else
 	skip "integration journeys" "app/integration_test/ does not exist before phase 4"
 fi
