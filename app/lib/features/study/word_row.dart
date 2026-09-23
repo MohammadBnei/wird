@@ -28,7 +28,7 @@ class WordFace {
   /// It carries a root, so there is something under it to open.
   bool get rooted => word.root != null;
 
-  /// What the line under this word says this instant.
+  /// What this word is doing with the recitation this instant.
   WordVoice voice({int? sounding, int? unheard}) {
     if (word.id == sounding) return WordVoice.sounding;
     if (word.id == unheard) return WordVoice.unheard;
@@ -36,11 +36,13 @@ class WordFace {
   }
 }
 
-/// A word's voice, which is drawn as the line under its Arabic.
+/// A word's voice: what it is doing with the recitation.
 ///
-/// It is one axis and being the open word is another, because the two are
-/// true at once: the word whose root the reader opened is exactly the word
-/// they may then want to hear.
+/// It is one axis and bearing a root is another, because the two are true at
+/// once: the word whose root the reader opened is exactly the word they may
+/// then want to hear. Each gets its own paint — the voice takes the fill and
+/// the transliteration, the root takes the line under the Arabic — so that
+/// neither can go dark because the other is.
 enum WordVoice {
   /// Its aya was never downloaded. The row leaves it plain rather than
   /// promising a sound the phone cannot make.
@@ -98,10 +100,10 @@ class WordTile extends StatelessWidget {
   final WordFace face;
   final WordVoice voice;
 
-  /// Its root is the one in the panel below. Drawn as a lit frame around the
-  /// word: on a bright phone held at arm's length a step along the accent
-  /// ramp is no signal at all, and the reader could not tell which word the
-  /// panel belonged to.
+  /// Its root is the one in the panel below. Said on the same line that says
+  /// the word has a root at all, at full accent against the quiet grey the
+  /// other rooted words wear: one lit rule on a page of dim ones, which is
+  /// legible at arm's length without anything being drawn near the glyph.
   final bool open;
 
   final Prefs prefs;
@@ -117,26 +119,18 @@ class WordTile extends StatelessWidget {
       onLongPress: () => onHear(word),
       child: Container(
         padding: EdgeInsets.all(n.space('1')),
+        // The fill is the recitation's, and nothing else is drawn around the
+        // word. A frame and a glow were tried here and both reached the
+        // Arabic: the blur paints through a transparent box, so the tile read
+        // as a solid accent block that spilled onto its neighbour, and the
+        // frame ran across the leading hamza of aqra'. A box sized to the
+        // text's metrics will always cut the marks that sit above and below
+        // the line, so the word's states are said under the word instead.
         decoration: BoxDecoration(
           color: voice == WordVoice.sounding
               ? n.accent.withValues(alpha: 0.16)
               : null,
           borderRadius: BorderRadius.circular(n.radius('sm')),
-          // The frame is drawn around every word and lit on one, so opening a
-          // root moves no other word on the line.
-          border: Border.all(
-            color: open ? n.accent : Colors.transparent,
-            width: 1.5,
-          ),
-          // A line and a glow, which is how this system carries the accent.
-          boxShadow: open
-              ? [
-                  BoxShadow(
-                    color: n.accent.withValues(alpha: 0.45),
-                    blurRadius: 12,
-                  ),
-                ]
-              : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -183,7 +177,13 @@ class WordTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     height: 1.25,
-                    color: n.textAt(0.66),
+                    // The open word's gloss is lit with its line. One 2px
+                    // rule changing colour is not enough to find at arm's
+                    // length on a page of rules, and the gloss is what the
+                    // panel below is expanding, so it lights with it. It sits
+                    // under the Arabic, where nothing it does can reach a
+                    // harakat.
+                    color: open ? n.color('accent-300') : n.textAt(0.66),
                   ),
                 ),
               ),
@@ -193,11 +193,24 @@ class WordTile extends StatelessWidget {
     );
   }
 
-  Color _line(Nocturne n) => switch (voice) {
-    WordVoice.sounding => n.accent,
-    WordVoice.hearable => n.color('accent-700'),
-    WordVoice.mute || WordVoice.unheard => Colors.transparent,
-  };
+  /// The line under the Arabic answers to the word, not to the audio.
+  ///
+  /// It says there is a root under this word and the accent says it is the
+  /// one open — the two things a tap acts on. Round D handed the line to
+  /// `WordVoice` instead, which meant a phone with nothing downloaded showed
+  /// every word mute and every line transparent: a page of plain Arabic with
+  /// no sign that any of it could be opened, on the first run, which is the
+  /// run that has to teach the gesture.
+  ///
+  /// Whether a word can be heard is not drawn. It is a fact about the aya's
+  /// file rather than about the word, so it is the same for every word on a
+  /// line and tells the reader nothing a per-word mark could act on; the
+  /// transport says it once for the set. Sounding is per word and keeps the
+  /// fill; unheard is per word and puts up the transliteration.
+  Color _line(Nocturne n) {
+    if (open) return n.accent;
+    return face.rooted ? n.textAt(0.20) : Colors.transparent;
+  }
 }
 
 /// The mark that closes an aya. It is lit on an aya the set was pulled
@@ -208,6 +221,10 @@ class WordTile extends StatelessWidget {
 /// hand — a line box of 1.75 puts the baseline about 1.175 em below its top,
 /// and the tile's own padding sits above that. Centred on the line box
 /// instead it floats above the words, which is not where the design draws it.
+///
+/// The drop follows the tile: when the tile carried a 1.5px frame the mark
+/// was let down by that much again, and it has to come back up now that
+/// nothing is drawn around the word.
 class AyaMark extends StatelessWidget {
   const AyaMark({super.key, required this.aya, required this.arabicSize});
 
@@ -220,9 +237,7 @@ class AyaMark extends StatelessWidget {
     return Container(
       width: 26,
       height: 26,
-      margin: EdgeInsets.only(
-        top: n.space('1') + 1.5 + arabicSize * 1.175 - 13,
-      ),
+      margin: EdgeInsets.only(top: n.space('1') + arabicSize * 1.175 - 13),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,

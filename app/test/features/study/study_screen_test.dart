@@ -38,7 +38,8 @@ Finder arabic(int wordId) =>
 Text arabicOf(WidgetTester tester, int wordId) =>
     tester.widget<Text>(arabic(wordId));
 
-/// The line under a word's Arabic, which says the word can be heard.
+/// The line under a word's Arabic, which says the word has a root, and at
+/// full accent which root is the one open.
 Color underlineOf(WidgetTester tester, int wordId) {
   final box = tester.widget<Container>(
     find.ancestor(of: arabic(wordId), matching: find.byType(Container)).first,
@@ -46,22 +47,12 @@ Color underlineOf(WidgetTester tester, int wordId) {
   return ((box.decoration! as BoxDecoration).border! as Border).bottom.color;
 }
 
-/// The frame around a word, which is how the row says the root panel below
-/// belongs to it.
-BoxDecoration frameOf(WidgetTester tester, int wordId) {
-  final box = tester.widget<Container>(
-    find.descendant(of: tile(wordId), matching: find.byType(Container)).first,
-  );
-  return box.decoration! as BoxDecoration;
-}
-
-/// Whether a word is drawn as the one the reader is looking at: an accent
-/// frame and its glow, not a step along a colour ramp.
-bool framed(WidgetTester tester, int wordId) {
-  final frame = frameOf(tester, wordId);
-  return (frame.border! as Border).top.color != Colors.transparent &&
-      (frame.boxShadow?.isNotEmpty ?? false);
-}
+/// Whether a word is drawn as the one the reader is looking at: its rule lit
+/// to the accent, where every other rooted word wears the same rule in grey.
+/// A frame and a glow said this before and both reached the Arabic.
+bool lit(WidgetTester tester, int wordId) =>
+    underlineOf(tester, wordId) ==
+    Nocturne.of(tester.element(tile(wordId))).accent;
 
 void main() {
   late Database db;
@@ -269,7 +260,7 @@ void main() {
         for (final word in aya.words) word.id,
     ];
     expect(
-      [for (final id in ids) if (framed(tester, id)) id],
+      [for (final id in ids) if (lit(tester, id)) id],
       [96001001],
       reason: 'the panel opens on the first rooted word and says so',
     );
@@ -278,9 +269,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      [for (final id in ids) if (framed(tester, id)) id],
+      [for (final id in ids) if (lit(tester, id)) id],
       [96002004],
-      reason: 'one word at a time wears the frame, and it is the one tapped',
+      reason: 'one word at a time wears the accent, and it is the one tapped',
     );
   });
 
@@ -313,7 +304,9 @@ void main() {
     );
   });
 
-  testWidgets('a reader cannot tell which words can be heard', (tester) async {
+  testWidgets('the rule under a word answers to the recitation, so a phone '
+      'holding one aya of the set shows the rest as though nothing in them '
+      'could be opened', (tester) async {
     // The first aya arrived before the radio went off; the rest of the set
     // never did.
     final downloaded = (await tracksFor(db, [96001])).single;
@@ -335,20 +328,26 @@ void main() {
       ),
     );
 
-    final heard = [for (final span in downloaded.segments) span.wordId];
-    expect(heard, hasLength(greaterThan(2)));
-    for (final id in heard) {
+    // Whether a word can be heard is a fact about its aya's file, the same
+    // for every word on the line, and the transport says it once for the set.
+    // The rule under the Arabic says the other thing — that a tap opens a
+    // root — and it has to say it on an aya the radio never reached.
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    final undownloaded = [
+      for (final aya in set.ayas)
+        if (aya.id != 96001)
+          for (final word in aya.words) word,
+    ];
+    expect(
+      undownloaded.where((word) => word.root != null),
+      hasLength(greaterThan(2)),
+    );
+    for (final word in undownloaded) {
       expect(
-        underlineOf(tester, id),
-        isNot(Colors.transparent),
-        reason: 'word $id is on the phone and the row says nothing',
-      );
-    }
-    for (final span in (await tracksFor(db, [96002])).single.segments) {
-      expect(
-        underlineOf(tester, span.wordId),
-        Colors.transparent,
-        reason: 'word ${span.wordId} would play nothing if it were tapped',
+        underlineOf(tester, word.id) == Colors.transparent,
+        word.root == null,
+        reason: 'no recitation for ${word.id}, and the rule is not the '
+            'recitation\'s to spend',
       );
     }
   });
