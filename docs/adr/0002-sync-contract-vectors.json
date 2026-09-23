@@ -74,8 +74,8 @@
       },
       {
         "kind": "report_written",
-        "label": "a bug reported from inside the app, which the server accepts before any device builds it",
-        "built_by_device": false,
+        "label": "a bug reported from inside the app, with the context gathered for the reader",
+        "built_by_device": true,
         "body": {
           "kind": "bug",
           "body": "the audio stops at the end of the set",

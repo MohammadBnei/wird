@@ -1,4 +1,4 @@
-# 51. The operations view sits behind Authentik's group, and can only see totals
+# 4. The operations view sits behind Authentik's group, and can only see totals
 
 Date: 2026-09-24. Status: accepted.
 

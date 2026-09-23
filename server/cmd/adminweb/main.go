@@ -1,6 +1,6 @@
 // Command adminweb is Wird's operations view: the reports readers chose to
 // send, and totals. What it cannot show is the point of it — see
-// docs/adr/0051-the-operations-view-behind-authentiks-group.md.
+// docs/adr/0004-the-operations-view-behind-authentiks-group.md.
 package main
 
 import (
