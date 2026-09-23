@@ -3,18 +3,12 @@ import 'package:flutter/material.dart';
 import '../../data/root_repo.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
-import '../../widgets/nocturne_card.dart';
 import '../../widgets/nocturne_rule.dart';
 
-/// The line the design prints under its own mocked-up prose. It travels with
-/// every word on this screen that was not read out of the corpus.
-const mockupNotice =
-    'Placeholder summaries written for this mockup — the real build pulls '
-    'sourced translations.';
-
 const _lexiconPending =
-    'The lexicon is fetched rather than bundled, and the fetch is not built '
-    'yet. These are the works it will quote.';
+    'The lexicon is fetched rather than bundled. Neither the fetch nor the '
+    'choice of lexicon is settled, so no work is named here and none is '
+    'quoted.';
 const _tafsirPending =
     'Tafsir is fetched per aya. Nothing is downloaded yet, so nothing is '
     'attributed here.';
@@ -22,44 +16,9 @@ const _irabPending =
     'The parsing of this phrase is fetched per aya, and no aya has been '
     'downloaded yet.';
 
-/// Which works each section will quote once the fetch exists. Naming them is
-/// not a claim about what they say.
-const lexiconSources = ['Ibn Fāris · Maqāyīs al-Lugha', 'Lane · Arabic-English Lexicon'];
+/// Which commentaries the tafsir section will quote once the fetch exists.
+/// Naming them is not a claim about what they say.
 const tafsirSources = ['Al-Ṭabarī', 'Ibn Kathīr', 'Al-Rāzī'];
-
-typedef MockupProse = ({
-  String coreSense,
-  String coreAside,
-  List<(String, String)> lexicon,
-});
-
-/// Prose the design wrote into its own mockup, kept under the one root it was
-/// written about. A different root shows the section as pending rather than
-/// borrowing these words: mock scholarship attached to the wrong root is a
-/// lie about scripture, and the reader has no way to check it.
-const mockupProse = <String, MockupProse>{
-  'صبر': (
-    coreSense:
-        'To bind fast; to hold a thing to its place. Patience is the rope, '
-        'not the mood — the self tied to its post while the pull continues.',
-    coreAside:
-        'The same three letters name the bitter aloe (ṣabr), the hard stony '
-        'ground (ṣubra), and the edge of a vessel (ṣubr). Bitterness, '
-        'hardness and a held border sit inside the word you recite.',
-    lexicon: [
-      (
-        'Ibn Fāris · Maqāyīs al-Lugha',
-        'Gives the root one governing sense — restraint and confinement — '
-            'and derives the rest from it.',
-      ),
-      (
-        'Lane · Arabic-English Lexicon',
-        'Records the concrete senses beside the moral one: the aloe plant, '
-            'stony ground, the edge of a vessel.',
-      ),
-    ],
-  ),
-};
 
 /// An `h6`: 13px, uppercase, widely tracked.
 class SectionHeading extends StatelessWidget {
@@ -284,8 +243,8 @@ class PendingSection extends StatelessWidget {
   const PendingSection({
     super.key,
     required this.heading,
-    required this.sources,
     required this.explanation,
+    this.sources = const [],
   });
 
   final String heading;
@@ -318,87 +277,27 @@ class PendingSection extends StatelessWidget {
   }
 }
 
-/// The section a fetched source fills once it exists.
-Widget lexiconSection(BuildContext context, RootReading reading) {
-  final prose = mockupProse[reading.letters];
-  if (prose == null) {
-    return const PendingSection(
-      heading: 'Lexicon',
-      sources: lexiconSources,
-      explanation: _lexiconPending,
-    );
-  }
-  final n = Nocturne.of(context);
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SectionHeading('Lexicon'),
-      SizedBox(height: n.space('3')),
-      for (final (source, body) in prose.lexicon)
-        Padding(
-          padding: EdgeInsets.only(bottom: n.space('3')),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(source, style: TextStyle(fontSize: 11, color: n.accent)),
-              SizedBox(height: n.space('1')),
-              Text(
-                body,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  height: 1.55,
-                  color: n.textAt(0.82),
-                ),
-              ),
-            ],
-          ),
-        ),
-      Text(
-        mockupNotice,
-        style: TextStyle(fontSize: 10.5, height: 1.5, color: n.textAt(0.5)),
-      ),
-    ],
-  );
-}
+/// The section a fetched lexicon fills once it exists.
+Widget lexiconSection(BuildContext context, RootReading reading) =>
+    const PendingSection(heading: 'Lexicon', explanation: _lexiconPending);
 
 /// Core sense: the root's own meaning, which is authored prose rather than
-/// anything the morphology can derive.
+/// anything the morphology can derive. No root carries it yet, and a root
+/// without one shows no section at all — a heading over an apology is still a
+/// heading the reader has to read.
 Widget coreSenseSection(BuildContext context, RootReading reading) {
+  final sense = reading.coreSense;
+  if (sense == null) return const SizedBox.shrink();
   final n = Nocturne.of(context);
-  final prose = mockupProse[reading.letters];
-  final corpus = reading.coreSense;
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const SectionHeading('Core sense'),
       SizedBox(height: n.space('2')),
-      if (corpus != null)
-        Text(
-          corpus,
-          style: TextStyle(fontSize: 13.5, height: 1.5, color: n.text),
-        )
-      else if (prose != null) ...[
-        Text(
-          prose.coreSense,
-          style: TextStyle(fontSize: 13.5, height: 1.5, color: n.text),
-        ),
-        SizedBox(height: n.space('2')),
-        Text(
-          prose.coreAside,
-          style: TextStyle(fontSize: 12, height: 1.5, color: n.textAt(0.64)),
-        ),
-        SizedBox(height: n.space('2')),
-        Text(
-          mockupNotice,
-          style: TextStyle(fontSize: 10.5, height: 1.5, color: n.textAt(0.5)),
-        ),
-      ] else
-        Text(
-          'No one has written this root’s core sense yet. What the '
-          'corpus knows about it is the ${reading.occurrences} places it is '
-          'read, below.',
-          style: TextStyle(fontSize: 13.5, height: 1.5, color: n.textAt(0.72)),
-        ),
+      Text(
+        sense,
+        style: TextStyle(fontSize: 13.5, height: 1.5, color: n.text),
+      ),
     ],
   );
 }
@@ -425,8 +324,7 @@ class RootSpineView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
-    final prose = mockupProse[reading.letters];
-    final core = reading.coreSense ?? prose?.coreSense;
+    final core = reading.coreSense;
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 34),
       children: [
@@ -466,30 +364,6 @@ class RootSpineView extends StatelessWidget {
                   style: TextStyle(fontSize: 13.5, height: 1.5, color: n.text),
                 ),
               ],
-              if (prose != null) ...[
-                SizedBox(height: n.space('2')),
-                Text(
-                  prose.coreAside,
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.5,
-                    color: n.textAt(0.62),
-                  ),
-                ),
-                SizedBox(height: n.space('2')),
-                // The design prints this once, at the foot of the screen. A
-                // root with forty derivatives puts the foot thousands of
-                // pixels below the prose, so the mark travels with the words
-                // it is marking.
-                Text(
-                  mockupNotice,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    height: 1.5,
-                    color: n.textAt(0.5),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -504,27 +378,7 @@ class RootSpineView extends StatelessWidget {
         const NocturneRule(),
         SectionHeading('Sources'),
         SizedBox(height: n.space('3')),
-        if (prose == null)
-          const PendingSection(
-            heading: 'Lexicon',
-            sources: lexiconSources,
-            explanation: _lexiconPending,
-          )
-        else ...[
-          for (final (source, body) in prose.lexicon)
-            Padding(
-              padding: EdgeInsets.only(bottom: n.space('2')),
-              child: NocturneCard(
-                body: body,
-                meta: [Text(source)],
-                elevation: NocturneElevation.sm,
-              ),
-            ),
-          Text(
-            mockupNotice,
-            style: TextStyle(fontSize: 10.5, height: 1.5, color: n.textAt(0.5)),
-          ),
-        ],
+        lexiconSection(context, reading),
         SizedBox(height: n.space('3')),
         Text(
           'Provenance: ${reading.sources.join(', ')}',

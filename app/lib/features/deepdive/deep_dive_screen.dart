@@ -305,8 +305,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     AyaReading aya, {
     required Widget view,
   }) {
-    final prose = mockupProse[reading.letters];
-    final core = reading.coreSense ?? prose?.coreSense;
+    final core = reading.coreSense;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
@@ -335,36 +334,11 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Text(
-              core ??
-                  'No one has written this root’s core sense yet. What the '
-                      'corpus knows about it is the ${reading.occurrences} '
-                      'places it is read.',
-              style: TextStyle(
-                fontSize: 14.5,
-                height: 1.6,
-                color: core == null ? n.textAt(0.72) : n.text,
-              ),
-            ),
-            if (prose != null) ...[
-              SizedBox(height: n.space('2')),
+            if (core != null) ...[
+              const SizedBox(height: 14),
               Text(
-                prose.coreAside,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  height: 1.6,
-                  color: n.textAt(0.6),
-                ),
-              ),
-              SizedBox(height: n.space('1')),
-              Text(
-                mockupNotice,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  height: 1.5,
-                  color: n.textAt(0.5),
-                ),
+                core,
+                style: TextStyle(fontSize: 14.5, height: 1.6, color: n.text),
               ),
             ],
             view,

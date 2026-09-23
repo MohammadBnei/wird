@@ -17,8 +17,24 @@ const onTheDial = 'عقل';
 /// Nine derivatives: one more than the ring can hold.
 const pastTheRing = 'هزأ';
 
-/// The root the design wrote its own placeholder prose about.
+/// ṣ-b-r, the root the mockup's deleted prose was written about.
 const theDesignsRoot = 'صبر';
+
+/// The summaries the mockup wrote and signed with two real lexicographers'
+/// names. Nothing in the build may print them again.
+const inventedProse = [
+  'Patience is the rope',
+  'bitter aloe',
+  'one governing sense',
+  'Records the concrete senses',
+  'Placeholder summaries',
+];
+
+/// The two works those summaries were signed with.
+const namedScholars = [
+  'Ibn Fāris',
+  'Lane · Arabic-English Lexicon',
+];
 
 void main() {
   late Database db;
@@ -103,19 +119,44 @@ void main() {
     expect(find.text('Al-Ṭabarī'), findsOneWidget);
   });
 
-  testWidgets('the mockup’s own prose is printed as sourced scholarship, '
-      'with nothing to tell the reader it was written for a mockup', (
-    tester,
-  ) async {
-    await open(tester, RootSpineScreen(db: db, letters: theDesignsRoot));
-    expect(find.textContaining('Patience is the rope'), findsOneWidget);
-    expect(find.textContaining('Placeholder summaries'), findsOneWidget);
+  testWidgets('prose attributed to a scholar who never wrote it reaches a '
+      'reader', (tester) async {
+    for (final screen in [
+      RootScreen(db: db, letters: theDesignsRoot),
+      RootSpineScreen(db: db, letters: theDesignsRoot),
+      RootScreen(db: db, letters: onTheDial),
+      // A small root, so 2b's sources sit inside the laid-out height rather
+      // than under a spine of thirty-eight forms that never mounts.
+      RootSpineScreen(db: db, letters: onTheDial),
+    ]) {
+      await open(tester, screen);
+      for (final invented in inventedProse) {
+        expect(find.textContaining(invented), findsNothing, reason: invented);
+      }
+      for (final scholar in namedScholars) {
+        expect(find.textContaining(scholar), findsNothing, reason: scholar);
+      }
+    }
   });
 
-  testWidgets('another root borrows the prose the design wrote about '
-      'patience, and teaches it as that root’s meaning', (tester) async {
-    await open(tester, RootScreen(db: db, letters: onTheDial));
-    expect(find.textContaining('Patience is the rope'), findsNothing);
+  testWidgets('the root screen renders an empty section heading with nothing '
+      'under it', (tester) async {
+    // No root carries a core sense yet, so the section is absent rather than
+    // standing empty over an apology for its own emptiness.
+    for (final screen in [
+      RootScreen(db: db, letters: onTheDial),
+      RootSpineScreen(db: db, letters: onTheDial),
+    ]) {
+      await open(tester, screen);
+      expect(find.text('CORE SENSE'), findsNothing);
+      expect(find.textContaining('No one has written'), findsNothing);
+      // What is still drawn says something under its heading.
+      expect(find.text('LEXICON'), findsOneWidget);
+      expect(
+        find.textContaining('fetched rather than bundled'),
+        findsOneWidget,
+      );
+    }
   });
 
   testWidgets('keeping a root queues nothing, so it never reaches the kept '

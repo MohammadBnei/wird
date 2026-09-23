@@ -20,6 +20,22 @@ const patience = 'صبر';
 const ayaOfTheClot = 96002;
 const clot = 'علق';
 
+/// The summaries the mockup wrote and signed with two real lexicographers'
+/// names. Nothing in the build may print them again.
+const inventedProse = [
+  'Patience is the rope',
+  'bitter aloe',
+  'one governing sense',
+  'Records the concrete senses',
+  'Placeholder summaries',
+];
+
+/// The two works those summaries were signed with.
+const namedScholars = [
+  'Ibn Fāris',
+  'Lane · Arabic-English Lexicon',
+];
+
 /// 2:282, the longest aya in the Qur'an, and a root it carries.
 const longestAya = 2282;
 const writing = 'كتب';
@@ -139,21 +155,24 @@ void main() {
     expect(lit, isNotEmpty, reason: 'the aya carries the root it was opened on');
   });
 
-  testWidgets('the tablet screen hands one root’s mockup prose to a root '
-      'nobody has written a word about', (tester) async {
-    await open(tester, size: tablet, ayahId: ayaOfTheClot, letters: clot);
-
-    expect(find.textContaining('Patience is the rope'), findsNothing);
-    expect(find.textContaining('bitter aloe'), findsNothing);
-    expect(find.textContaining('No one has written'), findsOneWidget);
-  });
-
-  testWidgets('mockup prose is printed on the tablet with nothing to tell the '
-      'reader nobody wrote it about this root', (tester) async {
+  testWidgets('prose attributed to a scholar who never wrote it reaches a '
+      'reader', (tester) async {
     await open(tester, size: tablet);
 
-    expect(find.textContaining('Patience is the rope'), findsOneWidget);
-    expect(find.text(mockupNotice), findsWidgets);
+    for (final invented in inventedProse) {
+      expect(find.textContaining(invented), findsNothing, reason: invented);
+    }
+    for (final scholar in namedScholars) {
+      expect(find.textContaining(scholar), findsNothing, reason: scholar);
+    }
+  });
+
+  testWidgets('a root nobody has written about is introduced by a sentence '
+      'apologising for the silence', (tester) async {
+    await open(tester, size: tablet, ayahId: ayaOfTheClot, letters: clot);
+
+    expect(find.textContaining('No one has written'), findsNothing);
+    expect(find.byType(Constellation), findsOneWidget);
   });
 
   testWidgets('the tafsir pane names three commentaries beside prose the '
