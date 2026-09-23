@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/root_repo.dart';
-import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
@@ -210,10 +209,7 @@ class _RootScreenState extends State<RootScreen> {
                     style: TextStyle(fontSize: 13, color: n.textAt(0.82)),
                   ),
                 ),
-                Text(
-                  ayahRef(selected.ayahId),
-                  style: TextStyle(fontSize: 11, color: n.accent),
-                ),
+                AyaRef(ayahId: selected.ayahId, lit: true),
               ],
             ),
             const Padding(
@@ -242,14 +238,11 @@ class _RootScreenState extends State<RootScreen> {
               spacing: 8,
               children: [
                 Expanded(
+                  // The button reads the aya. It used to open screen 1c —
+                  // the analysis of the aya, which is a different request and
+                  // is already reachable from the word that led here.
                   child: NocturneButton(
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      Routes.deepDive,
-                      arguments: (
-                        ayahId: selected.ayahId,
-                        letters: reading.letters,
-                      ),
-                    ),
+                    onPressed: () => openAya(context, selected.ayahId),
                     child: const Text('Read the aya'),
                   ),
                 ),

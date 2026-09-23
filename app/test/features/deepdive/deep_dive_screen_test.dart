@@ -73,10 +73,11 @@ void main() {
   const tablet = Size(1194, 834);
   const phone = Size(402, 874);
 
-  /// Where the constellation sits relative to the aya it belongs to: beside
-  /// it in the design's three panes, under it when they stack.
+  /// Where the root's family sits relative to the aya it belongs to: beside
+  /// it in the design's three panes, under it when they stack. Read off the
+  /// pane's own heading, which is there whichever way the family is drawn.
   bool besideTheAya(WidgetTester tester) =>
-      tester.getTopLeft(find.byType(Constellation)).dx >
+      tester.getTopLeft(find.text('ROOT CONSTELLATION')).dx >
       tester.getBottomRight(find.text('AL-\'ASR · AYA 3')).dx;
 
   testWidgets('a phone opening a constellation is handed the design’s three '
@@ -87,6 +88,17 @@ void main() {
 
     expect(find.text('ROOT CONSTELLATION'), findsOneWidget);
     expect(besideTheAya(tester), isFalse);
+  });
+
+  testWidgets('the phone is offered a choice between the drawing and the list '
+      'when the drawing is not one of the two things it can have', (
+    tester,
+  ) async {
+    await open(tester, size: phone);
+    expect(find.text('List'), findsNothing);
+
+    await open(tester, size: tablet);
+    expect(find.text('List'), findsOneWidget);
   });
 
   testWidgets('a reader who opens the deep dive is stranded on it — no drawn '
@@ -238,7 +250,7 @@ void main() {
     final aya = (await ayaReading(db, ayaOfPatience, patience))!;
     final lit = [for (final w in aya.words) if (w.lit) w.text].last;
 
-    final stars = constellation(reading.derivatives, lit);
+    final stars = constellation(reading, lit);
     final marked = stars.where((s) => s.thisAya).toList();
 
     expect(marked, hasLength(1));
@@ -255,7 +267,7 @@ void main() {
     db = await testCorpus();
     final reading = (await rootReading(db, clot))!;
 
-    final stars = constellation(reading.derivatives, null);
+    final stars = constellation(reading, null);
 
     expect(stars.where((s) => s.thisAya), isEmpty);
     expect(stars, hasLength(4));

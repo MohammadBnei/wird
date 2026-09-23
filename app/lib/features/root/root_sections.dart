@@ -4,6 +4,11 @@ import '../../data/root_repo.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
+import 'family.dart';
+
+// A family's own widgets live in family.dart. They are exported here so a
+// screen reading a root asks one file for the sections and the spine both.
+export 'family.dart';
 
 const _lexiconPending =
     'The lexicon is fetched rather than bundled. Neither the fetch nor the '
@@ -57,171 +62,6 @@ class SectionHeading extends StatelessWidget {
   }
 }
 
-/// The derivatives read down the page instead of round the ring: a dotted
-/// thread with one node per form.
-class KinSpine extends StatelessWidget {
-  const KinSpine({
-    super.key,
-    required this.derivatives,
-    this.selected,
-    this.onTap,
-  });
-
-  final List<Derivative> derivatives;
-
-  /// The form the dial is pointing at. The spine lights the same one, so the
-  /// two never disagree about what is being read.
-  final int? selected;
-  final ValueChanged<int>? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final n = Nocturne.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(left: 26),
-      child: Stack(
-        // The thread and its nodes hang to the left of the rows they belong
-        // to, which is off the edge of this stack.
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            left: -21,
-            top: 6,
-            bottom: 20,
-            width: 1,
-            child: CustomPaint(painter: _ThreadPainter(n.textAt(0.26))),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < derivatives.length; i++)
-                _row(n, derivatives[i], i),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _row(Nocturne n, Derivative derivative, int i) {
-    final lit = i == selected;
-    return Padding(
-      padding: EdgeInsets.only(bottom: i == derivatives.length - 1 ? 0 : 14),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap == null ? null : () => onTap!(i),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 5),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(n.radius('md')),
-            color: lit ? n.accent.withValues(alpha: 0.13) : null,
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                left: -34,
-                top: lit ? 12 : 13,
-                child: lit ? _litNode(n) : _node(n),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    spacing: 9,
-                    children: [
-                      Text(
-                        derivative.text,
-                        textDirection: TextDirection.rtl,
-                        maxLines: 1,
-                        style: TextStyle(
-                          fontFamily: Nocturne.arabicFamily,
-                          fontSize: lit ? 23 : 22,
-                          height: 1.4,
-                          color: lit ? n.color('accent-200') : n.text,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          derivative.gloss ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: n.textAt(0.78),
-                          ),
-                        ),
-                      ),
-                      Text(
-                        ayahRef(derivative.ayahId),
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          color: lit ? n.accent : n.textAt(0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      derivativeNote(derivative),
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.5,
-                        color: n.textAt(0.7),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _node(Nocturne n) => Container(
-    width: 9,
-    height: 9,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: n.color('accent-600'),
-    ),
-  );
-
-  Widget _litNode(Nocturne n) => Container(
-    width: 11,
-    height: 11,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: n.bg,
-      border: Border.all(color: n.accent, width: 1.5),
-      boxShadow: [
-        BoxShadow(
-          color: n.accent.withValues(alpha: 0.55),
-          blurRadius: 10,
-        ),
-      ],
-    ),
-  );
-}
-
-/// What the corpus knows about one form, said in a line. The design puts
-/// authored prose here; until a root carries notes, its grammar and its weight
-/// in the text are what there is to say.
-String derivativeNote(Derivative derivative) {
-  if (derivative.note != null) return derivative.note!;
-  final occurrences = derivative.occurrences == 1
-      ? 'once in the Qur’an'
-      : '${derivative.occurrences} times in the Qur’an';
-  return derivative.form == null
-      ? 'Occurs $occurrences.'
-      : 'Form ${derivative.form}. Occurs $occurrences.';
-}
-
 /// The dashed hairline the design draws inside the detail card.
 class DashedRule extends StatelessWidget {
   const DashedRule({super.key});
@@ -231,7 +71,7 @@ class DashedRule extends StatelessWidget {
     width: double.infinity,
     height: 1,
     child: CustomPaint(
-      painter: _ThreadPainter(Nocturne.of(context).textAt(0.22), across: true),
+      painter: ThreadPainter(Nocturne.of(context).textAt(0.22), across: true),
     ),
   );
 }
@@ -444,33 +284,4 @@ class RootChrome extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Two pixels of line every seven, the way the design's repeating gradient
-/// draws it.
-class _ThreadPainter extends CustomPainter {
-  const _ThreadPainter(this.colour, {this.across = false});
-
-  final Color colour;
-  final bool across;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = colour
-      ..strokeWidth = 1;
-    final length = across ? size.width : size.height;
-    for (var at = 0.0; at < length; at += 7) {
-      final end = (at + 2).clamp(0.0, length);
-      canvas.drawLine(
-        across ? Offset(at, 0) : Offset(0, at),
-        across ? Offset(end, 0) : Offset(0, end),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_ThreadPainter old) =>
-      old.colour != colour || old.across != across;
 }

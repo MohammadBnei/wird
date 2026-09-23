@@ -260,56 +260,19 @@ Future<void> setDisplayPrefs(
   'arabic_size': arabicSize,
 }, conflictAlgorithm: ConflictAlgorithm.replace);
 
-/// A word that shares the root, with the gloss it was given and the aya it is
-/// first met in.
-typedef Kin = ({String text, String? gloss, int ayahId});
-
-class RootDetail {
-  const RootDetail({
-    required this.display,
-    required this.translit,
-    required this.occurrences,
-    required this.sources,
-    required this.kin,
-  });
-
-  /// The three radicals spaced apart, the way a lexicon prints them.
-  final String display;
-  final String translit;
-  final int occurrences;
-  final List<String> sources;
-  final List<Kin> kin;
-}
-
-/// What screen 1a's root panel says about the root of the word just tapped.
+/// A root's family, as screen 1a's root panel reads it.
 ///
-/// [rootReading] is authoritative about what a kin is, and the panel takes its
-/// four from there rather than running a second query of its own. It used to
-/// group the raw `text_ar`, which keeps the pause mark the corpus stores on the
-/// word it follows — so one derivative counted as two, and the panel and the
-/// root screen disagreed about the same root while both looked right.
-///
-/// A kin's aya is where that form is **first met in the muṣḥaf**, not the
-/// nearest occurrence to the reader. A form that occurs eighty times has no one
-/// aya, and the first is the only one that can be named without inventing a
-/// rule the reader cannot see.
-Future<RootDetail?> rootDetail(Database db, String letters) async {
-  final reading = await rootReading(db, letters);
-  if (reading == null) return null;
-  return RootDetail(
-    display: reading.display,
-    translit: reading.translit,
-    occurrences: reading.occurrences,
-    sources: reading.sources,
-    // ponytail: four kin, the number the study panel has room for. The root
-    // screen's dial raises this to eight, and the spine layout is what reads
-    // all 103 derivatives of a big root.
-    kin: [
-      for (final d in reading.derivatives.take(4))
-        (text: d.text, gloss: d.gloss, ayahId: d.ayahId),
-    ],
-  );
-}
+/// There is one family and one member: [RootReading] and [Derivative]. The
+/// panel used to have a second pair of its own, built by a second query that
+/// grouped the raw `text_ar` — which keeps the pause mark the corpus stores on
+/// the word it follows, so one derivative counted as two and the panel and the
+/// root screen disagreed about the same root while both looked right. These
+/// names are what the panel calls them.
+typedef Kin = Derivative;
+typedef RootDetail = RootReading;
+
+Future<RootDetail?> rootDetail(Database db, String letters) =>
+    rootReading(db, letters);
 
 /// The reciter whose audio the corpus carries paths for.
 Future<String?> reciterLabel(Database db) async {

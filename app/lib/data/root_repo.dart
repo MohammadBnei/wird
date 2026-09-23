@@ -18,8 +18,15 @@ const dialCapacity = 8;
 /// and stripping it would print the Qur'an's text wrong.
 final _pauseMarks = RegExp('[\u{6D6}-\u{6DE}\u{6E9}-\u{6ED}]');
 
-/// One derivative form of a root: the word as the corpus spells it, what it
-/// was glossed as, and where it is first met.
+/// One member of a root's family: the word as the corpus spells it, what it
+/// was glossed as, what shape it is, how often it is read — and the aya it
+/// opens. The aya is what makes a derivative a place rather than a caption,
+/// and it is why every drawing of a family is built from this one record.
+///
+/// [ayahId] is where the form is **first met in the muṣḥaf**, not the nearest
+/// occurrence to the reader. A form that occurs eighty times has no one aya,
+/// and the first is the only one that can be named without inventing a rule
+/// the reader cannot see.
 typedef Derivative = ({
   String text,
   String? gloss,
@@ -63,6 +70,27 @@ class RootReading {
   final List<Derivative> derivatives;
 
   bool get readsAsSpine => derivatives.length > dialCapacity;
+
+  /// The four forms screen 1a's root panel has room for. The dial raises this
+  /// to eight and the spine reads all of them; the panel is the narrowest of
+  /// the three views of the same family, not a different family.
+  List<Derivative> get kin => derivatives.take(4).toList(growable: false);
+
+  /// The form [wordInAya] spells, or null when the aya carries none of them.
+  ///
+  /// The corpus keeps a recitation mark on the word it follows while a
+  /// derivative is held without it, so the aya's word carries the form rather
+  /// than always equalling it.
+  Derivative? spelled(String? wordInAya) {
+    if (wordInAya == null) return null;
+    for (final derivative in derivatives) {
+      if (derivative.text == wordInAya) return derivative;
+    }
+    for (final derivative in derivatives) {
+      if (wordInAya.startsWith(derivative.text)) return derivative;
+    }
+    return null;
+  }
 }
 
 Future<RootReading?> rootReading(Database db, String letters) async {

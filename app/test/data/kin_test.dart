@@ -14,20 +14,6 @@ void main() {
 
   setUp(() async => db = await testCorpus());
 
-  test('the root panel and the root screen disagree about what a kin of a '
-      'root is, so the same root reads two ways', () async {
-    for (final letters in _roots) {
-      final panel = (await rootDetail(db, letters))!;
-      final screen = (await rootReading(db, letters))!;
-
-      expect(
-        [for (final kin in panel.kin) kin.text],
-        [for (final form in screen.derivatives.take(4)) form.text],
-        reason: letters,
-      );
-    }
-  });
-
   test('a kin names an aya the root is not in, so a reader who follows it '
       'lands on a verse the word never appears in', () async {
     for (final letters in _roots) {

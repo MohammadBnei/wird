@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 
 import '../../data/root_repo.dart';
 import '../../theme/nocturne.dart';
+import '../root/family.dart';
 
 /// The design draws the constellation as an SVG on a 620×420 viewBox, and
 /// every coordinate below is read off that markup rather than invented.
@@ -34,8 +36,9 @@ typedef Star = ({Derivative derivative, Offset at, bool thisAya});
 /// that does not contain it gets no marked node at all: a node captioned
 /// "THIS AYA" over a form from somewhere else tells the reader the Qur'an
 /// says something it does not.
-List<Star> constellation(List<Derivative> derivatives, String? wordInAya) {
-  final here = _formRead(derivatives, wordInAya);
+List<Star> constellation(RootReading reading, String? wordInAya) {
+  final derivatives = reading.derivatives;
+  final here = reading.spelled(wordInAya);
   final kin = [for (final d in derivatives) if (d != here) d];
   return [
     for (var i = 0; i < _kinSlots.length && i < kin.length; i++)
@@ -44,23 +47,52 @@ List<Star> constellation(List<Derivative> derivatives, String? wordInAya) {
   ];
 }
 
-/// The derivative this aya spells. The corpus keeps a recitation mark on the
-/// word it follows while the derivative is held without it, so the aya's word
-/// carries the form rather than always equalling it.
-Derivative? _formRead(List<Derivative> derivatives, String? wordInAya) {
-  if (wordInAya == null) return null;
-  for (final d in derivatives) {
-    if (d.text == wordInAya) return d;
+/// Where the design's viewBox lands inside a box of [size]: the scale an SVG
+/// with the default `preserveAspectRatio` would pick, and the corner it draws
+/// from. The painter draws through it and the tap finds a node through it, so
+/// a node is never somewhere other than where it was drawn.
+({double scale, Offset origin}) constellationFit(Size size) {
+  final scale = (size.width / constellationBox.width).clamp(
+    0.0,
+    size.height / constellationBox.height,
+  );
+  return (
+    scale: scale,
+    origin: Offset(
+      (size.width - constellationBox.width * scale) / 2,
+      (size.height - constellationBox.height * scale) / 2,
+    ),
+  );
+}
+
+/// How near a node a tap counts as that node, in the design's own units. A
+/// node's circle is 6 units across and its two labels sit 24 above and 22
+/// below it, so the reader who aims at the word they can read is aiming here.
+const _nodeReach = 44.0;
+
+/// The node a tap at [at] means, or null for the empty sky between them.
+Star? starAt(List<Star> stars, Offset at, Size size) {
+  final fit = constellationFit(size);
+  if (fit.scale == 0) return null;
+  final inBox = (at - fit.origin) / fit.scale;
+  Star? nearest;
+  var best = _nodeReach;
+  for (final star in stars) {
+    final away = (star.at - inBox).distance;
+    if (away < best) {
+      best = away;
+      nearest = star;
+    }
   }
-  for (final d in derivatives) {
-    if (wordInAya.startsWith(d.text)) return d;
-  }
-  return null;
+  return nearest;
 }
 
 /// The constellation itself. Flutter has no SVG, so the design's own geometry
 /// is painted: same viewBox, same coordinates, scaled to fit the pane the way
 /// an SVG with the default `preserveAspectRatio` does.
+///
+/// Its nodes are not captions. Each one is a member of the root's family and
+/// opens the aya it names, the same as a kin row's reference does.
 class Constellation extends StatelessWidget {
   const Constellation({
     super.key,
@@ -75,14 +107,27 @@ class Constellation extends StatelessWidget {
   final int ayahId;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: Size.infinite,
-    painter: _ConstellationPainter(
-      display: display,
-      stars: stars,
-      ayahId: ayahId,
-      n: Nocturne.of(context),
-    ),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final size = constraints.biggest;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: (details) {
+          final star = starAt(stars, details.localPosition, size);
+          if (star != null) openAya(context, star.derivative.ayahId);
+        },
+        child: CustomPaint(
+          size: Size.infinite,
+          painter: _ConstellationPainter(
+            display: display,
+            stars: stars,
+            ayahId: ayahId,
+            n: Nocturne.of(context),
+            onOpen: (ayahId) => openAya(context, ayahId),
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -92,25 +137,21 @@ class _ConstellationPainter extends CustomPainter {
     required this.stars,
     required this.ayahId,
     required this.n,
+    required this.onOpen,
   });
 
   final String display;
   final List<Star> stars;
   final int ayahId;
   final Nocturne n;
+  final ValueChanged<int> onOpen;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scale = (size.width / constellationBox.width).clamp(
-      0.0,
-      size.height / constellationBox.height,
-    );
+    final fit = constellationFit(size);
     canvas.save();
-    canvas.translate(
-      (size.width - constellationBox.width * scale) / 2,
-      (size.height - constellationBox.height * scale) / 2,
-    );
-    canvas.scale(scale);
+    canvas.translate(fit.origin.dx, fit.origin.dy);
+    canvas.scale(fit.scale);
 
     final thread = Paint()
       ..color = n.accent.withValues(alpha: 0.28)
@@ -243,6 +284,32 @@ class _ConstellationPainter extends CustomPainter {
       (derivative.form == null
           ? '${derivative.occurrences}×'
           : 'form ${derivative.form}');
+
+  /// The nodes are drawn onto a canvas, where a screen reader finds nothing.
+  /// Each one is published as the button it behaves as, carrying the form and
+  /// the aya it opens.
+  @override
+  SemanticsBuilderCallback get semanticsBuilder => (size) {
+    final fit = constellationFit(size);
+    return [
+      for (final star in stars)
+        CustomPainterSemantics(
+          rect: Rect.fromCircle(
+            center: fit.origin + star.at * fit.scale,
+            radius: _nodeReach * fit.scale,
+          ),
+          properties: SemanticsProperties(
+            label:
+                '${star.derivative.text} · '
+                'open ${ayahRef(star.derivative.ayahId)}',
+            button: true,
+            // The label opens with the Arabic form, so it is read as Arabic.
+            textDirection: TextDirection.rtl,
+            onTap: () => onOpen(star.derivative.ayahId),
+          ),
+        ),
+    ];
+  };
 
   @override
   bool shouldRepaint(_ConstellationPainter old) =>

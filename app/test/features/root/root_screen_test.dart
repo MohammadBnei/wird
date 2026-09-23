@@ -6,6 +6,8 @@ import 'package:wird/features/root/root_dial.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/features/root/root_spine_screen.dart';
+import 'package:wird/features/study/study_screen.dart';
+
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -202,10 +204,18 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Next'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Read the aya'));
-    await tester.pumpAndSettle();
+    // The screen pushed onto reads the corpus, and real file work only
+    // completes on the real event loop rather than in the test's own zone.
+    for (var turn = 0; turn < 8; turn++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 1)),
+      );
+      await tester.pumpAndSettle();
+    }
 
+    expect(find.byType(StudyScreen), findsOneWidget);
     expect(
-      find.text('DEEP DIVE \u00b7 ${ayahRef(reading.derivatives[1].ayahId)}'),
+      find.textContaining(await surahAndAya(db, reading.derivatives[1].ayahId)),
       findsOneWidget,
     );
   });

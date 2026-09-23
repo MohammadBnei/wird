@@ -12,6 +12,10 @@ import 'fonts.dart';
 const ayaOfPatience = 103003;
 const patience = 'صبر';
 
+/// 2:44 and ʿ-q-l — five forms, which is the ring the design draws.
+const ayaOfReason = 2044;
+const reason = 'عقل';
+
 void main() {
   late Database db;
 
@@ -46,6 +50,34 @@ void main() {
     await expectLater(
       find.byType(DeepDiveScreen),
       matchesGoldenFile('goldens/deep_dive.png'),
+    );
+  });
+
+  testWidgets('screen 1c on a phone is the tablet drawing shrunk into a '
+      'column: the ring, the forms under it and their references', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: nocturneTheme(),
+        home: DeepDiveScreen(
+          db: db,
+          // A family of five, so the ring is drawn rather than the spine a
+          // root of thirty-eight forms falls back to.
+          ayahId: ayaOfReason,
+          letters: reason,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(DeepDiveScreen),
+      matchesGoldenFile('goldens/deep_dive_phone.png'),
     );
   });
 }
