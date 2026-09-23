@@ -123,6 +123,7 @@ class SoundingNow extends StatelessWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 3,
                 children: [
                   Text(
                     switch (sounding.what) {
@@ -141,23 +142,31 @@ class SoundingNow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     // A word is named in Arabic and the set in the reader's
-                    // own script, so the face follows what is sounding.
+                    // own script, so the face follows what is sounding. A
+                    // vowelled word needs the size and the leading twice
+                    // over: at the set's 12px its marks are a smudge and
+                    // they climb into the kicker above.
                     style: TextStyle(
                       fontFamily: sounding.what == Sounded.word
                           ? Nocturne.arabicFamily
                           : Nocturne.bodyFamily,
-                      fontSize: sounding.what == Sounded.word ? 15 : 12,
+                      fontSize: sounding.what == Sounded.word ? 22 : 12,
+                      height: sounding.what == Sounded.word ? 1.7 : null,
                       color: n.textAt(0.75),
                     ),
                   ),
                 ],
               ),
             ),
+            // The bare glyph was a 12px lilac square at the edge of the bar,
+            // which is a stray mark rather than the only way to silence a
+            // recitation. The outline is how this system says "control", and
+            // the word says which one.
             NocturneButton(
               key: const Key('stop sounding'),
-              variant: NocturneButtonVariant.icon,
+              variant: NocturneButtonVariant.primary,
               onPressed: recitation.stop,
-              child: const Icon(Icons.stop),
+              child: const Text('Stop'),
             ),
           ],
         );

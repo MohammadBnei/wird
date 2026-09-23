@@ -110,13 +110,20 @@ class _KeptScreenState extends State<KeptScreen> {
           },
         ),
         const SizedBox(height: 11),
-        NocturneSegmented(
-          options: const ['Ayas', 'Roots', 'Notes'],
-          selected: _kind.index,
-          onChanged: (i) {
-            setState(() => _kind = KeptKind.values[i]);
-            _load();
-          },
+        // The title and the search field want the whole gutter, so this
+        // column stretches — and a stretched segmented control is handed a
+        // tight full width its options cannot fill, leaving half a pill of
+        // empty tube. It sizes to its three words, as settings' two do.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: NocturneSegmented(
+            options: const ['Ayas', 'Roots', 'Notes'],
+            selected: _kind.index,
+            onChanged: (i) {
+              setState(() => _kind = KeptKind.values[i]);
+              _load();
+            },
+          ),
         ),
       ],
     ),

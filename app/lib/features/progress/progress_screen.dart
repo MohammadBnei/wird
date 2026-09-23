@@ -116,7 +116,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 accent: n.accent,
                 spent: n.color('neutral-800'),
                 caption: n.color('neutral-500'),
-                edge: n.color('neutral-600'),
                 inner: n.color('neutral-900'),
               ),
             ),
@@ -381,7 +380,6 @@ class _JuzRing extends CustomPainter {
     required this.accent,
     required this.spent,
     required this.caption,
-    required this.edge,
     required this.inner,
   });
 
@@ -393,7 +391,6 @@ class _JuzRing extends CustomPainter {
   final Color accent;
   final Color spent;
   final Color caption;
-  final Color edge;
   final Color inner;
 
   @override
@@ -467,18 +464,11 @@ class _JuzRing extends CustomPainter {
         color: accent,
       ),
     );
-    _write(
-      canvas,
-      'JUZ 1',
-      centre.dx,
-      18,
-      TextStyle(
-        fontFamily: Nocturne.bodyFamily,
-        fontSize: 9.5,
-        letterSpacing: 1.6,
-        color: edge,
-      ),
-    );
+    // The design writes "JUZ 1" above the ring to say the arcs start at
+    // twelve o'clock. With no tick or leader saying so it is only a second
+    // juz number a hundred pixels from the one that names where the reader
+    // is, and the two disagree. The arcs are unlabelled anyway, so the
+    // legend bought nothing and is gone.
   }
 
   /// Draws one line centred on [x] with its baseline on [baseline], which is

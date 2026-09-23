@@ -5,6 +5,7 @@ import 'package:wird/data/db.dart';
 import 'package:wird/data/kept_repo.dart';
 import 'package:wird/features/kept/kept_screen.dart';
 import 'package:wird/theme/nocturne.dart';
+import 'package:wird/widgets/nocturne_segmented.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -39,6 +40,16 @@ void main() {
     await tester.tap(find.text(segment));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('the filter is stretched to the gutter, so its three chips sit '
+      'at the left of a pill that is mostly empty tube', (tester) async {
+    await open(tester);
+
+    // Three words of four and five letters. Anything near the 362px between
+    // the gutters is the control being handed a width instead of taking one.
+    final filter = tester.getSize(find.byType(NocturneSegmented)).width;
+    expect(filter, lessThan(220));
+  });
 
   testWidgets('a reader who has kept nothing is shown a blank screen that '
       'never says why it is blank', (tester) async {

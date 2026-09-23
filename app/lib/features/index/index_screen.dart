@@ -177,9 +177,11 @@ class _IndexScreenState extends State<IndexScreen> {
                       const SizedBox(height: 4),
                       // The revelation order is the other way the app reads the
                       // Qur'an, so a reader in that order can find their place
-                      // by it rather than by the written number.
+                      // by it rather than by the written number. It is spelled
+                      // out because a bare number under a count of ayas reads
+                      // as a second count.
                       Text(
-                        'Revealed ${sura.revelationOrder}',
+                        '${_ordinal(sura.revelationOrder)} to be revealed',
                         style: TextStyle(fontSize: 10, color: n.textAt(0.42)),
                       ),
                       const SizedBox(height: 4),
@@ -238,4 +240,17 @@ class _IndexScreenState extends State<IndexScreen> {
       ],
     ),
   );
+}
+
+/// "1st", "22nd", "113th" — English ordinals, teens included.
+String _ordinal(int n) {
+  final suffix = n % 100 >= 11 && n % 100 <= 13
+      ? 'th'
+      : switch (n % 10) {
+          1 => 'st',
+          2 => 'nd',
+          3 => 'rd',
+          _ => 'th',
+        };
+  return '$n$suffix';
 }

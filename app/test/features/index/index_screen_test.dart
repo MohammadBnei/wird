@@ -59,7 +59,17 @@ void main() {
     expect(find.text('3 / 7'), findsOneWidget);
     // The revelation order is what the app's own default walk is ordered by; a
     // reader in that order cannot find their place by the written number.
-    expect(find.text('Revealed 5'), findsOneWidget);
+    expect(find.text('5th to be revealed'), findsOneWidget);
+  });
+
+  testWidgets('the revelation order is a bare number under the count of ayas, '
+      'so a reader takes it for a second count', (tester) async {
+    await open(tester);
+
+    // Al-Baqarah is 286 ayas and the 87th sūra revealed. Printed as
+    // "Revealed 87" under "0 / 286" the two read as one sentence.
+    expect(find.text('87th to be revealed'), findsOneWidget);
+    expect(find.text('Revealed 87'), findsNothing);
   });
 
   testWidgets('choosing an aya in the index leaves without naming it, so the '

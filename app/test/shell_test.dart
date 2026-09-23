@@ -104,6 +104,44 @@ void main() {
     );
   });
 
+  testWidgets('the only way to silence a recitation is a bare glyph, drawn as '
+      'a 12px mark with nothing around it to read as a control', (
+    tester,
+  ) async {
+    final recitation = downloaded;
+    await openTheSet(tester, recitation);
+    unawaitedToggle(recitation);
+    await beats(tester);
+
+    final stop = find.byKey(const Key('stop sounding'));
+    expect(
+      find.descendant(of: stop, matching: find.text('Stop')),
+      findsOneWidget,
+    );
+    // A box the width of a word, not of a glyph.
+    expect(tester.getSize(stop).width, greaterThan(40));
+  });
+
+  testWidgets('the sounding word is drawn at the size the set label uses, '
+      'where a fully vowelled Arabic word is a smudge', (tester) async {
+    final recitation = downloaded;
+    await openTheSet(tester, recitation);
+    final word =
+        (await db.query(
+              'words',
+              where: 'id = ?',
+              whereArgs: [96001001],
+            )).single['text_ar']!
+            as String;
+    unawaitedWord(recitation, 96001001);
+    await beats(tester);
+
+    final drawn = tester.widget<Text>(
+      find.descendant(of: find.byType(SoundingNow), matching: find.text(word)),
+    );
+    expect(drawn.style!.fontSize, greaterThanOrEqualTo(20));
+  });
+
   testWidgets('a word plays to its end wherever the reader goes, because the '
       'only way to stop it is on the screen that started it', (tester) async {
     final recitation = downloaded;
