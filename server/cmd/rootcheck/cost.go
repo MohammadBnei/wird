@@ -48,11 +48,18 @@ func Cost(w io.Writer, roots map[string]*rootsense.Root, tsv string, bar rootsen
 		return err
 	}
 
-	old := rootsense.Bar{Score: bar.Score}
-	var passedOld, passedNew []cand
-	byScore, byCover, byDisp := 0, 0, 0
+	twice := map[string][]string{}
 	for _, c := range cands {
-		if !c.res.Verified(old) {
+		if k := strings.Join(rootsense.Content(c.sense), " "); k != "" {
+			twice[k] = append(twice[k], c.root)
+		}
+	}
+
+	var passedOld, passedNew []cand
+	var misordered []cand
+	byScore, byCover, byDisp, byBranch, bySame := 0, 0, 0, 0, 0
+	for _, c := range cands {
+		if !c.res.BorneOut(bar) {
 			byScore++
 			continue
 		}
@@ -62,6 +69,12 @@ func Cost(w io.Writer, roots map[string]*rootsense.Root, tsv string, bar rootsen
 			byCover++
 		case c.res.Dispersion < bar.Dispersion:
 			byDisp++
+		case c.res.Branch > bar.Branch:
+			byBranch++
+		case !c.res.Leads:
+			misordered = append(misordered, c)
+		case len(twice[strings.Join(rootsense.Content(c.sense), " ")]) > 1:
+			bySame++
 		default:
 			passedNew = append(passedNew, c)
 		}
@@ -103,6 +116,9 @@ func Cost(w io.Writer, roots map[string]*rootsense.Root, tsv string, bar rootsen
 	fmt.Fprintf(w, "the old bar kept       %d  (score only)\n", len(passedOld))
 	fmt.Fprintf(w, "coverage removes       %d  (the sense explains a minority of its root's occurrences)\n", byCover)
 	fmt.Fprintf(w, "dispersion removes     %d  (a word the root never shows and the corpus reserves for others)\n", byDisp)
+	fmt.Fprintf(w, "branch removes         %d  (one branch of the root is over %.1f%% of it and the sense is silent)\n", byBranch, 100*bar.Branch)
+	fmt.Fprintf(w, "order removes          %d  (a later clause explains more than the one a reader reads first)\n", len(misordered))
+	fmt.Fprintf(w, "same prose removes     %d  (two roots handed the same words)\n", bySame)
 	fmt.Fprintf(w, "the new bar keeps      %d\n", len(passedNew))
 	fmt.Fprintf(w, "specificity removes   %d  (fits more roots that are not its own than any known-right sense, %d)\n", byFit, widest)
 	fmt.Fprintf(w, "shippable             %d\n\n", len(shipped))
@@ -111,6 +127,32 @@ func Cost(w io.Writer, roots map[string]*rootsense.Root, tsv string, bar rootsen
 	fmt.Fprintf(w, "occurrences under a root the old bar kept     %d  (%.1f%%)\n", occ(passedOld), 100*float64(occ(passedOld))/float64(corpus))
 	fmt.Fprintf(w, "occurrences under a root the new bar keeps    %d  (%.1f%%)\n", occ(passedNew), 100*float64(occ(passedNew))/float64(corpus))
 	fmt.Fprintf(w, "occurrences under a root that is shippable    %d  (%.1f%%)\n", occ(shipped), 100*float64(occ(shipped))/float64(corpus))
+
+	// The order term is the only one whose cost is recoverable without new
+	// evidence. Every sense it takes has already passed every other term, so
+	// what it is missing is not a claim but the order of the claims it makes,
+	// and whoever wrote it can put the branch a reader meets first. Reporting
+	// that cost next to the others would read as though the method covers less
+	// than it does.
+	fmt.Fprintf(w, "\nof those removed, the %d the order term takes fail nothing else; they need reordering,\n", len(misordered))
+	fmt.Fprintf(w, "not evidence, and would bring the reach to %d occurrences (%.1f%%)\n",
+		occ(shipped)+occ(misordered), 100*float64(occ(shipped)+occ(misordered))/float64(corpus))
+	tw2 := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw2, "\nroot\tleads with\tx\tbehind\tx")
+	sort.Slice(misordered, func(i, j int) bool { return roots[misordered[i].root].Words > roots[misordered[j].root].Words })
+	for i, c := range misordered {
+		if i >= 25 {
+			break
+		}
+		lead, best, text := c.res.Clauses[0], 0, ""
+		for _, cl := range c.res.Clauses {
+			if cl.Covered > best {
+				best, text = cl.Covered, cl.Text
+			}
+		}
+		fmt.Fprintf(tw2, "%s\t%s\t%d\t%s\t%d\n", c.root, lead.Text, lead.Covered, text, best)
+	}
+	tw2.Flush()
 
 	sort.Slice(passedOld, func(i, j int) bool {
 		return passedOld[i].res.Coverage < passedOld[j].res.Coverage

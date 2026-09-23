@@ -160,7 +160,7 @@ func LoadRoots(dbPath string) (map[string]*Root, error) {
 // which roots each gloss word appears under.
 func Bucket(words []WordRow) map[string]*Root {
 	dispersion = map[string]map[string]bool{}
-	dispersionCache = map[string]int{}
+	rootsCache = map[string]map[string]bool{}
 
 	type key struct{ root, slot string }
 	type tally struct {
@@ -211,4 +211,50 @@ func Bucket(words []WordRow) map[string]*Root {
 		sort.Slice(r.Slots, func(i, j int) bool { return r.Slots[i].Name < r.Slots[j].Name })
 	}
 	return out
+}
+
+// LoadNames counts, per root, the glossed occurrences the corpus tags as proper
+// nouns, and how many of those carry a gloss word a sense could name.
+//
+// It exists to check a claim rather than to score anything. The tag looks like
+// the way to find a root whose mass is a name, but it finds only 26 roots of
+// 1642, and none of نفق, سجد, حجج, ثوب or طوي, whose heaviest branch is a
+// derived noun the tag calls an ordinary one. What the branch term measures is
+// the occurrences themselves, which sees all of them; the tag's job here is to
+// show that it misses none of what the tag would have found.
+func LoadNames(dbPath string) (map[string]int, map[string]int, error) {
+	db, err := sql.Open("sqlite", "file:"+dbPath+"?mode=ro")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer db.Close()
+	rows, err := db.Query(`SELECT root_letters, gloss_en, COALESCE(morphology,'')
+		FROM words
+		WHERE root_letters IS NOT NULL AND root_letters <> ''
+		  AND gloss_en IS NOT NULL AND trim(gloss_en) <> ''`)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	names, nameable := map[string]int{}, map[string]int{}
+	for rows.Next() {
+		var root, gloss, morph string
+		if err := rows.Scan(&root, &gloss, &morph); err != nil {
+			return nil, nil, err
+		}
+		isPN := false
+		for _, f := range stemFeatures(morph) {
+			if f == "POS:PN" {
+				isPN = true
+			}
+		}
+		if !isPN {
+			continue
+		}
+		names[root]++
+		if len(tokens(gloss)) > 0 {
+			nameable[root]++
+		}
+	}
+	return names, nameable, rows.Err()
 }

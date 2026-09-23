@@ -35,6 +35,7 @@ type Sense struct {
 	SenseFr    string              `json:"sense_fr"`
 	Score      float64             `json:"score"`
 	Coverage   float64             `json:"coverage"`
+	Branch     float64             `json:"branch"`
 	Dispersion int                 `json:"dispersion,omitempty"`
 	SlotsHit   int                 `json:"slots_hit"`
 	Slots      int                 `json:"slots"`
@@ -60,12 +61,14 @@ type barJSON struct {
 	Score      float64 `json:"score"`
 	Coverage   float64 `json:"coverage"`
 	Dispersion int     `json:"dispersion"`
+	Branch     float64 `json:"branch"`
 }
 
 const attribution = "Wird's own wording. Each sense was written from the root's own words in " +
 	"the bundled corpus and kept only where it predicted those words' English glosses across " +
-	"more than one morphological shape, explained most of the root's occurrences, and rested on " +
-	"no word the corpus reserves for another root. It is not quoted from, attributed to, or " +
+	"more than one morphological shape, explained most of the root's occurrences, left no branch of " +
+	"the root unnamed, led with the branch a reader is likeliest to meet, and rested on no word the " +
+	"corpus reserves for another root. It is not quoted from, attributed to, or " +
 	"derived from any lexicon or scholar, and it is a claim about the word, never about a verse."
 
 // source is the byline a screen puts beside the sense, and basis the line under
@@ -82,8 +85,11 @@ const method = "rootcheck: a proposed sense is matched against every distinct gl
 	"is the harmonic mean of the mean per-shape agreement and the share of the sense's own words " +
 	"the root attests; coverage is the share of the root's word occurrences the sense explains; " +
 	"dispersion is how many roots the corpus glosses with the least common word the sense adds to " +
-	"an otherwise attested clause. The score and dispersion floors sit where known-right and " +
-	"known-wrong senses part, recomputed at every run; the coverage floor is a majority."
+	"an otherwise attested clause, counting only words that are wordings of nothing the root says; " +
+	"branch is the share of the root's occurrences sitting in the single heaviest thing the sense " +
+	"leaves unexplained; and the leading clause must explain at least as much as any later one. The " +
+	"score, dispersion and branch floors sit where known-right and known-wrong senses part, " +
+	"recomputed at every run; the coverage floor is a majority."
 
 // The provenance kept per sense: a few words from each morphological shape, a
 // dozen at most. Spreading it across shapes is the point — the argument for a
@@ -183,10 +189,22 @@ func Build(w io.Writer, roots map[string]*rootsense.Root, tsv, out string, bar r
 
 	bundle := Bundle{
 		Attribution: attribution, Source: source, Basis: basis, Method: method,
-		Bar:         barJSON{bar.Score, bar.Coverage, bar.Dispersion},
+		Bar:         barJSON{bar.Score, bar.Coverage, bar.Dispersion, bar.Branch},
 		SpecificBar: specific,
 	}
-	byScore, byCover, byDisp, byFit, byFrench, unknown := 0, 0, 0, 0, 0, 0
+	// Two roots handed the same words is a signal that at least one of them is
+	// wrong, and no term can see it: every term asks about one root at a time.
+	// It is a refusal rather than a score, and it refuses both, because nothing
+	// here says which of the two the prose belongs to.
+	twice := map[string][]string{}
+	for _, c := range cands {
+		k := strings.Join(rootsense.Content(c.En), " ")
+		if k != "" {
+			twice[k] = append(twice[k], c.Root)
+		}
+	}
+
+	byScore, byCover, byDisp, byBranch, byLead, bySame, byFit, byFrench, unknown := 0, 0, 0, 0, 0, 0, 0, 0, 0
 	for _, c := range cands {
 		root := roots[c.Root]
 		if root == nil {
@@ -196,7 +214,7 @@ func Build(w io.Writer, roots map[string]*rootsense.Root, tsv, out string, bar r
 		}
 		res := rootsense.Check(root, c.En)
 		switch {
-		case !res.Verified(rootsense.Bar{Score: bar.Score}):
+		case !res.BorneOut(bar):
 			byScore++
 			fmt.Fprintf(w, "not borne out  %s  %.3f  %q  slots %d/%d\n",
 				c.Root, res.Score, c.En, res.SlotsHit, len(res.Slots))
@@ -210,12 +228,33 @@ func Build(w io.Writer, roots map[string]*rootsense.Root, tsv, out string, bar r
 			byDisp++
 			var riders []string
 			for _, u := range res.Ungrounded {
-				if u.Rider {
+				if u.Measured {
 					riders = append(riders, fmt.Sprintf("%s(%d roots)", u.Stem, u.Roots))
 				}
 			}
 			fmt.Fprintf(w, "rider          %s  %d    %q  <- %s\n",
 				c.Root, res.Dispersion, c.En, strings.Join(riders, " "))
+			continue
+		case res.Branch > bar.Branch:
+			byBranch++
+			fmt.Fprintf(w, "unnamed branch %s  %.3f  %q  <- %q x%d of %d\n",
+				c.Root, res.Branch, c.En, res.BranchStem, res.BranchN, res.Tested)
+			continue
+		case !res.Leads:
+			byLead++
+			lead, best, bestText := res.Clauses[0], 0, ""
+			for _, cl := range res.Clauses {
+				if cl.Covered > best {
+					best, bestText = cl.Covered, cl.Text
+				}
+			}
+			fmt.Fprintf(w, "wrong order    %s  %q  leads with %q x%d, behind %q x%d\n",
+				c.Root, c.En, lead.Text, lead.Covered, bestText, best)
+			continue
+		}
+		if others := twice[strings.Join(rootsense.Content(c.En), " ")]; len(others) > 1 {
+			bySame++
+			fmt.Fprintf(w, "same prose     %s  %q  also given to %v\n", c.Root, c.En, others)
 			continue
 		}
 		others := otherRootsVerified(roots, letters, c.Root, c.En, bar)
@@ -235,7 +274,7 @@ func Build(w io.Writer, roots map[string]*rootsense.Root, tsv, out string, bar r
 		}
 		bundle.Senses = append(bundle.Senses, Sense{
 			Root: c.Root, SenseEn: c.En, SenseFr: c.Fr,
-			Score: res.Score, Coverage: res.Coverage, Dispersion: d,
+			Score: res.Score, Coverage: res.Coverage, Branch: res.Branch, Dispersion: d,
 			SlotsHit: res.SlotsHit, Slots: len(res.Slots), Others: others,
 			Support: trimSupport(res.Support),
 		})
@@ -257,6 +296,9 @@ func Build(w io.Writer, roots map[string]*rootsense.Root, tsv, out string, bar r
 	fmt.Fprintf(w, "not borne out   %d\n", byScore)
 	fmt.Fprintf(w, "minority branch %d\n", byCover)
 	fmt.Fprintf(w, "riding clause   %d\n", byDisp)
+	fmt.Fprintf(w, "unnamed branch  %d  (one branch of the root is more than %.1f%% of it and the sense is silent)\n", byBranch, 100*bar.Branch)
+	fmt.Fprintf(w, "wrong order     %d  (a later clause explains more than the one a reader reads first)\n", byLead)
+	fmt.Fprintf(w, "same prose      %d  (two roots handed the same words)\n", bySame)
 	fmt.Fprintf(w, "unspecific      %d  (fits more than %d other roots)\n", byFit, specific)
 	fmt.Fprintf(w, "no french       %d\n", byFrench)
 	fmt.Fprintf(w, "unknown root    %d\n", unknown)

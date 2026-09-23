@@ -144,6 +144,17 @@ func (c *Corpus) checkSenses() []error {
 		known[r.Letters] = true
 	}
 
+	// Two roots handed the same words is a signal that at least one of them is
+	// wrong, and no per-root term can see it. rootcheck refuses to write such a
+	// pair, but a refusal that lives only in the builder is not a gate: the
+	// file it writes can be edited. This is where the bundle is verified.
+	twice := map[string][]string{}
+	for _, s := range c.Senses.Senses {
+		if k := strings.Join(rootsense.Content(s.SenseEn), " "); k != "" {
+			twice[k] = append(twice[k], s.Root)
+		}
+	}
+
 	for _, s := range c.Senses.Senses {
 		where := fmt.Sprintf("root %s sense %q", s.Root, s.SenseEn)
 		if !known[s.Root] {
@@ -174,9 +185,15 @@ func (c *Corpus) checkSenses() []error {
 		switch {
 		case !res.Verified(sep.Bar):
 			errs = append(errs, fmt.Errorf("%s: scores %.3f/%.3f in %d of %d shapes, covers %.3f/%.3f "+
-				"of its root's occurrences, dispersion %s/%d; this corpus does not bear it out",
+				"of its root's occurrences, dispersion %s/%d, leaves %.3f/%.3f of the root in one "+
+				"branch it does not name, leads with its dominant branch %v; this corpus does not bear it out",
 				where, res.Score, sep.Bar.Score, res.SlotsHit, len(res.Slots), res.Coverage,
-				sep.Bar.Coverage, rootsense.Disp(res.Dispersion), sep.Bar.Dispersion))
+				sep.Bar.Coverage, rootsense.Disp(res.Dispersion), sep.Bar.Dispersion,
+				res.Branch, sep.Bar.Branch, res.Leads))
+		case len(twice[strings.Join(rootsense.Content(s.SenseEn), " ")]) > 1:
+			errs = append(errs, fmt.Errorf("%s: the same words are also this corpus's sense for %v, "+
+				"and one prose for two roots means at least one of them is wrong",
+				where, twice[strings.Join(rootsense.Content(s.SenseEn), " ")]))
 		case strings.TrimSpace(s.SenseFr) == "":
 			errs = append(errs, fmt.Errorf("%s: no French, and a verified sense ships in both "+
 				"languages or neither", where))

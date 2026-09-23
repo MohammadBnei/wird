@@ -18,7 +18,7 @@ import (
 
 func main() {
 	db := flag.String("db", "./app/assets/corpus.db", "corpus.db to read")
-	threshold := flag.Float64("threshold", 0, "pass mark; 0 means use the calibrated one")
+	threshold := flag.Float64("threshold", 0, "score pass mark; 0 means the calibrated bar. Overriding it drops every term but the score and the clause order")
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, `rootcheck <command> [flags]
 
@@ -131,7 +131,7 @@ func main() {
 // overrides the threshold by hand.
 func barFor(roots map[string]*rootsense.Root, override float64) (rootsense.Bar, error) {
 	if override != 0 {
-		return rootsense.Bar{Score: override}, nil
+		return rootsense.Bar{Score: override, Branch: 1}, nil
 	}
 	sep, err := rootsense.Calibrate(roots)
 	return sep.Bar, err
@@ -139,9 +139,18 @@ func barFor(roots map[string]*rootsense.Root, override float64) (rootsense.Bar, 
 
 func reportCheck(w *os.File, r rootsense.Result, bar rootsense.Bar) {
 	fmt.Fprintf(w, "%s  %q\n", r.Root, r.Sense)
-	fmt.Fprintf(w, "%s  score %.3f/%.3f  coverage %.3f/%.3f of %d occurrences  dispersion %s/%d  slots %d/%d\n\n",
+	fmt.Fprintf(w, "%s  score %.3f/%.3f  coverage %.3f/%.3f of %d occurrences  dispersion %s/%d  slots %d/%d\n",
 		r.Verdict(bar), r.Score, bar.Score, r.Coverage, bar.Coverage, r.Tested,
 		rootsense.Disp(r.Dispersion), bar.Dispersion, r.SlotsHit, len(r.Slots))
+	fmt.Fprintf(w, "heaviest branch the sense does not name: %q x%d, %.3f/%.3f of the root\n", r.BranchStem, r.BranchN, r.Branch, bar.Branch)
+	for i, c := range r.Clauses {
+		lead := " "
+		if i == 0 {
+			lead = ">"
+		}
+		fmt.Fprintf(w, "%s %-44s explains %d occurrences no earlier clause does\n", lead, c.Text, c.Covered)
+	}
+	fmt.Fprintln(w)
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "slot\tagreed\tglosses that did not agree")
@@ -164,9 +173,9 @@ func reportCheck(w *os.File, r rootsense.Result, bar rootsense.Bar) {
 		}
 		fmt.Fprintf(w, "\nclause %q rests on words this root never shows:\n", c.Text)
 		for _, u := range c.Ungrounded {
-			kind := "instead of the attested words"
-			if u.Rider {
-				kind = "riding on an attested word"
+			kind := "a second wording of something the root attests"
+			if u.Measured {
+				kind = "a wording of nothing the root attests"
 			}
 			fmt.Fprintf(w, "  %-14s glossed under %3d roots  (%s)\n", u.Stem, u.Roots, kind)
 		}

@@ -37,6 +37,8 @@ type Case struct {
 const (
 	axisCoverage   = "coverage"
 	axisDispersion = "dispersion"
+	axisBranch     = "branch"
+	axisLead       = "lead"
 )
 
 var Calibration = []Case{
@@ -47,17 +49,17 @@ var Calibration = []Case{
 	// were phrased that second way when the check had no coverage term, and the
 	// term is what made the difference visible.
 	{Root: "صبر", Sense: "to be patient; to be steadfast; to endure", Right: true},
-	{Root: "كتب", Sense: "to write; to prescribe; a book, a writ", Right: true},
+	{Root: "كتب", Sense: "a book, a writ; to write; to prescribe", Right: true},
 	{Root: "علم", Sense: "to know; to have knowledge", Right: true},
 	{Root: "رحم", Sense: "to be merciful; to show mercy", Right: true},
 	{Root: "قول", Sense: "to say; to speak; a word, a saying", Right: true},
-	{Root: "نزل", Sense: "to descend; to send down; to reveal", Right: true},
+	{Root: "نزل", Sense: "to send down; to reveal; to descend", Right: true},
 	{Root: "سمع", Sense: "to hear; to listen", Right: true},
 	{Root: "غفر", Sense: "to forgive; to cover over", Right: true},
-	{Root: "عبد", Sense: "to serve; to worship; a slave, a servant", Right: true},
-	{Root: "حكم", Sense: "to judge; to decide; to be wise", Right: true},
+	{Root: "عبد", Sense: "to worship; to serve; a slave, a servant", Right: true},
+	{Root: "حكم", Sense: "to be wise; to judge; to decide", Right: true},
 	{Root: "ظلم", Sense: "to wrong; to do injustice", Right: true},
-	{Root: "شكر", Sense: "to thank; to be grateful", Right: true},
+	{Root: "شكر", Sense: "to be grateful; to thank", Right: true},
 	{Root: "كفر", Sense: "to disbelieve; to reject; to cover over", Right: true},
 	{Root: "خلق", Sense: "to create; to bring into being", Right: true},
 	{Root: "رزق", Sense: "to provide; to grant provision", Right: true},
@@ -78,7 +80,10 @@ var Calibration = []Case{
 	{Root: "غفر", Sense: "to do; to make; to act", Why: "true of everything, predicts nothing"},
 	{Root: "نزل", Sense: "a thing; a matter; an affair", Why: "true of everything, predicts nothing"},
 	{Root: "نزل", Sense: "Allah; the Lord; the believers", Why: "names the context, not the word"},
-	{Root: "كتب", Sense: "to send down a book", Why: "true core plus false elaboration", Axis: axisDispersion},
+	// Not a dispersion fixture: "send" is glossed under 18 roots and the right
+	// senses' own least common word, "cover", under 15, so no floor parts them.
+	// What rejects this is the cross-form demand — it hits one slot of seven.
+	{Root: "كتب", Sense: "to send down a book", Why: "elaboration borrowed from another root"},
 	{Root: "رحم", Sense: "to be merciful to those who travel", Why: "true core plus false elaboration", Axis: axisDispersion},
 
 	// Senses that name a real but minority branch of their root. Every one of
@@ -121,6 +126,42 @@ var Calibration = []Case{
 	{Root: "رحم", Sense: "to be merciful; to show mercy to the believers alone", Why: "doctrinal elaboration", Axis: axisDispersion},
 	{Root: "طهر", Sense: "to be pure; to purify by ablution before prayer", Why: "doctrinal elaboration", Axis: axisDispersion},
 	{Root: "هدي", Sense: "to guide; to show the way; to guide only whom he wills to paradise", Why: "doctrinal elaboration", Axis: axisDispersion},
+
+	// An invented clause carrying no attested word at all. The rule these
+	// defeat asked whether a clause contained an attested word and waved
+	// through every clause that did not, which is the shape of pure invention
+	// as much as of an alternative phrasing. What separates the two is company:
+	// somewhere in the corpus a root is glossed both "rule" and "judge", and no
+	// root is ever glossed both "qiblah" and "pray" or both "Ramadan" and
+	// "fast".
+	{Root: "صلو", Sense: "a prayer; to pray; to face the qiblah five times each day", Why: "invented clause, no attested word to ride on", Axis: axisDispersion},
+	{Root: "صوم", Sense: "to fast; to abstain from dawn until sunset in Ramadan", Why: "invented clause, no attested word to ride on", Axis: axisDispersion},
+
+	// A root whose dominant branch is glossed in stopwords alone. جمع's
+	// جَمِيع is "all" and كثر's أَكْثَرُهُمْ is "most", and a gloss made of
+	// nothing but stopwords used to be dropped before the denominator, so both
+	// roots cleared a majority of a count their own majority was missing from.
+	{Root: "جمع", Sense: "to gather; to collect", Why: "minority branch; 51 occurrences glossed \"all\"", Axis: axisCoverage},
+	{Root: "كثر", Sense: "to be many; to be much; to increase", Why: "minority branch; 73 occurrences glossed \"most\"", Axis: axisCoverage},
+
+	// A sense that explains a majority of its root and still leaves one word
+	// of it unexplained. Coverage is a total and a total can be a majority
+	// while a third of the root sits in a single branch nobody named: a reader
+	// tapping مُنَافِقُونَ, the title word of Sūrah 63, is told about spending.
+	{Root: "نفق", Sense: "to spend; to spend out", Why: "34 of 111 occurrences are the hypocrites", Axis: axisBranch},
+	{Root: "عود", Sense: "to return; to go back; to repeat", Why: "23 of 63 occurrences are the tribe 'Aad", Axis: axisBranch},
+	{Root: "سجد", Sense: "to prostrate", Why: "22 of 92 occurrences are Al-Masjid", Axis: axisBranch},
+	{Root: "حجج", Sense: "to argue; to dispute", Why: "8 of 33 occurrences are the Hajj", Axis: axisBranch},
+	{Root: "ثوب", Sense: "to reward; a recompense", Why: "7 of 28 occurrences are garments", Axis: axisBranch},
+	{Root: "طوي", Sense: "to fold; to fold up", Why: "2 of 5 occurrences are the valley Tuwa", Axis: axisBranch},
+
+	// A sense that names every branch and reads them out in the wrong order.
+	// Coverage is indifferent to order; a reader is not, and stops at the first
+	// clause: ملأ is met as ٱلْمَلَأ, the chiefs, three times for every time it
+	// is met as filling.
+	{Root: "ملأ", Sense: "to fill; full; the chiefs, the assembly", Why: "leads with the minority branch", Axis: axisLead},
+	{Root: "بني", Sense: "to build; a son, children", Why: "leads with the minority branch", Axis: axisLead},
+	{Root: "سبح", Sense: "to swim; to glide; to glorify", Why: "leads with the minority branch", Axis: axisLead},
 }
 
 // majority is the coverage floor, and it is stated rather than fitted. The
@@ -140,6 +181,16 @@ type Separation struct {
 	CoverageGap  float64 // where the populations part on coverage, for the test
 	FalsePass    []Case  // wrong senses the bar lets through
 	FalseFail    []Case  // right senses the bar rejects
+}
+
+// unnamed turns a branch share into the same shape as every other axis, where
+// more is better, so one gap function places every floor.
+func unnamed(shares []float64) []float64 {
+	out := make([]float64, len(shares))
+	for i, v := range shares {
+		out[i] = 1 - v
+	}
+	return out
 }
 
 // gap places a floor at the midpoint of the widest gap between a wrong value
@@ -186,7 +237,7 @@ func Calibrate(roots map[string]*Root) (Separation, error) {
 		s   float64
 	}
 	var all []scored
-	var rScore, wScore, rCov, wCov, rDisp, wDisp []float64
+	var rScore, wScore, rCov, wCov, rDisp, wDisp, rBranch, wBranch []float64
 	for _, c := range Calibration {
 		r, ok := roots[c.Root]
 		if !ok {
@@ -206,6 +257,7 @@ func Calibrate(roots map[string]*Root) (Separation, error) {
 			sep.Right = append(sep.Right, s)
 			rScore = append(rScore, s)
 			rCov = append(rCov, res.Coverage)
+			rBranch = append(rBranch, res.Branch)
 			if res.Dispersion != NoUngrounded {
 				rDisp = append(rDisp, float64(res.Dispersion))
 			}
@@ -219,6 +271,12 @@ func Calibrate(roots map[string]*Root) (Separation, error) {
 			if res.Dispersion != NoUngrounded {
 				wDisp = append(wDisp, float64(res.Dispersion))
 			}
+		case axisBranch:
+			wBranch = append(wBranch, res.Branch)
+		case axisLead:
+			// The lead is a comparison between a sense's own clauses, so it has
+			// no threshold to place: a sense either leads with the branch a
+			// reader meets or it does not.
 		default:
 			wScore = append(wScore, s)
 		}
@@ -230,6 +288,7 @@ func Calibrate(roots map[string]*Root) (Separation, error) {
 		Score:      gap(rScore, wScore),
 		Coverage:   majority,
 		Dispersion: int(math.Ceil(gap(rDisp, wDisp))),
+		Branch:     1 - gap(unnamed(rBranch), unnamed(wBranch)),
 	}
 	sep.CoverageGap = gap(rCov, wCov)
 
@@ -247,7 +306,7 @@ func Calibrate(roots map[string]*Root) (Separation, error) {
 
 func (s Separation) Report(w io.Writer, roots map[string]*Root) {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "verdict\troot\tscore\tcover\tdisp\trecall\tprec\tslots\tsense\twhy")
+	fmt.Fprintln(tw, "verdict\troot\tscore\tcover\tdisp\tbranch\tleads\tslots\tsense\twhy")
 	for _, c := range Calibration {
 		res := Check(roots[c.Root], c.Sense)
 		if res.SlotsHit < 2 {
@@ -257,16 +316,16 @@ func (s Separation) Report(w io.Writer, roots map[string]*Root) {
 		if c.Right {
 			label = "right"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%.3f\t%.3f\t%s\t%.3f\t%.3f\t%d/%d\t%s\t%s\n",
+		fmt.Fprintf(tw, "%s\t%s\t%.3f\t%.3f\t%s\t%.3f\t%v\t%d/%d\t%s\t%s\n",
 			label, c.Root, res.Score, res.Coverage, Disp(res.Dispersion),
-			res.Recall, res.Precision, res.SlotsHit, len(res.Slots), c.Sense, c.Why)
+			res.Branch, res.Leads, res.SlotsHit, len(res.Slots), c.Sense, c.Why)
 	}
 	tw.Flush()
 
 	fmt.Fprintf(w, "\nright senses  n=%d  score min %.3f  max %.3f\n", len(s.Right), s.Right[0], s.Right[len(s.Right)-1])
 	fmt.Fprintf(w, "wrong senses  n=%d  score min %.3f  max %.3f\n", len(s.Wrong), s.Wrong[0], s.Wrong[len(s.Wrong)-1])
-	fmt.Fprintf(w, "bar           score %.3f   coverage %.3f   dispersion %d\n",
-		s.Bar.Score, s.Bar.Coverage, s.Bar.Dispersion)
+	fmt.Fprintf(w, "bar           score %.3f   coverage %.3f   dispersion %d   branch %.3f   leads\n",
+		s.Bar.Score, s.Bar.Coverage, s.Bar.Dispersion, s.Bar.Branch)
 	fmt.Fprintf(w, "              score and dispersion sit where the populations part; coverage is\n")
 	fmt.Fprintf(w, "              stated at a majority, and the populations part at %.3f\n", s.CoverageGap)
 	fmt.Fprintf(w, "right passing %d/%d   wrong rejected %d/%d\n",
@@ -276,8 +335,8 @@ func (s Separation) Report(w io.Writer, roots map[string]*Root) {
 	}
 	for _, c := range s.FalseFail {
 		res := Check(roots[c.Root], c.Sense)
-		fmt.Fprintf(w, "  right sense fails:  %s  %q  (score %.3f cover %.3f disp %s)\n",
-			c.Root, c.Sense, res.Score, res.Coverage, Disp(res.Dispersion))
+		fmt.Fprintf(w, "  right sense fails:  %s  %q  (score %.3f cover %.3f disp %s branch %.3f leads %v)\n",
+			c.Root, c.Sense, res.Score, res.Coverage, Disp(res.Dispersion), res.Branch, res.Leads)
 	}
 }
 

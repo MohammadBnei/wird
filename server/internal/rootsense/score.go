@@ -162,15 +162,12 @@ func related(sense, gloss string) bool {
 	return len(gloss) >= 4 && strings.HasPrefix(sense, gloss)
 }
 
-// clauseRe splits a sense into the claims it makes. A sense is written as a
-// list of phrasings separated by semicolons or commas, and each one is a
-// separate claim about the root: "to pray" and "to pray five times" are not one
-// claim made twice, they are a true claim and a further one.
-var clauseRe = regexp.MustCompile(`[;,]`)
-
-// Clause is one claim of a sense and the words in it the root does not attest.
+// Clause is one claim of a sense: the text between semicolons, which is what a
+// reader reads as one line. Commas inside it are alternative phrasings of the
+// same claim ("a book, a writ"), not further claims.
 type Clause struct {
 	Text       string
+	Covered    int // occurrences this clause alone explains
 	Ungrounded []Ungrounded
 }
 
@@ -180,16 +177,26 @@ type Clause struct {
 // somebody else ("unseen", one root), and putting it in this root's sense
 // borrows that root's meaning without any evidence from this one.
 //
-// Rider says the word sits in a clause that ALSO contains a word the root does
-// attest. That is the shape of a false elaboration and the shape a wholly
-// unattested clause does not have: "to judge; to decide; to rule" offers "rule"
-// INSTEAD of the attested words and is already paid for in precision, while
-// "to pray; to pray five times" bolts "five times" ONTO the attested "pray",
-// where nothing in the score notices it. Only riders are held to the floor.
+// Measured says the word is held to the dispersion floor. Two things spare a
+// word, and it has to be both.
+//
+// The first is the old rule: the clause it sits in must carry no word the root
+// attests. A word bolted ONTO an attested clause is the doctrinal rider — "to
+// pray; to pray five times" — and nothing else in the score notices it.
+//
+// The second is new, and it is the hole the first one left. A clause carrying
+// no attested word can be an alternative phrasing of an attested idea, which
+// precision already pays for, or it can be pure invention, which nothing paid
+// for at all; "carries no attested word" does not tell them apart, because
+// invention carries none either. Company does: an alternative phrasing keeps
+// company with what it rephrases. Somewhere in the corpus one root is glossed
+// both "rule" and "judge", so "to judge; to decide; to rule" is a second
+// wording. No root is ever glossed both "qiblah" and "pray", or both "Ramadan"
+// and "fast", so those clauses are wordings of nothing and are measured.
 type Ungrounded struct {
-	Stem  string
-	Roots int
-	Rider bool
+	Stem     string
+	Roots    int
+	Measured bool
 }
 
 // NoUngrounded is the Dispersion of a sense whose every word the root attests.
@@ -235,7 +242,22 @@ type Result struct {
 
 	Clauses    []Clause
 	Ungrounded []Ungrounded // every sense word the root does not attest
-	Dispersion int          // fewest roots any ungrounded word is spread over
+	Dispersion int          // fewest roots any measured ungrounded word is spread over
+
+	// Branch is the share of the root's occurrences sitting in the single
+	// heaviest thing the sense leaves unexplained: all the glosses that share
+	// one content word and that the sense does not predict. Coverage is a
+	// total, and a total can be a majority while a third of the root is one
+	// unnamed word — نفق explains its spending and says nothing of the 34
+	// occurrences glossed "hypocrite", the title word of Sūrah 63.
+	Branch     float64
+	BranchStem string // the word those occurrences share
+	BranchN    int    // how many occurrences they are
+
+	// Leads says the first clause explains at least as many occurrences as any
+	// other. Coverage is indifferent to the order of the clauses; a reader is
+	// not, and reads the first one.
+	Leads bool
 }
 
 // Bar is the shipping rule. Every part is a separate failure it was added to
@@ -244,6 +266,14 @@ type Bar struct {
 	Score      float64 // does the sense predict the glosses at all
 	Coverage   float64 // does it explain the occurrences a reader actually meets
 	Dispersion int     // is every word of it either attested here or generic English
+	Branch     float64 // is any one branch of the root left unnamed
+}
+
+// BorneOut is the first question on its own: does the sense predict the root's
+// glosses across more than one shape. It is what the bar was before the other
+// terms existed, and the reports quote it to say what each term costs.
+func (r Result) BorneOut(bar Bar) bool {
+	return r.SlotsHit >= 2 && r.Score >= bar.Score
 }
 
 // Verified is the ship gate.
@@ -251,7 +281,9 @@ func (r Result) Verified(bar Bar) bool {
 	return r.SlotsHit >= 2 &&
 		r.Score >= bar.Score &&
 		r.Coverage > bar.Coverage &&
-		r.Dispersion >= bar.Dispersion
+		r.Dispersion >= bar.Dispersion &&
+		r.Branch <= bar.Branch &&
+		r.Leads
 }
 
 func (r Result) Verdict(bar Bar) string {
@@ -264,9 +296,38 @@ func (r Result) Verdict(bar Bar) string {
 		return "not borne out"
 	case r.Coverage <= bar.Coverage:
 		return "minority branch"
-	default:
+	case r.Dispersion < bar.Dispersion:
 		return "unattested clause"
+	case r.Branch > bar.Branch:
+		return "unnamed branch"
+	default:
+		return "leads with a minority branch"
 	}
+}
+
+// tested is one gloss the sense is answerable for: what is left of it after the
+// wazn's own English is stripped, and how many occurrences carry it.
+type tested struct {
+	residue []string
+	n       int
+}
+
+// explained counts the occurrences a set of sense stems predicts. It is the
+// coverage arithmetic, factored out so one clause can be measured on its own.
+func explained(gs []tested, stems []string) int {
+	n := 0
+	for _, g := range gs {
+		for _, a := range stems {
+			for _, b := range g.residue {
+				if related(a, b) {
+					n += g.n
+					goto next
+				}
+			}
+		}
+	next:
+	}
+	return n
 }
 
 // Check scores one candidate sense against one root.
@@ -278,6 +339,8 @@ func Check(root *Root, sense string) Result {
 	}
 	used := map[string]bool{}
 	covered := 0
+	miss := map[string]int{} // unexplained occurrences, by the word they share
+	var answerable []tested
 
 	for _, slot := range root.Slots {
 		strip := map[string]bool{}
@@ -286,8 +349,19 @@ func Check(root *Root, sense string) Result {
 		}
 		sr := SlotResult{Name: slot.Name}
 		for _, gloss := range slot.Glosses {
+			toks := tokens(gloss.Text)
+			if len(toks) == 0 {
+				// A gloss made of nothing but stopwords — جمع's "all", كثر's
+				// "most" — is an occurrence no sense can ever match, so it goes
+				// in the denominator and nowhere else. Dropping it there let a
+				// root clear the majority floor by keeping its own dominant
+				// branch out of the count: كثر's أَكْثَرُهُمْ is 73 occurrences,
+				// 44% of the root, and none of them were being counted.
+				res.Tested += gloss.N
+				continue
+			}
 			var residue []string
-			for _, t := range tokens(gloss.Text) {
+			for _, t := range toks {
 				if !strip[t] {
 					residue = append(residue, t)
 				}
@@ -297,6 +371,7 @@ func Check(root *Root, sense string) Result {
 			}
 			sr.Total++
 			res.Tested += gloss.N
+			answerable = append(answerable, tested{residue, gloss.N})
 			agreed := false
 			for _, a := range senseStems {
 				for _, b := range residue {
@@ -309,7 +384,12 @@ func Check(root *Root, sense string) Result {
 				sr.Agreed++
 				covered += gloss.N
 				res.Support = append(res.Support, Support{Word: gloss.Word, Gloss: gloss.Text, Slot: slot.Name})
-			} else if len(sr.Examples) < 4 {
+				continue
+			}
+			for _, b := range residue {
+				miss[b] += gloss.N
+			}
+			if len(sr.Examples) < 4 {
 				sr.Examples = append(sr.Examples, gloss.Text)
 			}
 		}
@@ -347,36 +427,83 @@ func Check(root *Root, sense string) Result {
 	}
 	if res.Tested > 0 {
 		res.Coverage = float64(covered) / float64(res.Tested)
+		for w, n := range miss {
+			if n > res.BranchN || (n == res.BranchN && w < res.BranchStem) {
+				res.BranchStem, res.BranchN = w, n
+			}
+		}
+		res.Branch = float64(res.BranchN) / float64(res.Tested)
 	}
 
 	res.Dispersion = NoUngrounded
-	for _, text := range clauseRe.Split(sense, -1) {
+	claimed := map[string]bool{}
+	for _, text := range strings.Split(sense, ";") {
 		c := Clause{Text: strings.TrimSpace(text)}
 		if c.Text == "" {
 			continue
 		}
-		grounded, seen := false, map[string]bool{}
-		for _, t := range tokens(c.Text) {
-			if seen[t] {
+		stems := tokens(c.Text)
+		grounded := false
+		for _, t := range stems {
+			if used[t] {
+				grounded = true
+			}
+		}
+		// What a clause adds is what it says that no earlier clause already
+		// said. Without that, "to say; to speak; a word, a saying" reads as
+		// leading with its minority branch, because the last clause repeats
+		// "saying" and so explains everything the first one did and more.
+		var adds []string
+		for _, t := range stems {
+			if !claimed[t] {
+				adds = append(adds, t)
+			}
+			claimed[t] = true
+		}
+		c.Covered = explained(answerable, adds)
+		seen := map[string]bool{}
+		for _, t := range stems {
+			if seen[t] || used[t] {
 				continue
 			}
 			seen[t] = true
-			if used[t] {
-				grounded = true
-				continue
-			}
-			c.Ungrounded = append(c.Ungrounded, Ungrounded{Stem: t, Roots: rootsUsing(t)})
-		}
-		for i := range c.Ungrounded {
-			c.Ungrounded[i].Rider = grounded
-			res.Ungrounded = append(res.Ungrounded, c.Ungrounded[i])
-			if grounded && c.Ungrounded[i].Roots < res.Dispersion {
-				res.Dispersion = c.Ungrounded[i].Roots
+			u := Ungrounded{Stem: t, Roots: rootsUsing(t), Measured: grounded || !company(t, used)}
+			c.Ungrounded = append(c.Ungrounded, u)
+			res.Ungrounded = append(res.Ungrounded, u)
+			if u.Measured && u.Roots < res.Dispersion {
+				res.Dispersion = u.Roots
 			}
 		}
 		res.Clauses = append(res.Clauses, c)
 	}
+
+	// The leading clause has to be the branch a reader is likeliest to meet.
+	// Coverage is a total and says nothing about order; this is the same
+	// arithmetic asked clause by clause.
+	res.Leads = true
+	for _, c := range res.Clauses {
+		if c.Covered > res.Clauses[0].Covered {
+			res.Leads = false
+		}
+	}
 	return res
+}
+
+// company reports whether the corpus ever glosses one root with both this word
+// and a word the root under test attests. It is the test for "an alternative
+// phrasing of something already attested", and it is a test the corpus answers
+// rather than a shape a clause can be built into: a word that keeps company
+// with nothing the root says is a wording of nothing.
+func company(word string, attested map[string]bool) bool {
+	rs := rootsOf(word)
+	for a := range attested {
+		for r := range rootsOf(a) {
+			if rs[r] {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // rootsUsing counts the roots the corpus glosses with a word. Matching goes
@@ -386,11 +513,11 @@ func Check(root *Root, sense string) Result {
 // ponytail: memoised linear scan of the stem index. A sense has a handful of
 // words and the index a few thousand stems; a prefix tree would be faster and
 // buy nothing measurable here.
-var dispersionCache = map[string]int{}
+var rootsCache = map[string]map[string]bool{}
 
-func rootsUsing(stem string) int {
-	if n, ok := dispersionCache[stem]; ok {
-		return n
+func rootsOf(stem string) map[string]bool {
+	if rs, ok := rootsCache[stem]; ok {
+		return rs
 	}
 	roots := map[string]bool{}
 	for g, rs := range dispersion {
@@ -401,6 +528,24 @@ func rootsUsing(stem string) int {
 			roots[r] = true
 		}
 	}
-	dispersionCache[stem] = len(roots)
-	return len(roots)
+	rootsCache[stem] = roots
+	return roots
+}
+
+func rootsUsing(stem string) int { return len(rootsOf(stem)) }
+
+// Content returns the distinct stems a sense makes its claim with, sorted, so
+// two senses can be compared as claims rather than as strings. "to argue; to
+// dispute" and "to dispute; to argue" are one claim written twice.
+func Content(sense string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, t := range tokens(sense) {
+		if !seen[t] {
+			seen[t] = true
+			out = append(out, t)
+		}
+	}
+	sort.Strings(out)
+	return out
 }

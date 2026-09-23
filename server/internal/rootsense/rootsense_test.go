@@ -146,6 +146,9 @@ func TestEveryFloorSitsInAGapBetweenTheTwoPopulations(t *testing.T) {
 	if sep.Bar.Dispersion <= 0 {
 		t.Error("no gap found on the dispersion axis")
 	}
+	if sep.Bar.Branch <= 0 || sep.Bar.Branch >= 1 {
+		t.Errorf("no gap found on the branch axis (ceiling %.3f)", sep.Bar.Branch)
+	}
 	if sep.Bar.Score >= sep.Right[0] {
 		t.Errorf("score floor %.3f is at or above the lowest right sense %.3f", sep.Bar.Score, sep.Right[0])
 	}
@@ -193,20 +196,123 @@ func TestCoverageCountsOccurrencesAndNotDistinctGlosses(t *testing.T) {
 	}
 }
 
-// A clause offered INSTEAD of the attested words is an alternative phrasing and
-// is already paid for in precision; a word bolted ONTO an attested clause is
-// the doctrinal rider. Holding both to the dispersion floor would reject "to
-// judge; to decide; to rule" for a word the corpus simply never uses.
-func TestWhollyUnattestedClauseIsNotCountedAsARider(t *testing.T) {
-	root := &Root{Letters: "test", Words: 4, Slots: []Slot{
-		{Name: "form-I", Glosses: []Gloss{{Text: "he prayed", N: 2}}},
-		{Name: "noun", Glosses: []Gloss{{Text: "the prayer", N: 2}}},
-	}}
-	if d := Check(root, "to pray; to supplicate").Dispersion; d != NoUngrounded {
-		t.Errorf("an unattested alternative phrasing read as a rider (dispersion %d)", d)
+// The hole the rider rule left. It spared any clause carrying no attested word,
+// on the grounds that such a clause is an alternative phrasing and precision
+// already pays for it. Pure invention carries no attested word either, so it
+// was spared too, and a sense could name the qiblah or Ramadan and ship.
+//
+// Company is what tells the two apart: the corpus glosses some root both "rule"
+// and "judge", and no root both "qiblah" and "pray".
+func TestInventedClauseIsMeasuredAndAnAlternativePhrasingIsNot(t *testing.T) {
+	roots, b := corpus(t), shipBar(t)
+
+	paraphrase := Check(roots["حكم"], "to judge; to decide; to rule")
+	for _, u := range paraphrase.Ungrounded {
+		if u.Measured {
+			t.Errorf("%q read as an invention; it is another wording of an attested idea (%d roots)",
+				u.Stem, u.Roots)
+		}
 	}
-	if d := Check(root, "to pray; to pray five times").Dispersion; d == NoUngrounded {
-		t.Error("a word bolted onto an attested clause was not read as a rider")
+
+	for _, sense := range []string{
+		"a prayer; to pray; to face the qiblah five times each day",
+		"a prayer; to pray; to pray toward Mecca",
+	} {
+		res := Check(roots["صلو"], sense)
+		if res.Dispersion >= b.Dispersion {
+			t.Errorf("%q passed the dispersion floor: %s/%d", sense, Disp(res.Dispersion), b.Dispersion)
+		}
+	}
+}
+
+// جمع's جَمِيع is glossed "all" and كثر's أَكْثَرُهُمْ is glossed "most", and
+// both are stopwords. Dropping a stopword-only gloss before the denominator let
+// each root clear the majority floor on a count its own majority branch was
+// missing from, and ship a sense that never named the word a reader meets.
+func TestStopwordOnlyGlossStaysInTheCoverageDenominator(t *testing.T) {
+	root := &Root{Letters: "test", Words: 100, Slots: []Slot{
+		{Name: "form-I", Glosses: []Gloss{{Text: "he gathered", N: 10}}},
+		{Name: "noun", Glosses: []Gloss{{Text: "all", N: 90}}},
+	}}
+	res := Check(root, "to gather; to collect")
+	if res.Tested != 100 {
+		t.Errorf("tested %d of 100 occurrences; the stopword-only gloss was dropped", res.Tested)
+	}
+	if res.Coverage > 0.5 {
+		t.Errorf("coverage %.3f: ninety occurrences the sense cannot explain counted as explained", res.Coverage)
+	}
+}
+
+// Coverage is a total, and a total can be a majority while a third of the root
+// sits in one branch nobody named: نفق explained its spending, cleared the
+// majority line, and left 34 of 111 occurrences glossed "hypocrite" — the title
+// word of Sūrah 63 — with nothing said about them.
+func TestUnnamedBranchIsRejectedByBranchAlone(t *testing.T) {
+	roots, b := corpus(t), shipBar(t)
+	for _, c := range Calibration {
+		if c.Axis != axisBranch {
+			continue
+		}
+		res := Check(roots[c.Root], c.Sense)
+		if res.Score < b.Score || res.Coverage <= b.Coverage || res.Dispersion < b.Dispersion || !res.Leads {
+			t.Errorf("%s %q is caught by another term; it is no longer a branch fixture "+
+				"(score %.3f cover %.3f disp %s leads %v)",
+				c.Root, c.Sense, res.Score, res.Coverage, Disp(res.Dispersion), res.Leads)
+		}
+		if res.Branch <= b.Branch {
+			t.Errorf("%s %q leaves %.3f of its root in one unnamed branch (%s x%d), at or under the ceiling %.3f",
+				c.Root, c.Sense, res.Branch, res.BranchStem, res.BranchN, b.Branch)
+		}
+	}
+}
+
+// The branch ceiling is placed between the right senses' worst unnamed branch
+// and the wrong senses' best. With no right sense carrying an unnamed branch
+// there is nothing below the wrong population, the ceiling collapses, and the
+// term rejects every sense while the Calibration still reports a separation.
+func TestBranchCeilingHasARightSenseAnchoringItFromBelow(t *testing.T) {
+	roots, b := corpus(t), shipBar(t)
+	for _, c := range Calibration {
+		if !c.Right {
+			continue
+		}
+		if br := Check(roots[c.Root], c.Sense).Branch; br > 0 && br <= b.Branch {
+			return
+		}
+	}
+	t.Fatalf("no right sense carries an unnamed branch under the ceiling %.3f; the axis is unanchored", b.Branch)
+}
+
+// A reader stops at the first clause. ملأ is met as ٱلْمَلَأ, the chiefs, three
+// times for every time it is met as filling, and a sense that names both and
+// leads with filling has told the reader the wrong thing first. Coverage is a
+// total and cannot see it.
+func TestSenseLeadingWithAMinorityBranchIsRejectedByTheLeadAlone(t *testing.T) {
+	roots, b := corpus(t), shipBar(t)
+	for _, c := range Calibration {
+		if c.Axis != axisLead {
+			continue
+		}
+		res := Check(roots[c.Root], c.Sense)
+		if res.Score < b.Score || res.Coverage <= b.Coverage || res.Dispersion < b.Dispersion || res.Branch > b.Branch {
+			t.Errorf("%s %q is caught by another term; it is no longer a lead fixture "+
+				"(score %.3f cover %.3f disp %s branch %.3f)",
+				c.Root, c.Sense, res.Score, res.Coverage, Disp(res.Dispersion), res.Branch)
+		}
+		if res.Leads {
+			t.Errorf("%s %q reads as leading with its dominant branch", c.Root, c.Sense)
+		}
+	}
+}
+
+// A later clause that repeats an earlier clause's word explains everything the
+// earlier one did and more. Measuring it that way made قول, whose first clause
+// covers 1622 of 1722 occurrences, read as leading with its minority branch.
+func TestAClauseIsMeasuredOnWhatItAddsAndNotOnWhatItRepeats(t *testing.T) {
+	res := Check(corpus(t)["قول"], "to say; to speak; a word, a saying")
+	if !res.Leads {
+		t.Errorf("clause coverage %v: the last clause was credited with the first clause's occurrences",
+			res.Clauses)
 	}
 }
 
@@ -354,6 +460,42 @@ func TestStemmingTwiceChangesNothing(t *testing.T) {
 		"forgiveness", "knowledge", "steadfastness", "provision", "bellies"} {
 		if once, twice := stem(w), stem(stem(w)); once != twice {
 			t.Errorf("stem(%q) = %q but stem(%q) = %q", w, once, once, twice)
+		}
+	}
+}
+
+// The gate asked for the POS:PN tag, on the reasoning that a root whose mass is
+// a proper noun needs the sense to name it. The tag is right about the problem
+// and too narrow to be the measure: it marks 26 roots of 1642, and none of نفق,
+// سجد, حجج, ثوب or طوي, whose heaviest unnamed branch is a derived noun tagged
+// as an ordinary one.
+//
+// What makes the branch term able to stand in for it is that a name is a word
+// in a gloss like any other, so the occurrences the tag would point at are the
+// occurrences the branch already counts. Where that breaks down is a name the
+// glosses spell in stopwords or in two letters — عود is glossed both "Aad" and
+// "Ad", and the shorter spelling falls under the tokenizer's three-letter
+// floor. The claim the term rests on is not that none of that happens, but that
+// no root hides enough of it to change a verdict.
+func TestNoProperNounBranchHidesEnoughMassToChangeAVerdict(t *testing.T) {
+	p, err := filepath.Abs(corpusPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names, nameable, err := LoadNames(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(names) == 0 {
+		t.Fatal("the corpus tags no proper nouns at all")
+	}
+	roots, b := corpus(t), shipBar(t)
+	for r, n := range names {
+		hidden := float64(n-nameable[r]) / float64(roots[r].Words)
+		if hidden > b.Branch {
+			t.Errorf("root %s hides %.3f of itself in proper nouns glossed in stopwords or two letters, "+
+				"above the branch ceiling %.3f; the tag would be the only way to see it",
+				r, hidden, b.Branch)
 		}
 	}
 }
