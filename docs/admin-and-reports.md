@@ -59,11 +59,23 @@ What it shows:
   parked writes IN AGGREGATE — the count, never whose
 - corpus version in the field, so a bug report can be tied to a build
 
-## Open, for the morning
+## Decided
 
-- Does a reader see their own reports answered, or is it one-way? One-way is
-  simpler; two-way is what makes people report a second time.
-- Does the admin app live in this repo or its own? It shares the schema and the
-  design system, which argues for here.
-- Is there a second admin beyond you? That decides whether roles are worth
-  building or whether "can reach it" is the whole authorisation model.
+**Reports are one-way.** A reader writes one and it goes; nothing comes back.
+Simpler, and it sets the expectation honestly rather than implying a
+correspondence nobody has committed to answering.
+
+**The admin app lives in this repo.** It shares the schema and the design
+system, so splitting it would mean two copies of both.
+
+**Roles come from Authentik, via the group the cluster already uses.**
+`platform-admins` — declared in
+`infra-bootstrap/gitops/bootstrap/authentik-blueprint-groups.yaml`, read by
+Grafana for `Admin` and by ArgoCD for `role:admin`. Wird's admin app becomes the
+third reader of one membership list. No roles table, no per-app user
+administration, nothing to keep in sync: being in the group is the whole
+authorisation model, exactly as it is for the other two.
+
+That also means there is no "admin user" concept inside Wird at all. The app's
+own `users` table stays what it is — readers — and an operator is simply
+somebody Authentik says is in the group.
