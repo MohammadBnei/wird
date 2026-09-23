@@ -76,3 +76,32 @@ Together they make 1a addressable rather than sequential.
 progress the same as one the walk served you? Decided for finding 2 that it
 does, because position is derived and understanding an aya is understanding it
 wherever you met it. Same answer should hold here.
+
+### 4. Tapping a word does not speak it, and nothing says long-press will
+
+**Where:** 1a, the word row. `study_screen.dart:466-467`.
+
+**What:** `onTap` opens the root panel, and only when the word has a root.
+`onLongPress` speaks the word. A reader taps a word expecting to hear it, gets
+a root panel or nothing at all, and never discovers the audio.
+
+**Why it is this way:** the design gives no per-word audio affordance — its 1a
+has one play button for the whole set, and underlined words that open roots.
+Per-word playback came from the plan's acceptance row ("long-press plays one
+word"), so it was added on the only gesture the design had left free. Nothing
+in the design signals it because the design never had it.
+
+**Shape of the gap:** a gesture conflict, not a missing feature — and the two
+actions are not actually in competition. Tapping a word means "tell me about
+this word", and speaking it and opening its root are both answers to that. The
+cleanest resolution is that one tap does both: the word sounds and its root
+panel swaps. That also fixes the dead case, where a word with no root has no
+tap action at all — it can still be spoken.
+
+Whatever gesture wins, discoverability is the real defect: a reader must be
+able to tell by looking that a word can be heard. Underlining currently means
+"has a root" and carries no audio meaning.
+
+**Constraint:** a word only speaks if its aya is cached. Uncached, the app
+shows the transliteration instead and plays nothing, deliberately — it must
+never spin. Whatever affordance is drawn has to be honest about that state.
