@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The recitation is fetched from its origin as it is needed, and the
+         reader's writes flush to the server when a signal returns. Flutter's
+         template grants this to debug and profile only, so a release build
+         silently had no network: prefetch swallows its errors by design, so
+         nothing surfaced except audio that never arrived. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="wird"
         android:name="${applicationName}"

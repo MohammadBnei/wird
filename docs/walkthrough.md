@@ -272,3 +272,75 @@ space a transport control needs.
 
 Finding 3, confirmed on the phone. The fix landed in the tree as 0e9eb57 after
 this APK was built; it has not been tested on a device yet.
+
+### 10. The release build had no network at all
+
+**Where:** `app/android/app/src/main/AndroidManifest.xml`.
+
+**What:** Flutter's template grants `android.permission.INTERNET` in the debug
+and profile manifests only. `main/` had none, so every release APK shipped
+with no network access.
+
+**Why nobody saw it:** the failure is silent by design. `AudioCache.prefetch`
+swallows its exceptions so audio can never spin or error mid-prayer — correct
+for screen 1b, and it means a total network outage looks exactly like an aya
+that has not been downloaded yet. The reported symptom was "a single tap only
+shows the transliteration", which is the honest uncached fallback doing its job
+over a cause nobody had suspected.
+
+Fixed. Worth noting the shape: a deliberate silent failure hid a real one. The
+plan's own rule — never spin, never error — is right, and it cost this.
+
+### 11. The sūra chooser exists and cannot be found
+
+**What the reader said:** "we cruelly lack a sourat chooser".
+
+**What is true:** the index was built and shipped in this very APK. It is
+reachable only from inside 1a's settings panel, which is collapsed by default.
+
+**Why:** the design draws no door to it. The navigation agent put it in the
+settings panel because "1a's chrome is fixed by its acceptance row", and said
+at the time that the choice was defensible but not good. The reader's verdict
+settles it: a feature nobody can find is a feature that does not exist.
+
+### 12. The settings panel is three unrelated things in a trenchcoat
+
+**What the reader said:** "the setting menu is terrible UX: we need a proper
+setting menu separated from the pray Aya chooser".
+
+**What is in it now:** display mode, reading order, microphone permission,
+Arabic size, "Pray this set", "Your passage", "Kept", parked writes, and
+"Sources and licences". That is preferences, navigation and actions in one
+collapsed drawer, because it was the only place the design left free.
+
+**Shape of the gap:** three different things need three different homes —
+preferences that are set and forgotten, navigation to other screens, and the
+act of entering a prayer. The last of those is the most wrongly placed: starting
+a prayer is the app's central act and it currently lives in a settings drawer.
+
+### 13. Tap and long-press are the wrong way round — the reader's revised call
+
+**Earlier decision, from walk one:** tap speaks the word, long-press opens the
+root. Built and shipped.
+
+**Revised, after using it:** single tap opens the ROOT; long-press plays the
+audio. The root is the far more frequent intent, and the frequent thing belongs
+on the cheaper gesture.
+
+This is a reversal and it is the right kind: the first call was made from a
+description, the second from use. Record both so nobody "fixes" it back.
+
+**And the part that stands whichever way round it goes:** there is no feedback
+showing which word's root is currently open. The underline ladder does mark it
+(`accent` for the selected word, `accent-700` for other rooted words) but on a
+phone that distinction is invisible. A reader cannot tell which word the panel
+below belongs to.
+
+### 14. From a root's derivatives, the reader cannot reach the aya
+
+**What the reader said:** "aya navigation through word of the root details is
+lacking."
+
+Finding 2 fixed the kin rows in 1a's own root panel. Screen 3a — the dial, with
+its list of derivatives and their references — still does not open them. Same
+gap, different screen, and 3a is where a reader actually studies a root.
