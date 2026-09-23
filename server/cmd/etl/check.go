@@ -3,7 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
+
+	"github.com/MohammadBnei/wird/server/internal/rootsense"
 )
 
 const (
@@ -84,5 +87,87 @@ func (c *Corpus) Check(full bool) error {
 		}
 		lastStart[aid] = s.StartMS
 	}
+
+	errs = append(errs, c.checkSenses()...)
 	return errors.Join(errs...)
+}
+
+// verseRef matches a verse citation in any of the shapes a reference is written
+// in. A verse reference inside a root's sense is the tafsir boundary crossed,
+// in machine-readable form: the sense has stopped being about the word.
+var verseRef = regexp.MustCompile(`\b\d{1,3}\s*:\s*\d{1,3}\b`)
+
+// checkSenses is the gate over the only prose in corpus.db that Wird wrote.
+// It re-derives every number rather than reading the ones the sense file
+// carries: a gate that trusts the figure written next to the claim checks
+// nothing. The file's scores are there for a reader, not for this.
+func (c *Corpus) checkSenses() []error {
+	if c.Senses == nil || len(c.Senses.Senses) == 0 {
+		return nil
+	}
+	var errs []error
+	if strings.TrimSpace(c.Senses.Attribution) == "" {
+		errs = append(errs, errors.New("the sense file carries no attribution, so corpus.db would "+
+			"ship authored prose a reader could mistake for a quoted lexicon"))
+	}
+
+	rows := make([]rootsense.WordRow, 0, len(c.Words))
+	for _, w := range c.Words {
+		rows = append(rows, rootsense.WordRow{Root: w.RootLetters, Gloss: w.GlossEn,
+			Text: w.TextAr, Form: w.Form, Morphology: w.Morphology})
+	}
+	roots := rootsense.Bucket(rows)
+	sep, err := rootsense.Calibrate(roots)
+	if err != nil {
+		return append(errs, fmt.Errorf("the senses cannot be checked against this corpus: %w", err))
+	}
+
+	// Sura names are transliterated Arabic and capitalised, so they cannot
+	// collide with a sense written in plain lower-case English. The match is
+	// case-sensitive for exactly that reason: "Sad" is a sura, "sad" is a word.
+	names := make([]string, 0, len(c.Surahs))
+	for _, s := range c.Surahs {
+		names = append(names, s.NameEn)
+	}
+
+	known := make(map[string]bool, len(c.Roots))
+	for _, r := range c.Roots {
+		known[r.Letters] = true
+	}
+
+	for _, s := range c.Senses.Senses {
+		where := fmt.Sprintf("root %s sense %q", s.Root, s.SenseEn)
+		if !known[s.Root] {
+			errs = append(errs, fmt.Errorf("%s: the roots table has no such root", where))
+			continue
+		}
+		if len(s.Support) == 0 {
+			errs = append(errs, fmt.Errorf("%s: no provenance, so nothing says which of the "+
+				"root's own words the sense was checked against", where))
+		}
+		for _, text := range []string{s.SenseEn, s.SenseFr} {
+			if m := verseRef.FindString(text); m != "" {
+				errs = append(errs, fmt.Errorf("%s: cites verse %s; a root's sense is a claim "+
+					"about the word and never about a verse", where, m))
+			}
+			for _, n := range names {
+				if strings.Contains(text, n) {
+					errs = append(errs, fmt.Errorf("%s: names the sura %s; a root's sense is a "+
+						"claim about the word and never about a verse", where, n))
+					break
+				}
+			}
+		}
+		res := rootsense.Check(roots[s.Root], s.SenseEn)
+		if !res.Verified(sep.Threshold) {
+			errs = append(errs, fmt.Errorf("%s: scores %.3f in %d of %d shapes against a threshold "+
+				"of %.3f; this corpus does not bear it out", where, res.Score, res.SlotsHit,
+				len(res.Slots), sep.Threshold))
+		}
+		if strings.TrimSpace(s.SenseFr) == "" {
+			errs = append(errs, fmt.Errorf("%s: no French, and a verified sense ships in both "+
+				"languages or neither", where))
+		}
+	}
+	return errs
 }

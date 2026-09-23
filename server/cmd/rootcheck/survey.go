@@ -6,12 +6,14 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+
+	"github.com/MohammadBnei/wird/server/internal/rootsense"
 )
 
 // Survey reports how much evidence exists to check against, before any sense
 // is proposed. A root with one slot has nothing to predict across and is
 // unverifiable whatever sense is offered for it.
-func Survey(w io.Writer, roots map[string]*Root) {
+func Survey(w io.Writer, roots map[string]*rootsense.Root) {
 	bySlots := map[int]int{}
 	byWords := map[string]int{}
 	checkable, oneWord, oneSlotManyGlosses := 0, 0, 0
@@ -97,7 +99,7 @@ var candidateRules = map[string][]string{
 
 // Reliability measures each candidate rule's English marker against the corpus
 // and prints how often it fires and how enriched it is.
-func Reliability(w io.Writer, roots map[string]*Root) {
+func Reliability(w io.Writer, roots map[string]*rootsense.Root) {
 	inSlot := map[string]map[string]int{}
 	slotTotal := map[string]int{}
 	overall := map[string]int{}
@@ -111,7 +113,7 @@ func Reliability(w io.Writer, roots map[string]*Root) {
 				slotTotal[s.Name]++
 				total++
 				seen := map[string]bool{}
-				for _, t := range wordRe.FindAllString(g, -1) {
+				for _, t := range rootsense.WordRe.FindAllString(g, -1) {
 					if seen[t] {
 						continue
 					}
@@ -150,7 +152,7 @@ func Reliability(w io.Writer, roots map[string]*Root) {
 }
 
 func usedMarker(slot, marker string) bool {
-	for _, m := range markers[slot] {
+	for _, m := range rootsense.Markers[slot] {
 		if m == marker {
 			return true
 		}

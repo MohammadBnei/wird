@@ -168,6 +168,18 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
+	// One row per root, word_id NULL: the existing authored-prose path the app
+	// already reads as RootReading.coreSense. French is carried in the sense
+	// file rather than here, because the column the app reads holds one string
+	// and adding a second would be a second storage path for the same claim.
+	if c.Senses != nil {
+		if err := insert(`INSERT INTO root_notes VALUES (?,NULL,?)`, len(c.Senses.Senses), func(i int) []any {
+			n := c.Senses.Senses[i]
+			return []any{n.Root, n.SenseEn}
+		}); err != nil {
+			return err
+		}
+	}
 	if err := insert(`INSERT INTO ayah_audio VALUES (?,?,?)`, len(c.Audio), func(i int) []any {
 		a := c.Audio[i]
 		return []any{a.AyahID, rec.Slug, a.RelPath}

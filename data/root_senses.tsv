@@ -1,0 +1,798 @@
+# Root senses, written by hand from each root's own words in the bundled corpus and
+# kept only where server/cmd/rootcheck could bear them out. Columns: root, plain
+# English sense, French. The French is a translation of the English that passed the
+# check and is never written independently: the corpus carries no French gloss to
+# check it against, so an independently written French sense would be a second
+# guess with no evidence behind it. A row with no French did not pass and ships
+# nothing; it is kept here so the refusal is visible rather than silently dropped.
+# Nothing here is quoted from or attributed to any lexicon or scholar, and nothing
+# here is a claim about a verse.
+قول	to say; to speak; to utter	dire ; parler ; proférer
+كون	to be; to come to be	
+أمن	to be secure; to trust; to be safe	être en sûreté ; se fier ; être à l'abri
+علم	to know; to have knowledge	savoir ; avoir la connaissance
+قوم	to stand; to rise; to stand firm	se tenir debout ; se lever ; tenir ferme
+أتي	to come; to arrive; to bring	venir ; arriver ; apporter
+كفر	to cover over; to deny; to be ungrateful	couvrir ; dénier ; être ingrat
+بين	to be clear; to make clear; to separate	être clair ; rendre clair ; séparer
+شيأ	to will; to wish	
+رسل	to send; to send forth	envoyer ; faire partir
+سمو	to name; to give a name	
+عذب	to punish; to torment	châtier ; tourmenter
+عمل	to do; to work; to act	faire ; travailler ; agir
+جعل	to make; to place; to put	
+رحم	to be merciful; to show mercy	être miséricordieux ; faire miséricorde
+رأي	to see; to look at; to perceive	
+كتب	to write; to inscribe; to prescribe	écrire ; inscrire ; prescrire
+هدي	to guide; to lead the way	guider ; montrer le chemin
+ظلم	to wrong; to do injustice	léser ; commettre l'injustice
+نفس	breath; the soul; the self	le souffle ; l'âme ; le soi
+قبل	to face; to accept; to receive	faire face ; accepter ; recevoir
+نزل	to descend; to come down; to send down	descendre ; venir d'en haut ; faire descendre
+ذكر	to remember; to mention; to call to mind	se souvenir ; mentionner ; rappeler à l'esprit
+حقق	to be true; to be due; a right	être vrai ; être dû ; un droit
+كذب	to lie; to deny as false	mentir ; démentir comme faux
+جيأ	to come; to bring	
+عبد	to serve; to worship	servir ; adorer
+أخذ	to take; to seize; to take hold of	prendre ; saisir ; s'emparer de
+خلق	to create; to bring into being	créer ; faire venir à l'existence
+وقي	to guard; to protect; to ward off	garder ; protéger ; prémunir
+أخر	to put back; to delay; to come last	
+أمر	to command; to order; an affair	commander ; ordonner ; une affaire
+بعد	to be far; to be distant	être loin ; être éloigné
+غفر	to cover over; to forgive	couvrir ; pardonner
+ولي	to be near; to turn toward; to befriend	
+دعو	to call; to summon; to pray to	appeler ; convoquer ; invoquer
+حكم	to judge; to decide; to rule	juger ; décider ; gouverner
+ملك	to own; to possess; to have power over	posséder ; détenir ; avoir pouvoir sur
+جنن	to cover over; to conceal	
+خير	to choose; to be better; good	choisir ; être meilleur ; le bien
+حسن	to be good; to be beautiful; to do well	être bon ; être beau ; bien faire
+نور	light; to give light	
+ضلل	to stray; to go astray; to lead astray	s'égarer ; se fourvoyer ; égarer
+سمع	to hear; to listen	entendre ; écouter
+بني	to build; to construct	bâtir ; construire
+حيي	to live; to be alive; to give life	
+خرج	to go out; to come forth; to bring out	sortir ; paraître au-dehors ; faire sortir
+صلح	to be sound; to be right; to set right	être sain ; être droit ; remettre en état
+تبع	to follow; to go after	suivre ; aller après
+قتل	to kill; to slay	tuer ; mettre à mort
+مثل	to be like; a likeness	être semblable ; une ressemblance
+شرك	to share; to associate as partner	partager ; associer comme partenaire
+قلب	to turn; to turn about; the heart	
+سوأ	to be evil; to be bad; evil	être mauvais ; être méchant ; le mal
+كثر	to be many; to be much; to increase	être nombreux ; être abondant ; augmenter
+موت	to die; to be dead	mourir ; être mort
+كبر	to be great; to be big; to grow great	être grand ; être gros ; devenir grand
+شهد	to witness; to be present; to testify	témoigner ; être présent ; attester
+نبأ	to inform; news	informer ; une nouvelle
+نصر	to help; to give victory	
+صدق	to be true; to be truthful; to confirm as true	être vrai ; être véridique ; confirmer comme vrai
+غير	to change; to alter	changer ; altérer
+وعد	to promise; a promise	promettre ; une promesse
+بصر	to see; to perceive; sight	voir ; percevoir ; la vue
+رود	to want; to seek; to intend	vouloir ; rechercher ; se proposer
+لقي	to meet; to encounter; to cast toward	rencontrer ; croiser ; jeter vers
+سلم	to be sound; to be safe; to submit	être sain ; être sauf ; se soumettre
+نعم	to be good; a favor; to bestow favor	être bon ; une faveur ; combler de faveurs
+دنو	to be near; to draw near; to be low	être proche ; s'approcher ; être bas
+قدر	to have power; to measure out; to decree	avoir le pouvoir ; mesurer ; décréter
+نذر	to warn; to vow	avertir ; faire vœu
+جمع	to gather; to collect; to bring together	rassembler ; recueillir ; réunir
+سأل	to ask; to question	demander ; interroger
+طوع	to obey; to comply willingly; to be able	obéir ; se plier de bon gré ; être capable
+نظر	to look; to see; to wait	regarder ; voir ; attendre
+عظم	to be great; to be mighty; a bone	être grand ; être puissant ; un os
+خلف	to come after; to succeed; to differ	venir après ; succéder ; différer
+دخل	to enter; to go in	entrer ; pénétrer
+خوف	to fear; to frighten	craindre ; effrayer
+بشر	to give good news; a human being	
+رزق	to provide; to grant provision	pourvoir ; accorder la subsistance
+عزز	to be mighty; to be strong; to prevail	
+جزي	to repay; to recompense; to avail	rétribuer ; récompenser ; servir à
+نفق	to spend; to spend out	dépenser ; faire la dépense
+أكل	to eat; to consume	manger ; consommer
+حسب	to reckon; to count; to think	compter ; calculer ; penser
+أجر	a reward; to hire	une récompense ; louer les services de
+فعل	to do; to act	
+وجد	to find; to come upon	
+عدو	to go beyond; to transgress; enmity	franchir la limite ; transgresser ; l'inimitié
+رجع	to return; to come back	
+فضل	to prefer; to favor; a bounty	préférer ; favoriser ; une largesse
+صبر	to hold fast; to be steadfast; to endure	tenir ferme ; être constant ; endurer
+أذن	to give leave; to permit; an ear	
+شدد	to be hard; to be strong; to bind tight	être dur ; être fort ; lier fermement
+ولد	to beget; to give birth; a child	
+دين	to owe; a debt; what is owed	
+صلو	to pray; a prayer	prier ; une prière
+أنس	a human being; mankind	
+صحب	to accompany; a companion	accompagner ; un compagnon
+بغي	to seek; to seek beyond what is right	chercher ; chercher au-delà du droit
+قرب	to be near; to draw near	être proche ; s'approcher
+حبب	to love; to hold dear	aimer ; tenir cher
+سبح	to swim; to glide along; to glorify	nager ; glisser en avançant ; glorifier
+سجد	to prostrate; to bow down	se prosterner ; s'incliner jusqu'à terre
+قرأ	to recite; to read	réciter ; lire
+توب	to turn back; to repent	
+خلد	to abide; to remain forever	demeurer ; rester à jamais
+نجو	to save; to deliver	sauver ; délivrer
+حرم	to forbid; to make sacred; to deprive	interdire ; rendre sacré ; priver
+سوي	to be even; to be equal; to make level	être uni ; être égal ; aplanir
+زوج	to pair; to join in a pair; a mate	apparier ; joindre en couple ; un conjoint
+عقب	to follow at the heel; to come after	
+عرض	to present; to expose to view; to turn aside	
+وجه	a face; to turn the face toward	
+وحي	to reveal; to inspire	révéler ; inspirer
+بلغ	to reach; to attain; to convey	atteindre ; parvenir à ; transmettre
+صوب	to hit; to befall; to strike	atteindre ; s'abattre sur ; frapper
+قلل	to be few; to be little	être peu nombreux ; être peu
+ألم	to be in pain; painful	
+شكر	to thank; to be grateful	remercier ; être reconnaissant
+كلم	to speak; a word	parler ; une parole
+ضرر	to harm; harm	nuire ; le dommage
+بأس	to be wretched; hardship; violence	être misérable ; la détresse ; la violence
+بيت	to pass the night; a house	passer la nuit ; une maison
+رضو	to be pleased; to be satisfied; approval	être satisfait ; agréer ; l'agrément
+غني	to be free of need; to be rich; to avail	être sans besoin ; être riche ; servir à
+فرق	to separate; to divide; to part	séparer ; diviser ; départager
+عرف	to know; to recognize; what is known as right	savoir ; reconnaître ; ce qui est reconnu comme bien
+علو	to be high; to rise high; to be exalted	être haut ; s'élever ; être exalté
+متع	to give enjoyment; to enjoy; a provision	
+وكل	to entrust; to put trust in; a trustee	confier ; s'en remettre à ; un garant
+سكن	to dwell; to be still; to settle	habiter ; être immobile ; s'établir
+ظنن	to think; to suppose; to assume	penser ; supposer ; conjecturer
+هلك	to perish; to destroy	périr ; anéantir
+بعث	to send forth; to raise up	
+كسب	to earn; to acquire by act	gagner ; acquérir par son acte
+جرم	to commit a crime; a crime	commettre un crime ; un crime
+وفي	to fulfil; to pay in full; to complete	accomplir ; payer intégralement ; parfaire
+خسر	to lose; loss	perdre ; la perte
+جري	to run; to flow	courir ; couler
+حمل	to carry; to bear; a load	porter ; supporter ; une charge
+تلو	to recite; to follow in order	réciter ; suivre dans l'ordre
+حمد	to praise; praise	louer ; la louange
+ذوق	to taste	goûter
+سحر	magic; to bewitch	la magie ; ensorceler
+عود	to return; to go back; to repeat	revenir ; retourner ; recommencer
+قضي	to decide; to decree; to bring to an end	décider ; décréter ; mener à son terme
+زيد	to increase; to add	augmenter ; ajouter
+مسس	to touch	toucher
+غيب	to be absent; to be hidden; the unseen	être absent ; être caché ; l'invisible
+فتن	to try; to test; a trial	éprouver ; mettre à l'épreuve ; une épreuve
+فري	to invent; to fabricate	inventer ; fabriquer de toutes pièces
+ردد	to turn back; to return; to repel	
+زكو	to be pure; to purify	être pur ; purifier
+ظهر	to be apparent; to appear; a back	être apparent ; se montrer ; un dos
+ضرب	to strike; to beat	frapper ; battre
+روح	wind; breath; spirit	
+عدد	to count; to number	compter ; dénombrer
+أجل	a term; an appointed time	un terme ; un délai fixé
+ذهب	to go; to go away; gold	
+نهي	to forbid; to restrain; to cease	interdire ; retenir ; cesser
+دور	to go round; a house	
+فسق	to depart from right; to disobey defiantly	sortir du droit ; désobéir ouvertement
+ندو	to call; to call out; an assembly	appeler ; héler ; une assemblée
+ضعف	to be weak; to be made manifold	
+حلل	to untie; to be lawful; to alight	dénouer ; être licite ; faire halte
+طيب	to be good; to be pure; pleasant	
+فسد	to be corrupt; to spoil	être corrompu ; se gâter
+نفع	to benefit; to profit	profiter ; être utile
+أثم	to sin; a sin	pécher ; un péché
+خشي	to fear; to dread	craindre ; redouter
+طعم	to eat; to feed; food	manger ; nourrir ; la nourriture
+قدم	to go before; to precede; a foot	aller devant ; précéder ; un pied
+عجل	to hasten; to hurry	se hâter ; se presser
+كرم	to be noble; to honor	être noble ; honorer
+زين	to adorn; to make fair-seeming	parer ; faire paraître beau
+صدر	the breast; to go forth	
+عهد	to make a covenant; a covenant	conclure un pacte ; un pacte
+صبح	morning; to enter upon morning	le matin ; entrer dans le matin
+نسي	to forget	oublier
+بدل	to change; to exchange; to put one thing in place of another	changer ; échanger ; mettre une chose à la place d'une autre
+حفظ	to guard; to preserve	garder ; préserver
+دبر	the back; to turn the back	
+سرر	to conceal; a secret	dissimuler ; un secret
+يسر	to be easy; to make easy	être aisé ; rendre aisé
+ترك	to leave; to leave behind	laisser ; laisser derrière soi
+جوب	to answer; to respond	répondre ; faire réponse
+حشر	to gather; to drive together	rassembler ; pousser ensemble
+فصل	to separate; to set apart; to make distinct	
+فوق	to be above; above	
+مكر	to plot; a plot	comploter ; un complot
+حزن	to grieve; grief	s'affliger ; l'affliction
+سخر	to mock; to make subservient	railler ; assujettir
+صدد	to turn away; to hinder from	
+قوي	to be strong; strength	
+جهد	to strive; to exert effort	s'efforcer ; déployer son effort
+طوف	to go round; to circle about	
+كره	to dislike; to be averse; to compel	avoir en aversion ; répugner à ; contraindre
+لعن	to curse; a curse	maudire ; une malédiction
+شعر	to perceive; to be aware	percevoir ; être averti
+فلح	to succeed; to prosper	réussir ; prospérer
+ملأ	to fill; to be full	remplir ; être plein
+سلط	authority; to give power over	
+شرب	to drink; a drink	boire ; une boisson
+طغي	to overflow; to exceed all bounds	
+بلو	to test; to try	éprouver ; mettre à l'épreuve
+فتح	to open; to decide	ouvrir ; trancher
+قرر	to settle; to come to rest; to remain fixed	
+هوي	to fall; to incline toward; desire	tomber ; pencher vers ; le désir
+سبق	to go before; to outstrip	
+نكر	to not know; to reject; what is disapproved	ne pas connaître ; récuser ; ce qui est réprouvé
+أوي	to take refuge; to give shelter	
+بطل	to be vain; to be false; falsehood	être vain ; être faux ; la fausseté
+حدث	to come about anew; to relate; a report	survenir de nouveau ; raconter ; un récit
+ريب	doubt; to be in doubt	le doute ; être dans le doute
+قرن	to join together; a companion	joindre ensemble ; un compagnon
+قطع	to cut; to cut off; to sever	couper ; retrancher ; trancher
+عفو	to pardon; to pass over	pardonner ; passer sur
+غفل	to be heedless; to be unaware	être inattentif ; être insouciant
+كيد	to plot; to scheme	comploter ; ourdir
+مرر	to pass by; a time	passer ; une fois
+ورث	to inherit; to leave as inheritance	hériter ; laisser en héritage
+جنح	to incline; to lean	
+خفي	to be hidden; to conceal	être caché ; dissimuler
+هزأ	to mock; to ridicule	railler ; tourner en dérision
+وثق	to bind fast; a bond	lier fermement ; un lien
+جنب	the side; to keep away from	
+حجج	to argue; to dispute	argumenter ; disputer
+ظلل	shade; to overshadow	l'ombre ; couvrir de son ombre
+عرش	a throne; to raise a structure	
+عمي	to be blind; blindness	être aveugle ; la cécité
+قسم	to divide; to apportion; to swear	partager ; répartir ; jurer
+كفي	to suffice; to be enough	
+برر	to be dutiful; to do good	être pieux envers ; faire le bien
+برك	to bless; blessing	bénir ; une bénédiction
+عصي	to disobey	
+مدد	to stretch out; to extend; to supply	étendre ; prolonger ; fournir
+نصب	to toil; to grow weary; to set upright	
+وري	to cover over; to hide behind	recouvrir ; se cacher derrière
+وسع	to be wide; to encompass; abundance	être vaste ; embrasser ; l'abondance
+وصي	to enjoin; to charge with a duty	enjoindre ; charger d'un devoir
+بدو	to appear; to become apparent	paraître ; devenir manifeste
+برأ	to be clear of; to be free of; to bring into being	être quitte de ; être exempt de ; faire exister
+خلص	to be pure; to be unmixed; to devote purely	
+شفع	to intercede; to make a pair	
+طهر	to be clean; to purify	être net ; purifier
+غلب	to overcome; to prevail	vaincre ; l'emporter
+قعد	to sit; to sit down	s'asseoir ; rester assis
+لبث	to remain; to stay	demeurer ; s'attarder
+هجر	to forsake; to leave one's home	délaisser ; quitter sa demeure
+أفك	to turn away from truth; a lie	
+سعي	to strive; to run	
+صرف	to turn away; to divert	
+قصص	to relate; to narrate	raconter ; narrer
+ثني	to fold; two	
+جدل	to argue; to dispute	argumenter ; disputer
+دري	to know; to be aware	savoir ; être averti
+رفع	to raise; to lift up	élever ; soulever
+صير	to come to; a final destination	
+طير	to fly; a bird	voler ; un oiseau
+غشو	to cover over; to overwhelm	recouvrir ; submerger
+فوز	to attain; to win through	obtenir ; l'emporter
+ودد	to love; affection	
+ثقل	to be heavy; a weight	être lourd ; un poids
+ثوب	to reward; a recompense	récompenser ; une rétribution
+حوط	to encompass; to surround	embrasser ; entourer
+خلو	to pass by; to be empty of	
+رجو	to hope; to expect	espérer ; s'attendre à
+شقق	to split; to cleave; to oppose	fendre ; cliver ; s'opposer
+عدل	to be just; justice	être juste ; la justice
+نشأ	to bring into being; to grow up	faire naître ; grandir
+يقن	to be certain; certainty	être certain ; la certitude
+سير	to travel; to journey	voyager ; cheminer
+شجر	a tree	
+عجب	to wonder; to be amazed	s'étonner ; être émerveillé
+عشر	ten; to keep company	
+غرر	to deceive; to delude	tromper ; abuser
+مسك	to hold fast; to withhold	tenir ferme ; retenir
+منن	to bestow a favor; a favor	accorder une faveur ; une faveur
+وزر	to bear a burden; a burden	porter un fardeau ; un fardeau
+خزي	to disgrace; disgrace	couvrir de honte ; la honte
+عجز	to be unable; to escape beyond reach	être incapable ; échapper hors d'atteinte
+نبت	to grow; to bring forth growth; a plant	
+هون	to be light; to be lowly; to humiliate	être léger ; être de peu ; humilier
+وضع	to put down; to lay down; a place	déposer ; poser ; un emplacement
+بسط	to spread out; to stretch out	étendre ; déployer
+بطن	the belly; the inward; to be hidden within	le ventre ; le dedans ; être caché au-dedans
+حدد	iron; a limit; to oppose	le fer ; une limite ; s'opposer
+حضر	to be present; to attend	être présent ; assister
+حول	to turn about; around	
+سقي	to give to drink; to water	
+شري	to sell; to buy; to exchange one for another	vendre ; acheter ; échanger l'un contre l'autre
+صلي	to burn; to be scorched	brûler ; être consumé
+قسط	justice; to be just; to act justly	la justice ; être juste ; agir avec équité
+وعظ	to admonish; to exhort	admonester ; exhorter
+وهب	to give freely; to bestow	
+أذي	to harm; to hurt	nuire ; blesser
+ثمر	fruit; to bear fruit	le fruit ; porter du fruit
+جهل	to be ignorant; ignorance	être ignorant ; l'ignorance
+ذلل	to be lowly; to be made submissive	
+رقب	to watch; to keep watch; a neck	guetter ; surveiller ; un cou
+عمر	to build up; to live long; a lifetime	bâtir et entretenir ; vivre longtemps ; une vie
+غضب	to be angry; anger	se courroucer ; la colère
+فجر	to break open; to gush forth; dawn	fendre ; jaillir ; l'aube
+مرض	to be ill; illness	être malade ; la maladie
+وقع	to fall; to befall	tomber ; survenir
+سرع	to be swift; to hasten	être rapide ; se hâter
+سرف	to go beyond bounds; to be extravagant	dépasser la mesure ; être prodigue
+طلق	to let go; to set free; to divorce	laisser aller ; libérer ; répudier
+غرق	to drown; to be submerged	se noyer ; être submergé
+لبس	to clothe; to cover over so as to confuse	vêtir ; recouvrir au point de brouiller
+مشي	to walk; to go on foot	
+نكح	to marry; marriage	épouser ; le mariage
+وزن	to weigh; a weight	peser ; un poids
+ألف	to join in familiarity; a thousand	unir par la familiarité ; mille
+تمم	to complete; to be complete	achever ; être achevé
+خطأ	to err; a fault	se tromper ; une faute
+غوي	to go astray; to lead astray; error	s'égarer ; égarer ; l'égarement
+فرح	to rejoice; to exult	se réjouir ; exulter
+أثر	a trace; to prefer one over another	une trace ; préférer l'un à l'autre
+بقي	to remain; to last	demeurer ; durer
+حجر	a stone; to forbid access	une pierre ; interdire l'accès
+حذر	to beware; to be on guard	
+سنن	a way; a beaten path	
+فتي	a youth; to give a ruling	
+مني	to desire; to wish for	désirer ; souhaiter
+نشر	to spread out; to scatter; to raise up again	déployer ; disperser ; faire relever
+درج	a step; a rank; to go by degrees	
+ربو	to grow; to increase; to swell	croître ; augmenter ; enfler
+صنع	to make; to do with skill	
+فطر	to split open; to originate	
+فقه	to understand; to grasp deeply	comprendre ; saisir en profondeur
+كشف	to uncover; to remove	découvrir ; ôter
+لعب	to play; play	jouer ; le jeu
+مري	to dispute; to be in doubt	contester ; être dans le doute
+نزع	to pull out; to draw out; to contend over	
+نفخ	to blow; to breathe into	souffler ; insuffler
+رشد	to be rightly guided; right conduct	être bien guidé ; la droiture
+سعر	to blaze; a blaze	
+صور	to shape; to form; a form	façonner ; former ; une forme
+طلع	to rise; to come up; to look out upon	se lever ; monter ; porter le regard sur
+غرب	to set; the west	se coucher ; l'ouest
+فكه	fruit; to take delight	
+ثبت	to be firm; to make firm	être ferme ; affermir
+حصن	to guard; to be fortified; to be chaste	garder ; être fortifié ; être chaste
+خصم	to dispute; an opponent	contester ; un adversaire
+فرض	to appoint as due; an obligation	fixer comme dû ; une obligation
+فكر	to think; to ponder	
+مكن	to establish firmly; to give a firm place	
+ملل	a way followed; to dictate	
+نفر	to go forth; a band of men	partir au-dehors ; un groupe d'hommes
+نوب	to turn back; to return repeatedly	
+أوب	to return; a return	
+بوأ	to settle in a place; to take a dwelling	
+خشع	to be humbled; to be lowly	être abaissé ; être humble
+خفف	to be light; to lighten	être léger ; alléger
+ربص	to wait; to await	
+زعم	to claim; a claim	prétendre ; une prétention
+سور	a wall; an enclosure	un mur ; une enceinte
+سوق	to drive; to drive along; a leg	pousser devant soi ; mener ; une jambe
+شرق	to rise; the east	
+صفو	to choose as pure; to select	
+عوذ	to seek refuge	chercher refuge
+منع	to prevent; to withhold	empêcher ; refuser
+نقم	to take retribution; to resent	tirer vengeance ; s'indigner de
+جهر	to be loud; to speak openly	être haut ; parler ouvertement
+حبط	to come to nothing; to be made vain	
+خبث	to be bad; to be foul	être mauvais ; être immonde
+خون	to betray; treachery	trahir ; la traîtrise
+سطر	to write in lines; a written line	écrire en lignes ; une ligne écrite
+عتد	to make ready; ready	
+علن	to make public; openly	
+غدو	morning; to go forth in the morning	le matin ; partir au matin
+غلل	to shackle; to bind in fetters	entraver ; lier de fers
+كيل	to measure; a measure	mesurer ; une mesure
+لهو	to divert; to distract; amusement	divertir ; distraire ; le divertissement
+مهد	to spread out flat; a bed	étendre à plat ; un lit
+بدأ	to begin; to originate	commencer ; être à l'origine de
+بيع	to sell; a sale; to pledge	vendre ; une vente ; prêter serment
+حرر	to set free; heat	affranchir ; la chaleur
+ركب	to ride; to mount	monter ; enfourcher
+سوم	to mark; a mark	marquer ; une marque
+صمم	to be deaf; deafness	être sourd ; la surdité
+كفف	to restrain; to hold back	
+مطر	rain; to send rain	la pluie ; faire pleuvoir
+ثوي	to dwell; an abode	demeurer ; une demeure
+حرث	to till; to sow; a tilth	labourer ; semer ; un labour
+رجم	to stone; to drive away with stones	
+رسو	to be firmly set; to anchor	être solidement fixé ; mouiller l'ancre
+زرع	to sow; to grow crops	semer ; faire pousser des cultures
+صفف	to set in a row; a rank	ranger en file ; un rang
+صوم	to fast; a fast	jeûner ; un jeûne
+عشو	evening; the fall of night	
+عطو	to give; a gift	
+فقر	to be poor; poverty	
+لوم	to blame; blame	blâmer ; le blâme
+وصف	to describe; to ascribe	
+ولج	to enter; to make enter	
+جلد	skin; to flog	la peau ; fouetter
+جور	a neighbor; to give protection	
+حلف	to swear; an oath	jurer ; un serment
+خزن	to store up; a treasury	
+ركع	to bow; to bow down	s'incliner ; se courber
+شهو	to desire; lust	désirer ; la convoitise
+صغر	to be small; to be made low	
+ضيق	to be narrow; to be straitened	être étroit ; être à l'étroit
+طمن	to be at rest; to be content	être en repos ; être apaisé
+عصم	to hold fast; to protect from harm	se tenir ferme à ; préserver du mal
+غلظ	to be thick; to be harsh; to be stern	être épais ; être rude ; être sévère
+فدي	to ransom; a ransom	racheter ; une rançon
+قرض	to lend; a loan	prêter ; un prêt
+قنت	to be devoutly obedient	être dévotement obéissant
+نصح	to give sincere counsel; to advise	
+وقت	an appointed time	un temps fixé
+يأس	to despair; to give up hope	
+بخل	to withhold; to be stingy	retenir ; être avare
+بيض	to be white; white	être blanc ; blanc
+جبي	to gather; to single out by choosing	
+حسر	to regret; regret	
+خطب	to address; a speech	s'adresser à ; un discours
+خوض	to wade in; to engage in idle talk	s'enfoncer dans ; se livrer aux propos vains
+درك	to overtake; to reach	rattraper ; atteindre
+رهب	to fear; to dread	craindre ; redouter
+سجن	to imprison; a prison	emprisonner ; une prison
+سفر	to uncover; to travel	
+شبه	to resemble; a likeness	
+شقو	to be wretched; to suffer	être misérable ; souffrir
+شمل	to comprise; the left side	
+شيع	to follow as a party; a sect	
+طمع	to long for; to covet	
+عذر	an excuse; to make excuse	une excuse ; s'excuser
+عسر	to be hard; hardship	
+كنن	to cover; to conceal; a shelter	couvrir ; dissimuler ; un abri
+نبذ	to cast away; to throw off	
+نطق	to speak; to utter	parler ; proférer
+نيل	to attain; to reach	
+وصل	to join; to reach; to connect	joindre ; atteindre ; relier
+أيد	to strengthen; strength	fortifier ; la force
+حرب	to wage war; war	faire la guerre ; la guerre
+حصي	to count; to take full account of	
+رضع	to suckle; to nurse	allaiter ; nourrir au sein
+سبب	a rope; a means of access	
+سحب	a cloud; to drag along	un nuage ; traîner
+سفه	to be foolish; folly	être insensé ; la sottise
+شفق	to be in awe; to be afraid	être saisi de crainte ; avoir peur
+صعق	a thunderbolt; to be struck senseless	
+طبع	to seal; to set a seal upon	sceller ; apposer un sceau sur
+طرق	a path; to come by night	un chemin ; venir de nuit
+عون	to help; to aid	aider ; secourir
+غيظ	rage; to enrage	la fureur ; mettre en fureur
+فرر	to flee; flight	fuir ; la fuite
+قصر	to shorten; to fall short	raccourcir ; rester en deçà
+لغو	vain talk; to be idle in speech	les propos vains ; parler à vide
+ورد	to come to water; to arrive at	venir à l'eau ; arriver à
+وقد	to kindle; fuel	allumer ; le combustible
+وكأ	to recline; to lean upon	s'accouder ; s'appuyer sur
+بطش	to seize violently; a seizing	saisir avec violence ; une prise
+دفع	to push back; to repel	repousser ; écarter
+دمر	to destroy; destruction	détruire ; la destruction
+رعي	to pasture; to tend; to observe	paître ; prendre soin ; observer
+رهق	to overtake and cover; to burden	envelopper en surprenant ; accabler
+زلف	to bring near; nearness	rapprocher ; la proximité
+زيل	to cease; to part	
+سفل	to be low; the lowest part	être bas ; la partie la plus basse
+سود	to be black; black	être noir ; noir
+ضحك	to laugh; laughter	rire ; le rire
+طول	to be long; length	être long ; la longueur
+عتو	to be insolent; to rebel	être insolent ; se révolter
+عزل	to set aside; to keep apart	mettre à part ; tenir à l'écart
+قدس	to be holy; to hallow	être saint ; sanctifier
+قهر	to subdue; to overpower	
+كفل	to take charge of; to be surety for; a portion	
+ملو	to grant a respite; a long stretch of time	accorder un répit ; une longue durée
+نقص	to lessen; to diminish	diminuer ; amoindrir
+بثث	to scatter; to spread abroad	
+برز	to come forth; to be made manifest	
+حرق	to burn; to set aflame	brûler ; embraser
+حلي	ornament; to be adorned	une parure ; être paré
+خيل	a horse; horses	
+دوم	to last; to continue	
+ذبح	to slaughter; to sacrifice	égorger ; sacrifier
+زني	to commit fornication; fornication	forniquer ; la fornication
+زيغ	to swerve; to deviate	dévier ; s'écarter
+سبت	to rest; a day of rest	
+سرق	to steal; a thief	voler ; un voleur
+صعد	to ascend; to go up	
+عبر	to pass over; to take a lesson from	
+عرج	to ascend; to mount up	
+عزم	to resolve; to be determined	se résoudre ; être déterminé
+عكف	to stay devoted; to keep to a place	demeurer attaché ; se tenir en un lieu
+غنم	sheep; what is gained as spoil	des moutons ; ce qui est gagné comme butin
+فرج	an opening; a cleft	
+فضض	to disperse; to break apart	
+فيض	to overflow; to pour forth	déborder ; se répandre
+قبض	to grasp; to take in the hand	saisir ; prendre en main
+قذف	to hurl; to cast	
+كنز	to hoard; a treasure	thésauriser ; un trésor
+نقض	to undo; to break what was made fast	
+نوم	to sleep; sleep	
+همم	to purpose; to be intent upon	
+وقر	a heavy load; heaviness	
+وهن	to be weak; weakness	être faible ; la faiblesse
+بهت	to confound; a slander	
+ترف	to live in ease; luxury	vivre dans l'aisance ; le luxe
+حجب	to veil; a screen	
+ختم	to seal; a seal	sceller ; un sceau
+خضر	to be green; green	être vert ; vert
+خول	to bestow; to put in charge of	
+دلل	to point out; to direct to	
+رجف	to quake; to shake	trembler ; s'ébranler
+رغب	to desire; to turn toward with longing	
+سري	to travel by night	
+سقط	to fall; to cause to fall	tomber ; faire tomber
+سلف	to have gone before; what is past	avoir précédé ; ce qui est passé
+صفح	to overlook; to turn away from a fault	
+صلب	to crucify; the backbone	crucifier ; l'échine
+ضرع	to humble oneself; to abase oneself	s'humilier ; s'abaisser
+عقر	to hamstring; to be barren	couper les jarrets ; être stérile
+غبر	to remain behind; dust	rester en arrière ; la poussière
+فرط	to neglect; to fall short of	
+قبر	a grave; to bury	une tombe ; ensevelir
+كلف	to burden; to impose a task	charger ; imposer une tâche
+لطف	to be subtle; to be gentle	
+بخس	to diminish; to give less than due	
+برج	a tower; to display openly	une tour ; s'exposer ouvertement
+بكي	to weep; weeping	pleurer ; les pleurs
+خطف	to snatch away	
+دكك	to crush; to level flat	écraser ; aplanir
+سرح	to let go; to release to pasture	laisser aller ; envoyer au pâturage
+سكر	to be intoxicated; intoxication	
+ضحو	forenoon; the bright morning	
+عصف	to blow violently; a blast	souffler violemment ; une rafale
+عقد	to tie a knot; a knot	
+علق	a clinging thing; to cling	
+عمد	a pillar; a support	
+غرف	a chamber; to scoop up	
+فيأ	to return; to come back	
+قسو	to be hard; hardness	être dur ; la dureté
+مكث	to stay; to tarry	
+موج	a wave; to surge	une vague ; déferler
+ندم	to regret; regret	se repentir ; le regret
+نسك	a rite of worship	
+نكث	to break what was twisted; to break a pledge	
+وعي	to hold within; to be mindful of	
+أدي	to deliver; to render what is due	
+أسر	to take captive; a captive	faire prisonnier ; un captif
+برق	lightning; to flash	
+تبر	to destroy; destruction	détruire ; la destruction
+ثقف	to gain the upper hand; to come upon	
+حرف	an edge; to turn aside from it	
+حسس	to perceive by the senses; to sense	
+حصد	to reap; a harvest	moissonner ; une moisson
+حصر	to hem in; to restrain	
+حطم	to crush; to break to pieces	broyer ; briser en morceaux
+حمي	to be hot; to burn hot	
+خلط	to mix; to mingle	mêler ; mélanger
+دأب	to persist in a course; a wonted way	persévérer dans une voie ; une habitude
+درس	to study; to learn by repeated reading	étudier ; apprendre par la lecture répétée
+ردي	to fall to ruin; to perish	tomber en ruine ; périr
+رصد	to lie in wait; a watch-post	
+زجر	to drive away with a shout; a rebuke	
+زلزل	to shake violently; a quaking	ébranler violemment ; un tremblement
+زور	falsehood; what is false	
+شفي	to heal; a healing	guérir ; une guérison
+صرر	to persist obstinately	
+صيد	to hunt; game	chasser ; le gibier
+ضوأ	to give light; light	
+ضيف	a guest; to receive as guest	
+غرم	a debt; a loss to be paid	une dette ; une perte à payer
+فخر	to boast; boasting	se vanter ; la vantardise
+فرش	to spread out; a couch	étendre ; une couche
+فرغ	to be empty; to finish; to pour out	être vide ; achever ; verser
+فزع	to be terrified; terror	être terrifié ; la terreur
+قصد	to keep to a middle course; to aim at	
+قنط	to despair	désespérer
+كظم	to hold in; to suppress grief	
+كلب	a dog	
+لحد	to turn aside; to deviate	
+لحق	to join; to catch up with	rejoindre ; rattraper
+مرج	to let loose; to mingle freely	
+مهل	to grant time; a respite	accorder du temps ; un répit
+ميل	to incline; to lean	
+نزغ	to prick; to sow discord	
+وطأ	to tread; to set foot upon	
+أسف	to grieve; sorrow	
+برد	to be cool; coolness	être frais ; la fraîcheur
+بلس	to be struck dumb with despair	rester muet de désespoir
+بور	to perish; to come to nothing	
+ثبر	destruction; to be destroyed	la destruction ; être détruit
+جلو	to make clear; to uncover	
+جوز	to pass across; to pass over	traverser ; passer outre
+جوع	to be hungry; hunger	avoir faim ; la faim
+حرص	to be eager; to covet	
+حسد	to envy; envy	envier ; l'envie
+حصب	to pelt with stones	
+خدع	to deceive	tromper
+خرص	to guess; to speak by conjecture	
+خيب	to fail; to be disappointed	échouer ; être déçu
+درأ	to push away; to avert	
+دهن	oil; to be smooth and pliant	
+ربط	to bind fast; to make firm	
+رفق	ease; a gentle companion	
+زهق	to depart; to perish away	
+شرع	to ordain a way; an ordained way	tracer une voie ; une voie tracée
+صبب	to pour; to pour down	verser ; verser en abondance
+صدع	to split; to break asunder	
+صدف	to turn away from	
+صرخ	to cry out for help	crier au secours
+صفر	to turn yellow; yellow	
+طرد	to drive away; to cast out	
+طمس	to blot out; to efface	
+طوي	to fold; to fold up	plier ; replier
+عتب	to seek to be restored to favor	chercher à rentrer en grâce
+عصر	to press; to squeeze out	
+عنت	to be in distress; to suffer hardship	
+غوث	to call for help; to be relieved	appeler au secours ; être secouru
+فوت	to escape; to slip away	
+قتر	to be stinting; to be sparing	
+قدد	to tear lengthwise; to cut into strips	
+قرف	to commit; to earn by doing	commettre ; acquérir par son acte
+قفو	to follow after; to send one after another	
+كسو	to clothe; clothing	vêtir ; le vêtement
+كمل	to be complete; to be whole	être complet ; être entier
+لزم	to cling fast; to be binding	
+لمس	to touch; to feel with the hand	
+لوي	to twist; to turn aside	
+لين	to be soft; to be gentle	être doux ; être souple
+مرد	to persist stubbornly	
+مضي	to go on; to pass on	
+ميد	to sway; to shake	
+نسف	to scatter to dust; to blow away	
+نشز	to rise up; to be raised	se dresser ; être relevé
+نفد	to be exhausted; to run out	
+نقذ	to rescue; to snatch to safety	
+نكل	to shackle; to hold back	
+هزز	to shake; to stir	secouer ; agiter
+وجل	to be afraid; fear	avoir peur ; la crainte
+وزع	to set in ranks; to hold in order	
+وسط	the middle; to be in the middle	
+وسوس	to whisper; a whisper	chuchoter ; un chuchotement
+أفل	to set; to sink from sight	se coucher ; disparaître de la vue
+بدع	to originate anew; a new thing	
+تبب	to perish; ruin	périr ; la ruine
+جرح	to wound; a wound	
+جهز	to equip; to furnish with supplies	équiper ; pourvoir de provisions
+حيض	to menstruate; menstruation	avoir ses règles ; les règles
+خسأ	to be driven off; to be abased	
+خصص	to single out; to set apart for	
+خفض	to lower; to bring down	abaisser ; faire descendre
+دحر	to drive away; to repel	
+دحض	to be refuted; to slip away as false	
+دلو	to let down; a bucket	faire descendre ; un seau
+رتل	to recite in measured order	réciter d'une voix mesurée
+رحب	to be spacious; a welcome	
+رقي	to ascend; to climb	monter ; gravir
+ركن	to lean upon; a support	
+زلل	to slip; to cause to slip	glisser ; faire glisser
+زول	to move away; to cease	
+سحت	to destroy utterly	
+سخط	to be angry; displeasure	
+سرب	to slip away; to go freely	
+سفح	to pour out; to pour forth	
+سمن	to be fat; fat	
+سيل	to flow; a torrent	couler ; un torrent
+شور	to consult; consultation	consulter ; la consultation
+طلب	to seek; to seek after	chercher ; être en quête de
+طوق	to encircle the neck; to have strength for	entourer le cou ; avoir la force de
+عفف	to abstain; to be chaste	
+غسق	darkness; the fall of darkness	l'obscurité ; la tombée de la nuit
+غسل	to wash; to wash clean	
+غيث	rain; to be given rain	
+فلق	to cleave; to split open	
+فور	to boil up; to gush forth	
+قنطر	a heaped amount of wealth	
+لجج	to persist; a deep water	s'obstiner ; une eau profonde
+لمز	to find fault; to taunt	
+مزق	to tear to pieces; to scatter	
+مسح	to wipe; to pass the hand over	essuyer ; passer la main sur
+ميز	to separate; to set apart one from another	séparer ; distinguer l'un de l'autre
+نسخ	to copy; to replace one thing by another	
+نسل	to bring forth offspring; to hasten forth	
+هيأ	to make ready; a shape	
+ودع	to leave; to forsake	
+وفق	to bring into accord; to grant success	
+وقف	to make stand; to halt	faire tenir debout ; arrêter
+يبس	to be dry; dry	être sec ; sec
+أزف	to draw near	
+أسس	to lay a foundation	poser une fondation
+بذر	to squander; to scatter wastefully	
+جثو	to kneel	
+حرض	to urge on; to incite	
+حضض	to urge; to press one another	exhorter ; s'exhorter l'un l'autre
+حلق	to shave the head	se raser la tête
+خبت	to be humble; to submit lowly	être humble ; se soumettre humblement
+خذل	to forsake; to leave without help	abandonner ; laisser sans secours
+خفت	to lower the voice; to be hushed	
+دعع	to thrust away; to repel roughly	
+ذرو	to scatter; to winnow	disperser ; vanner
+ردف	to follow close behind	
+رقم	to write; an inscription	
+ركم	to heap up; a heap	amonceler ; un amas
+زجو	to drive along	
+ستر	to cover; a covering	
+سجر	to fill to overflowing	remplir à déborder
+سلخ	to strip off; to draw off	
+سلل	to draw out gently; an extract	
+سوغ	to be easy to swallow; palatable	être aisé à avaler ; agréable au goût
+سيح	to travel about; to go forth over the land	
+شطط	to go to excess; an excess	
+شكو	to complain; a complaint	se plaindre ; une plainte
+شنأ	to hate; hatred	
+صبو	to incline; a child	pencher vers ; un enfant
+صرم	to cut off; to pluck	trancher ; cueillir
+ظمأ	to thirst; thirst	avoir soif ; la soif
+عبس	to frown	
+عرو	a handhold; to lay hold of	
+عري	to be bare; to be uncovered	
+فتر	to slacken; to abate	
+فسح	to make room; to make wide	faire place ; élargir
+فقد	to miss; to find absent	
+قبس	to take a brand of fire; a firebrand	
+كبت	to abase; to bring low	
+كور	to wind round; to wrap up	enrouler ; envelopper
+لذذ	to be delicious; delight	être délicieux ; le délice
+لفت	to turn away; to turn back	
+لفف	to wind together; to gather in a mass	
+مرح	to be exultant; to be insolent in joy	exulter ; être insolent de joie
+مور	to sway; to move in waves	
+نثر	to scatter; to strew	éparpiller ; joncher
+نضد	to lay in layers; to arrange in order	disposer par couches ; ranger en ordre
+نضر	to be radiant; radiance	être resplendissant ; l'éclat
+نقب	to bore through; to pierce a way	
+نكس	to turn upside down; to reverse	
+هزم	to rout; to defeat	mettre en déroute ; défaire
+أزر	to strengthen; strength	fortifier ; la force
+أزز	to incite; to stir up	inciter ; exciter
+بتل	to devote oneself wholly	se consacrer entièrement
+برم	to resolve firmly; to determine	résoudre fermement ; arrêter une décision
+بسر	to scowl; to look sour	
+بسس	to crumble; to be crumbled	s'émietter ; être réduit en miettes
+بطر	to exult insolently	
+جذذ	to cut in pieces; pieces	
+جزع	to be distressed; to lose patience	
+جنف	to swerve; to incline wrongly	
+حجز	to bar; a barrier	
+حظر	to fence in; to restrict	enclore ; restreindre
+حفف	to surround; to border about	entourer ; border tout autour
+حنث	to break an oath	
+خرب	to ruin; to lay waste	
+خضع	to be lowly; to be submissive	
+دول	to pass from hand to hand; to alternate	
+رجج	to shake; a shaking	secouer ; une secousse
+رفد	a gift; what is given	
+ركس	to turn back; to overturn	
+زحزح	to move away; to draw aside	
+زلق	to slip; slippery	glisser ; glissant
+زود	to take provision; provision	
+سبغ	to make full; ample	
+سعد	to be glad; happiness	être heureux ; le bonheur
+شخص	to stare fixedly	fixer du regard
+شغل	to occupy; to keep busy	occuper ; tenir affairé
+شوي	to scorch; to roast	
+طعن	to stab; to defame	percer ; diffamer
+ظفر	to gain victory; a claw	remporter la victoire ; une griffe
+عبث	to do in vain; idle sport	
+عتل	to drag roughly; harsh	
+عثر	to come upon; to be discovered	
+عطل	to be left untended; to be abandoned	être laissé sans soin ; être abandonné
+عيل	to be in need; poverty	être dans le besoin ; la pauvreté
+غلي	to boil	bouillir
+غوص	to dive	
+غيض	to subside; to fall short	décroître ; faire défaut
+فكك	to free; to loosen	
+قحم	to plunge into; to rush upon	
+قدو	to follow an example	suivre un exemple
+قلي	to detest; to be displeased with	détester ; prendre en aversion
+قوت	sustenance; to provide sustenance	
+قيل	to rest at midday; a midday resting-place	
+كبب	to fall on the face; to be cast down	tomber la face contre terre ; être précipité
+كدح	to labor; to toil	
+نشط	to draw out; to pull forth	
+نكب	to turn aside; to deviate from a path	
+هور	to collapse; to crumble down	s'effondrer ; s'ébouler
+هيم	to roam thirsting	errer assoiffé
+وبق	to destroy; to perish	
+وجف	to throb; to ride hard	
+وسق	to gather in; to be full	
+وسم	to mark; to brand	
