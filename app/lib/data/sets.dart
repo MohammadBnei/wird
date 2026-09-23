@@ -205,6 +205,34 @@ Future<StudySet?> nextSet(
       )
       .toList();
 
+  return _setFrom(db, order, taken);
+}
+
+/// The one aya at [ayahId], wherever the reader is in the walk.
+///
+/// A reference the reader followed — a kin, a row in the index — is one aya
+/// and not a set the walk proposed, so it is shown where it stands. Marking it
+/// understood counts like any other mark: the walk's position is derived from
+/// `ayah_understood`, so it recomputes around the hole rather than being moved
+/// by the visit.
+Future<StudySet?> ayaSet(Database db, ReadingOrder order, int ayahId) async {
+  final rows = await db.rawQuery('''
+    SELECT a.id, a.surah_id, a.number,
+           s.name_en, s.name_ar, s.revelation_order, s.revelation_place,
+           (u.ayah_id IS NOT NULL) AS understood
+      FROM ayahs a
+      JOIN surahs s ON s.id = a.surah_id
+      LEFT JOIN ayah_understood u ON u.ayah_id = a.id
+     WHERE a.id = ?''', [ayahId]);
+  return rows.isEmpty ? null : _setFrom(db, order, rows);
+}
+
+/// The ayas these rows name, with their words read in one query.
+Future<StudySet> _setFrom(
+  Database db,
+  ReadingOrder order,
+  List<Map<String, Object?>> taken,
+) async {
   final byAya = <int, List<StudyWord>>{for (final r in taken) r['id']! as int: []};
   final marks = List.filled(byAya.length, '?').join(',');
   final wordRows = await db.rawQuery(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
+import 'package:wird/features/index/index_screen.dart';
 import 'package:wird/features/kept/kept_screen.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/progress/passage.dart';
@@ -137,12 +138,14 @@ void main() {
     );
   });
 
-  testWidgets('"All 114" leads nowhere, so the kept list cannot be reached '
-      'from the passage', (tester) async {
+  testWidgets('"All 114" opens the kept list instead of the 114 sūras it '
+      'names', (tester) async {
     await open(tester);
     await tester.tap(find.text('All 114'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(KeptScreen), findsOneWidget);
+    expect(find.byType(IndexScreen), findsOneWidget);
+    expect(find.byType(KeptScreen), findsNothing);
   });
+
 }

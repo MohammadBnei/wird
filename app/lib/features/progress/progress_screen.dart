@@ -38,6 +38,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
     if (mounted) setState(() => _passage = passage);
   }
 
+  /// "All 114" means all 114 sūras, which is the index and not the kept list.
+  /// The aya the reader picks there is passed down to screen 1a, the one screen
+  /// that reads an aya, rather than opened on top of this one.
+  Future<void> _openIndex() async {
+    final chosen = await Navigator.of(context).pushNamed(Routes.index);
+    if (mounted && chosen != null) Navigator.of(context).pop(chosen);
+  }
+
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
@@ -212,7 +220,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
             NocturneButton(
               variant: NocturneButtonVariant.ghost,
-              onPressed: () => Navigator.of(context).pushNamed(Routes.kept),
+              onPressed: _openIndex,
               child: const Text('All 114', style: TextStyle(fontSize: 11)),
             ),
           ],

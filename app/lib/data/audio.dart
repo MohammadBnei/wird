@@ -100,19 +100,28 @@ Future<List<AyaTrack>> tracksFor(Database db, List<int> ayahIds) async {
   ];
 }
 
-/// The recitation files screen 1a keeps on disk: the set being studied and
-/// the set after it. Pinning only the current set leaves the cap free to
-/// evict the very set the reader is about to be handed.
+/// The recitation files screen 1a keeps on disk: the set being studied and,
+/// while the reader is [onTheWalk], the set after it. Pinning only the current
+/// set leaves the cap free to evict the very set the reader is about to be
+/// handed.
 Future<List<String>> pathsToKeep(
   Database db,
   ReadingOrder order,
-  StudySet current,
-) async {
+  StudySet current, {
+  bool onTheWalk = true,
+}) async {
   final currentIds = [for (final aya in current.ayas) aya.id];
-  final ahead = await nextSet(db, order, alsoUnderstood: currentIds.toSet());
+  // An aya the reader asked for has no set after it. [nextSet] does not know
+  // the reader went to it and would answer with the WALK's next set, so every
+  // jump would download a set nobody is looking at — and unpin the aya that is
+  // on screen to make room for it.
+  final ahead = onTheWalk
+      ? await nextSet(db, order, alsoUnderstood: currentIds.toSet())
+      : null;
   final tracks = await tracksFor(db, [
     ...currentIds,
-    if (ahead != null) for (final aya in ahead.ayas) aya.id,
+    if (ahead != null)
+      for (final aya in ahead.ayas) aya.id,
   ]);
   return [for (final track in tracks) track.relPath];
 }
@@ -176,7 +185,10 @@ class AudioCache {
   /// ponytail: the audio sits beside the database rather than behind
   /// path_provider, which is not in the stack table. On iOS that directory is
   /// the documents directory already.
-  static Future<AudioCache> beside(String databasesPath, {String? origin}) async {
+  static Future<AudioCache> beside(
+    String databasesPath, {
+    String? origin,
+  }) async {
     final dir = Directory('$databasesPath/audio');
     await dir.create(recursive: true);
     return AudioCache(dir, origin: origin ?? defaultAudioOrigin);
@@ -187,6 +199,19 @@ class AudioCache {
   final int capBytes;
   final FetchBytes _fetch;
   final _pinned = <String>{};
+
+  /// Which prefetch owns the pins. A download outlives the screen state that
+  /// asked for it — a reader who jumps to an aya and moves on again leaves one
+  /// in flight — and the pins it set are no longer what is on screen.
+  int _request = 0;
+
+  /// Changes whenever a file arrives in the cache or leaves it, so a screen
+  /// can hold an answer about what is downloaded instead of asking the
+  /// filesystem once per word per frame. The directory's own timestamp rather
+  /// than a counter, because the answer has to follow the disk however the
+  /// file got there.
+  DateTime get revision =>
+      dir.existsSync() ? dir.statSync().modified : DateTime.utc(0);
 
   /// The origin names the reciter's own directory and the corpus path carries
   /// the reciter as a folder, so only the file name joins the two.
@@ -205,12 +230,18 @@ class AudioCache {
   /// cache back under the cap. Going offline mid-set leaves the rest of the
   /// set unplayable; it never throws into the screen.
   Future<void> prefetch(Iterable<String> relPaths) async {
+    final request = ++_request;
     _pinned
       ..clear()
       ..addAll(relPaths.map(_name));
     await dir.create(recursive: true);
     final now = DateTime.now();
+    var written = false;
     for (final rel in relPaths) {
+      // A later prefetch has taken the pins, which means the screen is showing
+      // something else now. Finishing this one would download what nobody is
+      // reading and then sweep away what they are.
+      if (_request != request) return;
       final file = fileFor(rel);
       if (file.existsSync()) {
         file.setLastModifiedSync(now);
@@ -218,12 +249,20 @@ class AudioCache {
       }
       try {
         final body = await _fetch('$origin${_name(rel)}');
-        if (body.isNotEmpty) await file.writeAsBytes(body, flush: true);
+        if (body.isEmpty) continue;
+        await file.writeAsBytes(body, flush: true);
+        written = true;
       } on Exception {
         continue;
       }
     }
-    _evict();
+    // Nothing was written, so the cache cannot have passed its cap and there is
+    // nothing to sweep. The sweep is synchronous file I/O over every file on
+    // disk, and screen 1a prefetches on every aya the reader jumps to: without
+    // this, a jump to an aya already downloaded would stat hundreds of files
+    // and then delete the set the reader was walking, since only the jumped-to
+    // aya is pinned by the time it runs.
+    if (written && _request == request) _evict();
   }
 
   void _evict() {
@@ -255,6 +294,9 @@ class SetAudio {
   /// never touches an audio platform channel.
   AudioPlayer? _player;
   StreamSubscription<Duration>? _positions;
+  var _speakable = <int>{};
+  DateTime? _speakableAt;
+  var _speaking = 0;
 
   /// Every aya of the set is on disk, so play will not reach for the network.
   bool get ready =>
@@ -269,7 +311,8 @@ class SetAudio {
     if (!ready) return;
     final player = _player ??= AudioPlayer();
     await player.setAudioSources([
-      for (final track in tracks) AudioSource.file(cache.fileFor(track.relPath).path),
+      for (final track in tracks)
+        AudioSource.file(cache.fileFor(track.relPath).path),
     ]);
     _listen(player);
     playing.value = true;
@@ -278,24 +321,60 @@ class SetAudio {
     currentWordId.value = null;
   }
 
+  /// The words that would sound if the reader tapped them: every word of an
+  /// aya whose file is on disk. Held against the cache's revision rather than
+  /// recomputed, because `cached` is an `existsSync` and the word row rebuilds
+  /// every 40 ms while the set plays.
+  Set<int> get speakable {
+    if (_speakableAt != cache.revision) {
+      _speakableAt = cache.revision;
+      _speakable = {
+        for (final track in tracks)
+          if (cache.cached(track.relPath) != null)
+            for (final span in track.segments) span.wordId,
+      };
+    }
+    return _speakable;
+  }
+
   /// Plays one word out of its aya's file. False means that file was never
-  /// downloaded: the caller shows the transliteration, and nothing spins.
+  /// downloaded, or the platform refused it: the caller shows the
+  /// transliteration, and nothing spins.
+  ///
+  /// A tap is the gesture now, so the reader's next word arrives while this
+  /// one is still sounding — `play()` answers when the clip ENDS, not when it
+  /// starts. The word already sounding is stopped first, so its future is
+  /// settled before the next word takes the highlight, and the token keeps a
+  /// superseded word from clearing the highlight of the word that superseded
+  /// it.
   Future<bool> playWord(int wordId) async {
     final found = locate(tracks, wordId);
     if (found == null) return false;
     final file = cache.cached(found.track.relPath);
     if (file == null) return false;
-    final player = _player ??= AudioPlayer();
-    await player.setAudioSource(AudioSource.file(file.path));
-    await player.setClip(
-      start: clipStart(found.span.startMs),
-      end: Duration(milliseconds: found.span.endMs),
-    );
-    currentWordId.value = wordId;
-    playing.value = true;
-    await player.play();
-    playing.value = false;
-    currentWordId.value = null;
+    final token = ++_speaking;
+    try {
+      final player = _player ??= AudioPlayer();
+      await player.pause();
+      await player.setAudioSource(AudioSource.file(file.path));
+      await player.setClip(
+        start: clipStart(found.span.startMs),
+        end: Duration(milliseconds: found.span.endMs),
+      );
+      if (token != _speaking) return true;
+      currentWordId.value = wordId;
+      playing.value = true;
+      await player.play();
+    } on Exception {
+      // A platform that refuses the clip is the silent case, not a crash
+      // under the reader's finger.
+      return false;
+    } finally {
+      if (token == _speaking) {
+        playing.value = false;
+        currentWordId.value = null;
+      }
+    }
     return true;
   }
 

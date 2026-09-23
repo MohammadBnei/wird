@@ -8,6 +8,7 @@ import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/about/about_screen.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
+import 'package:wird/features/index/index_screen.dart';
 import 'package:wird/features/kept/kept_screen.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/features/progress/progress_screen.dart';
@@ -59,7 +60,9 @@ void main() {
     // What each screen is opened on. Declared here so a route added with no
     // caller able to open it fails this test instead of crashing in a hand.
     final destinations = <String, ({Object? arguments, Type screen})>{
-      Routes.study: (arguments: null, screen: StudyScreen),
+      // The argument is the aya screen 1a opens on, rather than the set the
+      // walk would have handed the reader.
+      Routes.study: (arguments: 2153, screen: StudyScreen),
       Routes.prayer: (arguments: set, screen: PrayerScreen),
       Routes.root: (arguments: 'علق', screen: RootScreen),
       Routes.rootSpine: (arguments: 'علق', screen: RootSpineScreen),
@@ -70,6 +73,7 @@ void main() {
       Routes.progress: (arguments: null, screen: ProgressScreen),
       Routes.kept: (arguments: null, screen: KeptScreen),
       Routes.about: (arguments: null, screen: AboutScreen),
+      Routes.index: (arguments: null, screen: IndexScreen),
     };
     expect(destinations.keys.toSet(), screens.keys.toSet());
 
@@ -100,6 +104,7 @@ void main() {
       'Pray this set': PrayerScreen,
       'Your passage': ProgressScreen,
       'Kept': KeptScreen,
+      'Sūra index': IndexScreen,
     };
     for (final door in doors.entries) {
       await tester.tap(find.text(door.key));
@@ -111,7 +116,7 @@ void main() {
   });
 
   testWidgets('coming back from a root leaves the set on the word the reader '
-      'tapped, not on the one it opened with', (tester) async {
+      'pressed, not on the one it opened with', (tester) async {
     final rooted = [
       for (final aya in set.ayas)
         for (final word in aya.words)
@@ -122,7 +127,8 @@ void main() {
     final detail = (await rootDetail(db, tapped.root!))!;
 
     await openApp(tester);
-    await tester.tap(find.byKey(ValueKey(tapped.id)));
+    // The long press is what opens a root now; the tap speaks the word.
+    await tester.longPress(find.byKey(ValueKey(tapped.id)));
     await tester.pumpAndSettle();
     expect(find.text(detail.display), findsOneWidget);
 
@@ -137,6 +143,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(StudyScreen), findsOneWidget);
     expect(find.text(detail.display), findsOneWidget);
+  });
+
+  testWidgets('a reader who wants Al-Fātiḥa is stuck with whatever set the '
+      'walk hands them', (tester) async {
+    await openApp(tester);
+    expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.tune));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sūra index'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('sura-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('aya-1005')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IndexScreen), findsNothing);
+    expect(find.textContaining('Al-Fatihah 5'), findsOneWidget);
+  });
+
+  testWidgets('the index opened from the passage hands its aya to a second '
+      'reader stacked on the first, each holding a live player', (tester) async {
+    await openApp(tester);
+    await tester.tap(find.byIcon(Icons.tune));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Your passage'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All 114'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('sura-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('aya-1005')));
+    await tester.pumpAndSettle();
+
+    // Down to the one screen that reads an aya, not up onto a second one.
+    expect(find.byType(StudyScreen), findsOneWidget);
+    expect(find.byType(ProgressScreen), findsNothing);
+    expect(find.textContaining('Al-Fatihah 5'), findsOneWidget);
   });
 
   testWidgets('the app goes down on the frame the corpus finishes opening, so '

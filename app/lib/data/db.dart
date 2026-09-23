@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -6,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'outbox.dart';
+import 'root_repo.dart';
 import 'sets.dart';
 
 const _corpusAsset = 'assets/corpus.db';
@@ -222,8 +222,9 @@ Future<void> setReadingOrder(Database db, ReadingOrder order) =>
       );
     });
 
-/// A word that shares the root, with the gloss it was given.
-typedef Kin = ({String text, String? gloss});
+/// A word that shares the root, with the gloss it was given and the aya it is
+/// first met in.
+typedef Kin = ({String text, String? gloss, int ayahId});
 
 class RootDetail {
   const RootDetail({
@@ -242,35 +243,32 @@ class RootDetail {
   final List<Kin> kin;
 }
 
+/// What screen 1a's root panel says about the root of the word just tapped.
+///
+/// [rootReading] is authoritative about what a kin is, and the panel takes its
+/// four from there rather than running a second query of its own. It used to
+/// group the raw `text_ar`, which keeps the pause mark the corpus stores on the
+/// word it follows — so one derivative counted as two, and the panel and the
+/// root screen disagreed about the same root while both looked right.
+///
+/// A kin's aya is where that form is **first met in the muṣḥaf**, not the
+/// nearest occurrence to the reader. A form that occurs eighty times has no one
+/// aya, and the first is the only one that can be named without inventing a
+/// rule the reader cannot see.
 Future<RootDetail?> rootDetail(Database db, String letters) async {
-  final rows = await db.query(
-    'roots',
-    where: 'letters = ?',
-    whereArgs: [letters],
-    limit: 1,
-  );
-  if (rows.isEmpty) return null;
-  final root = rows.first;
-  // ponytail: four kin, the number the study panel has room for. The root
-  // screen's dial raises this to eight, and the spine layout is what reads all
-  // 103 derivatives of a big root.
-  final kin = await db.rawQuery(
-    '''SELECT text_ar, MIN(gloss_en) AS gloss_en
-         FROM words
-        WHERE root_letters = ?
-        GROUP BY text_ar
-        ORDER BY COUNT(*) DESC
-        LIMIT 4''',
-    [letters],
-  );
+  final reading = await rootReading(db, letters);
+  if (reading == null) return null;
   return RootDetail(
-    display: root['display']! as String,
-    translit: root['translit']! as String,
-    occurrences: root['quran_occurrences']! as int,
-    sources: (jsonDecode(root['sources']! as String) as List).cast<String>(),
+    display: reading.display,
+    translit: reading.translit,
+    occurrences: reading.occurrences,
+    sources: reading.sources,
+    // ponytail: four kin, the number the study panel has room for. The root
+    // screen's dial raises this to eight, and the spine layout is what reads
+    // all 103 derivatives of a big root.
     kin: [
-      for (final k in kin)
-        (text: k['text_ar']! as String, gloss: k['gloss_en'] as String?),
+      for (final d in reading.derivatives.take(4))
+        (text: d.text, gloss: d.gloss, ayahId: d.ayahId),
     ],
   );
 }
