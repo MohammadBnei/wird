@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
@@ -12,6 +14,7 @@ import 'package:wird/features/progress/progress_screen.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/features/root/root_spine_screen.dart';
 import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/main.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/theme/nocturne.dart';
 
@@ -132,6 +135,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(StudyScreen), findsOneWidget);
     expect(find.text(detail.display), findsOneWidget);
+  });
+
+  testWidgets('the app goes down on the frame the corpus finishes opening, so '
+      'the reader never reaches the set', (tester) async {
+    final opening = Completer<Database>();
+    await tester.pumpWidget(WirdApp(corpus: opening.future));
+    await tester.pump();
+    opening.complete(db);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(StudyScreen), findsOneWidget);
   });
 
   testWidgets('the progress screen admits it is not built rather than showing '

@@ -8,7 +8,12 @@ import 'theme/nocturne.dart';
 void main() => runApp(const WirdApp());
 
 class WirdApp extends StatefulWidget {
-  const WirdApp({super.key});
+  const WirdApp({super.key, this.corpus});
+
+  /// The corpus, already open. Supplied by the test that has to prove the
+  /// frame shown while it opens hands over to the navigator without taking
+  /// the app down.
+  final Future<Database>? corpus;
 
   @override
   State<WirdApp> createState() => _WirdAppState();
@@ -17,7 +22,7 @@ class WirdApp extends StatefulWidget {
 class _WirdAppState extends State<WirdApp> {
   /// First launch copies the 24 MB corpus out of the bundle, so the first
   /// screen waits on a file copy rather than on a network call.
-  late final Future<Database> _db = openWird();
+  late final Future<Database> _db = widget.corpus ?? openWird();
 
   @override
   Widget build(BuildContext context) => FutureBuilder<Database>(
@@ -34,6 +39,10 @@ class _WirdAppState extends State<WirdApp> {
   /// Every screen reads the corpus, so until it opens there is nothing to
   /// route to and these frames are a bare app rather than the navigator.
   Widget _beforeTheCorpus(Widget body) => MaterialApp(
+    // Keyed apart from the navigator's app: without that, Flutter updates one
+    // MaterialApp into the other and the route built around this `home` is
+    // rebuilt against an app that no longer has one.
+    key: const ValueKey('opening the corpus'),
     title: 'Wird',
     theme: nocturneTheme(),
     home: Scaffold(
