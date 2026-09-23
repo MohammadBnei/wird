@@ -68,7 +68,7 @@ void main() {
       await launchFresh(tester);
       final before = ayasOnScreen(tester);
 
-      await tester.tap(markSetUnderstood(tester));
+      await finishSet(tester);
       await waitFor(
         tester,
         () => ayasOnScreen(tester).intersection(before).isEmpty,

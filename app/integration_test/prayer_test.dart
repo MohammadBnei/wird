@@ -24,7 +24,7 @@ void main() {
             'starting Wird for the first time was handed something else',
       );
 
-      await tester.tap(markSetUnderstood(tester));
+      await finishSet(tester);
       await waitFor(
         tester,
         () => ayasOnScreen(tester).intersection(first).isEmpty,
@@ -46,7 +46,7 @@ void main() {
         'the root of a word in the second set',
       );
 
-      await tester.tap(markSetUnderstood(tester));
+      await finishSet(tester);
       await waitFor(
         tester,
         () => ayasOnScreen(tester).intersection(first.union(second)).isEmpty,
@@ -88,7 +88,7 @@ void main() {
         );
         expectNoSpinnerAndNoApology(tester, 'after opening a root offline');
 
-        await tester.tap(markSetUnderstood(tester));
+        await finishSet(tester);
         await waitFor(
           tester,
           () => ayasOnScreen(tester).intersection(first).isEmpty,

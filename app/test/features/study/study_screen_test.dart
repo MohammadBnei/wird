@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -6,6 +8,7 @@ import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/nav.dart';
 import 'package:wird/theme/nocturne.dart';
 import 'package:wird/widgets/nocturne_button.dart';
 
@@ -50,6 +53,13 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // Screen 1b stands in as a bare page: what is under test is that 1a
+        // records the prayer when it gets the reader back, whatever 1b did.
+        onGenerateRoute: (settings) => MaterialPageRoute<void>(
+          builder: (_) => settings.name == Routes.prayer
+              ? const Scaffold(body: Text('praying'))
+              : StudyScreen(db: db, audioCache: audio),
+        ),
         home: StudyScreen(db: db, audioCache: audio),
       ),
     );
@@ -59,6 +69,14 @@ void main() {
   Future<void> openSettings(WidgetTester tester) async {
     await tester.tap(find.byIcon(Icons.tune));
     await tester.pumpAndSettle();
+  }
+
+  /// Pulls the set's end out one aya at a time, the way the reader does.
+  Future<void> widen(WidgetTester tester, int times) async {
+    for (var i = 0; i < times; i++) {
+      await tester.tap(find.byKey(const Key('widen set')));
+      await tester.pumpAndSettle();
+    }
   }
 
   testWidgets('a set that crosses a sūra boundary drops the ayas on the far '
@@ -220,16 +238,110 @@ void main() {
     expect(find.textContaining('advances on a tap'), findsOneWidget);
   });
 
-  testWidgets('marking the set understood serves it again, and queues nothing '
-      'for the server', (tester) async {
+  testWidgets('the reader is carried off the set the moment they mark it, '
+      'before the marks they just made are on screen', (tester) async {
     await openStudy(tester);
     expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
 
     await tester.tap(find.text('Mark set understood'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining("Al-'Alaq 6"), findsOneWidget);
+    expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
+    expect(find.text('Every aya in this set is understood'), findsOneWidget);
     expect((await db.query('outbox')).length, 1);
     expect((await db.query('ayah_understood')).length, 5);
+
+    await tester.tap(find.text('Next set'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining("Al-'Alaq 6"), findsOneWidget);
+  });
+
+  testWidgets('the set the reader pulled wider is five ayas again when they '
+      'come back to screen 1a', (tester) async {
+    await openStudy(tester);
+    await openSettings(tester);
+    expect(find.text('5 ayas'), findsOneWidget);
+
+    await widen(tester, 3);
+    expect(find.textContaining("Al-'Alaq 1–8"), findsOneWidget);
+
+    // Away from 1a and back, which is where an in-memory width is lost.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await openStudy(tester);
+
+    expect(find.textContaining("Al-'Alaq 1–8"), findsOneWidget);
+  });
+
+  testWidgets('the second set the reader marks is thrown away, because it is '
+      'queued under the op id the first one already used', (tester) async {
+    await openStudy(tester);
+    await openSettings(tester);
+    await widen(tester, 3);
+
+    await tester.tap(find.text('Mark set understood'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Next set'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mark set understood'));
+    await tester.pumpAndSettle();
+
+    expect(
+      (await db.query('ayah_understood')).length,
+      13,
+      reason: 'eight ayas pulled wide, then the five of the set after them',
+    );
+    expect((await db.query('outbox')).length, 2);
+  });
+
+  testWidgets('a set pulled across an aya the reader already understood marks '
+      'it a second time, moving the day they understood it', (tester) async {
+    await markSetUnderstood(db, newOpId(), [96003]);
+    final before = await db.query('ayah_understood');
+
+    await openStudy(tester);
+    await openSettings(tester);
+    // The proposal stops before aya 3; the reader pulls the set across it.
+    expect(find.text('2 ayas'), findsOneWidget);
+    await widen(tester, 3);
+    expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
+
+    await tester.tap(find.text('Mark set understood'));
+    await tester.pumpAndSettle();
+
+    final ops = await db.query('outbox', orderBy: 'created_at, client_op_id');
+    expect(
+      jsonDecode(ops.last['body']! as String)['ayah_ids'],
+      [96001, 96002, 96004, 96005],
+      reason: 'the aya the set was pulled across is recited, not re-marked',
+    );
+    expect(await db.query('ayah_understood', where: 'ayah_id = 96003'), before);
+  });
+
+  testWidgets('the prayer is lost when the reader leaves the prayer screen by '
+      'the back gesture instead of its Exit button', (tester) async {
+    await openStudy(tester);
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    await openSettings(tester);
+
+    await tester.tap(find.text('Pray this set'));
+    await tester.pumpAndSettle();
+    expect(find.text('praying'), findsOneWidget);
+
+    // Not the Exit button: the gesture 1b cannot hear and must not have to.
+    Navigator.of(tester.element(find.text('praying'))).pop();
+    await tester.pumpAndSettle();
+
+    final prayers = await db.query('set_prayers');
+    expect(prayers.single['set_id'], set.id);
+    final op = (await db.query('outbox')).single;
+    expect(op['kind'], 'set_prayed');
+    expect(jsonDecode(op['body']! as String), {
+      'id': op['client_op_id'],
+      'set_id': set.id,
+      'start_ayah_id': 96001,
+      'end_ayah_id': 96005,
+      'reading_order': 'nuzul',
+      'prayed_at': anything,
+    });
   });
 }

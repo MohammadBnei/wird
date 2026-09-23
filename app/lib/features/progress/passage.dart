@@ -56,6 +56,7 @@ class Passage {
     required this.wordsAheadKnown,
     required this.currentJuz,
     required this.currentSet,
+    required this.prayersOnCurrentSet,
   });
 
   final int understood;
@@ -76,7 +77,15 @@ class Passage {
 
   /// One-based, and 30 once there is nothing left to read.
   final int currentJuz;
+
+  /// One-based: the sets the walk has finished, plus the one being read. It
+  /// comes from the walk and not from counting rows, because the rows record
+  /// sets *prayed* and a set can be prayed without ever being understood.
   final int currentSet;
+
+  /// How many prayers the set being read has already carried, so the screen
+  /// can say which one the next prayer will be.
+  final int prayersOnCurrentSet;
 
   double get fraction => understood / ayasInTheQuran;
 
@@ -149,11 +158,13 @@ Future<Passage> readPassage(Database db) async {
      WHERE NOT EXISTS (SELECT 1 FROM ayah_understood u WHERE u.ayah_id = w.ayah_id)''',
   );
 
-  final setsUnderstood = await _countWhenPresent(db, 'sets');
+  final finished = await setsUnderstood(db, order);
   return Passage(
     understood: understood,
-    setsUnderstood: setsUnderstood,
-    prayers: await _countWhenPresent(db, 'set_prayers'),
+    setsUnderstood: finished,
+    prayers: Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM set_prayers'),
+    )!,
     juz: [
       for (var i = 0; i < total.length; i++)
         total[i] == 0 ? 0 : done[i] / total[i],
@@ -164,7 +175,8 @@ Future<Passage> readPassage(Database db) async {
     wordsAhead: ahead.first['ahead']! as int,
     wordsAheadKnown: ahead.first['known']! as int,
     currentJuz: next == null ? juzStarts.length : juzOf(next.ayas.first.id),
-    currentSet: setsUnderstood + 1,
+    currentSet: finished + 1,
+    prayersOnCurrentSet: next == null ? 0 : await prayersOnSet(db, next.id),
   );
 }
 
@@ -186,20 +198,4 @@ List<SuraPassage> _rows(List<Map<String, Object?>> rows, int? currentSura) {
   final rest = all.where((s) => !s.current && s.understood > 0).toList()
     ..sort((a, b) => b.understood.compareTo(a.understood));
   return [...current, ...rest].take(4).toList();
-}
-
-/// Counts a table that the phase which writes it has not created yet.
-///
-/// `sets` and `set_prayers` are the plan's, and are written by the prayer and
-/// sync phases. Until then both counts are honestly zero — which is what
-/// makes the third tile an em dash for a reader who has prayed nothing.
-Future<int> _countWhenPresent(Database db, String table) async {
-  final there = await db.rawQuery(
-    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
-    [table],
-  );
-  if (there.isEmpty) return 0;
-  return Sqflite.firstIntValue(
-    await db.rawQuery('SELECT COUNT(*) FROM $table'),
-  )!;
 }

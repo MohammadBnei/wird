@@ -191,6 +191,21 @@ Finder markSetUnderstood(WidgetTester tester) {
   return find.byWidget(live.first);
 }
 
+/// Marks the set, then asks for the next one.
+///
+/// Marking leaves the reader on the set they marked, so that the bars they
+/// just filled are on screen in front of them. Walking on is a second press,
+/// the way it is for a reader.
+Future<void> finishSet(WidgetTester tester) async {
+  await tester.tap(markSetUnderstood(tester));
+  await waitFor(
+    tester,
+    () => find.text('Next set').evaluate().isNotEmpty,
+    'the way on to the next set, after the one before it was marked',
+  );
+  await tester.tap(find.text('Next set'));
+}
+
 /// A prayer happens in a room with no signal. Nothing the app draws may spin
 /// or apologise, at any point in the journey.
 void expectNoSpinnerAndNoApology(WidgetTester tester, String moment) {

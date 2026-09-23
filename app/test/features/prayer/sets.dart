@@ -40,7 +40,7 @@ Future<StudySet> setOf(Database db, List<int> ayahIds) async {
       ),
     );
   }
-  return StudySet(ayas);
+  return StudySet(ayas, order: ReadingOrder.nuzul);
 }
 
 /// Al-ʿAsr 103:1–3, the set the design draws on screen 1b.

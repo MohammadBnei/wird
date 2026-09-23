@@ -139,4 +139,89 @@ void main() {
     expect(await nextSet(db, ReadingOrder.nuzul), isNull);
     expect(await nextSet(db, ReadingOrder.mushaf), isNull);
   });
+
+  test('the set is five ayas however far the reader pulls its end out',
+      () async {
+    await setDragSpan(db, 96001, 8);
+
+    final set = await nextSet(db, ReadingOrder.nuzul);
+
+    expect(set!.ayas.length, 8);
+    expect(set.ayas.last.id, 96008);
+    expect(
+      set.ayas.map((a) => a.understood),
+      everyElement(isFalse),
+      reason: 'a wider set is still a set of ayas the reader has not read',
+    );
+  });
+
+  test('a set pulled across an aya already understood stops short of it, or '
+      'serves it as unread', () async {
+    await markSetUnderstood(db, newOpId(), [96003]);
+    await setDragSpan(db, 96001, 5);
+
+    final set = await nextSet(db, ReadingOrder.nuzul);
+
+    expect(set!.ayas.map((a) => a.id), [96001, 96002, 96003, 96004, 96005]);
+    expect(
+      set.ayas.singleWhere((a) => a.id == 96003).understood,
+      isTrue,
+      reason: 'the aya is present, and present as already counted',
+    );
+  });
+
+  test('a set pulled wider than the twenty ayas anyone recites in one prayer',
+      () async {
+    await setDragSpan(db, 96001, 60);
+
+    expect((await nextSet(db, ReadingOrder.nuzul))!.ayas.length, setMaxDragAyas);
+  });
+
+  test('the width the reader gave one set is applied to the set after it too',
+      () async {
+    await setDragSpan(db, 96001, 8);
+    final first = (await nextSet(db, ReadingOrder.nuzul))!;
+    await markSetUnderstood(db, newOpId(), [for (final a in first.ayas) a.id]);
+
+    final second = await nextSet(db, ReadingOrder.nuzul);
+
+    expect(second!.ayas.first.id, 96009);
+    expect(
+      second.ayas.length,
+      5,
+      reason: 'the width belongs to the set it was given to, not to the walk',
+    );
+  });
+
+  test('two sets read one after the other are counted as one, because the '
+      'count comes from the rows instead of the walk', () async {
+    expect(await setsUnderstood(db, ReadingOrder.nuzul), 0);
+
+    for (var i = 0; i < 2; i++) {
+      final set = (await nextSet(db, ReadingOrder.nuzul))!;
+      await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
+    }
+
+    expect(await setsUnderstood(db, ReadingOrder.nuzul), 2);
+  });
+
+  test('a set the reader pulled wider is counted as two sets afterwards',
+      () async {
+    await setDragSpan(db, 96001, 8);
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
+
+    expect(await setsUnderstood(db, ReadingOrder.nuzul), 1);
+  });
+
+  test('an aya marked on its own out of order counts as a whole set',
+      () async {
+    await markSetUnderstood(db, newOpId(), [96005]);
+
+    expect(
+      await setsUnderstood(db, ReadingOrder.nuzul),
+      1,
+      reason: 'one set, and the hole before it belongs to none',
+    );
+  });
 }

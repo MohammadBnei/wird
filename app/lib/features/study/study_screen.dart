@@ -37,8 +37,11 @@ class _StudyScreenState extends State<StudyScreen> {
   MicPermission _mic = MicPermission.notAsked;
   SetAudio? _audio;
 
-  /// Minted with the set, so two presses of "Mark set understood" carry one
-  /// op id and the set is counted once.
+  /// Minted once here and again after every mark that lands. Two presses of
+  /// "Mark set understood" carry one op id and the set is counted once; a
+  /// second, different mark — after the reader pulls the set wider — carries a
+  /// new one, because an op id already in the outbox is read as that same
+  /// press replayed and the write is dropped.
   String _opId = newOpId();
   bool _loaded = false;
   bool _settingsOpen = false;
@@ -61,6 +64,10 @@ class _StudyScreenState extends State<StudyScreen> {
       'This build cannot reach the microphone. The prayer screen advances on '
           'a tap.',
   };
+
+  /// Every aya in the set is understood, so marking it again would write
+  /// nothing and the only thing left to do is walk on.
+  bool _allUnderstood(StudySet set) => set.ayas.every((a) => a.understood);
 
   bool get _showGloss => _display == 0 || _display == 2;
   bool get _showTranslit => _display == 1 || _display == 2;
@@ -112,7 +119,6 @@ class _StudyScreenState extends State<StudyScreen> {
       _word = first;
       _root = root;
       _audio = audio;
-      _opId = newOpId();
       _loaded = true;
     });
     if (audio == null) return;
@@ -123,11 +129,47 @@ class _StudyScreenState extends State<StudyScreen> {
     if (mounted && identical(_audio, audio)) setState(() {});
   }
 
+  /// Marks what is open in the set and stays on it.
+  ///
+  /// An aya the set was pulled across is already understood and is left out:
+  /// it was recited along with the rest, and re-marking it would move the day
+  /// the reader understood it to today. The flags are refreshed in place
+  /// because they are baked at load — without that the progress bars would go
+  /// on calling a marked aya open.
   Future<void> _markUnderstood(StudySet set) async {
-    await markSetUnderstood(widget.db, _opId, [
-      for (final aya in set.ayas) aya.id,
-    ]);
+    final open = [for (final aya in set.ayas) if (!aya.understood) aya.id];
+    if (open.isEmpty) return;
+    await markSetUnderstood(widget.db, _opId, open);
+    if (!mounted) return;
+    setState(() {
+      _set = StudySet(
+        order: set.order,
+        [for (final aya in set.ayas) aya.asUnderstood()],
+      );
+      _opId = newOpId();
+    });
+  }
+
+  /// Pulls the set's end out or back in. The width is remembered against the
+  /// aya the set starts at, so leaving the screen does not discard it.
+  Future<void> _resize(StudySet set, int by) async {
+    await setDragSpan(widget.db, set.ayas.first.id, set.ayas.length + by);
     await _load();
+  }
+
+  /// Screen 1b writes nothing: it runs inside the prayer, where there is no
+  /// safe moment for a database write. So the prayer is recorded here, when
+  /// the reader comes back from it — `pushNamed` completes however 1b was
+  /// left, by the Exit button, the back-swipe or Android's back, so no gesture
+  /// loses the prayer and 1b needs to know nothing about any of them.
+  ///
+  /// A prayer the reader never returns from — the app killed mid-prayer — is
+  /// not recorded. That is the price of 1b writing nothing, and it is the side
+  /// to be wrong on: the prayer count is allowed to be short, never invented.
+  Future<void> _prayThisSet(StudySet set) async {
+    await Navigator.of(context).pushNamed(Routes.prayer, arguments: set);
+    if (!mounted) return;
+    await recordSetPrayed(widget.db, set);
   }
 
   /// A long press speaks one word. An aya that was never downloaded shows the
@@ -380,6 +422,45 @@ class _StudyScreenState extends State<StudyScreen> {
             ),
           ],
         ),
+        // The set's width is the reader's, not the walk's: five ayas inside
+        // the word budget is what the walk proposes, and this is where the
+        // reader says otherwise. Drawn here rather than as a handle on the set
+        // itself because the design draws no handle, and 1a's chrome is fixed
+        // by its acceptance row.
+        if (_set case final set?)
+          Row(
+            spacing: n.space('3'),
+            children: [
+              NocturneButton(
+                key: const Key('narrow set'),
+                variant: NocturneButtonVariant.icon,
+                onPressed: _allUnderstood(set) || set.ayas.length == 1
+                    ? null
+                    : () => _resize(set, -1),
+                child: const Icon(Icons.remove),
+              ),
+              Text(
+                set.ayas.length == 1 ? '1 aya' : '${set.ayas.length} ayas',
+                style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
+              ),
+              NocturneButton(
+                key: const Key('widen set'),
+                variant: NocturneButtonVariant.icon,
+                onPressed:
+                    _allUnderstood(set) || set.ayas.length >= setMaxDragAyas
+                    ? null
+                    : () => _resize(set, 1),
+                child: const Icon(Icons.add),
+              ),
+              Expanded(
+                child: Text(
+                  'A wider set may cross an aya you already understood. It is '
+                  'recited with the rest and stays counted where it is.',
+                  style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
+                ),
+              ),
+            ],
+          ),
         // The prayer, the progress and the kept list are drawn nowhere in the
         // design, and 1a's chrome is fixed by its acceptance row, so they hang
         // here beside the other controls the design does not draw.
@@ -388,11 +469,7 @@ class _StudyScreenState extends State<StudyScreen> {
           runSpacing: n.space('2'),
           children: [
             NocturneButton(
-              onPressed: _set == null
-                  ? null
-                  : () => Navigator.of(
-                      context,
-                    ).pushNamed(Routes.prayer, arguments: _set),
+              onPressed: _set == null ? null : () => _prayThisSet(_set!),
               child: const Text('Pray this set'),
             ),
             NocturneButton(
@@ -440,7 +517,7 @@ class _StudyScreenState extends State<StudyScreen> {
               runSpacing: n.space('1'),
               children: [
                 for (final word in aya.words) _wordTile(n, word, recited),
-                _ayaMark(n, aya.number),
+                _ayaMark(n, aya.number, aya.understood),
               ],
             ),
           ],
@@ -518,14 +595,21 @@ class _StudyScreenState extends State<StudyScreen> {
     );
   }
 
-  Widget _ayaMark(Nocturne n, int number) => Container(
+  /// [understood] marks an aya the set was pulled across: it is recited with
+  /// the rest, and its mark is lit to say it is already counted.
+  Widget _ayaMark(Nocturne n, int number, bool understood) => Container(
     width: 26,
     height: 26,
     margin: EdgeInsets.only(bottom: n.space('8')),
     alignment: Alignment.center,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      border: Border.all(color: n.color('accent-700')),
+      color: understood
+          ? n.accent.withValues(alpha: 0.16)
+          : Colors.transparent,
+      border: Border.all(
+        color: n.color(understood ? 'accent-300' : 'accent-700'),
+      ),
     ),
     child: Text(
       _arabicDigits(number),
@@ -731,8 +815,10 @@ class _StudyScreenState extends State<StudyScreen> {
               Expanded(
                 child: NocturneButton(
                   variant: NocturneButtonVariant.primary,
-                  onPressed: () => _markUnderstood(set),
-                  child: const Text('Mark set understood'),
+                  onPressed: _allUnderstood(set) ? _load : () => _markUnderstood(set),
+                  child: Text(
+                    _allUnderstood(set) ? 'Next set' : 'Mark set understood',
+                  ),
                 ),
               ),
             ],

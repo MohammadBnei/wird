@@ -20,7 +20,15 @@ Future<Database> testCorpus() async {
     await File('assets/corpus.db').copy(path);
     _db = await openWirdAt(path);
   }
-  for (final table in ['ayah_understood', 'user_prefs', 'outbox', 'mic_consent']) {
+  for (final table in [
+    'ayah_understood',
+    'user_prefs',
+    'outbox',
+    'mic_consent',
+    'set_prayers',
+    'sets',
+    'set_span',
+  ]) {
     await _db!.delete(table);
   }
   return _db!;

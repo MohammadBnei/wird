@@ -57,6 +57,32 @@ Future<Database> openWirdAt(String path) async {
       state       TEXT NOT NULL,
       answered_at TEXT NOT NULL
     )''');
+  // The sets the reader has prayed, mirroring the server's own two tables.
+  // There is no ordinal here: the id is derived from the range and the reading
+  // order (see setIdFor), so a reinstall recomputes the same id for the same
+  // range and the server is never asked to take a second set for it. The
+  // ordinal is the server's to assign.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS sets (
+      id            TEXT PRIMARY KEY,
+      start_ayah_id INTEGER NOT NULL,
+      end_ayah_id   INTEGER NOT NULL,
+      reading_order TEXT NOT NULL,
+      created_at    TEXT NOT NULL
+    )''');
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS set_prayers (
+      id        TEXT PRIMARY KEY,
+      set_id    TEXT NOT NULL REFERENCES sets(id),
+      prayed_at TEXT NOT NULL
+    )''');
+  // How wide the reader pulled a set, keyed to the aya it starts at. Local
+  // only, and a width rather than a position.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS set_span (
+      start_ayah_id INTEGER PRIMARY KEY REFERENCES ayahs(id),
+      ayas          INTEGER NOT NULL
+    )''');
   // The op id is the primary key rather than a column, so a write that is
   // replayed — a flush that timed out after the server had already applied it,
   // a button pressed twice — lands on the same row instead of a second one.
@@ -122,6 +148,54 @@ Future<void> markSetUnderstood(
     body: {'ayah_ids': ayahIds, 'understood_at': wireTime(at)},
   );
 });
+
+/// Records that this set was recited in a prayer.
+///
+/// Screen 1b writes nothing — it runs inside the prayer, where a database
+/// write has no safe moment: `dispose()` cannot await, and the back-swipe and
+/// the Android back button are not the Exit button. So screen 1a calls this
+/// when it gets the reader back.
+///
+/// One op, not two. The set travels with the prayer that names it, so there is
+/// no second op to sort ahead of it and no set whose refusal takes the prayer
+/// down with it. The set row is upserted because the id is derived: praying
+/// the same range again is the same set, on this device and on any other.
+Future<void> recordSetPrayed(Database db, StudySet set) =>
+    db.transaction((txn) async {
+      final at = DateTime.now().toIso8601String();
+      final prayerId = newOpId();
+      final body = {
+        'id': prayerId,
+        'set_id': set.id,
+        'start_ayah_id': set.ayas.first.id,
+        'end_ayah_id': set.ayas.last.id,
+        'reading_order': set.order.name,
+        'prayed_at': wireTime(at),
+      };
+      await txn.insert('sets', {
+        'id': set.id,
+        'start_ayah_id': set.ayas.first.id,
+        'end_ayah_id': set.ayas.last.id,
+        'reading_order': set.order.name,
+        'created_at': at,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      await txn.insert('set_prayers', {
+        'id': prayerId,
+        'set_id': set.id,
+        'prayed_at': at,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      await enqueue(txn, opId: prayerId, kind: 'set_prayed', body: body);
+    });
+
+/// How many prayers this set has already carried, which is what lets a screen
+/// say "the fourth prayer on this set".
+Future<int> prayersOnSet(Database db, String setId) async =>
+    Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT COUNT(*) FROM set_prayers WHERE set_id = ?',
+        [setId],
+      ),
+    )!;
 
 Future<ReadingOrder> readingOrder(Database db) async {
   final rows = await db.query('user_prefs', columns: ['reading_order']);

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/features/kept/kept_screen.dart';
+import 'package:wird/data/sets.dart';
 import 'package:wird/features/progress/passage.dart';
 import 'package:wird/features/progress/progress_screen.dart';
 import 'package:wird/nav.dart';
@@ -45,28 +46,32 @@ void main() {
     expect(find.textContaining('Infinity'), findsNothing);
   });
 
-  testWidgets('the tiles stay at zero after the prayers are recorded, so the '
-      'reader is told they have prayed nothing', (tester) async {
-    // The two tables the prayer and sync phases own. 1d reads them; it does
-    // not create them, and it has to work before and after they arrive.
-    await db.execute('CREATE TABLE sets (id TEXT PRIMARY KEY)');
-    await db.execute('CREATE TABLE set_prayers (id TEXT PRIMARY KEY)');
-    addTearDown(() async {
-      await db.execute('DROP TABLE sets');
-      await db.execute('DROP TABLE set_prayers');
-    });
-    for (final id in ['a', 'b']) {
-      await db.insert('sets', {'id': id});
+  testWidgets('the tiles count the sets the reader prayed as sets they '
+      'understood, so a set prayed twice reads as two sets read', (
+    tester,
+  ) async {
+    // Two sets read and marked, and a third the reader has prayed twice
+    // without marking: the set rows and the walk disagree on purpose.
+    for (var i = 0; i < 2; i++) {
+      final set = (await nextSet(db, await readingOrder(db)))!;
+      await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
     }
-    for (final id in ['a', 'b', 'c', 'd', 'e']) {
-      await db.insert('set_prayers', {'id': id});
-    }
+    final praying = (await nextSet(db, await readingOrder(db)))!;
+    await recordSetPrayed(db, praying);
+    await recordSetPrayed(db, praying);
+
+    final passage = await readPassage(db);
+    expect(passage.setsUnderstood, 2);
+    expect(passage.prayers, 2);
+    expect(passage.currentSet, 3, reason: 'the walk is on its third set');
+    expect(
+      passage.prayersOnCurrentSet,
+      2,
+      reason: 'the next prayer on this set is its third',
+    );
 
     await open(tester);
-
-    expect(find.text('2'), findsOneWidget);
-    expect(find.text('5'), findsOneWidget);
-    expect(find.text('2.5'), findsOneWidget);
+    expect(find.text('1.0'), findsOneWidget);
   });
 
   testWidgets('the passage is counted against something other than the 6,236 '
