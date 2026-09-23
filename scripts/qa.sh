@@ -142,7 +142,7 @@ every_journey_still_runs() {
 # by name: a run that quietly stopped reporting a journey reads as a pass
 # otherwise.
 run_journeys() {
-	local dev kind out status run count
+	local dev kind out one status run count
 	if ! dev=$("$ROOT/scripts/device.sh") || [ -z "$dev" ]; then
 		record "integration journeys" fail "scripts/device.sh resolved no e2e target, so no journey ran"
 		printf 'FAIL  integration journeys — no target\n'
@@ -152,8 +152,23 @@ run_journeys() {
 	kind=$(target_kind "$dev")
 	printf 'e2e target: %s (%s)\n' "$dev" "$kind"
 
-	out=$(in_app fvm flutter test integration_test/ -d "$dev" --dart-define=WIRD_TARGET="$kind" 2>&1)
-	status=$?
+	# One file per run. Handed the whole directory, the runner builds a file at
+	# a time in parallel and Xcode refuses the second build against the same
+	# location ("build database is locked"), so one journey file dies before it
+	# starts — which the ledger below reads as a journey that no longer exists.
+	# --concurrency is parsed and ignored for integration tests, so the serial
+	# run has to be the loop.
+	out=""
+	status=0
+	for file in "$ROOT"/app/integration_test/*_test.dart; do
+		one=$(in_app fvm flutter test "integration_test/$(basename "$file")" -d "$dev" --dart-define=WIRD_TARGET="$kind" 2>&1) || status=1
+		out="$out$one"$'\n'
+		# The desktop app outlives its own run, and macOS answers the next
+		# launch by foregrounding the instance already open, so the following
+		# journey file waits for a debug connection that never arrives.
+		pkill -f 'Debug/wird.app/Contents/MacOS/wird' 2>/dev/null
+		sleep 1
+	done
 	run=$(grep -o 'WIRD-JOURNEY {.*}' <<<"$out" | sed 's/^WIRD-JOURNEY //' | jq -s 'unique_by(.journey)')
 
 	if [ "$status" -ne 0 ]; then
