@@ -16,6 +16,16 @@ const (
 func (c *Corpus) Check(full bool) error {
 	var errs []error
 
+	// The morphology's terms require its copyright notice to be reproduced in works
+	// derived from it. corpus.db is what reaches a reader; a repo file does not.
+	for _, marker := range []string{"Quranic Arabic Corpus", "Kais Dukes", "corpus.quran.com"} {
+		if !strings.Contains(c.Notice, marker) {
+			errs = append(errs, fmt.Errorf("the corpus notice does not mention %q, so the shipped "+
+				"database would carry no attribution for the morphology it is built from", marker))
+			break
+		}
+	}
+
 	if full {
 		if len(c.Surahs) != quranSurahs {
 			errs = append(errs, fmt.Errorf("%d suras, want %d", len(c.Surahs), quranSurahs))

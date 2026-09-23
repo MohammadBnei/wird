@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -93,6 +95,51 @@ type manifest struct {
 	Files          []fileSum      `json:"files"`
 }
 
+// The lines that make a copy of the morphology the file corpus.quran.com
+// distributes rather than one of the forks. The terms grant verbatim copying and
+// nothing else, and require the notice to travel with the data; a fork that drops
+// the block breaks both at once, which is the mistake this ingest exists to not
+// repeat.
+var copyrightMarkers = []string{
+	"Quranic Arabic Corpus",
+	"Copyright (C) 2011 Kais Dukes",
+	"CHANGING IT IS NOT ALLOWED",
+	"corpus.quran.com",
+}
+
+// requireCorpusMorphology refuses to run without the upstream file, and refuses a
+// copy whose copyright block has been removed.
+func requireCorpusMorphology(path string) error {
+	b, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf(`%s is missing, and this ingest will not download it.
+
+%s serves a form, not the file: it asks for an email address and for the terms of
+use to be accepted before it hands over %s. Accepting those terms is a person
+taking the licence, so it is not something to work around.
+
+  1. open %s
+  2. give an email address and accept the terms
+  3. save %s at %s
+
+Then run this again. Everything else downloads on its own.`,
+			path, corpusPage, corpusFile, corpusPage, corpusFile, path)
+	}
+	if err != nil {
+		return err
+	}
+	head := string(b[:min(len(b), 8192)])
+	for _, marker := range copyrightMarkers {
+		if !strings.Contains(head, marker) {
+			return fmt.Errorf("%s does not carry %q in its header. The file distributed at %s "+
+				"opens with a copyright block; a copy without it is an edited fork, and the terms "+
+				"permit verbatim copies only and require the notice to be kept. Replace it with the "+
+				"file from %s", path, marker, corpusPage, corpusPage)
+		}
+	}
+	return nil
+}
+
 func readJSON(path string, v any) error {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -131,7 +178,7 @@ func verify(dir string, suras []int, chapters []chapter, now time.Time) (*manife
 		}
 	}
 
-	morphWords, morphSegs, roots, err := loadMorphologyCounts(filepath.Join(dir, "morphology.txt"))
+	morphWords, morphSegs, roots, err := loadMorphologyCounts(filepath.Join(dir, corpusFile))
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +399,7 @@ func loadMorphologyCounts(path string) (map[string]int, int, int, error) {
 		if len(cols) < 4 {
 			continue
 		}
-		loc := strings.Split(cols[0], ":")
+		loc := strings.Split(strings.Trim(cols[0], "()"), ":")
 		if len(loc) != 4 {
 			continue
 		}
@@ -385,7 +432,7 @@ func loadMorphologyCounts(path string) (map[string]int, int, int, error) {
 }
 
 func checksums(dir string, suras []int) ([]fileSum, error) {
-	paths := []string{"chapters.json", "morphology.txt"}
+	paths := []string{"chapters.json", corpusFile}
 	for _, n := range suras {
 		paths = append(paths, fmt.Sprintf("verses/%03d.json", n), fmt.Sprintf("segments/%03d.json", n))
 	}

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-22T21:19:49Z",
+  "generated_at": "2026-09-23T07:22:08Z",
   "complete": true,
   "suras": [
     1,
@@ -121,7 +121,7 @@
     "https://api.quran.com/api/v4/chapters?language=en",
     "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&fields=text_uthmani&per_page=300",
     "https://api.quran.com/api/v4/recitations/%d/by_chapter/%d?fields=segments,duration,url&per_page=300",
-    "https://raw.githubusercontent.com/mustafa0x/quran-morphology/master/quran-morphology.txt"
+    "https://corpus.quran.com/download/"
   ],
   "counts": {
     "surahs": 114,
@@ -130,8 +130,8 @@
     "audio_files": 6236,
     "segment_tuples": 77347,
     "words_timed": 77403,
-    "morphology_segments": 130030,
-    "roots": 1651
+    "morphology_segments": 128219,
+    "roots": 1642
   },
   "reconciliation": {
     "ayahs_where_word_numbering_disagrees": 0,
@@ -150,9 +150,9 @@
       "sha256": "ff6ef5aadcc7710271179c0f9c1519c89ae613b11c8ba3265873c6c4fc6aed0b"
     },
     {
-      "path": "data/raw/morphology.txt",
-      "bytes": 6322866,
-      "sha256": "742bfac59941b2cb09736d5b7aae694af50792261fb8450cbf6afafcc340645f"
+      "path": "data/raw/quranic-corpus-morphology-0.4.txt",
+      "bytes": 6309503,
+      "sha256": "a1d12923815341face765083805d2148ed2d9f5cc3f7d6665219d887675d8c46"
     },
     {
       "path": "data/raw/segments/001.json",

@@ -165,7 +165,7 @@ func TestTheAppShipsWithSurasMissingFromTheCorpus(t *testing.T) {
 func TestWordTextAndTimingsComeFromTwoDifferentSegmentations(t *testing.T) {
 	dir := copyFixture(t)
 	// One word short in the morphology is how a second segmentation announces itself.
-	morph := filepath.Join(dir, "morphology.txt")
+	morph := filepath.Join(dir, corpusFile)
 	b, err := os.ReadFile(morph)
 	if err != nil {
 		t.Fatal(err)
@@ -173,7 +173,7 @@ func TestWordTextAndTimingsComeFromTwoDifferentSegmentations(t *testing.T) {
 	lines := strings.Split(strings.TrimRight(string(b), "\n"), "\n")
 	var kept []string
 	for _, l := range lines {
-		if !strings.HasPrefix(l, "1:1:4:") {
+		if !strings.HasPrefix(l, "(1:1:4:") {
 			kept = append(kept, l)
 		}
 	}
@@ -246,6 +246,33 @@ func TestAWordIdStopsNamingTheAyaAndPositionItCameFrom(t *testing.T) {
 	for _, w := range c.Words {
 		if w.ID != int64(w.AyahID)*1000+int64(w.Position) {
 			t.Fatalf("word %d of aya %d has id %d", w.Position, w.AyahID, w.ID)
+		}
+	}
+}
+
+func TestTheShippedCorpusCarriesNoAttributionForTheMorphologyItIsBuiltFrom(t *testing.T) {
+	notice := scalar(t, build(t, fixtureDir), "SELECT notice FROM corpus_meta")
+	for _, want := range []string{"Quranic Arabic Corpus", "Kais Dukes", "corpus.quran.com"} {
+		if !strings.Contains(notice, want) {
+			t.Errorf("corpus.db does not mention %q, so the app ships the morphology with no notice "+
+				"attached to it", want)
+		}
+	}
+	c := load(t, fixtureDir)
+	c.Notice = ""
+	if err := c.Check(false); err == nil {
+		t.Fatal("a database with no copyright notice passed the build")
+	}
+}
+
+func TestARootArrivesAsTransliterationAndTheRootPanelOpensOnLatinLetters(t *testing.T) {
+	c := load(t, fixtureDir)
+	for _, r := range c.Roots {
+		for _, ch := range r.Letters {
+			if ch < 0x0600 || ch > 0x06FF {
+				t.Fatalf("root %q is not Arabic: the file publishes Buckwalter and the root panel "+
+					"would render it", r.Letters)
+			}
 		}
 	}
 }

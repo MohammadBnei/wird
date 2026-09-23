@@ -71,7 +71,8 @@ CREATE TABLE word_segments (
 );
 CREATE TABLE corpus_meta (
   corpus_version INTEGER NOT NULL,
-  built_at       TEXT NOT NULL
+  built_at       TEXT NOT NULL,
+  notice         TEXT NOT NULL
 );
 CREATE INDEX words_ayah ON words(ayah_id);
 CREATE INDEX words_root ON words(root_letters);
@@ -126,6 +127,8 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 		return nil
 	}
 
+	// The morphology file's own name. The corpus is named in full, with its
+	// copyright block, in corpus_meta.notice.
 	sources, err := json.Marshal([]string{"quranic-corpus-morphology"})
 	if err != nil {
 		return err
@@ -134,7 +137,8 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	if _, err := tx.Exec(`INSERT INTO recitations VALUES (?,?,?)`, rec.Slug, rec.ReciterName, rec.Style); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?)`, version, builtAt.UTC().Format(time.RFC3339)); err != nil {
+	if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?,?)`,
+		version, builtAt.UTC().Format(time.RFC3339), c.Notice); err != nil {
 		return err
 	}
 	if err := insert(`INSERT INTO surahs VALUES (?,?,?,?,?,?)`, len(c.Surahs), func(i int) []any {

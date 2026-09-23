@@ -13,6 +13,17 @@ import (
 	"time"
 )
 
+// The lines the ingest looks for before it reads a byte of annotation.
+const fixtureNotice = `# Quranic Arabic Corpus (morphology, version 0.4)
+# Copyright (C) 2011 Kais Dukes
+# License: GNU General Public License
+# - Permission is granted to copy and distribute verbatim copies
+#   of this file, but CHANGING IT IS NOT ALLOWED.
+# - a link is made to http://corpus.quran.com
+
+LOCATION	FORM	TAG	FEATURES
+`
+
 type fakeAyah struct {
 	words     int
 	segments  [][]int
@@ -46,13 +57,13 @@ func writeFixture(t *testing.T, ayahs []fakeAyah) (string, []chapter) {
 			n = a.words
 		}
 		for w := 1; w <= n; w++ {
-			fmt.Fprintf(&morph, "1:%d:%d:1\tform\tN\tROOT:وصي|LEM:x\n", i+1, w)
+			fmt.Fprintf(&morph, "(1:%d:%d:1)\tform\tN\tSTEM|POS:N|LEM:x|ROOT:wSy\n", i+1, w)
 		}
 	}
 	writeJSON(t, filepath.Join(dir, "verses", "001.json"),
 		map[string]any{"verses": verses, "pagination": map[string]any{"next_page": nil}})
 	writeJSON(t, filepath.Join(dir, "segments", "001.json"), map[string]any{"audio_files": audio})
-	if err := save(filepath.Join(dir, "morphology.txt"), []byte(morph.String())); err != nil {
+	if err := save(filepath.Join(dir, corpusFile), []byte(fixtureNotice+morph.String())); err != nil {
 		t.Fatal(err)
 	}
 	return dir, []chapter{ch}
@@ -285,5 +296,33 @@ func TestAPartialRunRefusesToReplaceTheManifestForTheWholeCorpus(t *testing.T) {
 	writeJSON(t, path, manifest{Complete: true})
 	if err := refusePartialOverwrite(path); err == nil {
 		t.Fatal("a four-sura run would have overwritten the record of all 114")
+	}
+}
+
+func TestAForkWithTheCopyrightBlockStrippedIsRefusedInsteadOfIngested(t *testing.T) {
+	path := filepath.Join(t.TempDir(), corpusFile)
+	if err := save(path, []byte("(1:1:1:1)\tbi\tP\tPREFIX|bi+\n")); err != nil {
+		t.Fatal(err)
+	}
+	err := requireCorpusMorphology(path)
+	if err == nil {
+		t.Fatal("a morphology file with no copyright block was accepted; that file is an edited fork, " +
+			"which the terms do not allow and which carries no attribution")
+	}
+	if !strings.Contains(err.Error(), "edited fork") {
+		t.Fatalf("the error does not say why the file is refused: %v", err)
+	}
+}
+
+func TestTheMissingMorphologyFileNamesTheDownloadAPersonHasToDo(t *testing.T) {
+	path := filepath.Join(t.TempDir(), corpusFile)
+	err := requireCorpusMorphology(path)
+	if err == nil {
+		t.Fatal("an ingest with no morphology file reported success")
+	}
+	for _, want := range []string{corpusPage, "email address", path} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the error leaves the reader without %q, so they cannot finish the ingest:\n%v", want, err)
+		}
 	}
 }

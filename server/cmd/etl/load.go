@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+// The morphology file, as corpus.quran.com distributes it. server/cmd/ingest
+// refuses to run without it and checks that it still carries its copyright block.
+const corpusFile = "quranic-corpus-morphology-0.4.txt"
+
 // Ids are natural, never generated: a re-run of this ETL must not renumber what a
 // shipped corpus.db already joins against.
 func ayahID(surah, ayah int) int   { return surah*1000 + ayah }
@@ -53,6 +57,10 @@ type Segment struct {
 }
 
 type Corpus struct {
+	// The copyright block the morphology file opens with, carried into corpus.db so
+	// the notice travels with the data the app actually ships.
+	Notice string
+
 	Surahs   []Surah
 	Ayahs    []Ayah
 	Words    []Word
@@ -137,12 +145,12 @@ func Load(dir, recitation string) (*Corpus, error) {
 	if err := readJSON(filepath.Join(dir, "chapters.json"), &chapters); err != nil {
 		return nil, err
 	}
-	morph, err := loadMorphology(filepath.Join(dir, "morphology.txt"))
+	morph, err := loadMorphology(filepath.Join(dir, corpusFile))
 	if err != nil {
 		return nil, err
 	}
 
-	c := &Corpus{}
+	c := &Corpus{Notice: morph.notice}
 	rootCount := map[string]int{}
 	wordsPerAyah := map[int]int{}
 
@@ -298,13 +306,53 @@ type wordMorph struct {
 }
 
 type morphology struct {
+	notice string
 	words  map[[2]int]wordMorph
 	counts map[int]int // words per ayah id, to catch a second segmentation sneaking in
 }
 
-var verbForm = map[string]string{
-	"1": "I", "2": "II", "3": "III", "4": "IV", "5": "V",
-	"6": "VI", "7": "VII", "8": "VIII", "9": "IX", "10": "X",
+// Buckwalter, the transliteration the morphology file is published in. Only the
+// 28 letters a root can be made of: roots are the one field that has to come back
+// as Arabic, because they key the roots table and open the root panel.
+//
+// A radical is never a bare alef — the published root alphabet folds every hamza
+// onto A, and corpus.quran.com renders it back as أ, so أ is what a reader is shown
+// (ق ر أ, not ق ر ا). The seat is lost with the fold: لؤلؤ comes back as لألأ.
+var buckwalterArabic = map[rune]rune{
+	'A': 'أ', 'b': 'ب', 't': 'ت', 'v': 'ث', 'j': 'ج', 'H': 'ح', 'x': 'خ',
+	'd': 'د', '*': 'ذ', 'r': 'ر', 'z': 'ز', 's': 'س', '$': 'ش', 'S': 'ص',
+	'D': 'ض', 'T': 'ط', 'Z': 'ظ', 'E': 'ع', 'g': 'غ', 'f': 'ف', 'q': 'ق',
+	'k': 'ك', 'l': 'ل', 'm': 'م', 'n': 'ن', 'h': 'ه', 'w': 'و', 'y': 'ي',
+}
+
+// verbForm reads the derived form, which the file writes as a roman numeral in
+// parentheses. It tags II to XII and never I, so a verb carrying no tag is Form I:
+// read as "no form", the label goes blank on 14,555 words. Only verbs — a
+// participle of a Form I verb is not itself a verb form.
+func verbForm(features []string) string {
+	verb := false
+	for _, ft := range features {
+		if strings.HasPrefix(ft, "(") && strings.HasSuffix(ft, ")") {
+			return strings.Trim(ft, "()")
+		}
+		verb = verb || ft == "POS:V"
+	}
+	if verb {
+		return "I"
+	}
+	return ""
+}
+
+func arabicRoot(buckwalter string) string {
+	var b strings.Builder
+	for _, r := range buckwalter {
+		if a, ok := buckwalterArabic[r]; ok {
+			b.WriteRune(a)
+		} else {
+			return "" // a letter no root is built from: not a root
+		}
+	}
+	return b.String()
 }
 
 type morphSegment struct {
@@ -314,7 +362,12 @@ type morphSegment struct {
 }
 
 // loadMorphology reads the Quranic Arabic Corpus morphology table, one line per
-// segment, and folds it into one row per word.
+// segment, and folds it into one row per word. The file is read and never written:
+// its terms permit verbatim copies only, and a derived database is a different act
+// from an edited copy.
+//
+// Forms, lemmas and tags stay in the Buckwalter transliteration the file publishes.
+// ponytail: decode them the way roots are decoded if a screen ever renders them.
 func loadMorphology(path string) (morphology, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -325,10 +378,19 @@ func loadMorphology(path string) (morphology, error) {
 	segs := map[[2]int][]morphSegment{}
 	roots := map[[2]int]string{}
 	forms := map[[2]int]string{}
+	var notice []string
+	header := true
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for sc.Scan() {
 		line := strings.TrimRight(sc.Text(), "\r")
+		if header {
+			if line == "" || strings.HasPrefix(line, "#") {
+				notice = append(notice, line)
+				continue
+			}
+			header = false
+		}
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
@@ -336,7 +398,7 @@ func loadMorphology(path string) (morphology, error) {
 		if len(cols) < 4 {
 			continue
 		}
-		loc := strings.Split(cols[0], ":")
+		loc := strings.Split(strings.Trim(cols[0], "()"), ":")
 		if len(loc) != 4 {
 			continue
 		}
@@ -350,19 +412,23 @@ func loadMorphology(path string) (morphology, error) {
 		features := strings.Split(cols[3], "|")
 		segs[key] = append(segs[key], morphSegment{Form: cols[1], POS: cols[2], Features: features})
 		for _, ft := range features {
-			switch {
-			case strings.HasPrefix(ft, "ROOT:") && roots[key] == "":
-				roots[key] = strings.TrimPrefix(ft, "ROOT:")
-			case strings.HasPrefix(ft, "VF:") && forms[key] == "":
-				forms[key] = verbForm[strings.TrimPrefix(ft, "VF:")]
+			if r, ok := strings.CutPrefix(ft, "ROOT:"); ok && roots[key] == "" {
+				roots[key] = arabicRoot(r)
 			}
+		}
+		if forms[key] == "" {
+			forms[key] = verbForm(features)
 		}
 	}
 	if err := sc.Err(); err != nil {
 		return morphology{}, err
 	}
 
-	m := morphology{words: map[[2]int]wordMorph{}, counts: map[int]int{}}
+	m := morphology{
+		notice: strings.TrimSpace(strings.Join(notice, "\n")),
+		words:  map[[2]int]wordMorph{},
+		counts: map[int]int{},
+	}
 	for key, list := range segs {
 		b, err := json.Marshal(list)
 		if err != nil {

@@ -19,10 +19,16 @@ const (
 	chaptersURL   = "https://api.quran.com/api/v4/chapters?language=en"
 	versesURL     = "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&fields=text_uthmani&per_page=300"
 	segmentsURL   = "https://api.quran.com/api/v4/recitations/%d/by_chapter/%d?fields=segments,duration,url&per_page=300"
-	morphologyURL = "https://raw.githubusercontent.com/mustafa0x/quran-morphology/master/quran-morphology.txt"
+
+	// The morphology is not fetched. corpus.quran.com/download serves a form that
+	// asks for an email address and for the terms to be accepted before it hands
+	// over the file, and that acceptance is a person taking the licence, not a
+	// request this program is entitled to make on their behalf.
+	corpusPage = "https://corpus.quran.com/download/"
+	corpusFile = "quranic-corpus-morphology-0.4.txt"
 )
 
-var sourceURLs = []string{chaptersURL, versesURL, segmentsURL, morphologyURL}
+var sourceURLs = []string{chaptersURL, versesURL, segmentsURL, corpusPage}
 
 func main() {
 	out := flag.String("out", "./data/raw/", "directory the downloads land in; gitignored")
@@ -41,6 +47,10 @@ func main() {
 
 func run(dir, manifestPath, only string, recitation int, delay time.Duration, retries int, force bool) error {
 	ctx := context.Background()
+	// Before 38 MB of downloads: the one file a person has to put there by hand.
+	if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
+		return err
+	}
 	f := &fetcher{hc: &http.Client{Timeout: 2 * time.Minute}, delay: delay, retries: retries}
 
 	if err := f.download(ctx, chaptersURL, filepath.Join(dir, "chapters.json"), force); err != nil {
@@ -70,9 +80,6 @@ func run(dir, manifestPath, only string, recitation int, delay time.Duration, re
 		if err := f.download(ctx, fmt.Sprintf(segmentsURL, recitation, n), s, force); err != nil {
 			return err
 		}
-	}
-	if err := f.download(ctx, morphologyURL, filepath.Join(dir, "morphology.txt"), force); err != nil {
-		return err
 	}
 
 	m, err := verify(dir, suras, chapters, time.Now())
