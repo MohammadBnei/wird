@@ -137,14 +137,13 @@ to be redone rather than copied.
 Tracked in `data/SOURCES.md`, repeated here because they are attribution
 questions and not implementation ones:
 
-1. The morphology ingest still reads `mustafa0x/quran-morphology`, an edited
-   fork that carries no licence file and strips the copyright notice above.
-   That breaks two of the three conditions at once. The fix is to ingest the
-   corpus's own distribution unmodified.
-2. Who authored the word-by-word English gloss and transliteration that the
+1. Who authored the word-by-word English gloss and transliteration that the
    quran.com API serves. Nobody is named in its documentation.
-3. Which tafsir translations permit redistribution inside the bundle. v1 ships
+2. Which tafsir translations permit redistribution inside the bundle. v1 ships
    public-domain summaries.
+3. The audio: the al-Ḥuṣarī recordings are granted for personal use, which is
+   not distribution, and the per-word timings fall outside the Content Sync
+   terms. Neither may ship as things stand.
 
 ## Building
 
