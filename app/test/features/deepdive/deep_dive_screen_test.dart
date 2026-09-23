@@ -73,11 +73,44 @@ void main() {
     expect(besideTheAya(tester), isFalse);
   });
 
-  testWidgets('a phone reader pushed into a constellation has no way back to '
-      'the screen that opened it', (tester) async {
-    await open(tester, size: phone);
+  testWidgets('a reader who opens the deep dive is stranded on it — no drawn '
+      'way out at tablet width, or at the stacked width under it', (
+    tester,
+  ) async {
+    for (final size in [tablet, phone]) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: nocturneTheme(),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DeepDiveScreen(
+                      db: db,
+                      ayahId: ayaOfPatience,
+                      letters: patience,
+                    ),
+                  ),
+                ),
+                child: const Text('the root'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('the root'));
+      await tester.pumpAndSettle();
+      expect(find.byType(DeepDiveScreen), findsOneWidget, reason: '$size');
 
-    expect(find.bySemanticsLabel('Back'), findsOneWidget);
+      expect(find.bySemanticsLabel('Back'), findsOneWidget, reason: '$size');
+      await tester.tap(find.bySemanticsLabel('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('the root'), findsOneWidget, reason: '$size');
+    }
   });
 
   testWidgets('the deep dive opens its three panes in a window too narrow to '

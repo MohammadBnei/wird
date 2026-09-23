@@ -131,7 +131,11 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: SingleChildScrollView(child: _ayaPane(n, aya))),
+            Expanded(
+              child: SingleChildScrollView(
+                child: _ayaPane(n, aya, leading: _back()),
+              ),
+            ),
             SizedBox(height: n.space('4')),
             _notesButton(),
           ],
@@ -169,14 +173,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
         child: Row(
           spacing: 10,
           children: [
-            NocturneButton(
-              variant: NocturneButtonVariant.icon,
-              onPressed: () => Navigator.of(context).maybePop(),
-              child: Semantics(
-                label: 'Back',
-                child: const Icon(Icons.arrow_back_ios_new, size: 16),
-              ),
-            ),
+            _back(),
             Expanded(
               child: Text(
                 'DEEP DIVE · ${ayahRef(widget.ayahId)}',
@@ -218,55 +215,80 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     ],
   );
 
-  Widget _ayaPane(Nocturne n, AyaReading aya) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        '${aya.surahName} · aya ${aya.number}'.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10,
-          height: 1.2,
-          letterSpacing: 0.11 * 10,
-          color: n.accent,
-        ),
-      ),
-      const SizedBox(height: 14),
-      Text.rich(
-        TextSpan(
-          children: [
-            for (final (i, word) in aya.words.indexed)
-              TextSpan(
-                text: i == 0 ? word.text : ' ${word.text}',
-                style: word.lit
-                    ? TextStyle(
-                        color: n.color('accent-200'),
-                        shadows: [
-                          Shadow(
-                            color: n.accent.withValues(alpha: 0.55),
-                            blurRadius: 22,
-                          ),
-                        ],
-                      )
-                    : null,
-              ),
-          ],
-        ),
-        textDirection: TextDirection.rtl,
-        style: TextStyle(
-          fontFamily: Nocturne.arabicFamily,
-          fontSize: 25,
-          height: 2.1,
-          color: n.text,
-        ),
-      ),
-      const NocturneRule(fade: 40),
-      // The design names the phrase in this heading. The heading face is
-      // Inter, which has no Arabic, and the phrase is already lit in the aya
-      // directly above — so it is not repeated here in a font that would
-      // print it as boxes.
-      irabSection(null),
-    ],
+  /// The arrow every other Nocturne screen draws at the head of its first
+  /// column. Three panes or one, the reader leaves the same way.
+  Widget _back() => NocturneButton(
+    variant: NocturneButtonVariant.icon,
+    onPressed: () => Navigator.of(context).maybePop(),
+    child: Semantics(
+      label: 'Back',
+      child: const Icon(Icons.arrow_back_ios_new, size: 16),
+    ),
   );
+
+  /// [leading] rides the aya's kicker line, which in the three panes is the
+  /// top line of the leftmost one and so the head of the screen.
+  Widget _ayaPane(Nocturne n, AyaReading aya, {Widget? leading}) {
+    final kicker = Text(
+      '${aya.surahName} · aya ${aya.number}'.toUpperCase(),
+      style: TextStyle(
+        fontSize: 10,
+        height: 1.2,
+        letterSpacing: 0.11 * 10,
+        color: n.accent,
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (leading == null)
+          kicker
+        else
+          Row(
+            spacing: 10,
+            children: [
+              leading,
+              Expanded(child: kicker),
+            ],
+          ),
+        const SizedBox(height: 14),
+        Text.rich(
+          TextSpan(
+            children: [
+              for (final (i, word) in aya.words.indexed)
+                TextSpan(
+                  text: i == 0 ? word.text : ' ${word.text}',
+                  style: word.lit
+                      ? TextStyle(
+                          color: n.color('accent-200'),
+                          shadows: [
+                            Shadow(
+                              color: n.accent.withValues(alpha: 0.55),
+                              blurRadius: 22,
+                            ),
+                          ],
+                        )
+                      : null,
+                ),
+            ],
+          ),
+          textDirection: TextDirection.rtl,
+          style: TextStyle(
+            fontFamily: Nocturne.arabicFamily,
+            fontSize: 25,
+            height: 2.1,
+            color: n.text,
+          ),
+        ),
+        const NocturneRule(fade: 40),
+        // The design names the phrase in this heading. The heading face is
+        // Inter, which has no Arabic, and the phrase is already lit in the aya
+        // directly above — so it is not repeated here in a font that would
+        // print it as boxes.
+        irabSection(null),
+      ],
+    );
+  }
 
   // The design draws "Compare translations" beside this. The corpus ships one
   // rendering of the aya and no second translation to compare it with, so
@@ -359,7 +381,10 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
         child: KinSpine(derivatives: reading.derivatives),
       );
     }
-    final here = [for (final w in aya.words) if (w.lit) w.text];
+    final here = [
+      for (final w in aya.words)
+        if (w.lit) w.text,
+    ];
     return Constellation(
       display: reading.display,
       ayahId: widget.ayahId,
@@ -418,11 +443,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
 
 /// The aya as it is printed, with the words carrying [letters] marked. Null
 /// when the corpus has no such aya.
-Future<AyaReading?> ayaReading(
-  Database db,
-  int ayahId,
-  String letters,
-) async {
+Future<AyaReading?> ayaReading(Database db, int ayahId, String letters) async {
   final place = await db.rawQuery(
     '''SELECT a.number, s.name_en
          FROM ayahs a
