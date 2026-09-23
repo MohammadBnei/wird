@@ -187,3 +187,42 @@ vertical space that the aya — the thing the screen is for — does not get.
 lighter within the root panel it belongs to. Worth taking together with finding
 2, since "Open constellation" and "Read the aya" are both navigation out of the
 root panel and should not each get their own button.
+
+---
+
+## Finding 1 — resolved direction (2026-09-23)
+
+**Lane via Perseus is blocked.** Perseus publishes the TEI under **CC BY-SA
+3.0 US**. Creative Commons states verbatim that "no non-CC licenses have been
+designated as compatible with BY-SA 3.0" — the one-way route to the GPL family
+exists only from 4.0. Independently, Perseus's "offer Perseus any modifications
+you make" clause is a further restriction AGPL-3.0 §7 forbids. Two separate bars.
+
+Painful, because the data was measured and it was excellent: **1,582 of 1,642
+roots (96.3%), covering 99.2% of occurrences**, have a non-stub article after
+the hamza fold. The obstacle is entirely the digitisation, not the book.
+
+**Decided: OCR the public-domain scans ourselves.** Lane died in 1876 and the
+lexicon was published 1863–93, so the WORK is public domain; what CC BY-SA 3.0
+covers is Perseus's particular transcription of it. A faithful scan of a
+public-domain text carries no new copyright (Bridgeman v. Corel in the US;
+Art. 14 of the 2019 DSM Directive in the EU), so the archive.org page images are
+clean, and anything we OCR from them is ours.
+
+**The simplification that makes this tractable:** we do not need Arabic OCR.
+We already hold the root inventory — 1,642 roots, keyed and counted, from the
+Qur'anic Arabic Corpus. What Lane adds is **English prose**, and English OCR of
+printed 19th-century type is a solved problem. The hard part is *locating* the
+right article, not reading it, and Lane is ordered alphabetically by root.
+
+**Open questions for that track**, not for this round:
+- Which archive.org scan set, and at what resolution.
+- How to locate an article without consulting the encumbered XML — using a
+  CC BY-SA work as a finding aid and then OCRing the scan is a grey area best
+  avoided outright.
+- Lane's articles carry Qur'anic sense-notes and quote exegetes inline. The
+  guardrail stands: the poetic register is a claim about the WORD, never about a
+  verse. A rule about which parts of an article are in bounds has to exist before
+  a single meaning is written.
+- Lane is 1863–93 and carries its period's framing on slavery, women and race.
+  An editorial policy has to exist before his voice becomes the app's.
