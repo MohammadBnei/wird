@@ -373,3 +373,63 @@ somewhere built for the screen it is on.
 
 Related: finding 14 wants the same thing from 3a's derivative list. Both are
 "the reader is looking at a root's family and cannot go anywhere from it".
+
+### 16. A root's sense is asserted with nothing saying whose claim it is
+
+Found 2026-09-24 while verifying that the 523 shipped senses reach a reader.
+They do — `root_repo.dart:159` reads them on `root_letters = ? AND word_id IS
+NULL`, which is how they are shaped — and `coreSenseSection` renders them under
+the heading **Core sense**.
+
+It renders the sentence and nothing else.
+
+`root_notes` carries four columns the app never opens:
+
+| column | rows | read by the app |
+| --- | --- | --- |
+| `note` | 523 | yes |
+| `note_fr` | 523 | **no** |
+| `source` | 523 | **no** |
+| `basis` | 523 | **no** |
+| `evidence` | 523 | **no** |
+
+`grep -rn "basis\|evidence\|note_fr" app/lib` returns nothing.
+
+**Why this is structural and not a nicety.** This project already deleted one
+version of this defect: invented prose shipped attributed by name to Ibn Fāris
+and Lane. The prose is honest now — it is Wird's own reading, it is measured
+against the corpus, and 226 candidates were refused for not being borne out.
+But the screen presents it as a bare assertion. A reader tapping غير sees
+
+> **Core sense**
+> other than, without; to change
+
+with no indication that this is Wird's own reading rather than a quotation from
+a scholar, and no way to see the words it was derived from. The difference
+between those two readings of the same sentence is the whole reason the first
+attempt was reverted, and right now the screen gives a reader no way to tell
+them apart.
+
+The `basis` column was written for exactly this and says, per root, that the
+sense is Wird's own reading of that root, kept because its own words bear it
+out. `evidence` carries the actual words and glosses, bucketed by morphological
+shape — the thing that makes the claim checkable rather than trusted.
+
+**The shape of the gap.** The sense needs to say whose it is, in one line a
+reader does not have to hunt for, and the evidence needs to be reachable from
+it — not printed by default, which would bury the sense under a table, but one
+gesture away. A reader who wants to know why Wird says غير means *other than*
+should be able to see the fifty-nine words that say so.
+
+`note_fr` is a separate, smaller gap: 523 French senses are in the bundle and
+there is no locale path to reach them.
+
+### 17. Nothing says a root ships no sense, or why
+
+1,119 of 1,642 roots ship nothing — عود, جمع, كثر and طوي among them, each
+refused by a named term. `coreSenseSection` returns `SizedBox.shrink()` for
+those, so the section is simply absent.
+
+An absent section reads as an oversight. It is the opposite: it is the machine
+declining to tell a reader something it cannot stand behind, which is the most
+trustworthy thing this feature does, and the reader never learns it happened.
