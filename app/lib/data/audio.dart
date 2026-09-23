@@ -302,6 +302,12 @@ class SetAudio {
   bool get ready =>
       tracks.isNotEmpty && tracks.every((t) => cache.cached(t.relPath) != null);
 
+  /// Plays or pauses the whole set.
+  ///
+  /// Stopping it while the files are still being opened is not an error: the
+  /// player throws `Loading interrupted` into whoever started the play, and
+  /// that caller is the screen. Nothing in this app may spin or shout, least
+  /// of all over a reader who pressed stop, so an interrupted play is silence.
   Future<void> toggle() async {
     if (playing.value) {
       playing.value = false;
@@ -309,16 +315,22 @@ class SetAudio {
       return;
     }
     if (!ready) return;
-    final player = _player ??= AudioPlayer();
-    await player.setAudioSources([
-      for (final track in tracks)
-        AudioSource.file(cache.fileFor(track.relPath).path),
-    ]);
-    _listen(player);
-    playing.value = true;
-    await player.play();
-    playing.value = false;
-    currentWordId.value = null;
+    try {
+      final player = _player ??= AudioPlayer();
+      await player.setAudioSources([
+        for (final track in tracks)
+          AudioSource.file(cache.fileFor(track.relPath).path),
+      ]);
+      _listen(player);
+      playing.value = true;
+      await player.play();
+    } on Exception {
+      // A platform that will not take the set, or a load the reader cut
+      // short. The bar goes back to dark and the screen says nothing.
+    } finally {
+      playing.value = false;
+      currentWordId.value = null;
+    }
   }
 
   /// The words that would sound if the reader tapped them: every word of an

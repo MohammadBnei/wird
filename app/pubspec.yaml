@@ -24,6 +24,9 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # just_audio's own seam: the tests stand a fake platform behind the player,
+  # so a tap can be watched against a clip that ends when a real one would.
+  just_audio_platform_interface: ^4.6.0
 
 flutter:
   uses-material-design: true

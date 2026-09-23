@@ -22,7 +22,7 @@ void main() {
       final corpus = await openCorpusBeside();
 
       // The root panel on screen 1a opens on the first word of the set that
-      // carries a root, and "Open constellation" opens that root.
+      // carries a root, and "Constellation" opens that root.
       String? root;
       for (final id in wordsOnScreen(tester).toList()..sort()) {
         root = await rootDisplayOf(corpus, id);
@@ -34,7 +34,7 @@ void main() {
         reason: 'no word of the first set carries a root to open',
       );
 
-      await tester.tap(find.text('Open constellation'));
+      await tester.tap(find.text('Constellation'));
       await tester.pumpAndSettle();
 
       expect(

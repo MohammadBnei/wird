@@ -5,12 +5,13 @@ import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/outbox.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
-import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
 import '../../offline.dart';
+import '../../wird.dart';
 import '../prayer/sets.dart';
 
 /// A write the server has refused, parked the way the sync path parks it —
@@ -35,22 +36,11 @@ void main() {
     audio = await emptyCache();
   });
 
-  Future<void> openStudy(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(402, 874);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: nocturneTheme(),
-        home: StudyScreen(db: db, audioCache: audio),
-      ),
-    );
-    await tester.pumpAndSettle();
-  }
-
   Future<void> openSettings(WidgetTester tester) async {
-    await tester.tap(find.byIcon(Icons.tune));
-    await tester.pumpAndSettle();
+    await pumpPhone(
+      tester,
+      await wirdAround(db, const SettingsScreen(), cache: audio),
+    );
   }
 
   // The defect: the ops the server would never take were queried by nothing
@@ -60,7 +50,6 @@ void main() {
       (tester) async {
     await parkAWrite(db, [96001, 96002]);
 
-    await openStudy(tester);
     await openSettings(tester);
 
     expect(find.textContaining('has not reached the server'), findsOneWidget);
@@ -73,7 +62,6 @@ void main() {
       (tester) async {
     await markSetUnderstood(db, newOpId(), [96001]);
 
-    await openStudy(tester);
     await openSettings(tester);
 
     expect(find.textContaining('has not reached the server'), findsNothing);
@@ -85,7 +73,6 @@ void main() {
       (tester) async {
     final id = await parkAWrite(db, [96001]);
 
-    await openStudy(tester);
     await openSettings(tester);
     await tester.tap(find.text('Send again'));
     await tester.pumpAndSettle();
@@ -103,7 +90,6 @@ void main() {
       'next flush', (tester) async {
     await parkAWrite(db, [96001]);
 
-    await openStudy(tester);
     await openSettings(tester);
     await tester.tap(find.text('Discard'));
     await tester.pumpAndSettle();

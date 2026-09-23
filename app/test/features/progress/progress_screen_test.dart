@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
@@ -7,11 +6,10 @@ import 'package:wird/features/kept/kept_screen.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/progress/passage.dart';
 import 'package:wird/features/progress/progress_screen.dart';
-import 'package:wird/nav.dart';
-import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
+import '../../wird.dart';
 
 /// Al-Fātiḥa, all seven ayas: the whole of one sūra and a slice of the first
 /// juz, so a count that is wrong shows up as a wrong sūra row and a wrong arc
@@ -25,17 +23,7 @@ void main() {
   setUp(() async => db = await testCorpus());
 
   Future<void> open(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(402, 874);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: nocturneTheme(),
-        onGenerateRoute: (settings) => screenRoute(settings, db),
-        home: ProgressScreen(db: db),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpPhone(tester, await wirdAround(db, ProgressScreen(db: db)));
   }
 
   testWidgets('a reader who has prayed no set at all is shown a division by '

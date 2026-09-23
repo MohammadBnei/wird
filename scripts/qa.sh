@@ -6,7 +6,8 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ROOT=$(pwd)
 REPORT="$ROOT/qa-report.json"
 ENTRIES=$(mktemp)
-trap 'rm -f "$ENTRIES"' EXIT
+RUNLOG=$(mktemp)
+trap 'rm -f "$ENTRIES" "$RUNLOG"' EXIT
 failed=0
 
 # Which row of the plan's check table an entry answers. Every entry carries one, so
@@ -160,15 +161,25 @@ run_journeys() {
 	# run has to be the loop.
 	out=""
 	status=0
+	# Job control, so each run is a process group of its own and the app it
+	# launched can be killed by that group id.
+	set -m
 	for file in "$ROOT"/app/integration_test/*_test.dart; do
-		one=$(in_app fvm flutter test "integration_test/$(basename "$file")" -d "$dev" --dart-define=WIRD_TARGET="$kind" 2>&1) || status=1
-		out="$out$one"$'\n'
+		in_app fvm flutter test "integration_test/$(basename "$file")" -d "$dev" --dart-define=WIRD_TARGET="$kind" >"$RUNLOG" 2>&1 &
+		runner=$!
+		wait "$runner" || status=1
 		# The desktop app outlives its own run, and macOS answers the next
 		# launch by foregrounding the instance already open, so the following
 		# journey file waits for a debug connection that never arrives.
-		pkill -f 'Debug/wird.app/Contents/MacOS/wird' 2>/dev/null
+		#
+		# Killing the group rather than every process whose path matches: the
+		# pattern kill took down the app of every agent running this gate at
+		# the same time, including ones halfway through a journey.
+		kill -- -"$runner" 2>/dev/null
+		out="$out$(cat "$RUNLOG")"$'\n'
 		sleep 1
 	done
+	set +m
 	run=$(grep -o 'WIRD-JOURNEY {.*}' <<<"$out" | sed 's/^WIRD-JOURNEY //' | jq -s 'unique_by(.journey)')
 
 	if [ "$status" -ne 0 ]; then

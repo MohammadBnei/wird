@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'app.dart';
 import 'data/db.dart';
 import 'nav.dart';
 import 'theme/nocturne.dart';
 
 void main() => runApp(const WirdApp());
+
+/// What the app needs before it can route anywhere: the corpus, and what the
+/// reader has already chosen.
+typedef Bootstrap = ({Database db, Prefs prefs});
+
+Future<Bootstrap> _open(Future<Database> corpus) async {
+  final db = await corpus;
+  return (db: db, prefs: await Prefs.read(db));
+}
 
 class WirdApp extends StatefulWidget {
   const WirdApp({super.key, this.corpus});
@@ -22,13 +32,16 @@ class WirdApp extends StatefulWidget {
 class _WirdAppState extends State<WirdApp> {
   /// First launch copies the 24 MB corpus out of the bundle, so the first
   /// screen waits on a file copy rather than on a network call.
-  late final Future<Database> _db = widget.corpus ?? openWird();
+  late final Future<Bootstrap> _ready = _open(widget.corpus ?? openWird());
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<Database>(
-    future: _db,
+  Widget build(BuildContext context) => FutureBuilder<Bootstrap>(
+    future: _ready,
     builder: (context, snapshot) => switch (snapshot) {
-      AsyncSnapshot(hasData: true, :final data?) => wirdApp(data),
+      AsyncSnapshot(hasData: true, :final data?) => wirdApp(
+        data.db,
+        prefs: data.prefs,
+      ),
       AsyncSnapshot(hasError: true, :final error?) => _beforeTheCorpus(
         Text('The corpus would not open.\n\n$error'),
       ),

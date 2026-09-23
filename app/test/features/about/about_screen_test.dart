@@ -3,13 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/about/about_screen.dart';
-import 'package:wird/features/study/study_screen.dart';
-import 'package:wird/nav.dart';
-import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
 import '../../offline.dart';
+import '../../wird.dart';
 
 /// Substrings a source must put on screen for the grant it is used under to
 /// hold. Read against the screen, not against the constant it renders from,
@@ -34,13 +32,7 @@ void main() {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: nocturneTheme(),
-        onGenerateRoute: (settings) => screenRoute(settings, db),
-        home: home,
-      ),
-    );
+    await tester.pumpWidget(await wirdAround(db, home));
     await tester.pumpAndSettle();
   }
 
@@ -121,10 +113,12 @@ void main() {
 
   testWidgets('the attribution lives only in the repository, so nobody using '
       'the app ever sees it', (tester) async {
-    await phone(tester, StudyScreen(db: db, audioCache: audio));
-    await tester.tap(find.byIcon(Icons.tune));
+    // The sources are a destination in the drawer now, not a button at the
+    // bottom of the set's settings panel.
+    await pumpPhone(tester, await wholeApp(db, cache: audio));
+    await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sources and licences'));
+    await tester.tap(find.text('Sources'));
     await tester.pumpAndSettle();
 
     expect(find.text(_corpus), findsOneWidget);

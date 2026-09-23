@@ -1,21 +1,95 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/sets.dart';
 
 import '../corpus.dart';
 import '../offline.dart';
+import '../player.dart';
 
 /// Al-ʿAlaq 1–5: the first set a new reader is handed, and the one the
 /// offline journey prays.
 const firstSet = [96001, 96002, 96003, 96004, 96005];
 
 void main() {
+  // The fake audio platform talks over the binary messenger, which a plain
+  // test does not bring up on its own.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late Database db;
 
   setUp(() async => db = await testCorpus());
+
+  /// The set's recitation on disk, under a cache that can fetch no more.
+  Future<AudioCache> cacheHolding(List<int> ayahIds) async {
+    final dir = await tempAudioDir();
+    final tracks = await tracksFor(db, ayahIds);
+    await AudioCache(
+      dir,
+      fetch: FakeCdn().call,
+    ).prefetch([for (final t in tracks) t.relPath]);
+    return AudioCache(dir, fetch: RadioOff().call);
+  }
+
+  test('the word the reader taps second is left dark, because the word before '
+      'it clears the highlight when its own clip ends', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(cache: await cacheHolding(firstSet), tracks: tracks);
+
+    final first = audio.playWord(96001001);
+    await pumpEventQueue();
+    expect(audio.currentWordId.value, 96001001);
+
+    final second = audio.playWord(96001002);
+    await pumpEventQueue();
+    expect(
+      audio.currentWordId.value,
+      96001002,
+      reason: 'the word under the reader\'s finger is the one lit',
+    );
+
+    players.only.finish();
+    expect(await first, isTrue);
+    expect(await second, isTrue);
+    expect(audio.currentWordId.value, isNull);
+    expect(audio.playing.value, isFalse);
+  });
+
+  test('an audio platform that refuses a word throws out of the tap instead '
+      'of leaving the word silent', () async {
+    final tracks = await tracksFor(db, firstSet);
+    JustAudioPlatform.instance = FakePlayers(refuses: true);
+    final audio = SetAudio(cache: await cacheHolding(firstSet), tracks: tracks);
+
+    expect(await audio.playWord(96001001), isFalse);
+    expect(audio.playing.value, isFalse);
+    expect(audio.currentWordId.value, isNull);
+  });
+
+  test('a word of an aya that never finished downloading is offered as one '
+      'the reader can hear', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final cache = AudioCache(await tempAudioDir(), fetch: FakeCdn().call);
+    await cache.prefetch([tracks.first.relPath]);
+    final audio = SetAudio(cache: cache, tracks: tracks);
+
+    expect(audio.speakable, {
+      for (final span in tracks.first.segments) span.wordId,
+    });
+
+    // The rest of the set lands while the reader is on the screen, the way it
+    // does behind screen 1a, and the answer has to follow the disk.
+    await cache.prefetch([for (final t in tracks) t.relPath]);
+    expect(audio.speakable, {
+      for (final track in tracks)
+        for (final span in track.segments) span.wordId,
+    });
+  });
 
   test('the set was downloaded before takeoff and plays nothing once the '
       'radio is off', () async {

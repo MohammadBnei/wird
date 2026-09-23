@@ -4,12 +4,12 @@ import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/root/root_dial.dart';
 import 'package:wird/features/root/root_screen.dart';
-import 'package:wird/features/root/root_spine_screen.dart';
 import 'package:wird/nav.dart';
-import 'package:wird/theme/nocturne.dart';
+import 'package:wird/features/root/root_spine_screen.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
+import '../../wird.dart';
 
 /// Five derivatives — the ring the design draws.
 const onTheDial = 'عقل';
@@ -48,13 +48,7 @@ void main() {
     tester.view.physicalSize = const Size(402, 2600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: nocturneTheme(),
-        home: screen,
-        onGenerateRoute: (settings) => screenRoute(settings, db),
-      ),
-    );
+    await tester.pumpWidget(await wirdAround(db, screen));
     await tester.pumpAndSettle();
   }
 

@@ -29,9 +29,7 @@ void main() {
         body: 'the first aya I understood',
       );
 
-      await _openSettings(tester);
-      await tester.tap(find.text('Kept'));
-      await tester.pumpAndSettle();
+      await goThroughTheDrawer(tester, 'Kept');
       expect(find.byType(KeptScreen), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), 'first aya');
@@ -75,9 +73,7 @@ void main() {
         'the next set',
       );
 
-      await _openSettings(tester);
-      await tester.tap(find.text('Your passage'));
-      await tester.pumpAndSettle();
+      await goThroughTheDrawer(tester, 'Your passage');
       expect(find.byType(ProgressScreen), findsOneWidget);
 
       // The ring paints its own numbers, so they are read where a reader who
@@ -94,13 +90,6 @@ void main() {
       expectNoSpinnerAndNoApology(tester, 'on the passage');
     },
   );
-}
-
-/// The settings panel on 1a, which is where the doors to the passage and the
-/// kept list hang until the design draws them somewhere better.
-Future<void> _openSettings(WidgetTester tester) async {
-  await tester.tap(find.byIcon(Icons.tune));
-  await tester.pumpAndSettle();
 }
 
 /// A second handle on the same database file, opened writable so the journey

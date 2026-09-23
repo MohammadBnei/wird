@@ -51,6 +51,16 @@ Future<Database> openWirdAt(String path) async {
       reading_order TEXT NOT NULL,
       updated_at    TEXT NOT NULL
     )''');
+  // What the reader set for themselves on this device: how a word is annotated
+  // and how large the Arabic is drawn. Device-local and outside the outbox —
+  // the size that suits a phone held at arm's length is not the size that
+  // suits a tablet, so this is not a preference a sync should carry across.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS display_prefs (
+      id          INTEGER PRIMARY KEY CHECK (id = 1),
+      display     INTEGER NOT NULL,
+      arabic_size REAL NOT NULL
+    )''');
   await db.execute('''
     CREATE TABLE IF NOT EXISTS mic_consent (
       id          INTEGER PRIMARY KEY CHECK (id = 1),
@@ -221,6 +231,34 @@ Future<void> setReadingOrder(Database db, ReadingOrder order) =>
         body: {'reading_order': order.name, 'updated_at': wireTime(at)},
       );
     });
+
+/// The default annotation is the gloss, and the design draws the Arabic at
+/// 31px.
+const defaultDisplay = 0;
+const defaultArabicSize = 31.0;
+
+typedef DisplayPrefs = ({int display, double arabicSize});
+
+Future<DisplayPrefs> displayPrefs(Database db) async {
+  final rows = await db.query('display_prefs', limit: 1);
+  if (rows.isEmpty) {
+    return (display: defaultDisplay, arabicSize: defaultArabicSize);
+  }
+  return (
+    display: rows.first['display']! as int,
+    arabicSize: rows.first['arabic_size']! as double,
+  );
+}
+
+Future<void> setDisplayPrefs(
+  Database db, {
+  required int display,
+  required double arabicSize,
+}) => db.insert('display_prefs', {
+  'id': 1,
+  'display': display,
+  'arabic_size': arabicSize,
+}, conflictAlgorithm: ConflictAlgorithm.replace);
 
 /// A word that shares the root, with the gloss it was given and the aya it is
 /// first met in.

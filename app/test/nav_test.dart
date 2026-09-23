@@ -7,6 +7,7 @@ import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/about/about_screen.dart';
+import 'package:wird/features/dashboard/dashboard_screen.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/index/index_screen.dart';
 import 'package:wird/features/kept/kept_screen.dart';
@@ -14,14 +15,16 @@ import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/features/progress/progress_screen.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/features/root/root_spine_screen.dart';
+import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/main.dart';
 import 'package:wird/nav.dart';
-import 'package:wird/theme/nocturne.dart';
+import 'package:wird/shell/wird_shell.dart';
 
 import 'corpus.dart';
 import 'fonts.dart';
 import 'offline.dart';
+import 'wird.dart';
 
 NavigatorState navigatorIn(WidgetTester tester) =>
     tester.state<NavigatorState>(find.byType(Navigator).first);
@@ -40,19 +43,26 @@ void main() {
 
   /// The app on a phone at the design's size, whose recitation cannot be
   /// downloaded: a real download never completes inside a widget test's zone,
-  /// and screen 1a would sit on its loading frame for the whole test.
+  /// and the reading screen would sit on its loading frame for the whole test.
   Future<void> openApp(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(402, 874);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: nocturneTheme(),
-        onGenerateRoute: (settings) => screenRoute(settings, db),
-        home: StudyScreen(db: db, audioCache: audio),
-      ),
+    await pumpPhone(tester, await wholeApp(db, cache: audio));
+  }
+
+  /// The drawer, then a destination — the way a reader moves now. Scoped to
+  /// the drawer because home names the same places on its own face.
+  Future<void> goTo(WidgetTester tester, String label) async {
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: find.byType(WirdDrawer), matching: find.text(label)),
     );
     await tester.pumpAndSettle();
+  }
+
+  /// The set, which is no longer the screen the app opens on.
+  Future<void> openTheSet(WidgetTester tester) async {
+    await openApp(tester);
+    await goTo(tester, 'The set');
   }
 
   testWidgets('every destination the app names opens its screen, never a '
@@ -60,6 +70,7 @@ void main() {
     // What each screen is opened on. Declared here so a route added with no
     // caller able to open it fails this test instead of crashing in a hand.
     final destinations = <String, ({Object? arguments, Type screen})>{
+      Routes.dashboard: (arguments: null, screen: DashboardScreen),
       // The argument is the aya screen 1a opens on, rather than the set the
       // walk would have handed the reader.
       Routes.study: (arguments: 2153, screen: StudyScreen),
@@ -74,11 +85,11 @@ void main() {
       Routes.kept: (arguments: null, screen: KeptScreen),
       Routes.about: (arguments: null, screen: AboutScreen),
       Routes.index: (arguments: null, screen: IndexScreen),
+      Routes.settings: (arguments: null, screen: SettingsScreen),
     };
     expect(destinations.keys.toSet(), screens.keys.toSet());
 
-    await tester.pumpWidget(wirdApp(db));
-    await tester.pumpAndSettle();
+    await pumpPhone(tester, await wholeApp(db, cache: audio));
 
     for (final destination in destinations.entries) {
       navigatorIn(tester)
@@ -94,25 +105,27 @@ void main() {
     }
   });
 
-  testWidgets('the prayer, the passage and the kept list are reachable from '
-      'the set the reader is on', (tester) async {
+  testWidgets('the sūra index, the passage and the kept list can only be '
+      'found by opening a panel that is collapsed by default', (tester) async {
     await openApp(tester);
-    await tester.tap(find.byIcon(Icons.tune));
-    await tester.pumpAndSettle();
 
     const doors = {
-      'Pray this set': PrayerScreen,
+      'The set': StudyScreen,
+      'Sūra index': IndexScreen,
       'Your passage': ProgressScreen,
       'Kept': KeptScreen,
-      'Sūra index': IndexScreen,
+      'Settings': SettingsScreen,
+      'Sources': AboutScreen,
     };
     for (final door in doors.entries) {
-      await tester.tap(find.text(door.key));
-      await tester.pumpAndSettle();
+      await goTo(tester, door.key);
       expect(find.byType(door.value), findsOneWidget, reason: door.key);
-      navigatorIn(tester).pop();
-      await tester.pumpAndSettle();
     }
+    // Home is a pop rather than a push, so the reader who walked all six is
+    // one press from the start rather than six.
+    await goTo(tester, 'Home');
+    expect(find.byType(DashboardScreen), findsOneWidget);
+    expect(navigatorIn(tester).canPop(), isFalse);
   });
 
   testWidgets('coming back from a root leaves the set on the word the reader '
@@ -126,7 +139,7 @@ void main() {
     final tapped = rooted.firstWhere((w) => w.root != opened.root);
     final detail = (await rootDetail(db, tapped.root!))!;
 
-    await openApp(tester);
+    await openTheSet(tester);
     // The long press is what opens a root now; the tap speaks the word.
     await tester.longPress(find.byKey(ValueKey(tapped.id)));
     await tester.pumpAndSettle();
@@ -147,13 +160,10 @@ void main() {
 
   testWidgets('a reader who wants Al-Fātiḥa is stuck with whatever set the '
       'walk hands them', (tester) async {
-    await openApp(tester);
+    await openTheSet(tester);
     expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.tune));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Sūra index'));
-    await tester.pumpAndSettle();
+    await goTo(tester, 'Sūra index');
     await tester.tap(find.byKey(const ValueKey('sura-1')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('aya-1005')));
@@ -166,10 +176,7 @@ void main() {
   testWidgets('the index opened from the passage hands its aya to a second '
       'reader stacked on the first, each holding a live player', (tester) async {
     await openApp(tester);
-    await tester.tap(find.byIcon(Icons.tune));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Your passage'));
-    await tester.pumpAndSettle();
+    await goTo(tester, 'Your passage');
     await tester.tap(find.text('All 114'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('sura-1')));
@@ -184,7 +191,7 @@ void main() {
   });
 
   testWidgets('the app goes down on the frame the corpus finishes opening, so '
-      'the reader never reaches the set', (tester) async {
+      'the reader never reaches the app at all', (tester) async {
     final opening = Completer<Database>();
     await tester.pumpWidget(WirdApp(corpus: opening.future));
     await tester.pump();
@@ -192,12 +199,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(StudyScreen), findsOneWidget);
+    expect(find.byType(DashboardScreen), findsOneWidget);
   });
 
   testWidgets('a reader on a tablet opening a constellation lands on a page '
       'that admits the screen behind it was never built', (tester) async {
-    await openApp(tester);
+    await openTheSet(tester);
     // The iPad Pro 11-inch in landscape, which is where the three-pane
     // reading opens rather than the phone one.
     tester.view.physicalSize = const Size(1194, 834);
@@ -210,7 +217,7 @@ void main() {
 
   testWidgets('a reader on a phone opening a constellation is handed the '
       'tablet’s three rails, which do not fit a phone', (tester) async {
-    await openApp(tester);
+    await openTheSet(tester);
     navigatorIn(tester).pushNamed(Routes.deepDive,
         arguments: (ayahId: 96002, letters: 'علق'));
     await tester.pumpAndSettle();

@@ -7,6 +7,7 @@ import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/mic.dart';
+import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/theme/nocturne.dart';
@@ -15,6 +16,7 @@ import 'package:wird/widgets/nocturne_button.dart';
 import '../../corpus.dart';
 import '../../fonts.dart';
 import '../../offline.dart';
+import '../../wird.dart';
 
 /// The word as the corpus spells it, harakat and all. Read from the database
 /// rather than typed here, so the test cannot pass against a text the screen
@@ -28,9 +30,21 @@ Future<String> word(Database db, int id) async {
 /// set, so a finder on the text alone matches the wrong tile.
 Finder tile(int wordId) => find.byKey(ValueKey(wordId));
 
-Text arabicOf(WidgetTester tester, int wordId) => tester.widget<Text>(
-  find.descendant(of: tile(wordId), matching: find.byType(Text)).first,
-);
+/// The Arabic of a word: the first thing painted in its tile, above the
+/// transliteration and the gloss.
+Finder arabic(int wordId) =>
+    find.descendant(of: tile(wordId), matching: find.byType(Text)).first;
+
+Text arabicOf(WidgetTester tester, int wordId) =>
+    tester.widget<Text>(arabic(wordId));
+
+/// The line under a word's Arabic, which says the word can be heard.
+Color underlineOf(WidgetTester tester, int wordId) {
+  final box = tester.widget<Container>(
+    find.ancestor(of: arabic(wordId), matching: find.byType(Container)).first,
+  );
+  return ((box.decoration! as BoxDecoration).border! as Border).bottom.color;
+}
 
 void main() {
   late Database db;
@@ -47,27 +61,34 @@ void main() {
   /// The screen on a phone that has never been online: no recitation on disk
   /// and no way to fetch one.
   Future<void> openStudy(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(402, 874);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: nocturneTheme(),
-        // Screen 1b stands in as a bare page: what is under test is that 1a
-        // records the prayer when it gets the reader back, whatever 1b did.
+    await pumpPhone(
+      tester,
+      await wirdAround(
+        db,
+        StudyScreen(db: db),
+        cache: audio,
+        // Screen 1b stands in as a bare page: what is under test is that the
+        // prayer is recorded when the reader gets back, whatever 1b did.
         onGenerateRoute: (settings) => MaterialPageRoute<void>(
           builder: (_) => settings.name == Routes.prayer
               ? const Scaffold(body: Text('praying'))
-              : StudyScreen(db: db, audioCache: audio),
+              : screens[settings.name]!(db, settings.arguments),
         ),
-        home: StudyScreen(db: db, audioCache: audio),
       ),
     );
+  }
+
+  /// The preferences, which are a screen of their own now rather than a panel
+  /// that unfolds over the set.
+  Future<void> openSettings(WidgetTester tester) async {
+    Navigator.of(tester.element(find.byType(StudyScreen)))
+        .pushNamed(Routes.settings);
     await tester.pumpAndSettle();
   }
 
-  Future<void> openSettings(WidgetTester tester) async {
-    await tester.tap(find.byIcon(Icons.tune));
+  /// Back to the set, which is where a change to the display has to be seen.
+  Future<void> closeSettings(WidgetTester tester) async {
+    Navigator.of(tester.element(find.byType(SettingsScreen))).pop();
     await tester.pumpAndSettle();
   }
 
@@ -108,12 +129,12 @@ void main() {
     expect(painted.style!.fontFamily, Nocturne.arabicFamily);
   });
 
-  testWidgets('tapping a word blanks the aya while the root panel catches up',
+  testWidgets('holding a word blanks the aya while the root panel catches up',
       (tester) async {
     await openStudy(tester);
     expect(find.text('ق ر أ'), findsOneWidget);
 
-    await tester.tap(tile(96002004));
+    await tester.longPress(tile(96002004));
     await tester.pump();
     expect(
       tile(96002004),
@@ -126,11 +147,11 @@ void main() {
     expect(find.text('ق ر أ'), findsNothing);
   });
 
-  testWidgets('tapping a word that carries no root throws away the root the '
+  testWidgets('holding a word that carries no root throws away the root the '
       'reader was reading', (tester) async {
     await openStudy(tester);
 
-    await tester.tap(tile(96001004));
+    await tester.longPress(tile(96001004));
     await tester.pumpAndSettle();
 
     expect(find.text('ق ر أ'), findsOneWidget);
@@ -158,6 +179,7 @@ void main() {
     await openSettings(tester);
     await tester.tap(find.text('Neither'));
     await tester.pumpAndSettle();
+    await closeSettings(tester);
 
     expect(find.text('a clinging substance'), findsNothing);
     expect(find.text(await word(db, 96002004)), findsOneWidget);
@@ -171,26 +193,155 @@ void main() {
     await openSettings(tester);
     await tester.drag(find.byType(Slider), const Offset(-200, 0));
     await tester.pumpAndSettle();
+    await closeSettings(tester);
 
     final after = arabicOf(tester, 96001001).style!.fontSize!;
     expect(after, isNot(before));
     expect(after, inInclusiveRange(24, 44));
   });
 
-  testWidgets('a long press on an aya that was never downloaded spins instead '
-      'of showing the transliteration', (tester) async {
+  testWidgets('tapping a word opens a root panel instead of speaking it',
+      (tester) async {
     await openStudy(tester);
-    final rows = await db.query('words', where: 'id = 96001001');
+    final rows = await db.query('words', where: 'id = 96002004');
     final translit = rows.single['translit']! as String;
+    expect(find.text('ق ر أ'), findsOneWidget);
 
-    await tester.longPress(tile(96001001));
+    await tester.tap(tile(96002004));
     await tester.pumpAndSettle();
 
-    expect(find.text(translit), findsOneWidget);
+    expect(
+      find.descendant(of: tile(96002004), matching: find.text(translit)),
+      findsOneWidget,
+      reason: 'the tap asked for the word, and nothing is downloaded to play',
+    );
+    expect(
+      find.text('ع ل ق'),
+      findsNothing,
+      reason: 'the root panel belongs to the long press now',
+    );
+
+    await tester.longPress(tile(96002004));
+    await tester.pumpAndSettle();
+    expect(find.text('ع ل ق'), findsOneWidget);
+  });
+
+  testWidgets('a tap on an aya that was never downloaded spins, or shouts one '
+      'snackbar per word', (tester) async {
+    await openStudy(tester);
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    final shown = tester.getRect(find.byType(SingleChildScrollView));
+    var tapped = 0;
+
+    for (final aya in set.ayas) {
+      for (final word in aya.words) {
+        // A tile scrolled out of the set's own pane would take the tap on
+        // whatever is painted over it, which proves nothing about the word.
+        final rect = tester.getRect(tile(word.id));
+        if (rect.top < shown.top || rect.bottom > shown.bottom) continue;
+        await tester.tap(tile(word.id));
+        await tester.pump();
+        tapped++;
+      }
+    }
+    await tester.pumpAndSettle();
+
+    expect(tapped, greaterThan(8), reason: 'a row the reader can work down');
+    expect(find.byType(SnackBar), findsNothing);
     expect(
       find.byType(CircularProgressIndicator),
       findsNothing,
       reason: 'a word with no audio answers at once, or not at all',
+    );
+  });
+
+  testWidgets('a reader cannot tell which words can be heard', (tester) async {
+    // The first aya arrived before the radio went off; the rest of the set
+    // never did.
+    final downloaded = (await tracksFor(db, [96001])).single;
+    // Writing the file is real disk work, which only completes outside the
+    // fake clock a widget test runs on.
+    final dir = (await tester.runAsync(() async {
+      final dir = await tempAudioDir();
+      await AudioCache(dir, fetch: FakeCdn().call).prefetch([
+        downloaded.relPath,
+      ]);
+      return dir;
+    }))!;
+    await pumpPhone(
+      tester,
+      await wirdAround(
+        db,
+        StudyScreen(db: db),
+        cache: AudioCache(dir, fetch: RadioOff().call),
+      ),
+    );
+
+    final heard = [for (final span in downloaded.segments) span.wordId];
+    expect(heard, hasLength(greaterThan(2)));
+    for (final id in heard) {
+      expect(
+        underlineOf(tester, id),
+        isNot(Colors.transparent),
+        reason: 'word $id is on the phone and the row says nothing',
+      );
+    }
+    for (final span in (await tracksFor(db, [96002])).single.segments) {
+      expect(
+        underlineOf(tester, span.wordId),
+        Colors.transparent,
+        reason: 'word ${span.wordId} would play nothing if it were tapped',
+      );
+    }
+  });
+
+  testWidgets('a two-line gloss pushes its Arabic out of line', (tester) async {
+    await openStudy(tester);
+    final aya = (await nextSet(db, ReadingOrder.nuzul))!.ayas[1];
+    final ids = [for (final word in aya.words) word.id];
+
+    final tops = {for (final id in ids) tester.getRect(arabic(id)).top};
+    final rules = {
+      for (final id in ids)
+        tester
+            .getRect(
+              find.ancestor(
+                of: arabic(id),
+                matching: find.byType(Container),
+              ).first,
+            )
+            .bottom,
+    };
+    final tiles = {for (final id in ids) tester.getRect(tile(id)).height};
+
+    expect(
+      tiles,
+      hasLength(greaterThan(1)),
+      reason: 'a gloss in this aya wraps, or the row cannot break',
+    );
+    expect(tops, hasLength(1), reason: 'the Arabic of every word is level');
+    expect(rules, hasLength(1), reason: 'the underlines still read as a line');
+  });
+
+  testWidgets('the aya mark floats off the baseline', (tester) async {
+    await openStudy(tester);
+    // The mark closes its aya, so the row it rides is the row the aya's last
+    // word is on.
+    final last = arabic(96001005);
+    final painted = tester.widget<Text>(last);
+    final baseline = TextPainter(
+      text: TextSpan(text: painted.data, style: painted.style),
+      textDirection: TextDirection.rtl,
+    )..layout();
+
+    expect(
+      tester.getCenter(find.text('١')).dy,
+      closeTo(
+        tester.getRect(last).top +
+            baseline.computeDistanceToActualBaseline(TextBaseline.alphabetic),
+        4,
+      ),
+      reason: 'the mark rides the Arabic baseline, not the top of the row',
     );
   });
 
@@ -216,6 +367,10 @@ void main() {
     await openSettings(tester);
     await tester.tap(find.text('Muṣḥaf'));
     await tester.pumpAndSettle();
+    // Reaching settings leaves the set behind — the drawer pops to home
+    // first — so the order is seen on the set the reader opens next.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await openStudy(tester);
 
     expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
     expect(await readingOrder(db), ReadingOrder.mushaf);
@@ -263,7 +418,6 @@ void main() {
     expect(find.text('5 ayas'), findsOneWidget);
 
     await widen(tester, 3);
-    expect(find.textContaining("Al-'Alaq 1–8"), findsOneWidget);
 
     // Away from 1a and back, which is where an in-memory width is lost.
     await tester.pumpWidget(const SizedBox.shrink());
@@ -277,6 +431,8 @@ void main() {
     await openStudy(tester);
     await openSettings(tester);
     await widen(tester, 3);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await openStudy(tester);
 
     await tester.tap(find.text('Mark set understood'));
     await tester.pumpAndSettle();
@@ -303,6 +459,8 @@ void main() {
     // The proposal stops before aya 3; the reader pulls the set across it.
     expect(find.text('2 ayas'), findsOneWidget);
     await widen(tester, 3);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await openStudy(tester);
     expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
 
     await tester.tap(find.text('Mark set understood'));
@@ -321,7 +479,6 @@ void main() {
       'the back gesture instead of its Exit button', (tester) async {
     await openStudy(tester);
     final set = (await nextSet(db, ReadingOrder.nuzul))!;
-    await openSettings(tester);
 
     await tester.tap(find.text('Pray this set'));
     await tester.pumpAndSettle();

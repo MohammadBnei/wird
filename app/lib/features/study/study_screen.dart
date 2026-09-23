@@ -3,25 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../app.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
-import '../../data/mic.dart';
 import '../../data/sets.dart';
 import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
-import '../../widgets/nocturne_segmented.dart';
 import '../../widgets/nocturne_tag.dart';
-import '../settings/parked_writes.dart';
 
 /// Screen 1a — the set the reader studies before praying it.
 class StudyScreen extends StatefulWidget {
-  const StudyScreen({
-    super.key,
-    required this.db,
-    this.target,
-    this.audioCache,
-  });
+  const StudyScreen({super.key, required this.db, this.target});
 
   final Database db;
 
@@ -31,10 +24,6 @@ class StudyScreen extends StatefulWidget {
   /// visiting an aya costs the reader nothing: marking it counts like any other
   /// mark and the walk recomputes around it.
   final int? target;
-
-  /// Where the recitation is downloaded to. Supplied by the test that has to
-  /// prove the screen works with the radio off.
-  final AudioCache? audioCache;
 
   @override
   State<StudyScreen> createState() => _StudyScreenState();
@@ -46,8 +35,15 @@ class _StudyScreenState extends State<StudyScreen> {
   StudyWord? _word;
   String? _reciter;
   ReadingOrder _order = ReadingOrder.nuzul;
-  MicPermission _mic = MicPermission.notAsked;
-  SetAudio? _audio;
+
+  /// The application's recitation, once it is carrying the set on screen.
+  /// Null before then, which is what the word row asks about: a set with no
+  /// player yet has no word that will answer a press.
+  ///
+  /// The screen no longer owns it. It hands over the set and walks away, so a
+  /// recitation the reader started here can be seen and stopped from the
+  /// shell's transport on any screen they go to next.
+  Recitation? _audio;
 
   /// Minted once here and again after every mark that lands. Two presses of
   /// "Mark set understood" carry one op id and the set is counted once; a
@@ -65,72 +61,47 @@ class _StudyScreenState extends State<StudyScreen> {
   /// sweep would delete the recitation of the aya the reader is listening to.
   int _generation = 0;
 
-  /// Minted once for the screen rather than once per load. A second cache
-  /// carries a pin list of its own and knows nothing of the first's, so it
-  /// deletes files the first pinned.
-  Future<AudioCache>? _cache;
-
   bool _loaded = false;
 
   /// The word whose transliteration stands in for audio it cannot play. One
   /// word at a time, and never a snackbar: 2:282 is 128 words, and tapping
   /// through them must not queue 128 of anything.
   int? _unheard;
-  bool _settingsOpen = false;
-  int _display = 0;
-  double _arabicSize = 31;
 
   /// Stand-ins for the set that has no audio yet, so the bar and the ayas
   /// have something to listen to before the first set is read.
   static final _silent = ValueNotifier<int?>(null);
   static final _paused = ValueNotifier<bool>(false);
 
-  String get _micCaption => switch (_mic) {
-    MicPermission.notAsked =>
-      'Voice-follow needs the microphone. Off by '
-          'default; never asked for during a prayer.',
-    MicPermission.granted =>
-      'Microphone allowed. Voice-follow stays off '
-          'until you turn it on.',
-    MicPermission.denied =>
-      'Microphone refused. The prayer screen advances '
-          'on a tap, as it always does.',
-    MicPermission.unavailable =>
-      'This build cannot reach the microphone. The prayer screen advances on '
-          'a tap.',
-  };
-
   /// Every aya in the set is understood, so marking it again would write
   /// nothing and the only thing left to do is walk on.
   bool _allUnderstood(StudySet set) => set.ayas.every((a) => a.understood);
 
-  bool get _showGloss => _display == 0 || _display == 2;
-  bool get _showTranslit => _display == 1 || _display == 2;
+  Prefs get _prefs => Wird.of(context).prefs;
+  bool get _showGloss => _prefs.showGloss;
+  bool get _showTranslit => _prefs.showTranslit;
+  double get _arabicSize => _prefs.arabicSize;
 
+  /// The set is read here rather than in initState because the reader's order
+  /// and the recitation are reached through the application above this screen.
   @override
-  void initState() {
-    super.initState();
-    _load(target: widget.target);
-  }
-
-  @override
-  void dispose() {
-    unawaited(_audio?.dispose());
-    super.dispose();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) _load(target: widget.target);
   }
 
   /// Reads what the screen shows: the walk's next set, or the one aya at
-  /// [target]. Everything after the set itself — the reciter, the microphone,
-  /// the root panel's first root, the audio — is the same either way. What is
-  /// downloaded is not, which is what `onTheWalk` says.
+  /// [target]. Everything after the set itself — the reciter, the root panel's
+  /// first root, the recitation — is the same either way. What is downloaded
+  /// is not, which is what `onTheWalk` says.
   Future<void> _load({int? target}) async {
     final generation = ++_generation;
-    final order = await readingOrder(widget.db);
+    final recitation = Wird.of(context).recitation;
+    final order = _prefs.order;
     final set = target == null
         ? await nextSet(widget.db, order)
         : await ayaSet(widget.db, order, target);
     final reciter = await reciterLabel(widget.db);
-    final mic = await micPermission(widget.db);
     final rooted =
         set?.ayas
             .expand((a) => a.words)
@@ -144,49 +115,33 @@ class _StudyScreenState extends State<StudyScreen> {
     final keep = set == null
         ? const <String>[]
         : await pathsToKeep(widget.db, order, set, onTheWalk: target == null);
-    final audio = set == null
-        ? null
-        : SetAudio(
-            cache: await _audioCache(),
-            tracks: await tracksFor(widget.db, [
-              for (final aya in set.ayas) aya.id,
-            ]),
-          );
-    if (!mounted || generation != _generation) {
-      unawaited(audio?.dispose());
-      return;
+    if (set != null) {
+      await recitation.carry(
+        await tracksFor(widget.db, [for (final aya in set.ayas) aya.id]),
+        title: set.title,
+        words: {
+          for (final aya in set.ayas)
+            for (final word in aya.words) word.id: word.text,
+        },
+      );
     }
-    unawaited(_audio?.dispose());
+    if (!mounted || generation != _generation) return;
     setState(() {
       _order = order;
       _target = target;
       _set = set;
       _reciter = reciter;
-      _mic = mic;
       _word = first;
       _root = root;
-      _audio = audio;
+      _audio = set == null ? null : recitation;
       _loaded = true;
     });
-    if (audio == null) return;
+    if (set == null) return;
     // The download runs behind the set rather than in front of it: the reader
     // studies while the recitation arrives, and an aeroplane leaves the screen
     // working with the play button honestly dark.
-    await audio.cache.prefetch(keep);
-    if (mounted && identical(_audio, audio)) setState(() {});
-  }
-
-  Future<AudioCache> _audioCache() => _cache ??= widget.audioCache == null
-      ? getDatabasesPath().then(AudioCache.beside)
-      : Future.value(widget.audioCache!);
-
-  /// Opens a screen that may hand back an aya to read.
-  ///
-  /// 1a is at the bottom of the stack, so a screen above it names the aya the
-  /// reader chose by popping its id down rather than by pushing a second 1a.
-  Future<void> _openFor(String route) async {
-    final chosen = await Navigator.of(context).pushNamed(route);
-    if (mounted && chosen is int) await _load(target: chosen);
+    await recitation.prefetch(keep);
+    if (mounted && generation == _generation) setState(() {});
   }
 
   /// Marks what is open in the set and stays on it.
@@ -212,44 +167,12 @@ class _StudyScreenState extends State<StudyScreen> {
     });
   }
 
-  /// Pulls the set's end out or back in. The width is remembered against the
-  /// aya the set starts at, so leaving the screen does not discard it.
-  Future<void> _resize(StudySet set, int by) async {
-    await setDragSpan(widget.db, set.ayas.first.id, set.ayas.length + by);
-    await _load();
-  }
-
-  /// Screen 1b writes nothing: it runs inside the prayer, where there is no
-  /// safe moment for a database write. So the prayer is recorded here, when
-  /// the reader comes back from it — `pushNamed` completes however 1b was
-  /// left, by the Exit button, the back-swipe or Android's back, so no gesture
-  /// loses the prayer and 1b needs to know nothing about any of them.
-  ///
-  /// A prayer the reader never returns from — the app killed mid-prayer — is
-  /// not recorded. That is the price of 1b writing nothing, and it is the side
-  /// to be wrong on: the prayer count is allowed to be short, never invented.
-  Future<void> _prayThisSet(StudySet set) async {
-    await Navigator.of(context).pushNamed(Routes.prayer, arguments: set);
-    if (!mounted) return;
-    await recordSetPrayed(widget.db, set);
-  }
-
   /// A tap speaks one word. An aya that was never downloaded shows the word's
   /// transliteration under it and plays nothing — it must never spin, and it
   /// must not shout.
   Future<void> _speak(StudyWord word) async {
     final sounded = await _audio?.playWord(word.id) ?? false;
     if (mounted) setState(() => _unheard = sounded ? null : word.id);
-  }
-
-  Future<void> _chooseOrder(ReadingOrder order) async {
-    await setReadingOrder(widget.db, order);
-    await _load();
-  }
-
-  Future<void> _askForMic() async {
-    final answer = await askForMic(widget.db);
-    if (mounted) setState(() => _mic = answer);
   }
 
   /// The panel keeps the root it is showing until the next one has been read,
@@ -267,7 +190,12 @@ class _StudyScreenState extends State<StudyScreen> {
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
     final set = _set;
-    return Scaffold(
+    // The display mode and the Arabic size are set on the settings screen and
+    // held by the application, so the words redraw when the reader comes back
+    // from having changed them.
+    return ListenableBuilder(
+      listenable: _prefs,
+      builder: (context, _) => Scaffold(
       backgroundColor: n.bg,
       body: SafeArea(
         child: !_loaded
@@ -279,7 +207,6 @@ class _StudyScreenState extends State<StudyScreen> {
                 children: [
                   _header(n, set),
                   _progress(n, set),
-                  if (_settingsOpen) _settings(n),
                   Expanded(
                     child: SingleChildScrollView(
                       child: Column(
@@ -299,6 +226,7 @@ class _StudyScreenState extends State<StudyScreen> {
                   _rootPanel(n, set),
                 ],
               ),
+      ),
       ),
     );
   }
@@ -369,15 +297,21 @@ class _StudyScreenState extends State<StudyScreen> {
                 style: TextStyle(fontSize: 11),
               ),
             ),
+          // The preferences the tune icon used to open have a screen of their
+          // own now, and this is what belongs beside the set instead: the act
+          // the reading is for.
+          NocturneButton(
+            key: const Key('pray the set'),
+            variant: NocturneButtonVariant.ghost,
+            onPressed: () => prayTheSet(context, set),
+            child: const Text(
+              'Pray this set',
+              style: TextStyle(fontSize: 11),
+            ),
+          ),
           NocturneButton(
             variant: NocturneButtonVariant.icon,
             child: const Icon(Icons.bookmark_border),
-          ),
-          SizedBox(width: n.space('1')),
-          NocturneButton(
-            variant: NocturneButtonVariant.icon,
-            onPressed: () => setState(() => _settingsOpen = !_settingsOpen),
-            child: const Icon(Icons.tune),
           ),
         ],
       ),
@@ -416,158 +350,6 @@ class _StudyScreenState extends State<StudyScreen> {
         Text(
           _progressCaption(set.ayas),
           style: TextStyle(fontSize: 10.5, color: n.textAt(0.42)),
-        ),
-      ],
-    ),
-  );
-
-  Widget _settings(Nocturne n) => Padding(
-    padding: EdgeInsets.fromLTRB(n.space('6'), n.space('4'), n.space('6'), 0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        NocturneSegmented(
-          options: const ['Gloss', 'Translit', 'Both', 'Neither'],
-          selected: _display,
-          onChanged: (i) => setState(() => _display = i),
-        ),
-        SizedBox(height: n.space('2')),
-        NocturneSegmented(
-          options: const ['Chronological', 'Muṣḥaf'],
-          selected: _order.index,
-          onChanged: (i) => _chooseOrder(ReadingOrder.values[i]),
-        ),
-        SizedBox(height: n.space('1')),
-        Text(
-          'The chronology orders sūras; ayas inside a sūra stay in written '
-          'order.',
-          style: TextStyle(fontSize: 10.5, color: n.textAt(0.42)),
-        ),
-        SizedBox(height: n.space('2')),
-        // Voice-follow is a later phase and off by default. The microphone is
-        // asked for here and only here: the in-prayer screen may not raise a
-        // dialog, so it can never be the screen that asks.
-        Row(
-          spacing: n.space('3'),
-          children: [
-            NocturneButton(
-              onPressed: _askForMic,
-              child: const Text('Allow microphone'),
-            ),
-            Expanded(
-              child: Text(
-                _micCaption,
-                style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            Text(
-              'Arabic ${_arabicSize.round()} px',
-              style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
-            ),
-            Expanded(
-              child: SliderTheme(
-                data: SliderThemeData(
-                  activeTrackColor: n.accent,
-                  inactiveTrackColor: n.color('neutral-800'),
-                  thumbColor: n.accent,
-                  overlayColor: n.accent.withValues(alpha: 0.12),
-                  trackHeight: 2,
-                ),
-                child: Slider(
-                  min: 24,
-                  max: 44,
-                  divisions: 20,
-                  value: _arabicSize,
-                  onChanged: (v) => setState(() => _arabicSize = v),
-                ),
-              ),
-            ),
-          ],
-        ),
-        // The set's width is the reader's, not the walk's: five ayas inside
-        // the word budget is what the walk proposes, and this is where the
-        // reader says otherwise. Drawn here rather than as a handle on the set
-        // itself because the design draws no handle, and 1a's chrome is fixed
-        // by its acceptance row.
-        // The width is remembered against the aya the set starts at, so a set
-        // pulled wider while merely visiting an aya would change what the walk
-        // proposes when it reaches that aya months later. The handle belongs to
-        // the walk's own set.
-        if (_set case final set? when _target == null)
-          Row(
-            spacing: n.space('3'),
-            children: [
-              NocturneButton(
-                key: const Key('narrow set'),
-                variant: NocturneButtonVariant.icon,
-                onPressed: _allUnderstood(set) || set.ayas.length == 1
-                    ? null
-                    : () => _resize(set, -1),
-                child: const Icon(Icons.remove),
-              ),
-              Text(
-                set.ayas.length == 1 ? '1 aya' : '${set.ayas.length} ayas',
-                style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
-              ),
-              NocturneButton(
-                key: const Key('widen set'),
-                variant: NocturneButtonVariant.icon,
-                onPressed:
-                    _allUnderstood(set) || set.ayas.length >= setMaxDragAyas
-                    ? null
-                    : () => _resize(set, 1),
-                child: const Icon(Icons.add),
-              ),
-              Expanded(
-                child: Text(
-                  'A wider set may cross an aya you already understood. It is '
-                  'recited with the rest and stays counted where it is.',
-                  style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
-                ),
-              ),
-            ],
-          ),
-        // The prayer, the progress and the kept list are drawn nowhere in the
-        // design, and 1a's chrome is fixed by its acceptance row, so they hang
-        // here beside the other controls the design does not draw.
-        Wrap(
-          spacing: n.space('2'),
-          runSpacing: n.space('2'),
-          children: [
-            NocturneButton(
-              onPressed: _set == null ? null : () => _prayThisSet(_set!),
-              child: const Text('Pray this set'),
-            ),
-            NocturneButton(
-              onPressed: () => _openFor(Routes.progress),
-              child: const Text('Your passage'),
-            ),
-            NocturneButton(
-              onPressed: () => Navigator.of(context).pushNamed(Routes.kept),
-              child: const Text('Kept'),
-            ),
-            // The walk is otherwise the only way into the text: a reader who
-            // wants Al-Fātiḥa, or the aya they were thinking about, asks here.
-            NocturneButton(
-              onPressed: () => _openFor(Routes.index),
-              child: const Text('Sūra index'),
-            ),
-          ],
-        ),
-        // Writes the server would not take are named here and only here.
-        // Quiet when there are none.
-        ParkedWrites(db: widget.db),
-        SizedBox(height: n.space('2')),
-        // The corpus grants its use on the condition that its source is named
-        // and linked where a user can reach it. This is that door.
-        NocturneButton(
-          block: true,
-          onPressed: () => Navigator.of(context).pushNamed(Routes.about),
-          child: const Text('Sources and licences'),
         ),
       ],
     ),
@@ -911,7 +693,10 @@ class _StudyScreenState extends State<StudyScreen> {
                 // the Arabic face reaches it through the default style.
                 for (final kin in root.kin)
                   GestureDetector(
-                    key: ValueKey('kin-${kin.ayahId}'),
+                    // Keyed by the form as well as the aya: two derivatives
+                    // are first met in the same aya often enough, and the two
+                    // tags cannot carry one key.
+                    key: ValueKey('kin-${kin.text}-${kin.ayahId}'),
                     behavior: HitTestBehavior.opaque,
                     onTap: () => _load(target: kin.ayahId),
                     child: DefaultTextStyle.merge(

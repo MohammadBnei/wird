@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/main.dart' as app;
+import 'package:wird/shell/wird_shell.dart';
 
 /// What the resolved e2e target can do. A physical iPhone is the only place
 /// the microphone and audio routing are real; the macOS desktop target is the
@@ -73,14 +74,36 @@ Future<void> launchFresh(WidgetTester tester) async {
   // runApp locks pointer events until its warm-up frame lands, so settling
   // first is what makes the taps below reach the screen at all.
   await tester.pumpAndSettle();
-  await waitFor(tester, () => wordsOnScreen(tester).isNotEmpty, 'the first set');
+  await openTheSet(tester, 'the first set');
 }
 
 /// Starts the app again over the database the previous launch left behind.
 Future<void> relaunch(WidgetTester tester) async {
   app.main();
   await tester.pumpAndSettle();
-  await waitFor(tester, () => wordsOnScreen(tester).isNotEmpty, 'the set');
+  await openTheSet(tester, 'the set');
+}
+
+/// The app opens on its dashboard, so every journey about the reading starts
+/// by walking through the drawer the way a reader does.
+Future<void> openTheSet(WidgetTester tester, String what) async {
+  await waitFor(
+    tester,
+    () => find.byIcon(Icons.menu).evaluate().isNotEmpty,
+    'the way into the app',
+  );
+  await goThroughTheDrawer(tester, 'The set');
+  await waitFor(tester, () => wordsOnScreen(tester).isNotEmpty, what);
+}
+
+/// Opens the drawer and goes to a destination by name.
+Future<void> goThroughTheDrawer(WidgetTester tester, String label) async {
+  await tester.tap(find.byIcon(Icons.menu));
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.descendant(of: find.byType(WirdDrawer), matching: find.text(label)),
+  );
+  await tester.pumpAndSettle();
 }
 
 /// Pumps until [ready], or fails naming what never arrived.

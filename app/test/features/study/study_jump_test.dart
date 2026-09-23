@@ -7,12 +7,11 @@ import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/study/study_screen.dart';
-import 'package:wird/nav.dart';
-import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
 import '../../offline.dart';
+import '../../wird.dart';
 
 /// One file of the recitation, in bytes the cap can be written against.
 const _fileBytes = 1024;
@@ -49,21 +48,14 @@ void main() {
   });
 
   Future<void> openStudy(WidgetTester tester, {int? target}) async {
-    tester.view.physicalSize = const Size(402, 874);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: nocturneTheme(),
-        onGenerateRoute: (settings) => screenRoute(settings, db),
-        home: StudyScreen(
-          db: db,
-          target: target,
-          audioCache: AudioCache(dir, fetch: cdn.call, capBytes: _cap),
-        ),
+    await pumpPhone(
+      tester,
+      await wirdAround(
+        db,
+        StudyScreen(db: db, target: target),
+        cache: AudioCache(dir, fetch: cdn.call, capBytes: _cap),
       ),
     );
-    await tester.pumpAndSettle();
   }
 
   /// The file name the recitation of an aya is downloaded as.
