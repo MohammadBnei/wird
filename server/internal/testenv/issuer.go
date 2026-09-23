@@ -66,18 +66,26 @@ func NewIssuer(t *testing.T) *Issuer {
 }
 
 // Token signs a token for subject, good for lifetime. A negative lifetime
-// produces one that expired that long ago.
-func (i *Issuer) Token(t *testing.T, subject, audience string, lifetime time.Duration) string {
+// produces one that expired that long ago. Anything in extra is signed with
+// the rest, so a test can hold a token whose group claim is genuinely the
+// issuer's word rather than the caller's.
+func (i *Issuer) Token(t *testing.T, subject, audience string, lifetime time.Duration, extra ...map[string]any) string {
 	t.Helper()
 	now := time.Now()
 	header := raw(marshal(t, map[string]string{"alg": "RS256", "typ": "JWT", "kid": "testenv"}))
-	claims := raw(marshal(t, map[string]any{
+	set := map[string]any{
 		"iss": i.URL,
 		"sub": subject,
 		"aud": audience,
 		"iat": now.Unix(),
 		"exp": now.Add(lifetime).Unix(),
-	}))
+	}
+	for _, more := range extra {
+		for k, v := range more {
+			set[k] = v
+		}
+	}
+	claims := raw(marshal(t, set))
 	signing := header + "." + claims
 	digest := sha256.Sum256([]byte(signing))
 	signature, err := rsa.SignPKCS1v15(rand.Reader, i.key, crypto.SHA256, digest[:])

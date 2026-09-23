@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wird · operations</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .nav, main { max-width: 900px; margin: 0 auto; }
+  .nav { flex-wrap: wrap; row-gap: var(--space-2); padding-top: var(--space-6); }
+  main { padding: var(--space-6) var(--space-8) var(--space-8); }
+  section + section { margin-top: var(--space-8); }
+  .totals {
+    display: grid; gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .total { font-family: var(--font-heading); font-size: 30px; line-height: 1.1; }
+  .field { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+  .scroll { overflow-x: auto; }
+  .when { white-space: nowrap; vertical-align: top; }
+  .what { white-space: pre-wrap; min-width: 18em; }
+  @media (max-width: 640px) { .what { min-width: 12em; } }
+  .footnote { font-size: 12px; max-width: 60ch; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">Wird · operations</span>
+  {{if .CorpusOK}}
+    <span class="tag tag-neutral">corpus v{{.Corpus.CorpusVersion}} · built {{.Corpus.BuiltAt.UTC.Format "2 Jan 2006"}}</span>
+  {{else}}
+    <span class="tag tag-outline">corpus version unreadable</span>
+  {{end}}
+</nav>
+
+<main>
+  <section>
+    <h6>Totals</h6>
+    {{if .HealthOK}}
+      <div class="totals">
+        <div class="card elev-sm">
+          <span class="card-kicker">Readers</span>
+          <span class="total">{{.Health.Readers}}</span>
+        </div>
+        <div class="card elev-sm">
+          <span class="card-kicker">Sets prayed</span>
+          <span class="total">{{.Health.SetsPrayed}}</span>
+        </div>
+        <div class="card elev-sm">
+          <span class="card-kicker">Sync failures</span>
+          <span class="total">{{.Health.SyncFailures}}</span>
+          <p class="card-body text-muted">answered "failed"; a device retries these</p>
+        </div>
+        <div class="card elev-sm">
+          <span class="card-kicker">Parked writes</span>
+          <span class="total">{{.Health.ParkedWrites}}</span>
+          <p class="card-body text-muted">refused; a device parks these at once</p>
+        </div>
+      </div>
+      {{with .Health.CorpusVersions}}
+        <div class="field">
+          <span class="text-muted">Corpus in the field:</span>
+          {{range .}}
+            <span class="tag tag-neutral">
+              {{if .CorpusVersion}}v{{.CorpusVersion}}{{else}}not said{{end}} · {{.Reports}} report{{if ne .Reports 1}}s{{end}}
+            </span>
+          {{end}}
+        </div>
+      {{end}}
+    {{else}}
+      <p class="text-muted">The totals could not be read, so none are shown.</p>
+    {{end}}
+  </section>
+
+  <hr class="hr">
+
+  <section>
+    <h6>Reports</h6>
+    {{if not .ReportsOK}}
+      <p class="text-muted">The reports could not be read. Nothing is listed, because an
+        empty list here would read as nobody having written one.</p>
+    {{else if not .Reports}}
+      <p class="text-muted">No reports yet.</p>
+    {{else}}
+      <div class="scroll">
+        <table class="table">
+          <thead>
+            <tr><th>Sent</th><th>Kind</th><th>What they wrote</th><th>Build</th></tr>
+          </thead>
+          <tbody>
+            {{range .Reports}}
+              <tr>
+                <td class="when">{{.CreatedAt.UTC.Format "2 Jan 2006"}}<br>
+                  <span class="text-muted">{{.CreatedAt.UTC.Format "15:04 UTC"}}</span></td>
+                <td class="when"><span class="tag tag-accent">{{.Kind}}</span></td>
+                <td class="what">{{.Body}}</td>
+                <td class="when text-muted">{{.AppVersion}} · {{.Platform}}<br>
+                  {{.Screen}}<br>
+                  {{if .CorpusVersion}}corpus v{{.CorpusVersion}}{{else}}corpus not said{{end}}</td>
+              </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    {{end}}
+  </section>
+
+  <hr class="hr">
+
+  <p class="footnote text-muted">This page shows totals and what readers chose to send.
+    It cannot show one reader's notes, progress, or when they prayed — not as a setting,
+    but because nothing it can ask the store has a reader in it.</p>
+</main>
+
+</body>
+</html>
