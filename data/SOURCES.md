@@ -396,15 +396,15 @@ is the documented second origin if it stops.
    fetches from everyayah.com, which publishes no terms at all. **The MP3s are
    never mirrored either way** — that is the one act named and forbidden in
    writing.
-4. **Blocking.** The app's Sources and licences screen
-   (`app/lib/features/about/about_screen.dart`) is a hand-written list and does
-   not credit quran-align or Collin Fair. CC BY 4.0 §3(a)(1) is the one condition
-   on bundling those timings, and a notice inside `corpus.db` that no screen
-   renders does not reach the person using the app — which is the standard this
-   project set itself for the morphology. The same screen still describes the
-   recitation as "Personal use only — not cleared" and links quranicaudio.com,
-   which is no longer where the audio comes from. Until both are fixed, the
-   database is correct and the app is not.
+4. Tafsir, lexicon and iʿrāb prose have no source chosen — not a licence
+   problem, an unmade decision. The app renders the design's own mockup text,
+   flagged as placeholder in the payload and marked where a reader sees it. The
+   clean candidates are centuries old and public domain: Ibn Fāris's Maqāyīs,
+   Lane's Lexicon, Lisān al-ʿArab. Their DIGITISATIONS differ, and that is where
+   the care goes — Lane via Perseus TEI is licence-clean (attribution, keep the
+   notice, offer modifications back), while OpenITI's editions of Maqāyīs and
+   Lisān are CC BY-NC-SA, whose NonCommercial term rules them out of anything
+   sold. Deciding this is what replaces the placeholders.
 
 ## What the data actually is
 

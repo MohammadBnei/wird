@@ -50,3 +50,29 @@ covered it and the design draws no such screen.
 derived ("the next aya not yet understood in the chosen order"), so visiting
 costs nothing, marking a visited aya understood counts normally, and the walk
 recomputes correctly afterwards.
+
+### 3. A reader cannot open the sūra or aya they want
+
+**Where:** nowhere — there is no index, no sūra list, no "go to" anywhere in
+the app.
+
+**What:** the app is a walk. It hands the reader the next unread set and that
+is the only way in. A reader who wants Al-Fātiḥa, or the aya they were thinking
+about, or to show someone a passage, cannot reach it.
+
+**Why it is missing:** every screen in the design is downstream of the walk —
+1a serves the current set, 1d reports on it, 1e lists what was kept from it.
+The design draws a sūra list nowhere. Its one hint is 1d's "All 114" link,
+which the build wired to 1e (kept) because that is where the design's own
+anchor points — but the label plainly means all 114 sūras, so the design
+intended an index and never drew it.
+
+**Shape of the gap:** an index screen — 114 sūras with their names, revelation
+order and progress, opening any aya into 1a. It pairs with finding 2: both are
+the same missing idea, that a reader may want an aya the walk did not choose.
+Together they make 1a addressable rather than sequential.
+
+**Open question for the walk:** does reading an aya you chose count toward
+progress the same as one the walk served you? Decided for finding 2 that it
+does, because position is derived and understanding an aya is understanding it
+wherever you met it. Same answer should hold here.
