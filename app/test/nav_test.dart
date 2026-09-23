@@ -149,13 +149,14 @@ void main() {
     expect(find.byType(StudyScreen), findsOneWidget);
   });
 
-  testWidgets('the progress screen admits it is not built rather than showing '
-      'an empty ring', (tester) async {
+  testWidgets('a screen that is still a placeholder pretends to be the screen '
+      'it will become, rather than admitting it is not built', (tester) async {
     await openApp(tester);
-    navigatorIn(tester).pushNamed(Routes.progress);
+    navigatorIn(tester).pushNamed(Routes.deepDive,
+        arguments: (ayahId: 96001, letters: 'علق'));
     await tester.pumpAndSettle();
 
-    expect(find.text('1d · Progress'), findsOneWidget);
+    expect(find.text('1c · Deep dive'), findsOneWidget);
     expect(find.text('Not built yet'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
