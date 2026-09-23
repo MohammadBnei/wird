@@ -11,6 +11,7 @@ import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_segmented.dart';
 import '../../widgets/nocturne_tag.dart';
+import '../about/about_screen.dart';
 
 /// Screen 1a — the set the reader studies before praying it.
 class StudyScreen extends StatefulWidget {
@@ -377,6 +378,15 @@ class _StudyScreenState extends State<StudyScreen> {
               ),
             ),
           ],
+        ),
+        // The corpus grants its use on the condition that its source is named
+        // and linked where a user can reach it. This is that door.
+        NocturneButton(
+          block: true,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+          ),
+          child: const Text('Sources and licences'),
         ),
       ],
     ),
