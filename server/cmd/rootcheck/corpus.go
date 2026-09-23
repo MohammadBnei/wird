@@ -15,14 +15,34 @@ import (
 // its own: a sense has to hold across the shapes the root appears in.
 type Slot struct {
 	Name    string
-	Glosses []string // distinct, lowercased
+	Glosses []Gloss
+}
+
+// Gloss is one distinct English gloss and the number of word occurrences that
+// carry it. The count is what separates what the corpus contains from what a
+// reader meets: a root can hold twenty distinct glosses for one branch of its
+// meaning and a single gloss for the branch that accounts for most of its
+// occurrences.
+type Gloss struct {
+	Text string // distinct, lowercased
+	N    int    // word occurrences carrying this gloss
 }
 
 type Root struct {
 	Letters string
 	Slots   []Slot
-	Words   int // glossed words, all slots
+	Words   int // glossed word occurrences, all slots
 }
+
+// dispersion counts, for each gloss stem, how many distinct roots the corpus
+// glosses with it. It is how the check tells generic English apart from a word
+// that belongs to somebody else: "bring" and "down" are spread over twenty
+// roots and carry no claim, while "unseen" and "believers" sit on one or two
+// and naming them inside another root's sense is a claim about those roots.
+//
+// ponytail: package-level because this is a single-corpus CLI; make it a field
+// on a corpus struct if a second corpus ever has to be open at once.
+var dispersion = map[string]map[string]bool{}
 
 // markers holds the English a wazn contributes to a gloss regardless of the
 // root. Those words are removed from a gloss before matching so a sense cannot
@@ -102,7 +122,7 @@ func LoadRoots(dbPath string) (map[string]*Root, error) {
 	defer rows.Close()
 
 	type key struct{ root, slot string }
-	seen := map[key]map[string]bool{}
+	seen := map[key]map[string]int{}
 	counts := map[string]int{}
 	for rows.Next() {
 		var root, gloss, form, morph string
@@ -111,10 +131,17 @@ func LoadRoots(dbPath string) (map[string]*Root, error) {
 		}
 		k := key{root, slotOf(form, stemFeatures(morph))}
 		if seen[k] == nil {
-			seen[k] = map[string]bool{}
+			seen[k] = map[string]int{}
 		}
-		seen[k][strings.ToLower(strings.TrimSpace(gloss))] = true
+		g := strings.ToLower(strings.TrimSpace(gloss))
+		seen[k][g]++
 		counts[root]++
+		for _, t := range tokens(g) {
+			if dispersion[t] == nil {
+				dispersion[t] = map[string]bool{}
+			}
+			dispersion[t][root] = true
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -127,11 +154,11 @@ func LoadRoots(dbPath string) (map[string]*Root, error) {
 			r = &Root{Letters: k.root, Words: counts[k.root]}
 			out[k.root] = r
 		}
-		list := make([]string, 0, len(gs))
-		for g := range gs {
-			list = append(list, g)
+		list := make([]Gloss, 0, len(gs))
+		for g, n := range gs {
+			list = append(list, Gloss{Text: g, N: n})
 		}
-		sort.Strings(list)
+		sort.Slice(list, func(i, j int) bool { return list[i].Text < list[j].Text })
 		r.Slots = append(r.Slots, Slot{Name: k.slot, Glosses: list})
 	}
 	for _, r := range out {

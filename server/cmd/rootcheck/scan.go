@@ -14,7 +14,7 @@ import (
 //
 // A sense that verifies many roots is not a sense, it is a phrase general
 // enough to fit anything, and the count here is what exposes that.
-func Scan(w io.Writer, roots map[string]*Root, threshold float64) {
+func Scan(w io.Writer, roots map[string]*Root, bar Bar) {
 	letters := make([]string, 0, len(roots))
 	for k := range roots {
 		letters = append(letters, k)
@@ -41,14 +41,14 @@ func Scan(w io.Writer, roots map[string]*Root, threshold float64) {
 				own = res.Score
 				continue
 			}
-			if res.Verified(threshold) {
+			if res.Verified(bar) {
 				others++
 				if len(worst) < 3 {
 					worst = append(worst, l)
 				}
 			}
 		}
-		if Check(roots[c.Root], c.Sense).Verified(threshold) {
+		if Check(roots[c.Root], c.Sense).Verified(bar) {
 			totalOwn++
 		}
 		totalOther += others

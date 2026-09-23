@@ -111,7 +111,7 @@ func Reliability(w io.Writer, roots map[string]*Root) {
 				slotTotal[s.Name]++
 				total++
 				seen := map[string]bool{}
-				for _, t := range wordRe.FindAllString(g, -1) {
+				for _, t := range wordRe.FindAllString(g.Text, -1) {
 					if seen[t] {
 						continue
 					}

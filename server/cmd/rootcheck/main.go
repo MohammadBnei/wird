@@ -25,6 +25,7 @@ func main() {
   calibrate             score the built-in right/wrong senses, report the separation
   scan                  score every known-right sense against every root
   survey                how much evidence each root offers, before any sense exists
+  cost <tsv>            how many senses in a root\tsense TSV each part of the bar keeps
   reliability           which wazn-to-English rules the corpus supports
 
 `)
@@ -50,21 +51,17 @@ func main() {
 			flag.Usage()
 			os.Exit(2)
 		}
-		t := *threshold
-		if t == 0 {
-			sep, err := Calibrate(roots)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "rootcheck:", err)
-				os.Exit(1)
-			}
-			t = sep.Threshold
+		bar, err := barFor(roots, *threshold)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			os.Exit(1)
 		}
 		root, ok := roots[args[1]]
 		if !ok {
 			fmt.Fprintf(os.Stderr, "rootcheck: root %q has no glossed words in the corpus\n", args[1])
 			os.Exit(1)
 		}
-		reportCheck(os.Stdout, Check(root, args[2]), t)
+		reportCheck(os.Stdout, Check(root, args[2]), bar)
 
 	case "calibrate":
 		sep, err := Calibrate(roots)
@@ -75,16 +72,27 @@ func main() {
 		sep.Report(os.Stdout, roots)
 
 	case "scan":
-		t := *threshold
-		if t == 0 {
-			sep, err := Calibrate(roots)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "rootcheck:", err)
-				os.Exit(1)
-			}
-			t = sep.Threshold
+		bar, err := barFor(roots, *threshold)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			os.Exit(1)
 		}
-		Scan(os.Stdout, roots, t)
+		Scan(os.Stdout, roots, bar)
+
+	case "cost":
+		if len(args) < 2 {
+			flag.Usage()
+			os.Exit(2)
+		}
+		bar, err := barFor(roots, *threshold)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			os.Exit(1)
+		}
+		if err := Cost(os.Stdout, roots, args[1], bar); err != nil {
+			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			os.Exit(1)
+		}
 
 	case "survey":
 		Survey(os.Stdout, roots)
@@ -98,10 +106,21 @@ func main() {
 	}
 }
 
-func reportCheck(w *os.File, r Result, threshold float64) {
+// barFor returns the calibrated bar, or a score-only bar when the operator
+// overrides the threshold by hand.
+func barFor(roots map[string]*Root, override float64) (Bar, error) {
+	if override != 0 {
+		return Bar{Score: override}, nil
+	}
+	sep, err := Calibrate(roots)
+	return sep.Bar, err
+}
+
+func reportCheck(w *os.File, r Result, bar Bar) {
 	fmt.Fprintf(w, "%s  %q\n", r.Root, r.Sense)
-	fmt.Fprintf(w, "%s  score %.3f (threshold %.3f)  recall %.3f  precision %.3f  slots %d/%d\n\n",
-		r.Verdict(threshold), r.Score, threshold, r.Recall, r.Precision, r.SlotsHit, len(r.Slots))
+	fmt.Fprintf(w, "%s  score %.3f/%.3f  coverage %.3f/%.3f of %d occurrences  dispersion %s/%d  slots %d/%d\n\n",
+		r.Verdict(bar), r.Score, bar.Score, r.Coverage, bar.Coverage, r.Tested,
+		disp(r.Dispersion), bar.Dispersion, r.SlotsHit, len(r.Slots))
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "slot\tagreed\tglosses that did not agree")
@@ -118,7 +137,17 @@ func reportCheck(w *os.File, r Result, threshold float64) {
 		fmt.Fprintf(tw, "%s\t%d/%d\t%s\n", s.Name, s.Agreed, s.Total, miss)
 	}
 	tw.Flush()
-	if len(r.Unmatched) > 0 {
-		fmt.Fprintf(w, "\nsense words the root does not attest: %v\n", r.Unmatched)
+	for _, c := range r.Clauses {
+		if len(c.Ungrounded) == 0 {
+			continue
+		}
+		fmt.Fprintf(w, "\nclause %q rests on words this root never shows:\n", c.Text)
+		for _, u := range c.Ungrounded {
+			kind := "instead of the attested words"
+			if u.Rider {
+				kind = "riding on an attested word"
+			}
+			fmt.Fprintf(w, "  %-14s glossed under %3d roots  (%s)\n", u.Stem, u.Roots, kind)
+		}
 	}
 }
