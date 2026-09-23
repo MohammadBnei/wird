@@ -10,7 +10,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # Postgres 18 keeps its data in a version-named subdirectory, so the
+      # mount is the parent. Mounted at .../data the image refuses to start.
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U wird -d wird"]
       interval: 5s

@@ -201,5 +201,25 @@ go work sync
 go build ./server/... ./jidhr/... && go test -p 1 ./server/... ./jidhr/...
 ```
 
+### The API
+
+`server/cmd/api` needs Postgres and an OIDC issuer, both in `docker-compose.yml`:
+
+```bash
+docker compose up -d postgres oidc-stub
+go run ./server/cmd/api                      # migrations run at startup
+```
+
+It reads four variables, all with local-dev defaults: `DATABASE_URL`,
+`OIDC_ISSUER`, `OIDC_AUDIENCE` and `API_ADDR`. Moving off the stub onto
+`authentik.bnei.dev` is `OIDC_ISSUER`, and nothing else — we validate tokens
+against the issuer's JWKS and mint none of our own.
+
+Tafsir, iʿrāb and lexicon prose are the fetched half of the corpus split and
+**nobody has licensed any yet**. The tables hold the design's own placeholder
+text, every row and every payload flagged `"placeholder": true`, and an aya or
+root with nothing seeded answers 404. Inventing commentary in that gap would be
+the worst defect this project could ship.
+
 `CONTRIBUTING.md` carries the conventions — including what a `ponytail:`
 comment means and why a test's name has to state the failure it prevents.

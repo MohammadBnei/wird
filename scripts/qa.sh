@@ -201,6 +201,13 @@ run_journeys() {
 # 1 — Go builds, vets and tests. ./... is not a valid pattern at a workspace root
 # that is not itself a module (go1.27.1), so each module is named.
 GATE=1
+# The store and handler tests run against a real Postgres 18, each in a
+# database of its own: a mocked one cannot tell you a unique constraint is
+# missing, which is the whole defence against a prayer counted twice.
+if command -v docker >/dev/null 2>&1; then
+	docker compose up -d --wait postgres >/dev/null 2>&1 ||
+		printf 'postgres did not come up; the server tests will say so\n'
+fi
 GO_PKGS=(./jidhr/... ./server/...)
 check "go build" go build "${GO_PKGS[@]}"
 check "go vet" go vet "${GO_PKGS[@]}"
