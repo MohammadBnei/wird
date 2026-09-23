@@ -13,6 +13,7 @@ import 'package:wird/features/index/index_screen.dart';
 import 'package:wird/features/kept/kept_screen.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/features/progress/progress_screen.dart';
+import 'package:wird/features/report/report_screen.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/features/root/root_spine_screen.dart';
 import 'package:wird/features/settings/settings_screen.dart';
@@ -86,6 +87,9 @@ void main() {
       Routes.about: (arguments: null, screen: AboutScreen),
       Routes.index: (arguments: null, screen: IndexScreen),
       Routes.settings: (arguments: null, screen: SettingsScreen),
+      // The argument is the screen the reader was on when they asked to
+      // report something.
+      Routes.report: (arguments: Routes.index, screen: ReportScreen),
     };
     expect(destinations.keys.toSet(), screens.keys.toSet());
 

@@ -10,6 +10,7 @@ import 'features/index/index_screen.dart';
 import 'features/kept/kept_screen.dart';
 import 'features/prayer/prayer_screen.dart';
 import 'features/progress/progress_screen.dart';
+import 'features/report/report_screen.dart';
 import 'features/root/root_screen.dart';
 import 'features/root/root_spine_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -30,6 +31,7 @@ abstract final class Routes {
   static const kept = '/kept';
   static const index = '/index';
   static const settings = '/settings';
+  static const report = '/report';
   static const about = '/about';
 }
 
@@ -63,6 +65,8 @@ typedef ScreenBuilder = Widget Function(Database db, Object? arguments);
 //        pushed onto it, so the reader who asked for it lands on the one
 //        reading screen instead of on a second one stacked above the first.
 // settings: what the reader sets and forgets. No navigation, and no prayer.
+// report: a bug, a request or an improvement, carrying the screen the reader
+//   opened it from. One way: it queues and nothing comes back.
 // kept (1e), deepDive (1c), prayer (1b): back -> back to whoever pushed them.
 final screens = <String, ScreenBuilder>{
   Routes.dashboard: (db, _) => const DashboardScreen(),
@@ -84,6 +88,10 @@ final screens = <String, ScreenBuilder>{
   Routes.progress: (db, _) => ProgressScreen(db: db),
   Routes.kept: (db, _) => KeptScreen(db: db),
   Routes.settings: (db, _) => const SettingsScreen(),
+  // The argument is the screen the reader was on, so the report carries it
+  // without anybody having to type "I was on the index".
+  Routes.report: (db, args) =>
+      ReportScreen(db: db, from: args as String? ?? Routes.dashboard),
   Routes.about: (db, _) => const AboutScreen(),
   Routes.index: (db, _) => IndexScreen(db: db),
 };
@@ -101,6 +109,7 @@ const destinations = <Destination>[
   (route: Routes.progress, label: 'Your passage'),
   (route: Routes.kept, label: 'Kept'),
   (route: Routes.settings, label: 'Settings'),
+  (route: Routes.report, label: 'Report something'),
   (route: Routes.about, label: 'Sources'),
 ];
 

@@ -197,7 +197,12 @@ class WirdDrawer extends StatelessWidget {
     if (route == current) return;
     nav.popUntil((r) => r.isFirst);
     if (route == Routes.dashboard) return;
-    final chosen = await nav.pushNamed(route);
+    // Where the reader was is half of what makes a report actionable, and it
+    // is the one thing they cannot be expected to type.
+    final chosen = await nav.pushNamed(
+      route,
+      arguments: route == Routes.report ? current : null,
+    );
     if (chosen is int) await nav.pushNamed(Routes.study, arguments: chosen);
   }
 

@@ -79,6 +79,17 @@ void main() {
     );
   });
 
+  testWidgets('the report screen drifts out of Nocturne: the kinds, the box '
+      'the reader writes in, or the context printed under it', (tester) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await goTo(tester, 'Report something');
+
+    await expectLater(
+      find.byType(WirdShell),
+      matchesGoldenFile('goldens/report.png'),
+    );
+  });
+
   testWidgets('the transport tells a reader nothing about which recitation '
       'they started, and the only way to silence it is unreadable', (
     tester,

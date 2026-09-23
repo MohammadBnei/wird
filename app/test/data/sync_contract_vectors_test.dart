@@ -10,6 +10,7 @@ import 'package:wird/data/kept_repo.dart';
 import 'package:wird/data/outbox.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/sync.dart';
+import 'package:wird/features/report/report.dart';
 
 import '../corpus.dart';
 
@@ -124,6 +125,13 @@ void main() {
           await recordSetPrayed(db, (await nextSet(db, ReadingOrder.nuzul))!);
         case 'prefs_set':
           await setReadingOrder(db, ReadingOrder.mushaf);
+        case 'report_written':
+          await sendReport(
+            db,
+            kind: ReportKind.bug,
+            body: 'the audio stops at the end of the set',
+            context: await reportContext(db, screen: 'prayer'),
+          );
         default:
           fail('the shared contract carries an op kind "$kind" that no write '
               'path on this device builds, so nothing checks it');
