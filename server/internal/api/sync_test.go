@@ -404,3 +404,35 @@ func holds(page store.Changes, id string) bool {
 	_, found := change(page, id)
 	return found
 }
+
+// The failure: a reader writes a bug report in the departure lounge, and it
+// takes a path of its own to the network rather than the queue every other
+// write leaves by — so it is gone when the plane lands, or it is sent again on
+// the next reconnect and the same bug is filed twice. The second half is the
+// decision that reports are one-way: nothing about a report comes back down
+// the stream, so the device that wrote it is never handed it again.
+func TestAReportLeavesByTheSameQueueAsAPrayerAndNothingComesBack(t *testing.T) {
+	h := newHarness(t)
+	token := h.tokenFor(t, "sub-report")
+
+	report := op(opID(300), "report_written", map[string]any{
+		"kind": "bug", "body": "the audio stops at the end of the set",
+		"app_version": "1.4.0", "platform": "android", "screen": "prayer",
+		"corpus_version": 1, "created_at": noon,
+	})
+
+	if got := h.flush(t, token, report)[report.ClientOpID]; got.Status != store.OpApplied {
+		t.Fatalf("a report flushed through the outbox came back %+v", got)
+	}
+	if got := h.flush(t, token, report)[report.ClientOpID]; got.Status != store.OpDuplicate {
+		t.Fatalf("a replayed report came back %+v, so the same bug is filed twice", got)
+	}
+
+	page := h.pull(t, token, "")
+	if len(page.Changes) != 0 {
+		t.Fatalf("the change stream carried %d rows after a report: %+v", len(page.Changes), page.Changes)
+	}
+	if page.Cursor != "" {
+		t.Fatalf("the cursor moved to %q over a write nothing ever comes back for", page.Cursor)
+	}
+}

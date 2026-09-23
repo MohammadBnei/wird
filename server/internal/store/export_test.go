@@ -11,3 +11,7 @@ import (
 func (s *Store) ApplyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) OpResult {
 	return applyInTx(ctx, tx, userID, op)
 }
+
+// AdminAggregates is every statement the dashboard can cause to run, so a test
+// can hold them to the rule that none of them may be about one reader.
+var AdminAggregates = adminAggregates

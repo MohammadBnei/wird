@@ -64,10 +64,24 @@ func (s *Store) Apply(ctx context.Context, userID string, ops []Op) ([]OpResult,
 	return results, nil
 }
 
-// applyOne writes the op id and the op's effect in one transaction. They
+// applyOne is the attempt plus its bookkeeping: a write the reader is about to
+// lose is counted, in aggregate, so an operator can see that syncs are failing
+// without being able to see whose.
+func (s *Store) applyOne(ctx context.Context, userID string, op Op) (OpResult, error) {
+	result, err := s.attempt(ctx, userID, op)
+	if err != nil {
+		return OpResult{}, err
+	}
+	if result.Status == OpRefused || result.Status == OpFailed {
+		s.countOutcome(ctx, op.Kind, result.Status)
+	}
+	return result, nil
+}
+
+// attempt writes the op id and the op's effect in one transaction. They
 // commit together or not at all: an op id recorded for a write that rolled
 // back would make the retry look like a replay and lose the write for good.
-func (s *Store) applyOne(ctx context.Context, userID string, op Op) (OpResult, error) {
+func (s *Store) attempt(ctx context.Context, userID string, op Op) (OpResult, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return OpResult{}, err
@@ -174,9 +188,32 @@ func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 		return applySetPrayed(ctx, tx, userID, op)
 	case "prefs_set":
 		return applyPrefsSet(ctx, tx, userID, op.Body)
+	case "report_written":
+		return applyReport(ctx, tx, op)
 	default:
 		return refuse("unknown kind %q", op.Kind)
 	}
+}
+
+// opKinds is the same list the switch above answers to, and it exists because
+// a kind is whatever the device said it was. Counting an outcome under an
+// unrecognised word would let one device gone wrong grow sync_outcomes without
+// bound, so anything not in this list is counted as "unknown".
+var opKinds = []string{
+	"ayah_understood", "kept_upsert", "kept_delete",
+	"set_recorded", "set_prayed", "prefs_set", "report_written",
+}
+
+// countOutcome is best effort on purpose: a counter that cannot be incremented
+// is not a reason to fail a reader's sync, and the sync's own answer has
+// already been decided by the time it runs.
+func (s *Store) countOutcome(ctx context.Context, kind, status string) {
+	if !slices.Contains(opKinds, kind) {
+		kind = "unknown"
+	}
+	_, _ = s.pool.Exec(ctx, `
+		INSERT INTO sync_outcomes (day, kind, status, ops) VALUES (current_date, $1, $2, 1)
+		ON CONFLICT (day, kind, status) DO UPDATE SET ops = sync_outcomes.ops + 1`, kind, status)
 }
 
 func decode(body json.RawMessage, into any) error {
@@ -424,6 +461,38 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (id) DO NOTHING`,
 		id, b.SetID, userID, b.PrayerName, b.PrayedAt)
+	return err
+}
+
+// The one apply that is not handed the reader, because a report has nowhere to
+// put one. It reaches the same table an operator reads, so the reader it came
+// from must not be recoverable from it — and the way to guarantee that is to
+// never have it here.
+//
+// The op id is the report's id: op_log already turns a replayed flush into a
+// duplicate, and this keeps a flush replayed after the log was pruned landing
+// on the same row rather than as a second report.
+func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
+	var b struct {
+		Kind          string    `json:"kind"`
+		Body          string    `json:"body"`
+		AppVersion    string    `json:"app_version"`
+		Platform      string    `json:"platform"`
+		Screen        string    `json:"screen"`
+		CorpusVersion int       `json:"corpus_version"`
+		CreatedAt     time.Time `json:"created_at"`
+	}
+	if err := decode(op.Body, &b); err != nil {
+		return err
+	}
+	if b.CreatedAt.IsZero() {
+		b.CreatedAt = time.Now().UTC()
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (id) DO NOTHING`,
+		op.ClientOpID, b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.CreatedAt)
 	return err
 }
 
