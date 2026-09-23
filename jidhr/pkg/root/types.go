@@ -16,6 +16,13 @@ const (
 	// from the corpus attesting this very spelling, never from the letters merely
 	// allowing it. The templates rank what a miss reports and decide nothing.
 	MethodPattern Method = "pattern"
+	// MethodShared names the answer for a spelling the corpus attests under more
+	// than one root and the caller wrote without the diacritics that would tell
+	// them apart. Every root is in Roots, most-used first, and Root is the first of
+	// them. It is a weaker claim than MethodPattern — the corpus does not settle
+	// which root this word came from — and a truer one than the 404 it replaces,
+	// which listed both roots and then refused to serve either.
+	MethodShared Method = "shared"
 )
 
 // Root identifies an Arabic root. Letters is the joined form and is the key
@@ -48,12 +55,16 @@ type Meaning struct {
 // Result is the published response shape of GET /v1/root. The field order here is
 // the documented order, and outside callers parse these names.
 type Result struct {
-	Input      string             `json:"input"`
-	Normalized string             `json:"normalized"`
-	Root       Root               `json:"root"`
-	Lemma      string             `json:"lemma,omitempty"`
-	Form       string             `json:"form,omitempty"`
-	Method     Method             `json:"method"`
-	Quran      *QuranStats        `json:"quran,omitempty"`
-	Meanings   map[string]Meaning `json:"meanings,omitempty"`
+	Input      string `json:"input"`
+	Normalized string `json:"normalized"`
+	Root       Root   `json:"root"`
+	// Roots is present only when the spelling is shared. It holds every root the
+	// corpus attests it under, Root first, so a caller that reads only Root is not
+	// silently told that the reading it got is the only one.
+	Roots    []Root             `json:"roots,omitempty"`
+	Lemma    string             `json:"lemma,omitempty"`
+	Form     string             `json:"form,omitempty"`
+	Method   Method             `json:"method"`
+	Quran    *QuranStats        `json:"quran,omitempty"`
+	Meanings map[string]Meaning `json:"meanings,omitempty"`
 }

@@ -124,3 +124,39 @@ func TestAFormAttestedUnderTwoRootsKeepsBothRatherThanTheFirst(t *testing.T) {
 		t.Errorf("the form is attested under %v, so a spelling the morphology leaves unsettled is settled by whichever root was read first", got)
 	}
 }
+
+func TestAFormThatCarriesAPauseMarkShipsAsTheWordAndNotAsTheWordPlusTheMark(t *testing.T) {
+	// corpus.db keeps the recitation marks glued to the word they follow, space
+	// and all: 2,573 of the 19,805 form rows are written that way. Shipped
+	// verbatim, they are keyed under a spelling with a space in it, and for 682 of
+	// them no other row spells the same word cleanly — so no input a reader can
+	// type reaches them at all.
+	db := corpusDB(t, written,
+		`INSERT INTO words VALUES (1,'صَبَرُوا ۚ','صبر'), (2,'وَتَوَاصَوْا ۩','وصي')`)
+
+	attested, _ := built(t, db)["attested"].(map[string]any)
+	for _, want := range []string{"صَبَرُوا", "وَتَوَاصَوْا"} {
+		if _, ok := attested[want]; !ok {
+			t.Errorf("the corpus ships %v, and a reader typing %s reaches none of it", keysOf(attested), want)
+		}
+	}
+}
+
+func TestTwoSpellingsThatDifferOnlyByAPauseMarkShipAsOneForm(t *testing.T) {
+	db := corpusDB(t, written,
+		`INSERT INTO words VALUES (1,'صَبَرُوا','صبر'), (2,'صَبَرُوا ۖ','صبر'), (3,'صَبَرُوا ۚ','صبر')`)
+
+	attested, _ := built(t, db)["attested"].(map[string]any)
+	roots, _ := attested["صَبَرُوا"].([]any)
+	if len(attested) != 1 || len(roots) != 1 {
+		t.Errorf("attested = %v, want the one form under the one root: cleaning merges the spellings, and a form listed under the same root three times is a corpus that counts punctuation as evidence", attested)
+	}
+}
+
+func keysOf(m map[string]any) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}

@@ -71,8 +71,12 @@ func (s *server) resolveWord(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
+// batchRequest takes Words by pointer so a body that never mentioned words is
+// told so. Decoded into a plain slice, {"nope":1} is a valid request for nothing
+// and answers 200 with an empty list, which reads to the caller as a hundred words
+// that all resolved to nothing.
 type batchRequest struct {
-	Words []string `json:"words"`
+	Words *[]string `json:"words"`
 }
 
 // batchItem answers one word of a batch. Exactly one of Result and Error is set,
@@ -92,20 +96,21 @@ func (s *server) resolveBatch(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 
 	var req batchRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Words == nil {
 		writeError(w, apiError{Status: http.StatusBadRequest, Code: "bad_body",
 			Message: `the request body must be {"words": ["…"]}`})
 		return
 	}
-	if len(req.Words) > maxBatchWords {
+	words := *req.Words
+	if len(words) > maxBatchWords {
 		writeError(w, apiError{Status: http.StatusBadRequest, Code: "batch_too_large",
-			Message: fmt.Sprintf("a batch carries at most %d words, this one carried %d", maxBatchWords, len(req.Words))})
+			Message: fmt.Sprintf("a batch carries at most %d words, this one carried %d", maxBatchWords, len(words))})
 		return
 	}
 
 	langs := s.langsOf(r.URL.Query())
-	items := make([]batchItem, 0, len(req.Words))
-	for _, word := range req.Words {
+	items := make([]batchItem, 0, len(words))
+	for _, word := range words {
 		res, err := s.resolver.Resolve(r.Context(), word, langs)
 		if err == nil {
 			items = append(items, batchItem{Input: word, Result: &res})
@@ -133,7 +138,7 @@ type rootResponse struct {
 
 func (s *server) lookupRoot(w http.ResponseWriter, r *http.Request) {
 	letters := strings.TrimSpace(r.PathValue("letters"))
-	if !root.ContainsArabicLetter(letters) {
+	if !root.IsArabicWord(letters) {
 		writeError(w, apiError{Status: http.StatusBadRequest, Code: "not_arabic",
 			Message: "the path must carry the joined Arabic letters of a root, such as وصي"})
 		return
@@ -224,12 +229,14 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	}
 }
 
-// langsOf reads lang=en,fr, repeated or comma-separated.
+// langsOf reads lang=en,fr, repeated or comma-separated. A tag is lowercased
+// because en and EN are one language and a caller typing the second one was
+// answered with silence and no way to tell that from a language nobody wrote.
 func (s *server) langsOf(query map[string][]string) []string {
 	var langs []string
 	for _, value := range query["lang"] {
 		for lang := range strings.SplitSeq(value, ",") {
-			if lang = strings.TrimSpace(lang); lang != "" {
+			if lang = strings.ToLower(strings.TrimSpace(lang)); lang != "" {
 				langs = append(langs, lang)
 			}
 		}

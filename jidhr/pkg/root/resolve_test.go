@@ -194,6 +194,10 @@ func (s failingStore) Attests(context.Context, string) ([]string, error) {
 	return nil, s.err
 }
 
+func (s failingStore) AttestsSurface(context.Context, string) ([]string, error) {
+	return nil, s.err
+}
+
 func (s failingStore) Root(context.Context, string) (RootRecord, error) {
 	return RootRecord{}, s.err
 }

@@ -3,6 +3,7 @@ package main
 
 import (
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -61,10 +62,18 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
+	// Bind before announcing it. Logging the line first means a port already in
+	// use prints a confident "listening" and then the error that it never did.
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Error("listen", "addr", addr, "err", err)
+		os.Exit(1)
+	}
+
 	log.Info("rootd listening",
-		"addr", addr, "corpus", corpusPath, "languages", srv.langs,
+		"addr", ln.Addr().String(), "corpus", corpusPath, "languages", srv.langs,
 		"authenticated", srv.apiKey != "", "rate_per_second", rate)
-	if err := httpd.ListenAndServe(); err != nil {
+	if err := httpd.Serve(ln); err != nil {
 		log.Error("rootd stopped", "err", err)
 		os.Exit(1)
 	}

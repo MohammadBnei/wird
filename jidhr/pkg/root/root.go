@@ -74,16 +74,12 @@ func New(s Store) *Resolver {
 // is a failure of the store, never a statement about the word.
 func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Result, error) {
 	word = strings.TrimSpace(word)
-	if !containsArabicLetter(word) {
+	if !IsArabicWord(word) {
 		return Result{}, ErrNotArabic
 	}
 
 	res := Result{Input: word, Normalized: word}
-	n, err := normalize(word)
-	if err != nil && !errors.Is(err, ErrNotFound) {
-		return Result{}, err
-	}
-	if n != "" {
+	if n := key(word); n != "" {
 		res.Normalized = n
 	}
 
@@ -138,7 +134,21 @@ func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Re
 	if len(attested) == 1 {
 		return r.fromLetters(ctx, res, attested[0], MethodPattern, langs)
 	}
-	considered = append(considered, attested...)
+	if len(attested) > 1 {
+		// The caller's own diacritics settle it when they wrote any: قل is the
+		// spelling of both قول and قلل, but قُلْ is one word and the corpus records
+		// one root for it. The collision belongs to the normalised key, not to the
+		// authority, and refusing a word the authority spells unambiguously would
+		// turn a fact into a miss.
+		exact, err := r.store.AttestsSurface(ctx, word)
+		if err != nil {
+			return Result{}, err
+		}
+		if len(exact) == 1 && slices.Contains(attested, exact[0]) {
+			return r.fromLetters(ctx, res, exact[0], MethodLexicon, langs)
+		}
+		return r.fromShared(ctx, res, attested, langs)
+	}
 
 	// The templates run on the normalised word and on nothing else. Running them
 	// down the stripped stems as well walks ever more mutilated stems until one
@@ -196,6 +206,25 @@ func (r *Resolver) lookup(ctx context.Context, surface, normalized string) (Entr
 	return Entry{}, "", err
 }
 
+// fromShared answers a spelling the corpus attests under several roots with all of
+// them rather than with a 404 that lists them. Which root this word came from is
+// the sentence's to say and nothing here reads a sentence, so the answer carries
+// every reading the corpus has and names the rung that produced it.
+func (r *Resolver) fromShared(ctx context.Context, res Result, letters []string, langs []string) (Result, error) {
+	for _, l := range letters {
+		rec, err := r.store.Root(ctx, l)
+		switch {
+		case err == nil:
+			res.Roots = append(res.Roots, rec.Root)
+		case errors.Is(err, ErrNotFound):
+			res.Roots = append(res.Roots, Root{Letters: l, Display: spaced(l)})
+		default:
+			return Result{}, err
+		}
+	}
+	return r.fromLetters(ctx, res, letters[0], MethodShared, langs)
+}
+
 func (r *Resolver) fromEntry(ctx context.Context, res Result, e Entry, m Method, langs []string) (Result, error) {
 	res.Lemma = e.Lemma
 	res.Form = e.Form
@@ -229,16 +258,29 @@ func (r *Resolver) fromLetters(ctx context.Context, res Result, letters string, 
 	return res, nil
 }
 
-// containsArabicLetter is the boundary between 400 and 404. Diacritics are marks
-// and Arabic-Indic digits are digits, so a string holding only those is not a word
-// we can be asked about.
-func containsArabicLetter(s string) bool {
+// IsArabicWord is the boundary between 400 and 404: at least one Arabic letter,
+// and no letter of another script. Diacritics are marks and Arabic-Indic digits
+// are digits, so a string holding only those is not a word we can be asked about,
+// and صبرabc is not an Arabic word we happen not to know — it is a word with Latin
+// letters in it, and 404 would tell its caller the corpus was asked and came back
+// empty. It is exported because rootd has to ask the resolver's question rather
+// than a second copy of it that drifts.
+func IsArabicWord(s string) bool {
+	arabic := false
 	for _, r := range s {
-		if unicode.IsLetter(r) && unicode.Is(unicode.Arabic, r) {
-			return true
+		// The runes the normaliser drops are decided first: tatweel is a letter to
+		// Unicode and belongs to no script, so a word stretched typographically —
+		// which is most of the Uthmani text — would otherwise read as a word with a
+		// foreign letter in it.
+		if dropped(r) || !unicode.IsLetter(r) {
+			continue
 		}
+		if !unicode.Is(unicode.Arabic, r) {
+			return false
+		}
+		arabic = true
 	}
-	return false
+	return arabic
 }
 
 // ponytail: display is the letters spaced out and transliteration comes from the

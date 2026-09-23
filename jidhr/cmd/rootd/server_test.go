@@ -76,7 +76,7 @@ func get(t *testing.T, s *server, target string) (int, map[string]any) {
 
 func postBatch(t *testing.T, s *server, words []string) (int, map[string]any) {
 	t.Helper()
-	body, err := json.Marshal(batchRequest{Words: words})
+	body, err := json.Marshal(batchRequest{Words: &words})
 	if err != nil {
 		t.Fatalf("marshal the batch: %v", err)
 	}
@@ -498,6 +498,10 @@ func (s failingStore) Attests(context.Context, string) ([]string, error) {
 	return nil, s.err
 }
 
+func (s failingStore) AttestsSurface(context.Context, string) ([]string, error) {
+	return nil, s.err
+}
+
 func (s failingStore) Root(context.Context, string) (root.RootRecord, error) {
 	return root.RootRecord{}, s.err
 }
@@ -521,5 +525,49 @@ func TestACallerThatNamesNoLanguageIsAnsweredInTheLanguagesTheCorpusHolds(t *tes
 		if _, present := got[lang]; !present {
 			t.Errorf("%s is written in this corpus and was not offered: %v — a language list written beside the data is a promise the data does not keep", lang, got)
 		}
+	}
+}
+
+func TestABatchBodyThatNamesNoWordsIsBadInputRatherThanAnEmptyAnswer(t *testing.T) {
+	// {"nope":1} decoded into a slice is a request for nothing, and answering it
+	// 200 with an empty list tells a caller whose field name is wrong that every
+	// word it sent came back unanswerable.
+	s := testServer(t, nil)
+	status, body := call(t, s, httptest.NewRequest(http.MethodPost, "/v1/roots:batch", strings.NewReader(`{"nope":1}`)))
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %v", status, http.StatusBadRequest, body)
+	}
+	if code := errorCode(t, body); code != "bad_body" {
+		t.Errorf("code = %q, want %q", code, "bad_body")
+	}
+}
+
+func TestALanguageNamedInCapitalsIsTheSameLanguage(t *testing.T) {
+	// lang=EN matched nothing and was answered with a root and no meanings, which
+	// is the same answer as a language nobody has written — so a caller sending a
+	// capitalised tag had no way to tell a typo from an unwritten language.
+	s := testServer(t, nil)
+	status, body := get(t, s, "/v1/root?lang=EN&word="+url.QueryEscape(attestedWord))
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %v", status, http.StatusOK, body)
+	}
+	if got, _ := body["meanings"].(map[string]any); len(got) == 0 {
+		t.Error("lang=EN came back with no meanings, so the case of a language tag is an undocumented part of the API")
+	}
+}
+
+func TestAWordWithLatinLettersInItIsBadInputRatherThanAWordWeDoNotKnow(t *testing.T) {
+	// صبرabc is not an Arabic word the corpus happens to miss; it is a paste gone
+	// wrong. A 404 tells its caller the corpus was asked and came back empty, and
+	// the caller keeps sending it.
+	s := testServer(t, nil)
+	status, body := get(t, s, wordURL("صبرabc"))
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %v", status, http.StatusBadRequest, body)
+	}
+	if code := errorCode(t, body); code != "not_arabic" {
+		t.Errorf("code = %q, want %q", code, "not_arabic")
 	}
 }

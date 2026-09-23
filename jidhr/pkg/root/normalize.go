@@ -96,3 +96,51 @@ func folded(r rune) rune {
 // صلاة، زكاة، حياة. Both are closed lists: when phase 11 measures how often
 // recognised speech misses because of them, fix them by indexing the modern
 // spelling alongside the Uthmani one at ETL time, not by widening this function.
+
+// TrimMarks takes off the Qur'anic pause, sajda and section marks that the corpus
+// keeps glued to the word they follow, and the space they sit behind. They are
+// punctuation of the recitation, not letters of a word: ءَأَسْلَمْتُمْ ۚ is one word,
+// and a reader types it without the mark. The normaliser proper cannot do this —
+// it decides one code point at a time and so removes the mark but leaves its
+// space, keying the word under a spelling no keyboard produces. The app strips the
+// same range at its own read, in app/lib/data/root_repo.dart.
+func TrimMarks(word string) string {
+	return strings.TrimSpace(strings.Map(func(r rune) rune {
+		switch {
+		case r >= 0x06D6 && r <= 0x06DE, // pause marks, end of ayah, start of rub el hizb
+			r >= 0x06E9 && r <= 0x06ED: // sajda, and the small low marks written under the line
+			return -1
+		}
+		return r
+	}, word))
+}
+
+// key is the spelling a word is looked up and indexed by: normalised, with the
+// recitation marks and their space gone.
+func key(word string) string {
+	n, err := normalize(TrimMarks(word))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(n)
+}
+
+// indexKeys are the spellings one written form is stored under. A form written
+// with a dagger alef gets a second key with that alef spelled out: U+0670 stands
+// for a long ā that Uthmani orthography does not write, so ٱلْعَـٰلَمِينَ and the
+// ordinary العالمين are one word and a reader types whichever spelling their
+// keyboard has. Both keys are kept because neither is derivable from the other:
+// dropping the dagger is right for ٱلرَّحْمَـٰنِ, whose ordinary spelling is الرحمن,
+// and spelling it out is right for ٱلْعَـٰلَمِينَ, and nothing in the code point says
+// which word this is. 2,791 of the corpus's forms carry one.
+func indexKeys(form string) []string {
+	k := key(form)
+	if !strings.ContainsRune(form, 0x0670) {
+		return []string{k}
+	}
+	expanded := key(strings.ReplaceAll(form, "ٰ", "ا"))
+	if expanded == k || expanded == "" {
+		return []string{k}
+	}
+	return []string{k, expanded}
+}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"slices"
+	"strings"
 )
 
 // ErrNotFound is what a Store returns when a lookup matched nothing. It is a miss,
@@ -51,14 +52,22 @@ type Store interface {
 	// identity, so a yes from it is not a statement about any particular word.
 	Root(ctx context.Context, letters string) (RootRecord, error)
 
+	// AttestsSurface returns the roots the corpus records this exact spelling
+	// under, diacritics and all. It is what settles a normalised key two roots
+	// share: قل is قول and قلل, but قُلْ as the corpus writes it is only قول, so a
+	// caller who supplies the diacritics gets the one root the authority records
+	// and never a list. A spelling the corpus does not write returns no roots and
+	// a nil error.
+	AttestsSurface(ctx context.Context, surface string) ([]string, error)
+
 	// Attests returns the roots the corpus records this written form under, spelled
 	// as the corpus spells them. This is the identity question Root cannot answer:
 	// Root says لوك is a root, Attests says whether ملوك is one of its forms, and
 	// reading the first as the second is what once served ملوك as ل و ك.
 	//
 	// A form the corpus never attests returns no roots and a nil error, because an
-	// unattested word is a miss and not a failure. Two roots back means the form is
-	// a genuine homograph and the corpus does not settle it.
+	// unattested word is a miss and not a failure. Two roots back means this
+	// spelling is shared, and they come back most-used root first.
 	//
 	// One indexed lookup on the normalised form answers this — a form-to-root table
 	// keyed by that spelling. It deliberately takes no candidate roots to filter by:
@@ -94,6 +103,7 @@ type MemoryStore struct {
 	byLemma      map[string]Entry
 	roots        map[string]RootRecord
 	attested     map[string][]string
+	bySpelling   map[string][]string
 	meanings     map[string]map[string]Meaning
 }
 
@@ -107,6 +117,7 @@ func NewMemoryStore(c Corpus) *MemoryStore {
 		byLemma:      map[string]Entry{},
 		roots:        map[string]RootRecord{},
 		attested:     map[string][]string{},
+		bySpelling:   map[string][]string{},
 		meanings:     c.Meanings,
 	}
 	for _, r := range c.Roots {
@@ -118,25 +129,40 @@ func NewMemoryStore(c Corpus) *MemoryStore {
 	// ponytail: the first entry to claim a key wins. Ambiguous forms need a list
 	// and a ranking, which is the real store's problem once a corpus exists.
 	for _, e := range c.Entries {
-		index(m.byNormalized, normalized(e.Surface), e)
-		index(m.byLemma, normalized(e.Lemma), e)
+		for _, k := range indexKeys(e.Surface) {
+			index(m.byNormalized, k, e)
+		}
+		for _, k := range indexKeys(e.Lemma) {
+			index(m.byLemma, k, e)
+		}
 	}
 	for form, roots := range c.Attested {
-		key := normalized(form)
-		if key == "" {
-			continue
-		}
+		spelling := TrimMarks(form)
 		for _, r := range roots {
-			if !slices.Contains(m.attested[key], r) {
-				m.attested[key] = append(m.attested[key], r)
+			if spelling != "" && !slices.Contains(m.bySpelling[spelling], r) {
+				m.bySpelling[spelling] = append(m.bySpelling[spelling], r)
+			}
+			for _, k := range indexKeys(form) {
+				if k != "" && !slices.Contains(m.attested[k], r) {
+					m.attested[k] = append(m.attested[k], r)
+				}
 			}
 		}
 	}
 	// Two spellings of one form reach the same key in whatever order the map hands
 	// them over, and a resolver that answers a different root on a different run is
-	// worse than one that answers none.
+	// worse than one that answers none. The most-used root leads, because a key
+	// several roots share is answered with the list in this order.
+	//
+	// ponytail: most-used is counted over the whole Qur'an, not over this spelling,
+	// so كفوا leads with كفف where the one verse that writes it means كفأ. Both
+	// roots are on the answer either way. Order by attestations of this spelling
+	// once the corpus file carries a count per form and root.
 	for _, roots := range m.attested {
-		slices.Sort(roots)
+		m.sortByUse(roots)
+	}
+	for _, roots := range m.bySpelling {
+		m.sortByUse(roots)
 	}
 	return m
 }
@@ -150,6 +176,25 @@ func LoadMemoryStore(r io.Reader) (*MemoryStore, error) {
 	return NewMemoryStore(c), nil
 }
 
+// sortByUse orders roots by how much of the Qur'an is built on them, most first,
+// and settles a tie on the letters so two runs answer alike.
+func (m *MemoryStore) sortByUse(roots []string) {
+	slices.SortFunc(roots, func(a, b string) int {
+		if d := m.uses(b) - m.uses(a); d != 0 {
+			return d
+		}
+		return strings.Compare(a, b)
+	})
+}
+
+func (m *MemoryStore) uses(letters string) int {
+	r, ok := m.roots[letters]
+	if !ok || r.Quran == nil {
+		return 0
+	}
+	return r.Quran.Occurrences
+}
+
 func index(into map[string]Entry, key string, e Entry) {
 	if key == "" {
 		return
@@ -158,16 +203,6 @@ func index(into map[string]Entry, key string, e Entry) {
 		return
 	}
 	into[key] = e
-}
-
-// normalized is normalize without its error, for index building: a word the
-// normaliser cannot reduce simply gets no normalised index entry.
-func normalized(word string) string {
-	n, err := normalize(word)
-	if err != nil {
-		return ""
-	}
-	return n
 }
 
 func (m *MemoryStore) EntryBySurface(_ context.Context, surface string) (Entry, error) {
@@ -204,6 +239,10 @@ func (m *MemoryStore) Root(_ context.Context, letters string) (RootRecord, error
 
 func (m *MemoryStore) Attests(_ context.Context, form string) ([]string, error) {
 	return m.attested[form], nil
+}
+
+func (m *MemoryStore) AttestsSurface(_ context.Context, surface string) ([]string, error) {
+	return m.bySpelling[TrimMarks(surface)], nil
 }
 
 func (m *MemoryStore) Meanings(_ context.Context, letters string, langs []string) (map[string]Meaning, error) {

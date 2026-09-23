@@ -90,7 +90,13 @@ func build(db *sql.DB) (root.Corpus, error) {
 
 	// Attestation is the bare fact that the corpus wrote this spelling under this
 	// root, and it is the only thing jidhr's last rung may assert from. Forms go in
-	// spelled as the corpus spells them; jidhr normalises them as it indexes them.
+	// spelled as the corpus spells them, diacritics and all, less the recitation
+	// marks: corpus.db keeps the pause and sajda marks glued to the word they
+	// follow, space and all, and a form shipped that way is keyed under a spelling
+	// with a space in it that no reader can type. jidhr normalises what it indexes
+	// but decides one code point at a time, so the space outlives the mark; the
+	// cleaning belongs here, where the word is read out of the database, and is the
+	// same range app/lib/data/root_repo.dart strips at its own read.
 	forms, err := db.Query(`SELECT DISTINCT text_ar, root_letters FROM words
 		WHERE root_letters IS NOT NULL AND root_letters <> '' ORDER BY text_ar, root_letters`)
 	if err != nil {
@@ -105,7 +111,11 @@ func build(db *sql.DB) (root.Corpus, error) {
 		if !known[letters] {
 			return c, fmt.Errorf("the form %q is attested under %q, which the roots table does not record", form, letters)
 		}
-		c.Attested[form] = append(c.Attested[form], letters)
+		// Cleaning merges spellings that differed only by the mark, so the same
+		// pair arrives twice.
+		if form = root.TrimMarks(form); form != "" && !slices.Contains(c.Attested[form], letters) {
+			c.Attested[form] = append(c.Attested[form], letters)
+		}
 	}
 	if err := forms.Err(); err != nil {
 		return c, err
@@ -147,15 +157,17 @@ func write(path string, c root.Corpus) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 	enc := json.NewEncoder(f)
 	// A line per token: the file is generated, and a generated file nobody can read
 	// a diff of is re-reviewed from scratch every time it changes.
 	enc.SetIndent("", "")
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(corpusFile{Note: note, Corpus: c}); err != nil {
+		f.Close()
 		return err
 	}
+	// The close is the write: a deferred one drops the error that says the file on
+	// disk is short, and a corpus that is half-written is not a corpus.
 	return f.Close()
 }
 

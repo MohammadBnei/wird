@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -135,17 +136,54 @@ func TestAWordTheQuranNeverUsesStaysAMissHoweverMuchTheCorpusGrows(t *testing.T)
 	}
 }
 
-func TestAFormTwoRootsBothClaimIsPutOnTheTableRatherThanDecided(t *testing.T) {
+func TestAFormTwoRootsBothClaimIsAnsweredWithBothRatherThanRefused(t *testing.T) {
 	// أسرى is two words in one spelling: the corpus records it under أسر, "to
-	// travel by night", and under سري, "captives". The morphology does not settle
-	// it, so nothing downstream may either.
-	miss, ok := missFor(t, quranResolver(t), "أسرى")
-	if !ok {
-		return
+	// travel by night", and under سري, "captives", and it writes both the same way
+	// down to the last diacritic. The morphology does not settle it, so nothing
+	// here may either — but refusing to answer is not the same as not deciding.
+	// Both readings go on the answer, and a 404 that listed them and served
+	// neither told a reader less than the corpus knows.
+	got, err := quranResolver(t).Resolve(context.Background(), "أسرى", nil)
+	if err != nil {
+		t.Fatalf("أسرى: the corpus records two roots for this spelling and the reader was shown neither: %v", err)
+	}
+	if got.Method != MethodShared {
+		t.Errorf("أسرى resolved by %q, so a reader is told one reading was settled when the corpus settles nothing", got.Method)
 	}
 	for _, want := range []string{"أسر", "سري"} {
-		if _, on := offered(miss, want); !on {
-			t.Errorf("the miss reports %v and drops %q, so a caller reading the list is shown one of the two readings as if the other did not exist", miss.Candidates, want)
+		if !slices.ContainsFunc(got.Roots, func(r Root) bool { return r.Letters == want }) {
+			t.Errorf("the answer carries %v and drops %q, so a reader is shown one of the two readings as if the other did not exist", got.Roots, want)
+		}
+	}
+	if len(got.Roots) > 0 && got.Root.Letters != got.Roots[0].Letters {
+		t.Errorf("root is %q and roots leads with %q, so a caller reading one field and a caller reading the other are told different things",
+			got.Root.Letters, got.Roots[0].Letters)
+	}
+}
+
+func TestADiacritizedSpellingTheAuthorityWritesUnderOneRootIsNotTurnedIntoAHomograph(t *testing.T) {
+	// قل is the spelling of both قول and قلل once the diacritics are gone, and the
+	// collision belongs to the normaliser rather than to the corpus: قُلْ, 209
+	// occurrences and the opening word of Al-Ikhlas, is written under قول and
+	// nothing else. A caller who supplies the diacritics has answered the question
+	// the normaliser destroyed, and the answer is the one root the authority
+	// records — not a list, and never the 404 that used to report both readings as
+	// known and then serve neither.
+	r := quranResolver(t)
+	for _, c := range []struct{ word, root string }{
+		{"قُلْ", "قول"},
+		{"كُفُوًا", "كفأ"},
+	} {
+		got, err := r.Resolve(context.Background(), c.word, nil)
+		if err != nil {
+			t.Errorf("%s: the corpus writes this spelling under %s alone and the reader was shown nothing: %v", c.word, c.root, err)
+			continue
+		}
+		if got.Root.Letters != c.root {
+			t.Errorf("%s was served %q where the corpus writes %q for this spelling", c.word, got.Root.Letters, c.root)
+		}
+		if len(got.Roots) != 0 {
+			t.Errorf("%s came back with %v beside it, so a spelling the authority does not leave open is reported as open", c.word, got.Roots)
 		}
 	}
 }
