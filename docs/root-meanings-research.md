@@ -82,3 +82,85 @@ The poetic register is lexicography with a voice. Never tafsir. Never a claim
 about what a verse means. Nothing invented is ever presented as sourced — the
 defect this project already deleted once, where invented prose shipped under
 Ibn Fāris's and Lane's names.
+
+---
+
+# The answer, 2026-09-24
+
+The question the owner asked three times — why is a root's meaning so hard —
+has a settled answer now, and the answer is not "it is hard to look up". It is
+that **a root's meaning is a claim, and a claim needs a bar**.
+
+## What was shipped, twice, and what went wrong the first time
+
+The first attempt shipped 493 senses and was reverted whole. The defect that
+caught it: غير went out as "to change; to alter" when 154 of its occurrences in
+the corpus are glossed *other than* (59), *than* (58) and *without* (49), and
+only 4 are *change*. Every reader tapping غير in Al-Fātiḥa 1:7 — the aya every
+Muslim recites seventeen times a day — would have been told the wrong thing.
+
+Nothing in the build could see it, because the sense was checked against the
+lexicon it came from rather than against the words the Qur'an actually uses.
+
+## The bar, as it now stands
+
+Six independent terms, each fitted to the gap between two populations of
+fixtures rather than chosen:
+
+| term | rejects | value |
+| --- | --- | --- |
+| score | a sense the root's own glosses do not bear out | 0.208 |
+| coverage | a sense explaining a minority of its root's occurrences | 0.500 |
+| dispersion | a word the root never shows and the corpus reserves for others | 11 |
+| branch | a branch over 20.4% of the root that the sense is silent about | 0.204 |
+| lead | a first clause explaining less than a later one | unconditional |
+| specificity | prose that fits more roots than its own | 1 |
+
+Plus one refusal that is not a term: **two roots handed the same words** are
+both refused, because nothing says which one the prose belongs to.
+
+Battery: 72 fixtures. **15/15 right senses pass, 57/57 wrong senses rejected.**
+The wrong ones are not strawmen — they are the four ways this actually fails:
+doctrinal elaboration ("to fast **from dawn to sunset in Ramadan**"), an
+invented clause riding on an attested one, a minority branch left unnamed, and
+a sense that leads with the minority.
+
+## What ships
+
+**523 roots, reaching 31,478 of 49,967 glossed word occurrences — 63.0%.**
+
+Each one carries its own evidence: the actual words and glosses it was derived
+from, bucketed by morphological shape. A reader can check it. Attribution is
+Wird's own wording, and that is stated rather than implied — it is not quoted
+from, attributed to, or derived from any lexicon or scholar.
+
+The roots the gate named all read correctly now:
+
+- غير — "other than, without; to change"
+- نفق — "to spend; a hypocrite, hypocrisy"
+- ملأ — "the chiefs, the assembly; to fill; full"
+- سجد — "a masjid, a place of prostration; to prostrate"
+- حجج — "to argue; the Hajj; to dispute"
+
+And عود, جمع, كثر, طوي **ship nothing at all** rather than ship something
+wrong. An absence is a sense a reader can trust.
+
+## The two closest calls, recorded rather than buried
+
+1. **رحم passes at branch 0.168 against a 0.204 ceiling.** It ships "to be
+   merciful; to show mercy" while *gracious* — Ar-Raḥmān — is glossed 57 times
+   and goes unnamed. It is the nearest thing to a miss in the shipped set, and
+   it is a measured near-miss rather than an unexamined one.
+2. **سجد leads with "a masjid, a place of prostration"** for a root whose verb
+   forms outnumber the noun 59 to 26. The clause passes because it names both
+   branches at once — *a place of prostration* is what a masjid is. Defensible,
+   and worth knowing it is the clause doing double duty that carries it.
+
+## Why 63% and not 100%
+
+The 1,119 roots that ship nothing fail for reasons that are recorded per root,
+not swept up: 226 are simply not borne out by their own words, and the rest fail
+a named term. 399 roots occur exactly once in the whole Qur'an — one word, one
+form, no cross-form prediction possible. For those, an honest absence is the
+only correct output, and the machinery is built so that absence is what happens
+by default rather than by exception.
