@@ -344,3 +344,32 @@ lacking."
 Finding 2 fixed the kin rows in 1a's own root panel. Screen 3a — the dial, with
 its list of derivatives and their references — still does not open them. Same
 gap, different screen, and 3a is where a reader actually studies a root.
+
+### 15. The constellation is a tablet drawing shown on a phone
+
+**What the reader said:** "The constellation is too small on mobile, and no
+interaction on it."
+
+**Where:** screen 1c, `app/lib/features/deepdive/`. It is reached from 1a's root
+panel via "Open constellation".
+
+**Why it is small:** 1c is the TABLET layout — a three-pane grid at
+292 / 1fr / 336 inside a 1180x794 frame, with the constellation in the middle
+pane. Below the width breakpoint it falls back to a stacked layout, so the
+centre pane's drawing is squeezed into a phone column. It was designed for a
+1194x834 iPad and reviewed there.
+
+**Why nothing responds:** the constellation is a CustomPainter reproducing the
+design's SVG geometry. The design's own nodes are captions, not controls — it
+draws a picture of a root's family rather than a way to move through one. So
+the build faithfully reproduced something that was never interactive.
+
+**Shape of the gap, and it is bigger than a size:** the phone is the primary
+device, and on the phone this is the root's most visual view. Either it becomes
+a real phone view — nodes tappable, opening their aya or driving the dial,
+laid out for a narrow screen rather than scaled down from a wide one — or the
+phone should not offer it at all and 1a's "Open constellation" should lead
+somewhere built for the screen it is on.
+
+Related: finding 14 wants the same thing from 3a's derivative list. Both are
+"the reader is looking at a root's family and cannot go anywhere from it".
