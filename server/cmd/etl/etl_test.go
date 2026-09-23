@@ -7,15 +7,20 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MohammadBnei/wird/server/internal/timings"
 )
 
-const fixtureDir = "testdata/corpus"
+const (
+	fixtureDir     = "testdata/corpus"
+	fixtureTimings = "Husary_Muallim_128kbps"
+)
 
 var testRecitation = Recitation{Slug: "husary-muallim", ReciterName: "Mahmoud Khalil Al-Husary", Style: "Muallim"}
 
 func load(t *testing.T, dir string) *Corpus {
 	t.Helper()
-	c, err := Load(dir, testRecitation.Slug)
+	c, err := Load(dir, testRecitation.Slug, fixtureTimings)
 	if err != nil {
 		t.Fatalf("load %s: %v", dir, err)
 	}
@@ -52,35 +57,11 @@ func TestTheAyahNumberGlyphIsCountedAsAWordAndShiftsEveryLaterId(t *testing.T) {
 	}
 }
 
-func TestATimingTupleReadAsThreeElementsHighlightsTheWrongWord(t *testing.T) {
-	// Element 0 is a running index, element 1 the word position. They differ here on
-	// purpose: an ETL that joins on element 0 lands a word early.
-	n := normalizeSegments([][]int{{7, 2, 1000, 1200}}, 2021, 30000, 11)
-	if len(n.segments) != 1 {
-		t.Fatalf("got %d segments, want 1", len(n.segments))
-	}
-	got := n.segments[0]
-	if got.WordID != wordID(2021, 2) {
-		t.Errorf("segment joined to word %d, want %d", got.WordID, wordID(2021, 2))
-	}
-	if got.StartMS != 1000 || got.EndMS != 1200 {
-		t.Errorf("timings %d-%d, want 1000-1200", got.StartMS, got.EndMS)
-	}
-}
-
-func TestTheHighlightRunsPastTheEndOfTheAudioFile(t *testing.T) {
-	n := normalizeSegments([][]int{{0, 1, 0, 6000}, {1, 2, 6000, 9000}}, 1001, 7000, 4)
-	last := n.segments[len(n.segments)-1]
-	if last.EndMS > 7000 {
-		t.Errorf("segment ends at %d, past the 7000ms file", last.EndMS)
-	}
-	if n.clamped != 1 {
-		t.Errorf("clamped %d segments, want 1 reported", n.clamped)
-	}
-}
-
 func TestTheHighlightJumpsBackwardsWhenATimingArrivesEarly(t *testing.T) {
-	n := normalizeSegments([][]int{{0, 1, 2000, 3000}, {1, 2, 500, 3500}}, 1001, 7000, 4)
+	n := normalizeSegments([]timings.Span{
+		{FirstWord: 1, LastWord: 1, StartMS: 2000, EndMS: 3000},
+		{FirstWord: 2, LastWord: 2, StartMS: 500, EndMS: 3500},
+	}, 1001)
 	prev := -1
 	for _, s := range n.segments {
 		if s.StartMS < prev {
@@ -92,28 +73,16 @@ func TestTheHighlightJumpsBackwardsWhenATimingArrivesEarly(t *testing.T) {
 
 func TestWordsTheReciterRunsTogetherLoseTheirOverlap(t *testing.T) {
 	// 141 ayas legitimately overlap. Clamping them apart would shorten a real word.
-	n := normalizeSegments([][]int{{0, 1, 0, 1200}, {1, 2, 1000, 2000}}, 1001, 7000, 4)
+	n := normalizeSegments([]timings.Span{
+		{FirstWord: 1, LastWord: 1, StartMS: 0, EndMS: 1200},
+		{FirstWord: 2, LastWord: 2, StartMS: 1000, EndMS: 2000},
+	}, 1001)
 	if n.segments[1].StartMS != 1000 || n.segments[0].EndMS != 1200 {
 		t.Errorf("overlap rewritten to %d-%d / %d-%d", n.segments[0].StartMS, n.segments[0].EndMS,
 			n.segments[1].StartMS, n.segments[1].EndMS)
 	}
 	if n.clamped != 0 {
 		t.Errorf("clamped %d segments, want 0: an overlap is not a defect", n.clamped)
-	}
-}
-
-func TestTheHighlightGoesDarkWhileTheReciterIsStillOnTheLastWord(t *testing.T) {
-	// Five ayas carry a segment past their last word, where the recitation splits a
-	// word the text keeps whole. Its audio has to stay on the last word.
-	n := normalizeSegments([][]int{{0, 1, 0, 1000}, {1, 2, 1000, 2000}, {2, 3, 2000, 4000}}, 12001, 20000, 2)
-	if len(n.segments) != 2 {
-		t.Fatalf("got %d segments, want 2", len(n.segments))
-	}
-	if last := n.segments[1]; last.EndMS != 4000 {
-		t.Errorf("last word highlighted until %d, want 4000 — the audio runs that long", last.EndMS)
-	}
-	if n.orphans != 0 {
-		t.Errorf("%d orphan segments, want the trailing one folded in instead", n.orphans)
 	}
 }
 
@@ -180,7 +149,7 @@ func TestWordTextAndTimingsComeFromTwoDifferentSegmentations(t *testing.T) {
 	if err := os.WriteFile(morph, []byte(strings.Join(kept, "\n")+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(dir, testRecitation.Slug); err == nil {
+	if _, err := Load(dir, testRecitation.Slug, fixtureTimings); err == nil {
 		t.Fatal("a corpus whose words and morphology disagree on the word count was accepted")
 	}
 }
@@ -273,6 +242,39 @@ func TestARootArrivesAsTransliterationAndTheRootPanelOpensOnLatinLetters(t *test
 				t.Fatalf("root %q is not Arabic: the file publishes Buckwalter and the root panel "+
 					"would render it", r.Letters)
 			}
+		}
+	}
+}
+
+func TestTheShippedCorpusCarriesNoAttributionForTheTimingsItHighlightsWith(t *testing.T) {
+	// CC BY 4.0 Section 3(a)(1) is what lets these timings be bundled at all, and
+	// it asks for the attribution to travel with the material. The database is what
+	// reaches a reader; a line in a repo file does not.
+	notice := scalar(t, build(t, fixtureDir), "SELECT notice FROM corpus_meta")
+	for _, want := range []string{"quran-align", "Collin Fair", "creativecommons.org/licenses/by/4.0/"} {
+		if !strings.Contains(notice, want) {
+			t.Errorf("corpus.db does not mention %q, so the app ships word timings under a licence "+
+				"whose one condition it does not meet", want)
+		}
+	}
+	c := load(t, fixtureDir)
+	c.Notice = strings.ReplaceAll(c.Notice, "Collin Fair", "")
+	if err := c.Check(false); err == nil {
+		t.Fatal("a database that credits nobody for its word timings passed the build")
+	}
+}
+
+func TestAMultiWordSpanLeavesTheWordsInsideItUntimed(t *testing.T) {
+	// The aligner could not split 27 spans. One row per span, and the 61 words
+	// inside them never light up — the failure a one-word-per-segment parser makes
+	// and reports as success.
+	n := normalizeSegments([]timings.Span{{FirstWord: 2, LastWord: 4, StartMS: 110, EndMS: 900}}, 1001)
+	if len(n.segments) != 3 {
+		t.Fatalf("a span over three words wrote %d rows", len(n.segments))
+	}
+	for i, w := range []int{2, 3, 4} {
+		if n.segments[i].WordID != wordID(1001, w) {
+			t.Errorf("row %d joins to word %d, want %d", i, n.segments[i].WordID, wordID(1001, w))
 		}
 	}
 }

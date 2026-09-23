@@ -16,12 +16,16 @@ const (
 func (c *Corpus) Check(full bool) error {
 	var errs []error
 
-	// The morphology's terms require its copyright notice to be reproduced in works
-	// derived from it. corpus.db is what reaches a reader; a repo file does not.
-	for _, marker := range []string{"Quranic Arabic Corpus", "Kais Dukes", "corpus.quran.com"} {
+	// Both sources require their notice to be reproduced in works derived from
+	// them — the morphology's terms in as many words, and CC BY 4.0 in Section
+	// 3(a)(1). corpus.db is what reaches a reader; a repo file does not.
+	for _, marker := range []string{
+		"Quranic Arabic Corpus", "Kais Dukes", "corpus.quran.com",
+		"quran-align", "Collin Fair", "creativecommons.org/licenses/by/4.0/",
+	} {
 		if !strings.Contains(c.Notice, marker) {
 			errs = append(errs, fmt.Errorf("the corpus notice does not mention %q, so the shipped "+
-				"database would carry no attribution for the morphology it is built from", marker))
+				"database would carry data whose licence requires it to be attributed and is not", marker))
 			break
 		}
 	}
@@ -46,9 +50,7 @@ func (c *Corpus) Check(full bool) error {
 	for _, w := range c.Words {
 		words[w.ID] = true
 	}
-	duration := make(map[int]int, len(c.Audio))
 	for _, a := range c.Audio {
-		duration[a.AyahID] = a.DurationMS
 		if strings.Contains(a.RelPath, "://") || strings.HasPrefix(a.RelPath, "/") {
 			errs = append(errs, fmt.Errorf("aya %d audio %q is not a relative path: a host frozen "+
 				"into the asset costs a release the day it moves", a.AyahID, a.RelPath))
@@ -81,11 +83,6 @@ func (c *Corpus) Check(full bool) error {
 			break
 		}
 		lastStart[aid] = s.StartMS
-		if d := duration[aid]; d > 0 && (s.EndMS > d || s.StartMS > d) {
-			errs = append(errs, fmt.Errorf("aya %d: segment %d-%d runs past the %dms audio file",
-				aid, s.StartMS, s.EndMS, d))
-			break
-		}
 	}
 	return errors.Join(errs...)
 }

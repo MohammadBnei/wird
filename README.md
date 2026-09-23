@@ -115,22 +115,60 @@ was authored for this project.
 The OFL permits bundling and redistribution inside an application. Neither face
 is renamed or modified.
 
+### cpfair/quran-align — the per-word timings
+
+Copyright (c) 2016 Collin Fair. **CC BY 4.0.**
+
+<https://github.com/cpfair/quran-align>
+
+`word_segments` — which word is being recited at which millisecond — comes from
+the `Husary_Muallim_128kbps.json` file in quran-align's released data package.
+Its README grants, verbatim:
+
+> These data files are licensed under a [Creative Commons Attribution 4.0
+> International License](https://creativecommons.org/licenses/by/4.0/). Please
+> consider emailing me if you use this data, so I can let you know when new &
+> revised timing data is available.
+
+CC BY 4.0 permits redistribution, so these timings ship inside `corpus.db`.
+Section 4(a) settles the database case in as many words: the licence "grants You
+the right to extract, reuse, reproduce, and Share all or a substantial portion of
+the contents of the database". Section 3(a)(1) is the one condition, and all six
+of its items are in `corpus_meta.notice`: the creator, the copyright notice, the licence by URI, its
+disclaimer of warranties, a link to the material, and the indication that Wird
+modified it by reindexing the timings onto its own word ids. The ETL refuses to
+build a database whose notice is missing any of it.
+
+The **Sources and licences** screen does not yet render that notice — it is a
+hand-written list — so the condition is met in the data and not yet met where a
+reader of the app can see it. That is open question 4 and it blocks a release.
+
+Wird took the same numbers from the quran.com API until 2026-09-23. They are the
+same numbers — all 6,236 ayas compare byte for byte — but the terms they arrived
+under were not the same, and the one-week rule made them unshippable. Taking them
+from the publisher who granted them makes them shippable, and costs a URL.
+
 ### Recitation audio — Maḥmūd Khalīl al-Ḥuṣarī, muʿallim
 
-MP3s from [quranicaudio.com](https://quranicaudio.com/about); per-word timings
-from the quran.com API.
+Fetched by the device from [everyayah.com](https://everyayah.com/) at playback
+time. **Not redistributed, not mirrored, not bundled.**
 
-**Neither is cleared for distribution, and neither ships.** quranicaudio.com
-grants the files "for personal use free of charge" and forbids commercial use —
-personal use is not distribution. The per-word timings appear in no Quran
-Foundation Content Sync resource, so the one-week rule stands and they cannot
-live in an immutable bundled asset.
+There is no Qur'an recitation Wird may redistribute. Every complete per-aya
+Arabic recording is granted for personal use only, published with no terms at
+all, or carries an open-licence tag applied by somebody who does not hold the
+master. So Wird does not ship the audio and does not host it: the device asks a
+third party for a public URL, the way a browser loads an image, and keeps a
+bounded cache of what it played. `app/lib/data/audio.dart` holds the origin and
+the cap; `ayah_audio.rel_path` is relative so the origin is config, not an App
+Store release.
 
-The named way out for the timings is
-[`cpfair/quran-align`](https://github.com/cpfair/quran-align), CC BY 4.0, which
-permits bundling with attribution. Its word numbering is over a space-split of
-Tanzil's text rather than quran.com's tokenisation, so the reconciliation has
-to be redone rather than copied.
+Mirroring these files onto Wird's own host is the act this rules out. Under the
+only terms in this space that are actually written down, Quran Foundation's, it
+is named and forbidden: redistribution "means offering QF Content or raw API data
+to others as data—for example, through the Developer's own API, dataset, data
+feed, download, content package, or similar service." `data/SOURCES.md` carries
+the full reading, including the one route that does grant ayah audio for offline
+use — QF's Content Sync — and what taking it would cost.
 
 ### Open questions
 
@@ -141,9 +179,15 @@ questions and not implementation ones:
    quran.com API serves. Nobody is named in its documentation.
 2. Which tafsir translations permit redistribution inside the bundle. v1 ships
    public-domain summaries.
-3. The audio: the al-Ḥuṣarī recordings are granted for personal use, which is
-   not distribution, and the per-word timings fall outside the Content Sync
-   terms. Neither may ship as things stand.
+3. Whether Wird registers a Quran Foundation Developer Console account. It is
+   what would let the audio be fetched from QF's own CDN under a written grant
+   rather than from an origin that publishes no terms — at the price of a
+   permanent seven-day re-sync and a published privacy policy. Settled by the
+   project, not by the code.
+4. **Blocking.** The Sources and licences screen still credits neither
+   quran-align nor Collin Fair, and still describes the recitation as "personal
+   use only — not cleared" with a link to quranicaudio.com. Neither is true any
+   more, and the first is a licence condition rather than a nicety.
 
 ## Building
 

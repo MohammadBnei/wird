@@ -56,11 +56,13 @@ CREATE TABLE recitations (
   reciter_name TEXT NOT NULL,
   style        TEXT
 );
+-- No duration: the recordings are fetched from a third-party origin at playback
+-- time and Wird neither hosts nor indexes them, so their length is not ours to
+-- state. rel_path is relative for the same reason — see data/SOURCES.md.
 CREATE TABLE ayah_audio (
   ayah_id         INTEGER NOT NULL REFERENCES ayahs(id),
   recitation_slug TEXT NOT NULL REFERENCES recitations(slug),
   rel_path        TEXT NOT NULL,
-  duration_ms     INTEGER NOT NULL,
   PRIMARY KEY (ayah_id, recitation_slug)
 );
 CREATE TABLE word_segments (
@@ -166,9 +168,9 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
-	if err := insert(`INSERT INTO ayah_audio VALUES (?,?,?,?)`, len(c.Audio), func(i int) []any {
+	if err := insert(`INSERT INTO ayah_audio VALUES (?,?,?)`, len(c.Audio), func(i int) []any {
 		a := c.Audio[i]
-		return []any{a.AyahID, rec.Slug, a.RelPath, a.DurationMS}
+		return []any{a.AyahID, rec.Slug, a.RelPath}
 	}); err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MohammadBnei/wird/server/internal/timings"
 )
 
 // The lines the ingest looks for before it reads a byte of annotation.
@@ -23,6 +26,9 @@ const fixtureNotice = `# Quranic Arabic Corpus (morphology, version 0.4)
 
 LOCATION	FORM	TAG	FEATURES
 `
+
+// One of quran-align's twelve; the ingest takes its name on the command line.
+const fixtureRecitation = "Husary_Muallim_128kbps"
 
 type fakeAyah struct {
 	words     int
@@ -39,7 +45,7 @@ func writeFixture(t *testing.T, ayahs []fakeAyah) (string, []chapter) {
 		VersesCount: len(ayahs), RevelationOrder: 5, RevelationPlace: "makkah"}
 	writeJSON(t, filepath.Join(dir, "chapters.json"), map[string]any{"chapters": []chapter{ch}})
 
-	var verses, audio []map[string]any
+	var verses, timed []map[string]any
 	var morph strings.Builder
 	for i, a := range ayahs {
 		key := fmt.Sprintf("1:%d", i+1)
@@ -49,8 +55,7 @@ func writeFixture(t *testing.T, ayahs []fakeAyah) (string, []chapter) {
 		}
 		words = append(words, map[string]any{"char_type_name": "end"})
 		verses = append(verses, map[string]any{"verse_key": key, "words": words})
-		audio = append(audio, map[string]any{"verse_key": key, "duration": 10,
-			"url": "//host/001" + fmt.Sprintf("%03d", i+1) + ".mp3", "segments": a.segments})
+		timed = append(timed, map[string]any{"surah": 1, "ayah": i + 1, "segments": a.segments})
 
 		n := a.morphWord
 		if n == 0 {
@@ -62,7 +67,15 @@ func writeFixture(t *testing.T, ayahs []fakeAyah) (string, []chapter) {
 	}
 	writeJSON(t, filepath.Join(dir, "verses", "001.json"),
 		map[string]any{"verses": verses, "pagination": map[string]any{"next_page": nil}})
-	writeJSON(t, filepath.Join(dir, "segments", "001.json"), map[string]any{"audio_files": audio})
+	writeJSON(t, filepath.Join(dir, timingsDir, fixtureRecitation+".json"), timed)
+	for name, body := range map[string]string{
+		"README":  "These data files are licensed under a " + timings.LicenceMarker + " International License.",
+		"LICENSE": "Copyright (c) 2016 Collin Fair",
+	} {
+		if err := save(filepath.Join(dir, timingsDir, name), []byte(body)); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if err := save(filepath.Join(dir, corpusFile), []byte(fixtureNotice+morph.String())); err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +96,7 @@ func writeJSON(t *testing.T, path string, v any) {
 func verifyFixture(t *testing.T, ayahs []fakeAyah) (*manifest, error) {
 	t.Helper()
 	dir, chapters := writeFixture(t, ayahs)
-	return verify(dir, []int{1}, chapters, time.Now())
+	return verify(dir, []int{1}, chapters, fixtureRecitation, time.Now())
 }
 
 // A four-word aya, one segment per word, is the shape everything else deviates
@@ -130,7 +143,7 @@ func TestTheRecitersExtraSegmentOnASingleWordIsCountedNotRejected(t *testing.T) 
 	if err != nil {
 		t.Fatalf("the muqatta'at, where the reciter splits one written word, were rejected: %v", err)
 	}
-	if got := m.Reconciliation.AyahsWithASegmentPastTheLastWord; got != 1 {
+	if got := m.Reconciliation.AyahsWhereTheAlignerSplitsAWord; got != 1 {
 		t.Fatalf("trailing segment not reported: got %d, want 1", got)
 	}
 	if got := m.Counts.WordsTimed; got != 2 {
@@ -215,7 +228,7 @@ func TestASuraTruncatedByPaginationIsRejectedRatherThanIngestedShort(t *testing.
 		"verses":     []map[string]any{{"verse_key": "1:1", "words": []map[string]any{{"char_type_name": "word"}}}},
 		"pagination": map[string]any{"next_page": &next},
 	})
-	if _, err := verify(dir, []int{1}, chapters, time.Now()); err == nil {
+	if _, err := verify(dir, []int{1}, chapters, fixtureRecitation, time.Now()); err == nil {
 		t.Fatal("a sura that did not fit on one page was accepted, losing its tail silently")
 	}
 }
@@ -324,5 +337,58 @@ func TestTheMissingMorphologyFileNamesTheDownloadAPersonHasToDo(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the error leaves the reader without %q, so they cannot finish the ingest:\n%v", want, err)
 		}
+	}
+}
+
+// writeZip lays out a quran-align release package with the files named.
+func writeZip(t *testing.T, files map[string]string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), alignZip)
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	zw := zip.NewWriter(f)
+	for name, body := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestTimingsAreBundledUnderALicenceSentenceThePackageNoLongerCarries(t *testing.T) {
+	// corpus_meta.notice quotes the README. If the package stops saying it, the
+	// quote has become a claim, and the app would ship bundled data under a
+	// permission nobody re-read — which is exactly how the morphology fork got in.
+	path := writeZip(t, map[string]string{
+		"README":                    "quran-align timing file package",
+		"LICENSE":                   "Copyright (c) 2016 Collin Fair",
+		fixtureRecitation + ".json": "[]",
+	})
+	err := extractTimings(path, t.TempDir(), fixtureRecitation)
+	if err == nil {
+		t.Fatal("a package whose README no longer grants the licence was accepted")
+	}
+	if !strings.Contains(err.Error(), timings.LicenceMarker) {
+		t.Fatalf("the error does not name the sentence that went missing: %v", err)
+	}
+}
+
+func TestAReleasePackageWithoutTheRecitationLeavesTheAppWithNoTimingsAtAll(t *testing.T) {
+	path := writeZip(t, map[string]string{
+		"README":  "licensed under a " + timings.LicenceMarker + " International License",
+		"LICENSE": "Copyright (c) 2016 Collin Fair",
+	})
+	if err := extractTimings(path, t.TempDir(), fixtureRecitation); err == nil {
+		t.Fatal("a package holding no timings for the shipped reciter was accepted")
 	}
 }

@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MohammadBnei/wird/server/internal/timings"
 )
 
 type chapter struct {
@@ -42,18 +44,6 @@ type versesFile struct {
 	} `json:"pagination"`
 }
 
-type segmentsFile struct {
-	AudioFiles []struct {
-		VerseKey string  `json:"verse_key"`
-		URL      string  `json:"url"`
-		Duration float64 `json:"duration"`
-		Segments [][]int `json:"segments"`
-	} `json:"audio_files"`
-	Pagination struct {
-		NextPage *int `json:"next_page"`
-	} `json:"pagination"`
-}
-
 type counts struct {
 	Surahs             int `json:"surahs"`
 	Ayahs              int `json:"ayahs"`
@@ -70,7 +60,10 @@ type reconciliation struct {
 	// source and segment source number words differently highlights every word
 	// after the disagreement on the wrong one.
 	AyahsWhereWordNumberingDisagrees int `json:"ayahs_where_word_numbering_disagrees"`
-	AyahsWithASegmentPastTheLastWord int `json:"ayahs_with_a_segment_past_the_last_word"`
+	// The muqaṭṭaʿāt: the aligner's recogniser numbers the opening letters as
+	// several words where the text keeps one. Reconciled, not dropped — every
+	// index after the split names the word before the one it looks like.
+	AyahsWhereTheAlignerSplitsAWord int `json:"ayahs_where_the_aligner_splits_a_word"`
 	MultiWordSegmentSpans            int `json:"multi_word_segment_spans"`
 	WordsTimedOnlyByAMultiWordSpan   int `json:"words_timed_only_by_a_multi_word_span"`
 	WordsWithNoTiming                int `json:"words_with_no_timing"`
@@ -165,7 +158,7 @@ func readChapters(dir string) ([]chapter, error) {
 // verify reads back what is on disk and refuses to write a manifest for a corpus
 // that would mis-highlight. Nothing here trusts the download that just ran: a
 // resumed run verifies files it did not fetch.
-func verify(dir string, suras []int, chapters []chapter, now time.Time) (*manifest, error) {
+func verify(dir string, suras []int, chapters []chapter, recitation string, now time.Time) (*manifest, error) {
 	byID := map[int]chapter{}
 	for _, ch := range chapters {
 		byID[ch.ID] = ch
@@ -179,6 +172,10 @@ func verify(dir string, suras []int, chapters []chapter, now time.Time) (*manife
 	}
 
 	morphWords, morphSegs, roots, err := loadMorphologyCounts(filepath.Join(dir, corpusFile))
+	if err != nil {
+		return nil, err
+	}
+	segs, err := timings.Load(filepath.Join(dir, timingsDir, recitation+".json"))
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +206,7 @@ func verify(dir string, suras []int, chapters []chapter, now time.Time) (*manife
 					"%s: %d words in the text but %d in the morphology", key, n, mw))
 			}
 		}
-		if err := countSegments(dir, ch, wordCount, m, &problems); err != nil {
+		if err := countSegments(ch, segs, wordCount, m, &problems); err != nil {
 			return nil, err
 		}
 	}
@@ -220,7 +217,7 @@ func verify(dir string, suras []int, chapters []chapter, now time.Time) (*manife
 			len(problems), strings.Join(capped(problems, 10), "\n  "))
 	}
 
-	files, err := checksums(dir, suras)
+	files, err := checksums(dir, suras, recitation)
 	if err != nil {
 		return nil, err
 	}
@@ -277,85 +274,60 @@ func countWords(dir string, ch chapter) (map[string]int, error) {
 	return out, nil
 }
 
-// countSegments asserts the tuple shape before reading a millisecond from it.
+// countSegments walks one sura's timings against the word source, and reports
+// what a reader would notice if the two ever stopped agreeing.
 //
 // A tuple is [word_start_index, word_end_index, start_ms, end_ms]: zero-based,
-// the end index exclusive, over the same word numbering the word source uses.
-// The published documentation says [segment_index, start_ms, end_ms], and a
-// parser that believes it reads a word index as a timestamp and highlights the
-// wrong word everywhere. Reading element 1 as a one-based word position is the
-// subtler version of the same mistake: it agrees with the real shape for every
-// segment that covers exactly one word, which is all but 27 of them, and drops
-// the timing of the other 61 words.
-//
-// The assertion that separates the readings is that both indices are word
-// indices: a millisecond in either slot lands far past the last word.
-func countSegments(dir string, ch chapter, wordCount map[string]int, m *manifest, problems *[]string) error {
-	var sf segmentsFile
-	path := filepath.Join(dir, "segments", fmt.Sprintf("%03d.json", ch.ID))
-	if err := readJSON(path, &sf); err != nil {
-		return err
-	}
-	if sf.Pagination.NextPage != nil {
-		return fmt.Errorf("%s: the timings run past one page, so the file is short by design", path)
-	}
-	if len(sf.AudioFiles) != ch.VersesCount {
-		return fmt.Errorf("%s: %d audio files, %d ayas in the sura", path, len(sf.AudioFiles), ch.VersesCount)
-	}
-
-	for _, af := range sf.AudioFiles {
-		words, ok := wordCount[af.VerseKey]
+// the end index exclusive. The published documentation of the shape quran.com
+// serves says [segment_index, start_ms, end_ms], and a parser that believes it
+// reads a word index as a timestamp and highlights the wrong word everywhere.
+// Reading element 1 as a one-based word position is the subtler version of the
+// same mistake: it agrees with the real shape for every segment that covers
+// exactly one word, which is all but 27 of them, and drops the timing of the
+// other 61 words. internal/timings is the one reader, so this count and the
+// ETL's cannot drift apart the way they once did.
+func countSegments(ch chapter, all map[[2]int][][]int, wordCount map[string]int, m *manifest, problems *[]string) error {
+	for ayah := 1; ayah <= ch.VersesCount; ayah++ {
+		key := fmt.Sprintf("%d:%d", ch.ID, ayah)
+		words, ok := wordCount[key]
 		if !ok {
-			return fmt.Errorf("%s: timings for %s, which the word source does not have", path, af.VerseKey)
+			return fmt.Errorf("the word source has no aya %s", key)
+		}
+		raw, ok := all[[2]int{ch.ID, ayah}]
+		if !ok {
+			return fmt.Errorf("the timings have no aya %s, so it would play with no highlight at all", key)
 		}
 		m.Counts.AudioFiles++
 
+		spans, err := timings.Spans(raw, words)
+		if err != nil {
+			*problems = append(*problems, fmt.Sprintf("%s: %v", key, err))
+			continue
+		}
+		if slots := maxEnd(raw); slots == words+1 {
+			m.Reconciliation.AyahsWhereTheAlignerSplitsAWord++
+		}
+
 		timed := make(map[int]bool, words)
-		prevTo, prevEnd := 0, -1
-		for _, t := range af.Segments {
-			if len(t) != 4 {
-				return fmt.Errorf("%s: aya %s has a %d-element segment %v; this parser reads "+
-					"[word_start_index, word_end_index, start_ms, end_ms] and the shape has changed under it",
-					path, af.VerseKey, len(t), t)
-			}
-			from, to, start, end := t[0], t[1], t[2], t[3]
-			if from < 0 || to <= from || from < prevTo {
-				*problems = append(*problems, fmt.Sprintf(
-					"%s: segment [%d,%d) does not follow [_,%d) as a walk over the words",
-					af.VerseKey, from, to, prevTo))
-				break
-			}
-			if to > words+1 {
-				*problems = append(*problems, fmt.Sprintf(
-					"%s: a segment ends after word %d of %d", af.VerseKey, to, words))
-				break
-			}
+		prevEnd := -1
+		for i, sp := range spans {
 			m.Counts.SegmentTuples++
-			if end < start {
+			if sp.EndMS < sp.StartMS {
 				// 3:22 ends a word ten milliseconds before it starts. The ETL clamps it;
 				// refusing the whole corpus over it would be worse than counting it.
 				m.Reconciliation.SegmentsEndingBeforeTheyStart++
 			}
-			if prevEnd >= 0 && start < prevEnd {
+			if i > 0 && sp.StartMS < prevEnd {
 				m.Reconciliation.OverlappingSegmentPairs++
 			}
-			// The reciter's phrasing splits a word the text keeps whole in five ayas,
-			// all of them muqatta'at. The ETL folds that trailing segment into the last
-			// word; here it is counted, because the same symptom at scale is two
-			// segmentations rather than one reciter.
-			last := to
-			if to == words+1 {
-				m.Reconciliation.AyahsWithASegmentPastTheLastWord++
-				last = words
-			}
-			if last-from > 1 {
+			if sp.LastWord > sp.FirstWord {
 				m.Reconciliation.MultiWordSegmentSpans++
-				m.Reconciliation.WordsTimedOnlyByAMultiWordSpan += last - from - 1
+				m.Reconciliation.WordsTimedOnlyByAMultiWordSpan += sp.LastWord - sp.FirstWord
 			}
-			for i := from; i < last; i++ {
-				timed[i+1] = true
+			for w := sp.FirstWord; w <= sp.LastWord; w++ {
+				timed[w] = true
 			}
-			prevTo, prevEnd = to, end
+			prevEnd = sp.EndMS
 		}
 
 		// A word with no timing is a highlight that freezes mid-aya. Counting them is
@@ -373,6 +345,16 @@ func countSegments(dir string, ch chapter, wordCount map[string]int, m *manifest
 		}
 	}
 	return nil
+}
+
+func maxEnd(raw [][]int) int {
+	n := 0
+	for _, t := range raw {
+		if len(t) == 4 && t[1] > n {
+			n = t[1]
+		}
+	}
+	return n
 }
 
 // loadMorphologyCounts returns words per aya keyed "surah:ayah", total segments
@@ -431,10 +413,11 @@ func loadMorphologyCounts(path string) (map[string]int, int, int, error) {
 	return out, segments, len(roots), nil
 }
 
-func checksums(dir string, suras []int) ([]fileSum, error) {
-	paths := []string{"chapters.json", corpusFile}
+func checksums(dir string, suras []int, recitation string) ([]fileSum, error) {
+	paths := []string{"chapters.json", corpusFile,
+		timingsDir + "/" + recitation + ".json", timingsDir + "/LICENSE", timingsDir + "/README"}
 	for _, n := range suras {
-		paths = append(paths, fmt.Sprintf("verses/%03d.json", n), fmt.Sprintf("segments/%03d.json", n))
+		paths = append(paths, fmt.Sprintf("verses/%03d.json", n))
 	}
 	sort.Strings(paths)
 

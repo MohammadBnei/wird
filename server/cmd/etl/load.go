@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/MohammadBnei/wird/server/internal/timings"
 )
 
 // The morphology file, as corpus.quran.com distributes it. server/cmd/ingest
@@ -45,10 +47,12 @@ type Root struct {
 	Occurrences                int
 }
 
+// Audio names the file an aya is recited in and nothing else. There is no
+// duration: Wird does not host the recordings and does not index them, and a
+// length derived from the last word's timing would be a number we made up.
 type Audio struct {
-	AyahID     int
-	RelPath    string
-	DurationMS int
+	AyahID  int
+	RelPath string
 }
 
 type Segment struct {
@@ -57,8 +61,9 @@ type Segment struct {
 }
 
 type Corpus struct {
-	// The copyright block the morphology file opens with, carried into corpus.db so
-	// the notice travels with the data the app actually ships.
+	// The notices the data ships under, carried into corpus.db so they travel with
+	// what the app actually installs: the morphology file's own copyright block,
+	// and the attribution CC BY 4.0 asks for over the word timings.
 	Notice string
 
 	Surahs   []Surah
@@ -68,9 +73,8 @@ type Corpus struct {
 	Audio    []Audio
 	Segments []Segment
 
-	Clamped int // segments whose timings had to be pulled back into the audio file
-	Merged  int // trailing segments folded into the last word of their aya
-	Orphans int // segments naming a word position the corpus does not have
+	Clamped int // segments whose timings had to be pulled straight
+	Orphans int // ayas whose timings could not be reconciled with the text
 }
 
 type rawChapters struct {
@@ -103,15 +107,6 @@ type rawVerses struct {
 	} `json:"verses"`
 }
 
-type rawSegments struct {
-	AudioFiles []struct {
-		VerseKey string  `json:"verse_key"`
-		URL      string  `json:"url"`
-		Duration float64 `json:"duration"`
-		Segments [][]int `json:"segments"`
-	} `json:"audio_files"`
-}
-
 func readJSON(path string, v any) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -137,10 +132,12 @@ func surahOf(verseKey string) (int, int, error) {
 	return si, ai, nil
 }
 
-// Load reads one ingest directory: chapters.json, verses/NNN.json, segments/NNN.json
-// and morphology.txt. Word text and segment timings come from the same numbering,
-// which is the only thing that keeps a highlight on the word it belongs to.
-func Load(dir, recitation string) (*Corpus, error) {
+// Load reads one ingest directory: chapters.json, verses/NNN.json,
+// timings/NAME.json and the morphology file. Word text and word timings are
+// numbered by two different projects, and internal/timings is what reconciles
+// them: that reconciliation is the only thing keeping a highlight on the word it
+// belongs to.
+func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 	var chapters rawChapters
 	if err := readJSON(filepath.Join(dir, "chapters.json"), &chapters); err != nil {
 		return nil, err
@@ -149,8 +146,12 @@ func Load(dir, recitation string) (*Corpus, error) {
 	if err != nil {
 		return nil, err
 	}
+	segs, err := timings.Load(filepath.Join(dir, "timings", timingsFile+".json"))
+	if err != nil {
+		return nil, err
+	}
 
-	c := &Corpus{Notice: morph.notice}
+	c := &Corpus{Notice: morph.notice + "\n\n" + timings.Notice(timingsFile+".json")}
 	rootCount := map[string]int{}
 	wordsPerAyah := map[int]int{}
 
@@ -199,23 +200,16 @@ func Load(dir, recitation string) (*Corpus, error) {
 			}
 		}
 
-		var segs rawSegments
-		if err := readJSON(filepath.Join(dir, "segments", fmt.Sprintf("%03d.json", ch.ID)), &segs); err != nil {
-			return nil, err
-		}
-		for _, f := range segs.AudioFiles {
-			su, ay, err := surahOf(f.VerseKey)
+		for ayah := 1; ayah <= ch.VersesCount; ayah++ {
+			aid := ayahID(ch.ID, ayah)
+			c.Audio = append(c.Audio, Audio{AyahID: aid, RelPath: relPath(recitation, ch.ID, ayah)})
+			spans, err := timings.Spans(segs[[2]int{ch.ID, ayah}], wordsPerAyah[aid])
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("aya %d:%d: %w", ch.ID, ayah, err)
 			}
-			aid := ayahID(su, ay)
-			durMS := int(f.Duration * 1000)
-			c.Audio = append(c.Audio, Audio{AyahID: aid, RelPath: relPath(recitation, f.URL), DurationMS: durMS})
-			n := normalizeSegments(f.Segments, aid, durMS, wordsPerAyah[aid])
+			n := normalizeSegments(spans, aid)
 			c.Segments = append(c.Segments, n.segments...)
 			c.Clamped += n.clamped
-			c.Merged += n.merged
-			c.Orphans += n.orphans
 		}
 	}
 
@@ -229,74 +223,42 @@ func Load(dir, recitation string) (*Corpus, error) {
 }
 
 // relPath keeps the audio origin out of the shipped asset: a host frozen into an
-// immutable bundle costs an App Store release the day it moves.
-func relPath(recitation, url string) string {
-	name := url
-	if i := strings.LastIndexByte(name, '/'); i >= 0 {
-		name = name[i+1:]
-	}
-	return recitation + "/" + name
+// immutable bundle costs an App Store release the day it moves. Every per-aya
+// archive of this recitation names its files by sura and aya, three digits each.
+func relPath(recitation string, surah, ayah int) string {
+	return fmt.Sprintf("%s/%03d%03d.mp3", recitation, surah, ayah)
 }
 
 type normalized struct {
-	segments                 []Segment
-	clamped, merged, orphans int
+	segments []Segment
+	clamped  int
 }
 
-// normalizeSegments turns QUL's 4-tuples into rows. Element 1 is the 1-based word
-// position and the join key; element 0 is a running index and is not. Reading the
-// tuple as the documented 3-tuple puts every highlight on the wrong word.
+// normalizeSegments turns reconciled spans into rows, one per word. The 27 spans
+// the aligner could not split cover more than one word each; a parser that writes
+// one row per span leaves the other 61 words untimed and their highlight frozen.
 //
-// Starts are made non-decreasing and everything is pulled inside the audio file.
-// Overlaps are left alone: 141 ayas legitimately overlap.
-func normalizeSegments(raw [][]int, aid, durationMS, wordCount int) normalized {
+// Starts are made non-decreasing. Overlaps are left alone: 141 ayas legitimately
+// overlap, and pulling them apart would shorten a word the reciter really did run
+// into the next.
+func normalizeSegments(spans []timings.Span, aid int) normalized {
 	var n normalized
 	prevStart := 0
-	for _, t := range raw {
-		if len(t) < 4 {
-			n.orphans++
-			continue
-		}
-		pos, start, end := t[1], t[2], t[3]
-		// Five ayas carry one segment past their last word, where the reciter's
-		// phrasing splits a word the text keeps whole. Its audio belongs to the last
-		// word: dropped instead, the highlight would go dark mid-recitation.
-		if pos == wordCount+1 && len(n.segments) > 0 {
-			last := &n.segments[len(n.segments)-1]
-			if e := end; e > last.EndMS {
-				if durationMS > 0 && e > durationMS {
-					e = durationMS
-				}
-				last.EndMS = e
-			}
-			n.merged++
-			continue
-		}
-		if pos < 1 || pos > wordCount {
-			n.orphans++
-			continue
-		}
-		s, e := start, end
-		if s < 0 {
-			s = 0
-		}
+	for _, sp := range spans {
+		s, e := sp.StartMS, sp.EndMS
 		if s < prevStart {
 			s = prevStart
-		}
-		if durationMS > 0 && s > durationMS {
-			s = durationMS
 		}
 		if e < s {
 			e = s
 		}
-		if durationMS > 0 && e > durationMS {
-			e = durationMS
-		}
-		if s != start || e != end {
+		if s != sp.StartMS || e != sp.EndMS {
 			n.clamped++
 		}
 		prevStart = s
-		n.segments = append(n.segments, Segment{WordID: wordID(aid, pos), StartMS: s, EndMS: e})
+		for w := sp.FirstWord; w <= sp.LastWord; w++ {
+			n.segments = append(n.segments, Segment{WordID: wordID(aid, w), StartMS: s, EndMS: e})
+		}
 	}
 	return n
 }

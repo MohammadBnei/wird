@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	chaptersURL   = "https://api.quran.com/api/v4/chapters?language=en"
-	versesURL     = "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&fields=text_uthmani&per_page=300"
-	segmentsURL   = "https://api.quran.com/api/v4/recitations/%d/by_chapter/%d?fields=segments,duration,url&per_page=300"
+	chaptersURL = "https://api.quran.com/api/v4/chapters?language=en"
+	versesURL   = "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&fields=text_uthmani&per_page=300"
 
 	// The morphology is not fetched. corpus.quran.com/download serves a form that
 	// asks for an email address and for the terms to be accepted before it hands
@@ -28,13 +27,14 @@ const (
 	corpusFile = "quranic-corpus-morphology-0.4.txt"
 )
 
-var sourceURLs = []string{chaptersURL, versesURL, segmentsURL, corpusPage}
+var sourceURLs = []string{chaptersURL, versesURL, alignURL, corpusPage}
 
 func main() {
 	out := flag.String("out", "./data/raw/", "directory the downloads land in; gitignored")
 	manifestPath := flag.String("manifest", "./data/manifest.json", "manifest to write; this is what git holds")
 	only := flag.String("suras", "", "suras to fetch, e.g. 1,2,103,112 or 1-5 (default: all 114)")
-	recitation := flag.Int("recitation", 12, "quran.com recitation id; 12 is al-Husari, Muallim")
+	recitation := flag.String("recitation", "Husary_Muallim_128kbps",
+		"which of quran-align's 12 recitations to take the word timings from")
 	delay := flag.Duration("delay", 200*time.Millisecond, "pause between requests")
 	retries := flag.Int("retries", 5, "retries per request before giving up")
 	force := flag.Bool("force", false, "re-download files that are already on disk")
@@ -45,13 +45,23 @@ func main() {
 	}
 }
 
-func run(dir, manifestPath, only string, recitation int, delay time.Duration, retries int, force bool) error {
+func run(dir, manifestPath, only, recitation string, delay time.Duration, retries int, force bool) error {
 	ctx := context.Background()
 	// Before 38 MB of downloads: the one file a person has to put there by hand.
 	if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
 		return err
 	}
 	f := &fetcher{hc: &http.Client{Timeout: 2 * time.Minute}, delay: delay, retries: retries}
+
+	// The word timings come from quran-align's release package rather than from
+	// quran.com, which serves the same numbers on terms that forbid storing them
+	// past a week. See data/SOURCES.md.
+	if err := f.download(ctx, alignURL, filepath.Join(dir, alignZip), force); err != nil {
+		return err
+	}
+	if err := extractTimings(filepath.Join(dir, alignZip), dir, recitation); err != nil {
+		return err
+	}
 
 	if err := f.download(ctx, chaptersURL, filepath.Join(dir, "chapters.json"), force); err != nil {
 		return err
@@ -76,13 +86,9 @@ func run(dir, manifestPath, only string, recitation int, delay time.Duration, re
 		if err := f.download(ctx, fmt.Sprintf(versesURL, n), v, force); err != nil {
 			return err
 		}
-		s := filepath.Join(dir, "segments", fmt.Sprintf("%03d.json", n))
-		if err := f.download(ctx, fmt.Sprintf(segmentsURL, recitation, n), s, force); err != nil {
-			return err
-		}
 	}
 
-	m, err := verify(dir, suras, chapters, time.Now())
+	m, err := verify(dir, suras, chapters, recitation, time.Now())
 	if err != nil {
 		return err
 	}
@@ -101,14 +107,14 @@ func run(dir, manifestPath, only string, recitation int, delay time.Duration, re
 	fmt.Printf("%s\n  requests %d  suras %d  ayas %d  words %d\n"+
 		"  audio %d  segment tuples %d  words timed %d  morphology segments %d  roots %d\n"+
 		"  ayas where word numbering disagrees %d\n"+
-		"  ayas with a segment past the last word %d\n"+
+		"  ayas where the aligner numbers one written word as two %d\n"+
 		"  multi-word spans %d, timing %d words a one-word-per-segment parser drops\n"+
 		"  words with no timing %d across %d ayas\n"+
 		"  overlapping segment pairs %d  segments ending before they start %d\n",
 		manifestPath, f.requests, m.Counts.Surahs, m.Counts.Ayahs, m.Counts.Words,
 		m.Counts.AudioFiles, m.Counts.SegmentTuples, m.Counts.WordsTimed,
 		m.Counts.MorphologySegments, m.Counts.Roots,
-		r.AyahsWhereWordNumberingDisagrees, r.AyahsWithASegmentPastTheLastWord,
+		r.AyahsWhereWordNumberingDisagrees, r.AyahsWhereTheAlignerSplitsAWord,
 		r.MultiWordSegmentSpans, r.WordsTimedOnlyByAMultiWordSpan,
 		r.WordsWithNoTiming, r.AyahsWithAnUntimedWord,
 		r.OverlappingSegmentPairs, r.SegmentsEndingBeforeTheyStart)

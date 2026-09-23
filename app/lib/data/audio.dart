@@ -8,14 +8,32 @@ import 'package:sqflite/sqflite.dart';
 
 import 'sets.dart';
 
+/// RUNTIME FETCH ONLY. No recitation of the Qur'an was found that Wird may
+/// redistribute: every complete per-aya recording is personal-use-only, silent
+/// on terms, or tagged by somebody who does not hold the master. So the device
+/// asks a third party for a public URL, the way a browser loads an image, and
+/// Wird neither bundles the audio nor serves it from an origin of its own.
+///
+/// A future mirror is the thing this constrains. Copying these files onto
+/// Wird's own host is redistribution, and nobody has granted it — under the
+/// one set of terms actually written down, Quran Foundation's, it is named and
+/// forbidden. See the audio rows in data/SOURCES.md before moving this.
+///
 /// `ayah_audio.rel_path` is relative on purpose: the reciter's files can move
 /// to another host without an App Store release. This is the bundled default,
-/// which server config overrides.
-const defaultAudioOrigin = 'https://audio-cdn.tarteel.ai/quran/husary/';
+/// which server config overrides. everyayah.com's `Husary_Muallim_128kbps` is
+/// the same recording cpfair/quran-align measured, so the bundled word timings
+/// belong to these files and not to a re-encode of them.
+const defaultAudioOrigin = 'https://everyayah.com/data/Husary_Muallim_128kbps/';
 
-/// The whole recitation is roughly 0.9 GB at ~150 KB an aya, so this cap
-/// evicts on nearly every set. The set being studied is pinned, so the file
-/// the reader is about to hear is never the one thrown away.
+/// The whole recitation is 2.75 GB at ~442 KB an aya, so this cap holds about
+/// 450 ayas and evicts on nearly every set. The set being studied is pinned,
+/// so the file the reader is about to hear is never the one thrown away.
+///
+/// The cap is also what keeps this a cache. A fetch-at-playback design stays
+/// honest while the files on disk are a performance artifact of playing them;
+/// an unbounded one is a copy of the recitation assembled on the user's disk,
+/// which is the act no licence here permits.
 const audioCacheBytes = 200 * 1024 * 1024;
 
 /// An MP3 frame is about 26 ms and a seek lands on a frame boundary, so a

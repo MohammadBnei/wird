@@ -98,15 +98,30 @@ const sources = [
     terms: 'Bundled unmodified.',
   ),
   Source(
+    provides: 'Per-word recitation timings',
+    name: 'quran-align',
+    licence: 'Creative Commons Attribution 4.0 International',
+    notice: 'Copyright (c) 2016 Collin Fair',
+    url: 'https://creativecommons.org/licenses/by/4.0/',
+    terms:
+        'The millisecond each word is spoken at, which is what lets a word '
+        'light up as you hear it. From github.com/cpfair/quran-align, aligned '
+        'against this same muʿallim recording. Reindexed for this app: the '
+        'published data is zero-based and end-exclusive, and it is stored here '
+        'one-based against the word it belongs to. Offered as-is, without '
+        'warranties.',
+  ),
+  Source(
     provides: 'Recitation',
     name: 'Maḥmūd Khalīl al-Ḥuṣarī',
-    licence: 'Personal use only — not cleared',
-    url: 'https://quranicaudio.com/about',
+    licence: 'Fetched at playback, never redistributed',
+    url: 'https://everyayah.com',
     terms:
-        'The muʿallim recitation is granted for personal use, which is not '
-        'permission to distribute it, and the per-word timings sit outside '
-        'the terms that would let them be bundled. Neither ships with this '
-        'app until that is resolved.',
+        'The muʿallim recording is downloaded by your device from everyayah.com '
+        'when you press play, the way a browser loads a page, and cached on '
+        'your phone. Wird does not bundle it, mirror it, or serve it. The '
+        'archive publishes no terms of use, so nothing here is offered as '
+        'permission to redistribute it — and that is why this app never does.',
   ),
 ];
 

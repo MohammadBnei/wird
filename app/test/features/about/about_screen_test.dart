@@ -57,7 +57,7 @@ void main() {
     expect(find.textContaining('https://corpus.quran.com'), findsOneWidget);
   });
 
-  testWidgets('Tanzil, the fonts and the uncleared recitation go unattributed '
+  testWidgets('Tanzil, the fonts and the recitation go unattributed '
       'while the corpus is credited', (tester) async {
     await phone(tester, const AboutScreen());
 
@@ -70,6 +70,45 @@ void main() {
             '${source.licence}',
       );
       expect(find.text(source.licence), findsWidgets);
+    }
+  });
+
+  testWidgets('the word timings ship with no credit to the person who made '
+      'them, which is the only permission Wird has to bundle them',
+      (tester) async {
+    // Iterating `sources` cannot catch an absent entry, and that is how this
+    // screen once passed a green gate while crediting nobody for the timings.
+    // CC BY 4.0 grants the bundle on four conditions, so name all four.
+    await phone(tester, const AboutScreen());
+
+    // Scroll to the notice rather than the name: a ListView does not build
+    // what is off-screen, so reaching the card is not the same as showing
+    // everything on it.
+    await tester.scrollUntilVisible(
+      find.text('Copyright (c) 2016 Collin Fair'),
+      200,
+    );
+
+    expect(find.text('quran-align'), findsOneWidget);
+    expect(find.text('Copyright (c) 2016 Collin Fair'), findsOneWidget);
+    expect(
+      find.text('Creative Commons Attribution 4.0 International'),
+      findsWidgets,
+    );
+
+    final timings = sources.firstWhere((s) => s.name == 'quran-align');
+    expect(timings.url, 'https://creativecommons.org/licenses/by/4.0/');
+    expect(timings.terms, contains('zero-based'),
+        reason: 'CC BY 4.0 also requires that changes be indicated, and the '
+            'published timings were reindexed for this schema');
+  });
+
+  testWidgets('the screen still tells a reader the recitation cannot be '
+      'played, long after it could', (tester) async {
+    await phone(tester, const AboutScreen());
+
+    for (final stale in const ['not cleared', 'Neither ships with this app']) {
+      expect(find.textContaining(stale), findsNothing, reason: stale);
     }
   });
 
