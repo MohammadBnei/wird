@@ -87,6 +87,28 @@ corpus_under_budget() {
 	return 1
 }
 
+# The release manifest is the one artefact a reader installs and the one nothing
+# here used to read. That is not hypothetical: a release APK shipped with no
+# INTERNET permission, because Flutter grants it to the debug and profile
+# manifests only, and every recitation failed silently — AudioCache.prefetch
+# swallows a fetch error by design, so the app looked well and played nothing.
+release_manifest_is_shippable() {
+	local manifest="$ROOT/app/android/app/src/main/AndroidManifest.xml" bad=0
+	if ! grep -q 'android.permission.INTERNET' "$manifest"; then
+		printf 'the release manifest asks for no INTERNET permission, so every recitation fails silently on a real phone\n'
+		bad=1
+	fi
+	if ! grep -q 'android:label="Wird"' "$manifest"; then
+		printf 'the launcher label is not the name of the app, so the icon on the phone is captioned something else\n'
+		bad=1
+	fi
+	if [ ! -f "$ROOT/app/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" ]; then
+		printf 'there is no adaptive icon, which is what Flutter ships by default and what the Flutter logo comes back as\n'
+		bad=1
+	fi
+	return $bad
+}
+
 gates_all_accounted() {
 	local missing
 	missing=$(jq -s -r '[range(1;8)] - ([.[].gate] | unique) | join(", ")' "$ENTRIES")
@@ -266,6 +288,12 @@ if command -v brew >/dev/null 2>&1; then
 	check "toolchain ledger matches what is installed" toolchain_recorded
 else
 	skip "toolchain ledger matches what is installed" "Homebrew is not installed on this machine"
+fi
+
+if [ -f "$ROOT/app/android/app/src/main/AndroidManifest.xml" ]; then
+	check "the release manifest is shippable" release_manifest_is_shippable
+else
+	skip "the release manifest is shippable" "app/android does not exist before the Android target is added"
 fi
 
 if [ -f "$ROOT/app/assets/corpus.db" ]; then

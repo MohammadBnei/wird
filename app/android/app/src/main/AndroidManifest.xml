@@ -6,7 +6,7 @@
          nothing surfaced except audio that never arrived. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="wird"
+        android:label="Wird"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
