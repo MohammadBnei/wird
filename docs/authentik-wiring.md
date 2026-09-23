@@ -66,6 +66,18 @@ careless way round, everybody.
 is absent, the fix is in the Authentik provider's property mappings
 (infra-bootstrap), not in this repo.
 
+**Resolved on the safe side, 2026-09-24.** `server/cmd/adminweb/auth.go` reads
+the claim into a `[]string` and asks `slices.Contains`. An absent claim
+decodes to nil, nil contains nothing, and the request gets 403. So the
+failure mode if the mapping is missing is that **nobody can open the
+dashboard**, not that everybody can — which is the half of this that had to be
+got right before anyone could sleep on it.
+
+What remains is a deployment check rather than a correctness one: sign in once
+and confirm the token really carries `groups`, and if it does not, add the
+property mapping in infra-bootstrap. Until that is done, expect 403 rather than
+a way in.
+
 ## What the client has to be, structurally
 
 Wird works entirely offline and the whole reading loop is local. So:
