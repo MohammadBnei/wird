@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -169,7 +170,7 @@ func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 	case "set_recorded":
 		return applySetRecorded(ctx, tx, userID, op.Body)
 	case "set_prayed":
-		return applySetPrayed(ctx, tx, userID, op.Body)
+		return applySetPrayed(ctx, tx, userID, op)
 	case "prefs_set":
 		return applyPrefsSet(ctx, tx, userID, op.Body)
 	default:
@@ -208,7 +209,7 @@ func applyAyahUnderstood(ctx context.Context, tx pgx.Tx, userID string, body jso
 	// count an aya that does not exist towards the one number the app exists
 	// to show, so it is refused rather than stored.
 	for _, id := range b.AyahIDs {
-		if id/1000 < 1 || id/1000 > 114 || id%1000 < 1 {
+		if !isAya(id) {
 			return refuse("%d is not an aya", id)
 		}
 	}
@@ -280,6 +281,62 @@ func applyKeptDelete(ctx context.Context, tx pgx.Tx, userID string, body json.Ra
 	return nil
 }
 
+// setNamespace is the uuidv5 namespace a set id is derived in. It is itself
+// uuidv5(NameSpaceURL, "https://wird.bnei.dev/set") so that the value can be
+// recomputed rather than trusted, and every device must use this same literal.
+var setNamespace = uuid.MustParse("302f8902-5d26-53eb-bfc6-b45ac9fff0c5")
+
+// SetID is a set's identity, and it is a pure function of what the set is:
+// the range of ayas and the order they are read in. Nothing about where the
+// reader stands is in it. Because it is derived rather than minted, a
+// reinstall recomputes the same id, a phone and a tablet agree on it without
+// ever speaking, and the prayers on one set can be counted.
+func SetID(readingOrder string, startAyahID, endAyahID int) string {
+	key := fmt.Sprintf("%s:%d:%d", readingOrder, startAyahID, endAyahID)
+	return uuid.NewSHA1(setNamespace, []byte(key)).String()
+}
+
+// isAya says whether a number is one of the corpus's own natural keys. An id
+// outside them would count something that does not exist towards the numbers
+// this app exists to show.
+func isAya(id int) bool {
+	return id/1000 >= 1 && id/1000 <= 114 && id%1000 >= 1
+}
+
+// upsertSet writes the set if this reader does not have it yet, and numbers
+// it here rather than on the device. A device-chosen ordinal collides on the
+// second set, on a reinstall and on a second device, and the collision is
+// refused forever; the reader's own set count is ours to keep.
+//
+// MAX+1 is safe because applyInTx holds this reader's advisory lock for the
+// whole transaction, so their writes land one at a time.
+func upsertSet(ctx context.Context, tx pgx.Tx, userID, setID string,
+	startAyahID, endAyahID int, readingOrder string, createdAt time.Time,
+) error {
+	if !isAya(startAyahID) || !isAya(endAyahID) || endAyahID < startAyahID {
+		return refuse("%d to %d is not a range of ayas", startAyahID, endAyahID)
+	}
+	// The id is recomputed rather than trusted. A device that derives ids
+	// differently from this server is a bug that would otherwise surface
+	// months later as two sets for one range.
+	if want := SetID(readingOrder, startAyahID, endAyahID); want != setID {
+		return refuse("the set id does not match the range and order it carries")
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO sets (id, user_id, ordinal, start_ayah_id, end_ayah_id, reading_order, created_at)
+		SELECT $1, $2, COALESCE(MAX(ordinal), 0) + 1, $3, $4, $5, $6
+		  FROM sets WHERE user_id = $2
+		ON CONFLICT (user_id, id) DO NOTHING`,
+		setID, userID, startAyahID, endAyahID, readingOrder, createdAt)
+	return err
+}
+
+// applySetRecorded is the old shape, kept so a phone that has not updated
+// still lands its queue. Its ids are minted, not derived, so they are not
+// checked against the range — refusing them would dead-letter exactly the
+// writes this compatibility exists to save. New clients send set_prayed
+// alone. Any ordinal in the body is read and ignored: dropping the field
+// from this struct would make DisallowUnknownFields refuse the whole op.
 func applySetRecorded(ctx context.Context, tx pgx.Tx, userID string, body json.RawMessage) error {
 	var b struct {
 		ID           string    `json:"id"`
@@ -294,23 +351,39 @@ func applySetRecorded(ctx context.Context, tx pgx.Tx, userID string, body json.R
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO sets (id, user_id, ordinal, start_ayah_id, end_ayah_id, reading_order, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		ON CONFLICT (id) DO NOTHING`,
-		b.ID, userID, b.Ordinal, b.StartAyahID, b.EndAyahID, b.ReadingOrder, b.CreatedAt)
+		SELECT $1, $2, COALESCE(MAX(ordinal), 0) + 1, $3, $4, $5, $6
+		  FROM sets WHERE user_id = $2
+		ON CONFLICT (user_id, id) DO NOTHING`,
+		b.ID, userID, b.StartAyahID, b.EndAyahID, b.ReadingOrder, b.CreatedAt)
 	return err
 }
 
-// The prayer. A set deleted server-side makes this the poison op the plan
-// names: it is refused on its own and the rest of the batch still lands.
-func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, body json.RawMessage) error {
+// The prayer, and the set it was prayed on, in one transaction. They used to
+// be two ops, and the pair was unsafe: the device's queue is ordered by a
+// timestamp with a random-uuid tiebreak, so which of them reached here first
+// was a coin flip, and a set that failed for a minute made its prayer refused
+// forever. One op has no order to get wrong.
+//
+// A body carrying the range upserts the set; a body without one is the old
+// shape, where the set arrived as its own op and must already be here.
+func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 	var b struct {
-		ID         string    `json:"id"`
-		SetID      string    `json:"set_id"`
-		PrayerName string    `json:"prayer_name"`
-		PrayedAt   time.Time `json:"prayed_at"`
+		ID           string    `json:"id"`
+		SetID        string    `json:"set_id"`
+		StartAyahID  int       `json:"start_ayah_id"`
+		EndAyahID    int       `json:"end_ayah_id"`
+		ReadingOrder string    `json:"reading_order"`
+		PrayerName   string    `json:"prayer_name"`
+		PrayedAt     time.Time `json:"prayed_at"`
 	}
-	if err := decode(body, &b); err != nil {
+	if err := decode(op.Body, &b); err != nil {
 		return err
+	}
+	if b.StartAyahID != 0 || b.EndAyahID != 0 || b.ReadingOrder != "" {
+		if err := upsertSet(ctx, tx, userID, b.SetID,
+			b.StartAyahID, b.EndAyahID, b.ReadingOrder, b.PrayedAt); err != nil {
+			return err
+		}
 	}
 	var belongs bool
 	if err := tx.QueryRow(ctx,
@@ -321,11 +394,17 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, body json.Raw
 	if !belongs {
 		return refuse("no set %s", b.SetID)
 	}
+	// The op id is the prayer's id when the device does not name one, so a
+	// replay lands on the same row even after the op log has been pruned.
+	id := b.ID
+	if id == "" {
+		id = op.ClientOpID
+	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO set_prayers (id, set_id, user_id, prayer_name, prayed_at)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (id) DO NOTHING`,
-		b.ID, b.SetID, userID, b.PrayerName, b.PrayedAt)
+		id, b.SetID, userID, b.PrayerName, b.PrayedAt)
 	return err
 }
 
