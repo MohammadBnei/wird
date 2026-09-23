@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../../data/db.dart';
 import '../../data/root_repo.dart';
 import '../../nav.dart';
 import '../../theme/nocturne.dart';
@@ -59,7 +58,7 @@ class _RootScreenState extends State<RootScreen> {
   }
 
   Future<void> _keep() async {
-    await keepRoot(widget.db, newOpId(), widget.letters);
+    await keepRoot(widget.db, widget.letters);
     if (!mounted) return;
     setState(() => _kept = true);
   }

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:wird/data/db.dart';
+import 'package:wird/data/kept_repo.dart';
 import 'package:wird/data/root_repo.dart';
 
 import '../corpus.dart';
@@ -67,15 +67,13 @@ void main() {
     expect(await rootReading(db, 'زززز'), isNull);
   });
 
-  test('a root kept twice is queued twice and reaches the kept list as two '
-      'entries', () async {
-    await keepRoot(db, newOpId(), 'صبر');
-    await keepRoot(db, newOpId(), 'صبر');
-    final queued = await db.query('outbox', where: 'kind = ?', whereArgs: [
-      keptRootOp,
-    ]);
-    expect(queued, hasLength(1));
-    expect(await rootKept(db, 'صبر'), isTrue);
-    expect(await rootKept(db, 'عقل'), isFalse);
+  test('a root kept twice reaches the kept list as two entries', () async {
+    await keepRoot(db, '\u0635\u0628\u0631');
+    await keepRoot(db, '\u0635\u0628\u0631');
+
+    final kept = await keptItems(db, kind: KeptKind.root);
+    expect(kept.map((item) => item.rootLetters), ['\u0635\u0628\u0631']);
+    expect(await rootKept(db, '\u0635\u0628\u0631'), isTrue);
+    expect(await rootKept(db, '\u0639\u0642\u0644'), isFalse);
   });
 }

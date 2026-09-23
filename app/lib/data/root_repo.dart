@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:sqflite/sqflite.dart';
 
+import 'kept_repo.dart';
+
 /// The most derivatives a dial can carry. Above this the root is read as a
 /// spine instead, because a ninth satellite has nowhere on the ring to sit.
 const dialCapacity = 8;
@@ -145,32 +147,26 @@ Future<RootReading?> rootReading(Database db, String letters) async {
   );
 }
 
-const keptRootOp = 'kept_root';
-
-/// Whether this root has already been kept.
+/// Whether this root is already on the kept list.
 Future<bool> rootKept(Database db, String letters) async {
+  await ensureKeptTable(db);
   final rows = await db.query(
-    'outbox',
-    where: 'kind = ? AND body = ?',
-    whereArgs: [keptRootOp, jsonEncode({'root_letters': letters})],
+    'kept_items',
+    where: 'kind = ? AND root_letters = ? AND deleted_at IS NULL',
+    whereArgs: [KeptKind.root.name, letters],
     limit: 1,
   );
   return rows.isNotEmpty;
 }
 
-/// Keeps a root, once. The body is the whole identity of the op, so a second
-/// press — or a screen reopened and pressed again — writes nothing new and the
-/// sync phase has one row to send.
+/// Keeps a root, once. A second press — or the screen reopened and pressed
+/// again — finds it already there and writes nothing, so the kept list never
+/// carries the same root twice.
 ///
-/// ponytail: keeping is one-way here. Un-keeping is a delete of a row the sync
-/// phase may already have sent, which is that phase's problem to solve, and
-/// screen 1e is where a reader will take something back off the list.
-Future<void> keepRoot(Database db, String opId, String letters) async {
+/// ponytail: keeping is one-way from here. Taking a root back off the list is
+/// what screen 1e's own delete is for, and it already leaves the tombstone the
+/// sync needs.
+Future<void> keepRoot(Database db, String letters) async {
   if (await rootKept(db, letters)) return;
-  await db.insert('outbox', {
-    'client_op_id': opId,
-    'kind': keptRootOp,
-    'body': jsonEncode({'root_letters': letters}),
-    'created_at': DateTime.now().toIso8601String(),
-  });
+  await keep(db, kind: KeptKind.root, rootLetters: letters);
 }
