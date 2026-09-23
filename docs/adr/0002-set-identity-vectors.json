@@ -1,0 +1,14 @@
+{
+  "_": "The set ids of ADR 0002, read by server/internal/store/set_id_vectors_test.go and app/test/data/set_id_vectors_test.dart. Neither computes these; both reproduce them. Any implementation that disagrees with a row here derives set ids no other device will recognise. Generated once from uuidv5(uuid5(NameSpaceURL, 'https://wird.bnei.dev/set'), '<reading_order>:<start_ayah_id>:<end_ayah_id>') and checked in as data.",
+  "namespace": "302f8902-5d26-53eb-bfc6-b45ac9fff0c5",
+  "key": "<reading_order>:<start_ayah_id>:<end_ayah_id>",
+  "vectors": [
+    {"label": "al-Fatiha entire, as written", "reading_order": "mushaf", "start_ayah_id": 1001, "end_ayah_id": 1007, "expected_set_id": "6cb8c394-ae9a-5092-a2ea-8f88749613c7"},
+    {"label": "al-Fatiha entire, as revealed", "reading_order": "nuzul", "start_ayah_id": 1001, "end_ayah_id": 1007, "expected_set_id": "6f4fbaaa-7a32-5d96-a804-0e8077875aef"},
+    {"label": "one aya alone, as written", "reading_order": "mushaf", "start_ayah_id": 2255, "end_ayah_id": 2255, "expected_set_id": "972107a6-23d6-56cd-8468-83383277fe3c"},
+    {"label": "one aya alone, as revealed", "reading_order": "nuzul", "start_ayah_id": 96001, "end_ayah_id": 96001, "expected_set_id": "65ae58b8-1656-5337-bfa4-b6bad811b853"},
+    {"label": "five ayas of one sura", "reading_order": "nuzul", "start_ayah_id": 96001, "end_ayah_id": 96005, "expected_set_id": "cca760fb-a771-543c-918f-d98ea401b2a0"},
+    {"label": "a range crossing a sura boundary, as written", "reading_order": "mushaf", "start_ayah_id": 113005, "end_ayah_id": 114001, "expected_set_id": "ea3616ae-09c2-59cf-a243-5e71d167cf1b"},
+    {"label": "a range crossing a sura boundary, as revealed", "reading_order": "nuzul", "start_ayah_id": 112004, "end_ayah_id": 113003, "expected_set_id": "de79bf3f-198d-5942-81ff-5665f8dd6005"}
+  ]
+}

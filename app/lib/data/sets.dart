@@ -18,9 +18,16 @@ const setMaxAyas = 5;
 /// reach past what is in memory.
 const setMaxDragAyas = 20;
 
-/// The namespace every set id is derived under. Minted once for Wird and never
-/// changed again: another namespace renames every set already recorded.
-const _setNamespace = 'ef4043e9-3597-4c7e-be3d-46e7356724a0';
+/// The namespace every set id is derived under, which is
+/// `uuidv5(NameSpaceURL, "https://wird.bnei.dev/set")` — ADR 0002, and what
+/// `store.SetID` on the server uses. It is recomputed here rather than pasted
+/// as a literal so the two halves cannot drift apart by transcription: a set
+/// id derived under any other namespace is refused by the server, and a
+/// refusal is permanent, so the prayer that carried it is lost.
+final _setNamespace = _uuidV5(
+  '6ba7b811-9dad-11d1-80b4-00c04fd430c8', // RFC 9562 NameSpace_URL
+  'https://wird.bnei.dev/set',
+);
 
 /// A set's identity, which is a pure function of the range it holds and the
 /// order it was read in. Nothing is minted and nothing is counted, so a
