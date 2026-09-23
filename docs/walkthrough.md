@@ -226,3 +226,49 @@ right article, not reading it, and Lane is ordered alphabetically by root.
   a single meaning is written.
 - Lane is 1863–93 and carries its period's framing on slavery, women and race.
   An editorial policy has to exist before his voice becomes the app's.
+
+---
+
+# Walk two — on the phone (Xiaomi, Android 16)
+
+Build tested: the APK from before Round C landed, so findings 2, 3 and 4 were
+not in it. Recorded here anyway where the phone showed something the simulator
+did not.
+
+### 8. Audio starts and the reader cannot tell what is playing
+
+**Where:** 1a, on tap or long-press of a word.
+
+**What the reader said:** "the audio launches, with very little feedback — is
+it the whole recitation? this specific word?"
+
+**What exists today:** the sounding word gets a highlight (an accent fill at
+16% and an accent underline), and there is an audio bar with a play button, a
+waveform and the reciter's name. That is all.
+
+**Why it is not enough, and the phone is what exposed it:**
+- Playing ONE WORD and playing THE WHOLE SET look identical. Both light a word.
+  Nothing distinguishes a single-word probe from a running recitation.
+- The audio bar scrolls with the words. On a phone it is frequently off screen,
+  so a reader who has scrolled has no indication that anything is playing at
+  all, and no way to stop it.
+- There is no stop for a long-pressed word. It plays to its end, and the only
+  control is elsewhere and possibly not visible.
+- A 16% accent fill is a subtle mark on a small bright screen held at arm's
+  length. It reads well on a desktop monitor in a dark room, which is where it
+  was designed and reviewed.
+
+**Shape of the gap:** audio needs a persistent, visible STATE rather than only a
+moving highlight — what is sounding (one word, one aya, the set), where it is,
+and a way to stop it from wherever the reader is. That is a small piece of
+permanent chrome, and screen 1a's design has no room reserved for it, so it is
+a design decision rather than a wiring job.
+
+**Related, and worth deciding together:** finding 7 says the two bottom buttons
+are too heavy for what they do. Whatever space they give back is roughly the
+space a transport control needs.
+
+### 9. Still no way to choose a sūra or aya — unfixed in the tested build
+
+Finding 3, confirmed on the phone. The fix landed in the tree as 0e9eb57 after
+this APK was built; it has not been tested on a device yet.
