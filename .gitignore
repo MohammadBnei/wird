@@ -4,6 +4,17 @@ qa-report.json
 # Go
 /bin/
 *.test
+# `go build ./server/cmd/...` names its output after the last path element and
+# drops it here. A 2.6 MB Mach-O called `cmd` was one `git add -A` away from
+# the history; several agents commit in this repo and only one of them has to
+# be careless.
+/cmd
+/api
+/etl
+/ingest
+/rootcheck
+/adminweb
+/rootd
 
 # Flutter / Dart
 .fvm/
