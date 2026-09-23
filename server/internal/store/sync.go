@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,20 +72,56 @@ func (s *Store) applyOne(ctx context.Context, userID string, op Op) (OpResult, e
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	first, err := recordOp(ctx, tx, userID, op.ClientOpID)
-	if err != nil {
-		return classify(op, err), nil
-	}
-	if !first {
-		return OpResult{ClientOpID: op.ClientOpID, Status: OpDuplicate}, nil
-	}
-	if err := applyKind(ctx, tx, userID, op); err != nil {
-		return classify(op, err), nil
+	result := applyInTx(ctx, tx, userID, op)
+	if result.Status != OpApplied {
+		return result, nil
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return classify(op, err), nil
 	}
-	return OpResult{ClientOpID: op.ClientOpID, Status: OpApplied}, nil
+	return result, nil
+}
+
+// applyInTx is everything but the commit. It is a function of its own so a
+// test can hold the transaction open and choose the moment it commits, which
+// is the only way to stage two writes landing at once.
+func applyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) OpResult {
+	if err := lockReader(ctx, tx, userID); err != nil {
+		return classify(op, err)
+	}
+	first, err := recordOp(ctx, tx, userID, op.ClientOpID)
+	if err != nil {
+		return classify(op, err)
+	}
+	if !first {
+		return OpResult{ClientOpID: op.ClientOpID, Status: OpDuplicate}
+	}
+	if err := applyKind(ctx, tx, userID, op); err != nil {
+		return classify(op, err)
+	}
+	return OpResult{ClientOpID: op.ClientOpID, Status: OpApplied}
+}
+
+// lockReader is what makes the commit order and the sequence order the same
+// order, and it is not optional. A sequence number is handed out when the
+// INSERT runs, not when it commits, so two writes in flight at once can
+// commit in the opposite order to their numbers — and a device whose cursor
+// has already passed the lower number never hears about that row again. That
+// is the very failure this sequence exists to fix, one layer down.
+//
+// The lock is held until the transaction ends, so for one reader the write
+// holding the lower number is always the write that committed first. Readers
+// do not contend with each other; two whose ids happen to hash together only
+// wait for one another, which costs nothing and breaks nothing.
+//
+// ponytail: one lock per reader, so one reader's writes land one at a time.
+// A reader has a phone and a tablet, not a fleet. If that ever stops being
+// true, the upgrade is to publish a row only once every transaction below it
+// has committed — a watermark from pg_snapshot_xmin(pg_current_snapshot()) —
+// rather than to widen this lock.
+func lockReader(ctx context.Context, tx pgx.Tx, userID string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, userID)
+	return err
 }
 
 // classify separates the ops worth sending again from the ones that never
@@ -210,7 +247,8 @@ func applyKeptUpsert(ctx context.Context, tx pgx.Tx, userID string, body json.Ra
 		ON CONFLICT (id) DO UPDATE
 		   SET kind = EXCLUDED.kind, ayah_id = EXCLUDED.ayah_id,
 		       root_letters = EXCLUDED.root_letters, body = EXCLUDED.body,
-		       tags = EXCLUDED.tags, updated_at = EXCLUDED.updated_at
+		       tags = EXCLUDED.tags, updated_at = EXCLUDED.updated_at,
+		       seq = nextval('change_seq')
 		 WHERE kept_items.user_id = EXCLUDED.user_id
 		   AND kept_items.updated_at < EXCLUDED.updated_at`,
 		b.ID, userID, b.Kind, b.AyahID, b.RootLetters, b.Body, b.Tags, b.CreatedAt, b.UpdatedAt)
@@ -230,7 +268,8 @@ func applyKeptDelete(ctx context.Context, tx pgx.Tx, userID string, body json.Ra
 	tag, err := tx.Exec(ctx, `
 		UPDATE kept_items
 		   SET deleted_at = COALESCE(deleted_at, $3),
-		       updated_at = GREATEST(updated_at, $3)
+		       updated_at = GREATEST(updated_at, $3),
+		       seq = nextval('change_seq')
 		 WHERE id = $2 AND user_id = $1`, userID, b.ID, b.DeletedAt)
 	if err != nil {
 		return err
@@ -302,7 +341,8 @@ func applyPrefsSet(ctx context.Context, tx pgx.Tx, userID string, body json.RawM
 		INSERT INTO user_prefs (user_id, reading_order, updated_at)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (user_id) DO UPDATE
-		   SET reading_order = EXCLUDED.reading_order, updated_at = EXCLUDED.updated_at
+		   SET reading_order = EXCLUDED.reading_order, updated_at = EXCLUDED.updated_at,
+		       seq = nextval('change_seq')
 		 WHERE user_prefs.updated_at < EXCLUDED.updated_at`,
 		userID, b.ReadingOrder, b.UpdatedAt)
 	return err
@@ -330,72 +370,69 @@ type Changes struct {
 const ChangePage = 500
 
 const changesSQL = `
-WITH changed AS (
+SELECT kind, id, at, row, seq FROM (
 	SELECT 'ayah_understood' AS kind, id, understood_at AS at,
-	       jsonb_build_object('ayah_id', ayah_id, 'understood_at', understood_at) AS row
-	  FROM ayah_understood WHERE user_id = $1
+	       jsonb_build_object('ayah_id', ayah_id, 'understood_at', understood_at) AS row, seq
+	  FROM ayah_understood WHERE user_id = $1 AND seq > $2
 	UNION ALL
 	SELECT 'kept_items', id, updated_at,
 	       jsonb_build_object('id', id, 'kind', kind, 'ayah_id', ayah_id,
 	                          'root_letters', root_letters, 'body', body,
 	                          'tags', to_jsonb(tags), 'created_at', created_at,
-	                          'updated_at', updated_at, 'deleted_at', deleted_at)
-	  FROM kept_items WHERE user_id = $1
+	                          'updated_at', updated_at, 'deleted_at', deleted_at), seq
+	  FROM kept_items WHERE user_id = $1 AND seq > $2
 	UNION ALL
 	SELECT 'sets', id, created_at,
 	       jsonb_build_object('id', id, 'ordinal', ordinal, 'start_ayah_id', start_ayah_id,
 	                          'end_ayah_id', end_ayah_id, 'reading_order', reading_order,
-	                          'created_at', created_at)
-	  FROM sets WHERE user_id = $1
+	                          'created_at', created_at), seq
+	  FROM sets WHERE user_id = $1 AND seq > $2
 	UNION ALL
 	SELECT 'set_prayers', id, prayed_at,
 	       jsonb_build_object('id', id, 'set_id', set_id, 'prayer_name', prayer_name,
-	                          'prayed_at', prayed_at)
-	  FROM set_prayers WHERE user_id = $1
+	                          'prayed_at', prayed_at), seq
+	  FROM set_prayers WHERE user_id = $1 AND seq > $2
 	UNION ALL
 	SELECT 'user_prefs', user_id, updated_at,
-	       jsonb_build_object('reading_order', reading_order, 'updated_at', updated_at)
-	  FROM user_prefs WHERE user_id = $1
-)
-SELECT kind, id, at, row FROM changed
- WHERE (at, id) > ($2, $3::uuid)
- ORDER BY at, id
- LIMIT $4`
+	       jsonb_build_object('reading_order', reading_order, 'updated_at', updated_at), seq
+	  FROM user_prefs WHERE user_id = $1 AND seq > $2
+) changed
+ ORDER BY seq
+ LIMIT $3`
 
-// Changes is the pull half. The cursor is the (timestamp, id) of the last row
-// handed over, so two rows written in the same microsecond cannot hide behind
-// each other and none is handed over twice.
-//
-// ponytail: a timestamp read at write time, not a commit-ordered sequence. A
-// transaction that committed late enough to fall behind a cursor already
-// issued would be missed; every write here is a single statement, so that
-// window is microseconds wide. If it ever matters, the upgrade is a change_log
-// whose number is assigned at commit.
+// Changes is the pull half. The cursor is a position in the server's own
+// commit order, never in the device's clock: a write made offline on Monday
+// and flushed on Friday carries Monday's instant, and a cursor that walked
+// timestamps would have passed it on Wednesday and never come back for it.
+// The row's own timestamps still travel in the payload — they are what
+// last-write-wins reconciles with — they just do not decide what is sent.
 func (s *Store) Changes(ctx context.Context, userID, cursor string) (Changes, error) {
-	at, id, err := parseCursor(cursor)
+	since, err := parseCursor(cursor)
 	if err != nil {
 		return Changes{}, err
 	}
 	out := Changes{Changes: []Change{}, Cursor: cursor}
-	rows, err := s.pool.Query(ctx, changesSQL, userID, at, id, ChangePage)
+	rows, err := s.pool.Query(ctx, changesSQL, userID, since, ChangePage)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 
+	var last int64
 	for rows.Next() {
 		var c Change
-		if err := rows.Scan(&c.Kind, &c.ID, &c.At, &c.Row); err != nil {
+		var seq int64
+		if err := rows.Scan(&c.Kind, &c.ID, &c.At, &c.Row, &seq); err != nil {
 			return out, err
 		}
 		out.Changes = append(out.Changes, c)
+		last = seq
 	}
 	if err := rows.Err(); err != nil {
 		return out, err
 	}
 	if n := len(out.Changes); n > 0 {
-		last := out.Changes[n-1]
-		out.Cursor = last.At.UTC().Format(time.RFC3339Nano) + "|" + last.ID
+		out.Cursor = formatCursor(last)
 		out.More = n == ChangePage
 	}
 	return out, nil
@@ -405,19 +442,26 @@ func (s *Store) Changes(ctx context.Context, userID, cursor string) (Changes, er
 // is a 400 rather than a silent full resync.
 var ErrBadCursor = errors.New("bad cursor")
 
-const firstCursorID = "00000000-0000-0000-0000-000000000000"
+// A cursor is prefixed rather than a bare number so that a position a device
+// invented, and a cursor left over from an older server, are both refused
+// instead of read as somewhere in the stream.
+const cursorPrefix = "seq:"
 
-func parseCursor(cursor string) (time.Time, string, error) {
+func formatCursor(seq int64) string {
+	return cursorPrefix + strconv.FormatInt(seq, 10)
+}
+
+func parseCursor(cursor string) (int64, error) {
 	if cursor == "" {
-		return time.Time{}, firstCursorID, nil
+		return 0, nil
 	}
-	at, id, found := strings.Cut(cursor, "|")
+	rest, found := strings.CutPrefix(cursor, cursorPrefix)
 	if !found {
-		return time.Time{}, "", ErrBadCursor
+		return 0, ErrBadCursor
 	}
-	parsed, err := time.Parse(time.RFC3339Nano, at)
-	if err != nil {
-		return time.Time{}, "", ErrBadCursor
+	seq, err := strconv.ParseInt(rest, 10, 64)
+	if err != nil || seq < 0 {
+		return 0, ErrBadCursor
 	}
-	return parsed, id, nil
+	return seq, nil
 }
