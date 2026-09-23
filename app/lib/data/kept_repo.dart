@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 
 import 'db.dart';
+import 'outbox.dart';
 
 /// What the reader kept. The three kinds are the three the design filters by.
 enum KeptKind { aya, root, note }
@@ -77,7 +78,7 @@ Future<String> keep(
   await ensureKeptTable(db);
   final now = DateTime.now().toIso8601String();
   final minted = id ?? newOpId();
-  await db.insert('kept_items', {
+  final row = {
     'id': minted,
     'kind': kind.name,
     'ayah_id': ayahId,
@@ -86,7 +87,27 @@ Future<String> keep(
     'tags': jsonEncode(tags),
     'created_at': now,
     'updated_at': now,
-  }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  };
+  await db.transaction((txn) async {
+    await txn.insert(
+      'kept_items',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+    // The item and the op that carries it to the server commit together, so a
+    // note kept on a plane cannot exist on this device and nowhere else.
+    await enqueue(
+      txn,
+      opId: minted,
+      kind: 'kept_upsert',
+      body: {
+        ...row,
+        'tags': tags,
+        'created_at': wireTime(now),
+        'updated_at': wireTime(now),
+      },
+    );
+  });
   return minted;
 }
 
@@ -96,12 +117,21 @@ Future<String> keep(
 Future<void> forget(Database db, String id) async {
   await ensureKeptTable(db);
   final now = DateTime.now().toIso8601String();
-  await db.update(
-    'kept_items',
-    {'deleted_at': now, 'updated_at': now},
-    where: 'id = ? AND deleted_at IS NULL',
-    whereArgs: [id],
-  );
+  await db.transaction((txn) async {
+    final dropped = await txn.update(
+      'kept_items',
+      {'deleted_at': now, 'updated_at': now},
+      where: 'id = ? AND deleted_at IS NULL',
+      whereArgs: [id],
+    );
+    if (dropped == 0) return;
+    await enqueue(
+      txn,
+      opId: newOpId(),
+      kind: 'kept_delete',
+      body: {'id': id, 'deleted_at': wireTime(now)},
+    );
+  });
 }
 
 /// The kept list, newest first: one [kind] when the reader has picked a

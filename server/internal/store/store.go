@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -323,7 +324,18 @@ func (s *Store) Lexicon(ctx context.Context, letters string) ([]LexiconEntry, er
 // it. A replay lands on the same primary key and answers false, which is what
 // stops a flush counting a prayer twice.
 func (s *Store) RecordOp(ctx context.Context, userID, clientOpID string) (bool, error) {
-	tag, err := s.pool.Exec(ctx, `
+	return recordOp(ctx, s.pool, userID, clientOpID)
+}
+
+// The op id is written by whatever is already in hand — the pool, or the
+// transaction an op is being applied in, which is where it has to be so that
+// the id and the write it stands for commit together.
+type execer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+func recordOp(ctx context.Context, q execer, userID, clientOpID string) (bool, error) {
+	tag, err := q.Exec(ctx, `
 		INSERT INTO op_log (user_id, client_op_id) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, userID, clientOpID)
 	if err != nil {

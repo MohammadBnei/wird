@@ -27,6 +27,8 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	v1 := http.NewServeMux()
 	v1.HandleFunc("GET /v1/me", h.me)
 	v1.HandleFunc("GET /v1/corpus/version", h.corpusVersion)
+	v1.HandleFunc("POST /v1/sync", h.sync)
+	v1.HandleFunc("GET /v1/changes", h.changes)
 	v1.HandleFunc("GET /v1/progress", h.progress)
 	v1.HandleFunc("GET /v1/kept", h.kept)
 	v1.HandleFunc("GET /v1/ayahs/{surah}/{ayah}/tafsir", h.tafsir)

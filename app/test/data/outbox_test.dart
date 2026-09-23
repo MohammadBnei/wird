@@ -29,12 +29,29 @@ void main() {
     await markSetUnderstood(db, newOpId(), [96001, 96002]);
 
     final op = (await db.query('outbox')).single;
+    final body = jsonDecode(op['body']! as String) as Map<String, dynamic>;
 
     expect(op['kind'], 'ayah_understood');
-    expect(jsonDecode(op['body']! as String), {
-      'ayah_ids': [96001, 96002],
-    });
+    expect(body['ayah_ids'], [96001, 96002]);
     expect(op['client_op_id'], matches(RegExp(r'^[0-9a-f-]{36}$')));
+  });
+
+  test('a set marked on a plane is recorded at the moment the reader read it, '
+      'not at the moment the flush happened to reach a server', () async {
+    final before = DateTime.now().toUtc();
+    await markSetUnderstood(db, newOpId(), [96001]);
+
+    final body =
+        jsonDecode((await db.query('outbox')).single['body']! as String)
+            as Map<String, dynamic>;
+    final understoodAt = DateTime.parse(body['understood_at'] as String);
+
+    expect(understoodAt.isUtc, isTrue, reason: 'the server reads RFC 3339');
+    expect(
+      understoodAt.difference(before).inMinutes,
+      lessThan(1),
+      reason: 'the op carries no time of its own, so the server will stamp it',
+    );
   });
 
   test('two sets share one op id, so flushing the second overwrites the '

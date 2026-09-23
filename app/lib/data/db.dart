@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'outbox.dart';
 import 'sets.dart';
 
 const _corpusAsset = 'assets/corpus.db';
@@ -64,8 +65,10 @@ Future<Database> openWirdAt(String path) async {
       client_op_id TEXT PRIMARY KEY,
       kind         TEXT NOT NULL,
       body         TEXT NOT NULL,
-      created_at   TEXT NOT NULL
+      created_at   TEXT NOT NULL,
+      attempts     INTEGER NOT NULL DEFAULT 0
     )''');
+  await ensureOutboxAttempts(db);
   return db;
 }
 
@@ -109,12 +112,15 @@ Future<void> markSetUnderstood(
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
   }
-  await txn.insert('outbox', {
-    'client_op_id': opId,
-    'kind': 'ayah_understood',
-    'body': jsonEncode({'ayah_ids': ayahIds}),
-    'created_at': at,
-  });
+  await enqueue(
+    txn,
+    opId: opId,
+    kind: 'ayah_understood',
+    // The instant belongs in the op: without it the server would record the
+    // reader's understanding at whatever time the flush happened to reach it,
+    // which for a set marked on a plane is days late.
+    body: {'ayah_ids': ayahIds, 'understood_at': wireTime(at)},
+  );
 });
 
 Future<ReadingOrder> readingOrder(Database db) async {
@@ -126,15 +132,21 @@ Future<ReadingOrder> readingOrder(Database db) async {
   );
 }
 
-Future<void> setReadingOrder(Database db, ReadingOrder order) => db.insert(
-  'user_prefs',
-  {
-    'id': 1,
-    'reading_order': order.name,
-    'updated_at': DateTime.now().toIso8601String(),
-  },
-  conflictAlgorithm: ConflictAlgorithm.replace,
-);
+Future<void> setReadingOrder(Database db, ReadingOrder order) =>
+    db.transaction((txn) async {
+      final at = DateTime.now().toIso8601String();
+      await txn.insert('user_prefs', {
+        'id': 1,
+        'reading_order': order.name,
+        'updated_at': at,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await enqueue(
+        txn,
+        opId: newOpId(),
+        kind: 'prefs_set',
+        body: {'reading_order': order.name, 'updated_at': wireTime(at)},
+      );
+    });
 
 /// A word that shares the root, with the gloss it was given.
 typedef Kin = ({String text, String? gloss});
