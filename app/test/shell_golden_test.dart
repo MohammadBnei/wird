@@ -24,8 +24,9 @@ void main() {
   });
 
   testWidgets('the shell the design never drew drifts out of Nocturne: the '
-      'bar, the rule, or the weight of the account at the head of the drawer',
-      (tester) async {
+      'bar, the rule, or the weight of the account at the head of the drawer', (
+    tester,
+  ) async {
     await pumpPhone(tester, await wholeApp(db, cache: silent));
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
@@ -37,8 +38,9 @@ void main() {
   });
 
   testWidgets('home drifts away from Nocturne in a way no behaviour test can '
-      'see: the waiting set, the two actions, or the doors below them',
-      (tester) async {
+      'see: the waiting set, the two actions, or the doors below them', (
+    tester,
+  ) async {
     await pumpPhone(tester, await wholeApp(db, cache: silent));
 
     await expectLater(
@@ -48,8 +50,9 @@ void main() {
   });
 
   testWidgets('the settings screen drifts out of Nocturne: the section rules, '
-      'the segmented controls, or the width control under them',
-      (tester) async {
+      'the segmented controls, or the width control under them', (
+    tester,
+  ) async {
     await pumpPhone(
       tester,
       await wirdAround(
@@ -62,6 +65,17 @@ void main() {
     await expectLater(
       find.byType(SettingsScreen),
       matchesGoldenFile('goldens/settings.png'),
+    );
+  });
+
+  testWidgets('the sūra index drifts out of Nocturne, or the corner it is '
+      'opened into carries a second control under the first', (tester) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await goTo(tester, 'Sūra index');
+
+    await expectLater(
+      find.byType(WirdShell),
+      matchesGoldenFile('goldens/index.png'),
     );
   });
 

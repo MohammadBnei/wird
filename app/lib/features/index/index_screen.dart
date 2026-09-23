@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../theme/nocturne.dart';
-import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
 
 /// One sūra as the index lists it: what it is called, when it was revealed,
@@ -110,35 +109,20 @@ class _IndexScreenState extends State<IndexScreen> {
 
   Widget _header(Nocturne n) => Padding(
     padding: EdgeInsets.fromLTRB(n.space('6'), n.space('2'), n.space('6'), 0),
-    child: Row(
-      spacing: n.space('3'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NocturneButton(
-          variant: NocturneButtonVariant.icon,
-          onPressed: () => Navigator.of(context).maybePop(),
-          child: const Icon(Icons.arrow_back_ios_new, size: 16),
-        ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'THE WHOLE QUR’AN',
-                style: TextStyle(
-                  fontSize: 10,
-                  height: 1.2,
-                  letterSpacing: 0.11 * 10,
-                  color: n.accent,
-                ),
-              ),
-              SizedBox(height: n.space('1')),
-              Text(
-                'All 114',
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-            ],
+        Text(
+          'THE WHOLE QUR’AN',
+          style: TextStyle(
+            fontSize: 10,
+            height: 1.2,
+            letterSpacing: 0.11 * 10,
+            color: n.accent,
           ),
         ),
+        SizedBox(height: n.space('1')),
+        Text('All 114', style: Theme.of(context).textTheme.displaySmall),
       ],
     ),
   );

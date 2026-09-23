@@ -1,31 +1,29 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/data/audio.dart';
 import 'package:wird/data/kept_repo.dart';
-import 'package:wird/features/kept/kept_screen.dart';
-import 'package:wird/theme/nocturne.dart';
+import 'package:wird/shell/wird_shell.dart';
 
 import 'corpus.dart';
 import 'fonts.dart';
+import 'offline.dart';
+import 'wird.dart';
 
 void main() {
   late Database db;
+  late AudioCache silent;
 
   setUpAll(loadBundledFonts);
   setUp(() async {
     db = await testCorpus();
+    silent = await emptyCache();
     await ensureKeptTable(db);
     await db.delete('kept_items');
   });
 
   testWidgets('screen 1e drifts away from the design in a way no behaviour '
-      'test can see: the search field, the filter, or the cards', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(402, 874);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
+      'test can see: the search field, the filter, the cards, or the chrome '
+      'the shell draws above them', (tester) async {
     // The three kept ayas the design draws, oldest first so the list orders
     // them the way the screen was drawn.
     await keep(
@@ -56,16 +54,14 @@ void main() {
       tags: ['grammar'],
     );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: nocturneTheme(),
-        home: KeptScreen(db: db),
-      ),
-    );
-    await tester.pumpAndSettle();
+    // Opened the way a reader opens it: a golden of the screen alone could
+    // not see that the shell's burger and the screen's own back arrow were
+    // stacked in the same corner.
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await goTo(tester, 'Kept');
 
     await expectLater(
-      find.byType(KeptScreen),
+      find.byType(WirdShell),
       matchesGoldenFile('goldens/kept.png'),
     );
   });

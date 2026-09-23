@@ -42,7 +42,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
   /// The aya the reader picks there is passed down to screen 1a, the one screen
   /// that reads an aya, rather than opened on top of this one.
   Future<void> _openIndex() async {
-    final chosen = await Navigator.of(context).pushNamed(Routes.index);
+    final chosen = await Navigator.of(context)
+        .pushNamed(Routes.index, arguments: const AStepFrom());
     if (mounted && chosen != null) Navigator.of(context).pop(chosen);
   }
 
@@ -74,39 +75,20 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   Widget _header(Nocturne n) => Padding(
     padding: const EdgeInsets.fromLTRB(_gutter, 8, _gutter, 0),
-    child: Row(
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: n.space('3'),
       children: [
-        // The design draws no way back off this screen. A pushed screen needs
-        // one on the platforms with no back gesture, so it is the same 32px
-        // icon button the root screen is drawn with.
-        NocturneButton(
-          variant: NocturneButtonVariant.icon,
-          onPressed: () => Navigator.of(context).maybePop(),
-          child: const Icon(Icons.arrow_back_ios_new, size: 16),
-        ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Understood, not merely read'.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 10,
-                  height: 1.2,
-                  letterSpacing: 0.11 * 10,
-                  color: n.accent,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                'Your passage',
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-            ],
+        Text(
+          'Understood, not merely read'.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            height: 1.2,
+            letterSpacing: 0.11 * 10,
+            color: n.accent,
           ),
         ),
+        const SizedBox(height: 5),
+        Text('Your passage', style: Theme.of(context).textTheme.displaySmall),
       ],
     ),
   );

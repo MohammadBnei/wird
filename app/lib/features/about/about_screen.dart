@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../theme/nocturne.dart';
-import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_card.dart';
 import '../../widgets/nocturne_rule.dart';
 import '../../widgets/nocturne_tag.dart';
@@ -197,35 +196,22 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context, Nocturne n) => Row(
+  Widget _header(BuildContext context, Nocturne n) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      NocturneButton(
-        variant: NocturneButtonVariant.icon,
-        onPressed: () => Navigator.of(context).maybePop(),
-        child: const Icon(Icons.arrow_back),
-      ),
-      SizedBox(width: n.space('2')),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'BUILT ON',
-              style: TextStyle(
-                fontSize: 10,
-                height: 1.2,
-                letterSpacing: 0.11 * 10,
-                color: n.accent,
-              ),
-            ),
-            SizedBox(height: n.space('1')),
-            Text(
-              'Sources and licences',
-              style: Theme.of(context).textTheme.displaySmall,
-            ),
-          ],
+      Text(
+        'BUILT ON',
+        style: TextStyle(
+          fontSize: 10,
+          height: 1.2,
+          letterSpacing: 0.11 * 10,
+          color: n.accent,
         ),
+      ),
+      SizedBox(height: n.space('1')),
+      Text(
+        'Sources and licences',
+        style: Theme.of(context).textTheme.displaySmall,
       ),
     ],
   );
@@ -249,9 +235,8 @@ class SourceLink extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         Clipboard.setData(ClipboardData(text: url));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Copied $url')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Copied $url')));
       },
       child: Semantics(
         link: true,

@@ -8,7 +8,9 @@ import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/dashboard/dashboard_screen.dart';
 import 'package:wird/features/index/index_screen.dart';
+import 'package:wird/features/progress/progress_screen.dart';
 import 'package:wird/features/settings/settings_screen.dart';
+import 'package:wird/nav.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/shell/wird_shell.dart';
 
@@ -72,15 +74,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 60));
   }
 
-  Future<void> goTo(WidgetTester tester, String label) async {
-    await tester.tap(find.byIcon(Icons.menu));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(of: find.byType(WirdDrawer), matching: find.text(label)),
-    );
-    await tester.pumpAndSettle();
-  }
-
   testWidgets('a word sounding and the whole set sounding look the same, so '
       'the reader cannot tell which one they started', (tester) async {
     final recitation = downloaded;
@@ -95,19 +88,18 @@ void main() {
     await beats(tester);
     expect(find.text('RECITING THE SET'), findsNothing);
 
-    final word = (await db.query(
-      'words',
-      where: 'id = ?',
-      whereArgs: [96001001],
-    )).single['text_ar']! as String;
+    final word =
+        (await db.query(
+              'words',
+              where: 'id = ?',
+              whereArgs: [96001001],
+            )).single['text_ar']!
+            as String;
     unawaitedWord(recitation, 96001001);
     await beats(tester);
     expect(find.text('SOUNDING ONE WORD'), findsOneWidget);
     expect(
-      find.descendant(
-        of: find.byType(SoundingNow),
-        matching: find.text(word),
-      ),
+      find.descendant(of: find.byType(SoundingNow), matching: find.text(word)),
       findsOneWidget,
     );
   });
@@ -227,6 +219,49 @@ void main() {
     }
     expect(find.text('Allow microphone'), findsOneWidget);
     expect(find.text('Gloss'), findsOneWidget);
+  });
+
+  testWidgets('a destination draws its own way back under the shell\'s burger, '
+      'so the reader meets two navigation controls stacked in the corner', (
+    tester,
+  ) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+
+    for (final destination in destinations) {
+      await goTo(tester, destination.label);
+      expect(
+        find.byIcon(Icons.menu),
+        findsOneWidget,
+        reason: '${destination.label}: the drawer is how a destination is left',
+      );
+      for (final back in const [Icons.arrow_back_ios_new, Icons.arrow_back]) {
+        expect(
+          find.byIcon(back),
+          findsNothing,
+          reason: '${destination.label}: a second control in the same corner',
+        );
+      }
+    }
+  });
+
+  testWidgets('the index opened from "All 114" offers the drawer rather than '
+      'the way back to the passage the reader was reading', (tester) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await goTo(tester, 'Your passage');
+    await tester.tap(find.text('All 114'));
+    await tester.pumpAndSettle();
+    expect(find.byType(IndexScreen), findsOneWidget);
+
+    expect(find.byIcon(Icons.menu), findsNothing);
+    final back = find.byIcon(Icons.arrow_back_ios_new);
+    expect(back, findsOneWidget);
+    await tester.tap(back);
+    await tester.pumpAndSettle();
+    expect(
+      find.byType(ProgressScreen),
+      findsOneWidget,
+      reason: 'the step back lands on the screen the step was taken from',
+    );
   });
 
   testWidgets('the prayer is started from a preferences panel rather than '

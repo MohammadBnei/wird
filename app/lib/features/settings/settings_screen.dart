@@ -87,10 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Settings',
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
+              Text('Settings', style: Theme.of(context).textTheme.displaySmall),
               _section(n, 'READING'),
               NocturneSegmented(
                 options: const ['Gloss', 'Translit', 'Both', 'Neither'],
@@ -117,8 +114,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SizedBox(height: n.space('3')),
               Row(
                 children: [
+                  // The design's panel printed the size in pixels, which is
+                  // the number a designer turns and not one a reader has any
+                  // use for. Where the thumb sits is the whole answer.
                   Text(
-                    'Arabic ${prefs.arabicSize.round()} px',
+                    'Arabic',
                     style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
                   ),
                   Expanded(
@@ -141,6 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
+              _caption(n, 'How large the Arabic is set on the reading screen.'),
               _section(n, 'HOW MUCH YOU TAKE AT ONCE'),
               _width(n),
               _section(n, 'MICROPHONE'),
@@ -148,16 +149,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // microphone is asked for here and only here: the in-prayer
               // screen may not raise a dialog, so it can never be the screen
               // that asks.
-              Row(
-                spacing: n.space('3'),
-                children: [
-                  NocturneButton(
-                    onPressed: prefs.askForTheMic,
-                    child: const Text('Allow microphone'),
-                  ),
-                  Expanded(child: _caption(n, _micCaption(prefs.mic))),
-                ],
+              NocturneButton(
+                onPressed: prefs.askForTheMic,
+                child: const Text('Allow microphone'),
               ),
+              SizedBox(height: n.space('1')),
+              _caption(n, _micCaption(prefs.mic)),
               // Writes the server would not take are named here and only
               // here. It draws its own heading and stays silent when there
               // are none, so a reader with a healthy outbox sees nothing.
@@ -180,35 +177,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return _caption(n, 'Every aya is understood, so no set is waiting.');
     }
     final understood = set.ayas.every((a) => a.understood);
-    return Row(
-      spacing: n.space('3'),
+    // The explanation sits under the stepper rather than beside it: three
+    // lines of prose 8px from a control read as one thing, and the reader
+    // cannot tell which of the two they are meant to act on.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NocturneButton(
-          key: const Key('narrow set'),
-          variant: NocturneButtonVariant.icon,
-          onPressed: understood || set.ayas.length == 1
-              ? null
-              : () => _resize(set, -1),
-          child: const Icon(Icons.remove),
+        Row(
+          spacing: n.space('3'),
+          children: [
+            NocturneButton(
+              key: const Key('narrow set'),
+              variant: NocturneButtonVariant.icon,
+              onPressed: understood || set.ayas.length == 1
+                  ? null
+                  : () => _resize(set, -1),
+              child: const Icon(Icons.remove),
+            ),
+            Text(
+              set.ayas.length == 1 ? '1 aya' : '${set.ayas.length} ayas',
+              style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
+            ),
+            NocturneButton(
+              key: const Key('widen set'),
+              variant: NocturneButtonVariant.icon,
+              onPressed: understood || set.ayas.length >= setMaxDragAyas
+                  ? null
+                  : () => _resize(set, 1),
+              child: const Icon(Icons.add),
+            ),
+          ],
         ),
-        Text(
-          set.ayas.length == 1 ? '1 aya' : '${set.ayas.length} ayas',
-          style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
-        ),
-        NocturneButton(
-          key: const Key('widen set'),
-          variant: NocturneButtonVariant.icon,
-          onPressed: understood || set.ayas.length >= setMaxDragAyas
-              ? null
-              : () => _resize(set, 1),
-          child: const Icon(Icons.add),
-        ),
-        Expanded(
-          child: _caption(
-            n,
-            'A wider set may cross an aya you already understood. It is '
-            'recited with the rest and stays counted where it is.',
-          ),
+        SizedBox(height: n.space('1')),
+        _caption(
+          n,
+          'A wider set may cross an aya you already understood. It is '
+          'recited with the rest and stays counted where it is.',
         ),
       ],
     );

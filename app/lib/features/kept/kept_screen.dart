@@ -4,7 +4,6 @@ import 'package:sqflite/sqflite.dart';
 import '../../data/db.dart';
 import '../../data/kept_repo.dart';
 import '../../theme/nocturne.dart';
-import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_input.dart';
 import '../../widgets/nocturne_segmented.dart';
 import '../../widgets/nocturne_tag.dart';
@@ -101,24 +100,7 @@ class _KeptScreenState extends State<KeptScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          spacing: n.space('3'),
-          children: [
-            // The design draws no way back off this screen; a pushed screen
-            // needs one where there is no back gesture.
-            NocturneButton(
-              variant: NocturneButtonVariant.icon,
-              onPressed: () => Navigator.of(context).maybePop(),
-              child: const Icon(Icons.arrow_back_ios_new, size: 16),
-            ),
-            Expanded(
-              child: Text(
-                'Kept',
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-            ),
-          ],
-        ),
+        Text('Kept', style: Theme.of(context).textTheme.displaySmall),
         const SizedBox(height: 12),
         NocturneInput(
           hint: 'Search ayas, roots, your words',

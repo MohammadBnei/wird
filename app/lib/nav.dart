@@ -104,8 +104,22 @@ const destinations = <Destination>[
   (route: Routes.about, label: 'Sources'),
 ];
 
-bool isDestination(String? route) =>
-    destinations.any((d) => d.route == route);
+bool isDestination(String? route) => destinations.any((d) => d.route == route);
+
+/// A destination opened as a step inside another screen rather than chosen in
+/// the drawer.
+///
+/// The same screen is both: the sūra index chosen in the drawer is where the
+/// reader is, and the one opened from "All 114" is a step they took and have
+/// to come back from. The difference rides on the route, so the screen never
+/// has to know which way it was entered — it drew its own way back before,
+/// and inside the shell that put a second navigation control under the first.
+final class AStepFrom {
+  const AStepFrom([this.arguments]);
+
+  /// What the screen itself is opened on, untouched.
+  final Object? arguments;
+}
 
 /// A destination is drawn inside the shell; a screen the reader pushed into is
 /// not.
@@ -124,12 +138,16 @@ Route<void> screenRoute(RouteSettings settings, Database db) {
       'no screen is registered under this name',
     );
   }
+  final step = settings.arguments is AStepFrom;
+  final arguments = step
+      ? (settings.arguments! as AStepFrom).arguments
+      : settings.arguments;
   return MaterialPageRoute<void>(
     settings: settings,
     builder: (_) {
-      final screen = build(db, settings.arguments);
+      final screen = build(db, arguments);
       return isDestination(settings.name)
-          ? WirdShell(route: settings.name!, child: screen)
+          ? WirdShell(route: settings.name!, step: step, child: screen)
           : screen;
     },
   );

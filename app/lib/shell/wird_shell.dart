@@ -20,10 +20,21 @@ import '../widgets/nocturne_rule.dart';
 /// constellation, the prayer — carries its own way back, and 1b must be
 /// incapable of drawing anything over the aya.
 class WirdShell extends StatelessWidget {
-  const WirdShell({super.key, required this.route, required this.child});
+  const WirdShell({
+    super.key,
+    required this.route,
+    required this.child,
+    this.step = false,
+  });
 
   /// Which destination is open, so the drawer can mark it.
   final String route;
+
+  /// Whether the reader stepped here from another screen rather than choosing
+  /// it in the drawer. It decides the one control in the corner, so that a
+  /// screen never draws a second one of its own: a destination is where the
+  /// reader is and opens the drawer, a step is one they took and goes back.
+  final bool step;
 
   final Widget child;
 
@@ -46,7 +57,7 @@ class WirdShell extends StatelessWidget {
     );
   }
 
-  /// The burger, and beside it the transport.
+  /// The way out, and beside it the transport.
   ///
   /// No title: each of the seven screens draws its own, and a shell that
   /// repeated it would say the same thing twice on a 402px screen. Where the
@@ -67,8 +78,12 @@ class WirdShell extends StatelessWidget {
             Builder(
               builder: (context) => NocturneButton(
                 variant: NocturneButtonVariant.icon,
-                onPressed: Scaffold.of(context).openDrawer,
-                child: const Icon(Icons.menu),
+                onPressed: step
+                    ? Navigator.of(context).maybePop
+                    : Scaffold.of(context).openDrawer,
+                child: step
+                    ? const Icon(Icons.arrow_back_ios_new, size: 16)
+                    : const Icon(Icons.menu),
               ),
             ),
             const Expanded(child: SoundingNow()),

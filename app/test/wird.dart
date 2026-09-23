@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/nav.dart';
+import 'package:wird/shell/wird_shell.dart';
 import 'package:wird/theme/nocturne.dart';
 
 /// A screen inside the application it runs in: one recitation, one set of
@@ -52,5 +53,17 @@ Future<void> pumpPhone(WidgetTester tester, Widget app) async {
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(app);
+  await tester.pumpAndSettle();
+}
+
+/// Opens a destination the way a reader does: the burger, then the drawer's
+/// own row for it. Scoped to the drawer, because home names the same places
+/// on its own face and a bare `find.text` would hit either.
+Future<void> goTo(WidgetTester tester, String label) async {
+  await tester.tap(find.byIcon(Icons.menu));
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.descendant(of: find.byType(WirdDrawer), matching: find.text(label)),
+  );
   await tester.pumpAndSettle();
 }
