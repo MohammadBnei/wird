@@ -4,6 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/about/about_screen.dart';
 import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/nav.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
@@ -33,7 +34,13 @@ void main() {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(theme: nocturneTheme(), home: home));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: nocturneTheme(),
+        onGenerateRoute: (settings) => screenRoute(settings, db),
+        home: home,
+      ),
+    );
     await tester.pumpAndSettle();
   }
 

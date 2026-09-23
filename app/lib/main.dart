@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'data/db.dart';
-import 'features/study/study_screen.dart';
+import 'nav.dart';
 import 'theme/nocturne.dart';
 
 void main() => runApp(const WirdApp());
@@ -20,23 +20,26 @@ class _WirdAppState extends State<WirdApp> {
   late final Future<Database> _db = openWird();
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) => FutureBuilder<Database>(
+    future: _db,
+    builder: (context, snapshot) => switch (snapshot) {
+      AsyncSnapshot(hasData: true, :final data?) => wirdApp(data),
+      AsyncSnapshot(hasError: true, :final error?) => _beforeTheCorpus(
+        Text('The corpus would not open.\n\n$error'),
+      ),
+      _ => _beforeTheCorpus(const SizedBox.shrink()),
+    },
+  );
+
+  /// Every screen reads the corpus, so until it opens there is nothing to
+  /// route to and these frames are a bare app rather than the navigator.
+  Widget _beforeTheCorpus(Widget body) => MaterialApp(
     title: 'Wird',
     theme: nocturneTheme(),
-    home: FutureBuilder<Database>(
-      future: _db,
-      builder: (context, snapshot) => switch (snapshot) {
-        AsyncSnapshot(hasData: true, :final data?) => StudyScreen(db: data),
-        AsyncSnapshot(hasError: true, :final error?) => Scaffold(
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('The corpus would not open.\n\n$error'),
-            ),
-          ),
-        ),
-        _ => const Scaffold(body: SizedBox.shrink()),
-      },
+    home: Scaffold(
+      body: Center(
+        child: Padding(padding: const EdgeInsets.all(24), child: body),
+      ),
     ),
   );
 }

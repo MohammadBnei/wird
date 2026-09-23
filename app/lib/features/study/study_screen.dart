@@ -7,11 +7,11 @@ import '../../data/audio.dart';
 import '../../data/db.dart';
 import '../../data/mic.dart';
 import '../../data/sets.dart';
+import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_segmented.dart';
 import '../../widgets/nocturne_tag.dart';
-import '../about/about_screen.dart';
 
 /// Screen 1a — the set the reader studies before praying it.
 class StudyScreen extends StatefulWidget {
@@ -379,13 +379,37 @@ class _StudyScreenState extends State<StudyScreen> {
             ),
           ],
         ),
+        // The prayer, the progress and the kept list are drawn nowhere in the
+        // design, and 1a's chrome is fixed by its acceptance row, so they hang
+        // here beside the other controls the design does not draw.
+        Wrap(
+          spacing: n.space('2'),
+          runSpacing: n.space('2'),
+          children: [
+            NocturneButton(
+              onPressed: _set == null
+                  ? null
+                  : () => Navigator.of(
+                      context,
+                    ).pushNamed(Routes.prayer, arguments: _set),
+              child: const Text('Pray this set'),
+            ),
+            NocturneButton(
+              onPressed: () => Navigator.of(context).pushNamed(Routes.progress),
+              child: const Text('Your passage'),
+            ),
+            NocturneButton(
+              onPressed: () => Navigator.of(context).pushNamed(Routes.kept),
+              child: const Text('Kept'),
+            ),
+          ],
+        ),
+        SizedBox(height: n.space('2')),
         // The corpus grants its use on the condition that its source is named
         // and linked where a user can reach it. This is that door.
         NocturneButton(
           block: true,
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
-          ),
+          onPressed: () => Navigator.of(context).pushNamed(Routes.about),
           child: const Text('Sources and licences'),
         ),
       ],
@@ -567,6 +591,7 @@ class _StudyScreenState extends State<StudyScreen> {
 
   Widget _rootPanel(Nocturne n, StudySet set) {
     final root = _root;
+    final letters = _word?.root;
     return Container(
       padding: EdgeInsets.fromLTRB(
         n.space('6'),
@@ -595,35 +620,47 @@ class _StudyScreenState extends State<StudyScreen> {
               style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
             )
           else ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  root.display,
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontFamily: Nocturne.arabicFamily,
-                    fontSize: 26,
-                    letterSpacing: 0.14 * 26,
-                    color: n.color('accent-300'),
-                  ),
-                ),
-                SizedBox(width: n.space('3')),
-                Expanded(
-                  child: Text(
-                    root.translit,
+            // The design reaches 3a by tapping a word in 1a, but that tap is
+            // spoken for — it swaps this panel — so the root the panel names
+            // is what opens the root screen.
+            GestureDetector(
+              key: const ValueKey('open-root'),
+              behavior: HitTestBehavior.opaque,
+              onTap: letters == null
+                  ? null
+                  : () => Navigator.of(
+                      context,
+                    ).pushNamed(Routes.root, arguments: letters),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    root.display,
+                    textDirection: TextDirection.rtl,
                     style: TextStyle(
-                      fontSize: 11,
-                      letterSpacing: 0.06 * 11,
-                      color: n.textAt(0.55),
+                      fontFamily: Nocturne.arabicFamily,
+                      fontSize: 26,
+                      letterSpacing: 0.14 * 26,
+                      color: n.color('accent-300'),
                     ),
                   ),
-                ),
-                NocturneTag(
-                  '${root.occurrences}×',
-                  variant: NocturneTagVariant.outline,
-                ),
-              ],
+                  SizedBox(width: n.space('3')),
+                  Expanded(
+                    child: Text(
+                      root.translit,
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 0.06 * 11,
+                        color: n.textAt(0.55),
+                      ),
+                    ),
+                  ),
+                  NocturneTag(
+                    '${root.occurrences}×',
+                    variant: NocturneTagVariant.outline,
+                  ),
+                ],
+              ),
             ),
             Padding(
               padding: EdgeInsets.symmetric(vertical: n.space('3')),
@@ -673,8 +710,19 @@ class _StudyScreenState extends State<StudyScreen> {
           Row(
             spacing: n.space('3'),
             children: [
-              const Expanded(
-                child: NocturneButton(child: Text('Open constellation')),
+              Expanded(
+                child: NocturneButton(
+                  onPressed: letters == null
+                      ? null
+                      : () => Navigator.of(context).pushNamed(
+                          Routes.deepDive,
+                          arguments: (
+                            ayahId: _word!.id ~/ 1000,
+                            letters: letters,
+                          ),
+                        ),
+                  child: const Text('Open constellation'),
+                ),
               ),
               Expanded(
                 child: NocturneButton(
