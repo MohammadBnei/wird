@@ -129,7 +129,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('open-root')));
     await tester.pumpAndSettle();
     expect(find.byType(RootScreen), findsOneWidget);
-    expect(find.text(tapped.root!), findsOneWidget);
+    // The root screen prints the radicals spaced apart, the way a lexicon
+    // does, rather than the joined form the corpus keys them by.
+    expect(find.text(detail.display), findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
