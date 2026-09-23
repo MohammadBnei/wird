@@ -11,7 +11,6 @@ import 'features/root/root_screen.dart';
 import 'features/root/root_spine_screen.dart';
 import 'features/study/study_screen.dart';
 import 'theme/nocturne.dart';
-import 'widgets/nocturne_button.dart';
 
 /// The name each screen is pushed by. A screen is built by replacing the file
 /// its builder already points at, so no two screens are written into one file.
@@ -96,66 +95,3 @@ MaterialApp wirdApp(Database db) => MaterialApp(
   initialRoute: Routes.study,
   onGenerateRoute: (settings) => screenRoute(settings, db),
 );
-
-/// A screen that has a route and a place in the walk, but nothing behind it
-/// yet. It says so, rather than drawing an empty version of the screen it is
-/// going to become.
-class UnbuiltScreen extends StatelessWidget {
-  const UnbuiltScreen({
-    super.key,
-    required this.id,
-    required this.name,
-    required this.subject,
-  });
-
-  /// The design's own label for this screen, so whoever builds it knows which
-  /// markup to read.
-  final String id;
-  final String name;
-
-  /// What the route was opened on, printed so a wrong argument shows up
-  /// before the screen exists to show it.
-  final String subject;
-
-  @override
-  Widget build(BuildContext context) {
-    final n = Nocturne.of(context);
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(n.space('6')),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              NocturneButton(
-                variant: NocturneButtonVariant.icon,
-                onPressed: () => Navigator.of(context).maybePop(),
-                child: const Icon(Icons.arrow_back_ios_new, size: 16),
-              ),
-              const Spacer(),
-              Text(
-                '$id · $name',
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-              SizedBox(height: n.space('2')),
-              Text(
-                'Not built yet',
-                style: TextStyle(
-                  fontSize: 10,
-                  letterSpacing: 0.11 * 10,
-                  color: n.accent,
-                ),
-              ),
-              SizedBox(height: n.space('3')),
-              Text(
-                subject,
-                style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
-              ),
-              const Spacer(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

@@ -151,15 +151,27 @@ void main() {
     expect(find.byType(StudyScreen), findsOneWidget);
   });
 
-  testWidgets('a screen that is still a placeholder pretends to be the screen '
-      'it will become, rather than admitting it is not built', (tester) async {
+  testWidgets('a reader on a tablet opening a constellation lands on a page '
+      'that admits the screen behind it was never built', (tester) async {
     await openApp(tester);
+    // The iPad Pro 11-inch in landscape, which is where the three-pane
+    // reading opens rather than the phone one.
+    tester.view.physicalSize = const Size(1194, 834);
     navigatorIn(tester).pushNamed(Routes.deepDive,
-        arguments: (ayahId: 96001, letters: 'علق'));
+        arguments: (ayahId: 96002, letters: 'علق'));
     await tester.pumpAndSettle();
 
-    expect(find.text('1c · Deep dive'), findsOneWidget);
-    expect(find.text('Not built yet'), findsOneWidget);
+    expect(find.text('ROOT CONSTELLATION'), findsOneWidget);
+  });
+
+  testWidgets('a reader on a phone opening a constellation is handed the '
+      'tablet’s three rails, which do not fit a phone', (tester) async {
+    await openApp(tester);
+    navigatorIn(tester).pushNamed(Routes.deepDive,
+        arguments: (ayahId: 96002, letters: 'علق'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DEEP DIVE · 96:2'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pumpAndSettle();

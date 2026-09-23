@@ -170,9 +170,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text(
-        '${ayahRef(reading.derivatives[1].ayahId)} \u00b7 $onTheDial',
-      ),
+      find.text('DEEP DIVE \u00b7 ${ayahRef(reading.derivatives[1].ayahId)}'),
       findsOneWidget,
     );
   });
