@@ -92,13 +92,16 @@ class SyncReport {
   /// reader has lost nothing; the next reconnect tries again.
   final bool reachedServer;
   final int landed;
+
+  /// Answers that were not "the server has it" — a refusal, or a failure the
+  /// server asked to be retried.
   final int refused;
 
   /// Rows the other device wrote that this one now holds.
   final int applied;
 
-  /// Ops the reader has to be shown in settings, because the server has
-  /// refused them five times.
+  /// Ops the reader has to be shown in settings: the server refused them
+  /// outright, or failed on them until their retry budget ran out.
   final int deadLettered;
 }
 
@@ -114,9 +117,9 @@ Future<SyncReport> syncNow(Database db, SyncApi api) async {
   var landed = 0;
   var refused = 0;
   var applied = 0;
-  // One attempt per op per reconnect. An op the server refused stays in the
+  // One attempt per op per reconnect. An op the server failed on stays in the
   // queue, and without this it would be picked up again by the very next
-  // round and spend all five of its attempts inside one flush.
+  // round and spend its whole retry budget inside one flush.
   final sent = <String>{};
   try {
     while (true) {

@@ -12,6 +12,7 @@ import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_segmented.dart';
 import '../../widgets/nocturne_tag.dart';
+import '../settings/parked_writes.dart';
 
 /// Screen 1a — the set the reader studies before praying it.
 class StudyScreen extends StatefulWidget {
@@ -404,6 +405,9 @@ class _StudyScreenState extends State<StudyScreen> {
             ),
           ],
         ),
+        // Writes the server would not take are named here and only here.
+        // Quiet when there are none.
+        ParkedWrites(db: widget.db),
         SizedBox(height: n.space('2')),
         // The corpus grants its use on the condition that its source is named
         // and linked where a user can reach it. This is that door.

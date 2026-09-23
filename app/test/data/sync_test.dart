@@ -119,6 +119,11 @@ Map<String, dynamic> keptRow(
 Future<int> queued(Database db) async =>
     (await db.rawQuery('SELECT COUNT(*) AS n FROM outbox')).single['n']! as int;
 
+/// The wait a transient failure earned, served. Real time cannot be waited out
+/// in a test, and a fake clock seam would exist only for the test to hold.
+Future<void> theClockMovesOn(Database db) =>
+    db.rawUpdate('UPDATE outbox SET retry_after = NULL');
+
 void main() {
   late Database db;
   late FakeWird server;
@@ -222,32 +227,105 @@ void main() {
 
     expect(report.landed, 19);
     expect(report.refused, 1);
-    final left = await pending(db);
-    expect(left.map((op) => op.id), [poison]);
-    expect(left.single.attempts, 1);
+    expect(await pending(db), isEmpty);
+    final parked = await deadLettered(db);
+    expect(
+      parked.map((op) => op.id),
+      [poison],
+      reason: 'the refused op must leave the queue, not sit at its head',
+    );
   });
 
-  test('a poison op stops riding after five refusals and waits in settings '
-      'instead of mid-prayer', () async {
+  // The server's own word for a refusal is that it "will never succeed however
+  // often it is sent". Asking it four more times delays the moment the reader
+  // is told and changes nothing else.
+  test('a refused write is asked about four more times before the reader hears '
+      'about it', () async {
     final poison = newOpId();
     await markSetUnderstood(db, poison, [96001]);
     server.verdict = (_) => 'refused';
 
-    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-      await syncNow(db, SyncApi(server.dio));
-    }
-    expect(server.batches, hasLength(maxAttempts));
+    await syncNow(db, SyncApi(server.dio));
 
-    // A good write made afterwards still flushes; the dead one does not ride
+    final dead = await deadLettered(db);
+    expect(dead.map((op) => op.id), [poison]);
+    expect(dead.single.body['ayah_ids'], [96001]);
+
+    // A good write made afterwards still flushes; the parked one does not ride
     // with it.
     server.verdict = (_) => 'applied';
     await markSetUnderstood(db, newOpId(), [68001]);
     await syncNow(db, SyncApi(server.dio));
 
-    expect(server.batches.last.map((op) => op['client_op_id']), isNot(contains(poison)));
-    final dead = await deadLettered(db);
-    expect(dead.map((op) => op.id), [poison]);
-    expect(dead.single.body['ayah_ids'], [96001]);
+    expect(
+      server.batches.last.map((op) => op['client_op_id']),
+      isNot(contains(poison)),
+    );
+  });
+
+  // The defect: the server says `failed` and means "not applied, try again",
+  // and the device spent one of five lives on it anyway. Five bad minutes
+  // across five reconnects and a write nothing was wrong with is parked for
+  // good.
+  test('five transient server faults park a good write that should still be '
+      'trying', () async {
+    final good = newOpId();
+    await markSetUnderstood(db, good, [96001]);
+    server.verdict = (_) => 'failed';
+
+    for (var reconnect = 0; reconnect < 5; reconnect++) {
+      final report = await syncNow(db, SyncApi(server.dio));
+      expect(report.reachedServer, isTrue);
+      await theClockMovesOn(db);
+    }
+
+    expect(
+      await deadLettered(db),
+      isEmpty,
+      reason: 'the server asked to be tried again, and was answering each time',
+    );
+
+    // The server has its good minute back.
+    server.verdict = (_) => 'applied';
+    final landed = await syncNow(db, SyncApi(server.dio));
+    expect(landed.landed, 1);
+    expect(await queued(db), 0);
+  });
+
+  // Without the delay the count is not a budget: a phone that reconnects every
+  // few seconds — a train, a lift, a flaky router — spends all ten answers
+  // before the server has finished restarting.
+  test('a phone reconnecting every few seconds spends the whole retry budget '
+      'during one restart', () async {
+    await markSetUnderstood(db, newOpId(), [96001]);
+    server.verdict = (_) => 'failed';
+
+    await syncNow(db, SyncApi(server.dio));
+    await syncNow(db, SyncApi(server.dio));
+    await syncNow(db, SyncApi(server.dio));
+
+    expect(
+      server.batches,
+      hasLength(1),
+      reason: 'the second and third reconnects arrived inside the backoff',
+    );
+    expect(await deadLettered(db), isEmpty);
+  });
+
+  // And the budget is a budget: a server that keeps failing for good does not
+  // leave the write pending forever with nobody told.
+  test('a server that never recovers leaves the write pending forever and '
+      'nobody is told', () async {
+    await markSetUnderstood(db, newOpId(), [96001]);
+    server.verdict = (_) => 'failed';
+
+    for (var reconnect = 0; reconnect < maxAttempts; reconnect++) {
+      await syncNow(db, SyncApi(server.dio));
+      await theClockMovesOn(db);
+    }
+
+    expect(await pending(db), isEmpty);
+    expect(await deadLettered(db), hasLength(1));
   });
 
   // The failure: a reader spends a week somewhere with no signal, the flush
