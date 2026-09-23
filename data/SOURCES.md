@@ -589,6 +589,60 @@ Corrections that cost a day each to find, kept here so they are not re-found.
   Wird's to state, and a duration derived from the last word's timing would be a
   number invented to fill a column nothing reads.
 
+## The root senses: Wird's own words, and what had to be true before they shipped
+
+`root_notes` holds one row per root, `word_id` NULL, carrying a plain English
+sense for that root, its French, the byline that says whose reading it is, and
+the root's own words the sense was checked against. It is the only prose in
+`corpus.db` Wird wrote itself. Nothing in it is quoted from, attributed to, or
+derived from any lexicon or scholar, and nothing in it is a claim about a verse.
+
+```
+data/root_senses.tsv     what a person wrote: root, English, French
+data/root_senses.json    what survived the check, with the words that carried it
+```
+
+Senses were written root by root from the root's own attested words — their
+glosses and their occurrence counts — and then tested rather than trusted.
+`server/cmd/rootcheck` buckets a root's glossed words by morphological shape,
+strips out the English the wazn itself contributes, and asks three questions a
+sense has to answer at once:
+
+| Term | Floor | The failure it exists to catch |
+| --- | --- | --- |
+| score | 0.208 | a sense the glosses do not predict in at least two shapes |
+| coverage | a majority | a sense that explains a real but minority branch: غير is met as غَيْر, "other than", in most of its occurrences, not as "to change" |
+| dispersion | 20 | a clause bolted onto an attested one out of words the corpus keeps for other roots: "to pray five times", where "five" is glossed under one root and not this one |
+| specificity | 3 | English general enough to fit roots it has nothing to do with |
+
+The score and dispersion floors sit at the midpoint of the gap between senses
+known to be right and senses deliberately written wrong, recomputed at every
+run. The coverage floor is stated rather than fitted: a sense explaining fewer
+than half of its root's occurrences is, for the reader who meets that word,
+wrong more often than right. The calibration checks the claim instead of setting
+it, and fails if the two populations stop parting around the majority line.
+
+| Number | Value | What it means |
+| --- | --- | --- |
+| roots in the corpus | 1,642 | — |
+| roots that can be checked at all | 810 | the other 832 attest one morphological shape and ship nothing |
+| senses proposed | 789 | — |
+| senses shipped | 507 | — |
+| refused: the glosses do not bear the sense out | 226 | — |
+| refused: a minority branch of the root | 43 | the reader would meet the word and not the sense |
+| refused: too general to name this root | 13 | — |
+| calibration | 15 right pass, 44 wrong rejected | the wrong set includes 16 minority branches and 10 doctrinal elaborations |
+| other roots a known-right sense also fits | 11 of 24,615 pairs | 0.04%, and all of them true synonyms |
+| reach | 62.7% | the share of glossed word occurrences under a root that ships a sense |
+
+`server/cmd/etl` re-derives every one of those numbers from the corpus it is
+about to write, and stops the build rather than ship a sense the glosses no
+longer bear out, a sense with no provenance, a sense with no French, a sense
+with no byline, or a sense that names a sura or cites a verse. The French is a
+translation of the English that passed; the corpus carries no French gloss to
+check French against, so writing it independently would be a second guess with
+no evidence under it.
+
 ## Reconciliation, from `data/manifest.json`
 
 | Number | Value | What a wrong value would mean |
@@ -601,4 +655,5 @@ Corrections that cost a day each to find, kept here so they are not re-found.
 | segments ending before they start | 8 | the ETL clamps them |
 
 Built from these sources, `corpus.db` is 114 suras, 6,236 ayas, 77,429 words,
-1,642 roots and 77,408 word segments, at 22.95 MB against a 60 MB budget.
+1,642 roots, 507 root senses and 77,408 word segments, at 23.16 MB against a
+60 MB budget.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -46,10 +47,18 @@ CREATE TABLE roots (
   quran_occurrences INTEGER NOT NULL,
   sources           TEXT NOT NULL
 );
+-- note is authored prose. source and basis say whose, and evidence names the
+-- root's own words the note was checked against, so a screen can show the
+-- reader that this is Wird's reading and not a lexicon it is quoting. A note
+-- with no source is the defect this project deleted once already.
 CREATE TABLE root_notes (
   root_letters TEXT NOT NULL,
   word_id      INTEGER,
-  note         TEXT NOT NULL
+  note         TEXT NOT NULL,
+  note_fr      TEXT,
+  source       TEXT,
+  basis        TEXT,
+  evidence     TEXT
 );
 CREATE TABLE recitations (
   slug         TEXT PRIMARY KEY,
@@ -167,6 +176,22 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 		return []any{r.Letters, r.Display, r.Translit, r.Occurrences, string(sources)}
 	}); err != nil {
 		return err
+	}
+	// One row per root, word_id NULL: the authored-prose path the app already
+	// reads as RootReading.coreSense, now carrying its French, its byline and
+	// the words that bore it out beside it.
+	if c.Senses != nil {
+		if err := insert(`INSERT INTO root_notes VALUES (?,NULL,?,?,?,?,?)`, len(c.Senses.Senses), func(i int) []any {
+			n := c.Senses.Senses[i]
+			words := make([]string, 0, len(n.Support))
+			for _, sup := range n.Support {
+				words = append(words, sup.Word)
+			}
+			return []any{n.Root, n.SenseEn, n.SenseFr, c.Senses.Source, c.Senses.Basis,
+				strings.Join(words, " · ")}
+		}); err != nil {
+			return err
+		}
 	}
 	if err := insert(`INSERT INTO ayah_audio VALUES (?,?,?)`, len(c.Audio), func(i int) []any {
 		a := c.Audio[i]

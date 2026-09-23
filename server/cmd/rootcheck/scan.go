@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/MohammadBnei/wird/server/internal/rootsense"
 	"io"
 	"sort"
 	"text/tabwriter"
@@ -14,7 +15,7 @@ import (
 //
 // A sense that verifies many roots is not a sense, it is a phrase general
 // enough to fit anything, and the count here is what exposes that.
-func Scan(w io.Writer, roots map[string]*Root, bar Bar) {
+func Scan(w io.Writer, roots map[string]*rootsense.Root, bar rootsense.Bar) {
 	letters := make([]string, 0, len(roots))
 	for k := range roots {
 		letters = append(letters, k)
@@ -24,7 +25,7 @@ func Scan(w io.Writer, roots map[string]*Root, bar Bar) {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "sense\town root\tscore\tother roots verified\tof")
 	totalOther, totalOwn, cases := 0, 0, 0
-	for _, c := range calibration {
+	for _, c := range rootsense.Calibration {
 		if !c.Right {
 			continue
 		}
@@ -33,7 +34,7 @@ func Scan(w io.Writer, roots map[string]*Root, bar Bar) {
 		others, eligible := 0, 0
 		var worst []string
 		for _, l := range letters {
-			res := Check(roots[l], c.Sense)
+			res := rootsense.Check(roots[l], c.Sense)
 			if len(res.Slots) >= 2 {
 				eligible++
 			}
@@ -48,7 +49,7 @@ func Scan(w io.Writer, roots map[string]*Root, bar Bar) {
 				}
 			}
 		}
-		if Check(roots[c.Root], c.Sense).Verified(bar) {
+		if rootsense.Check(roots[c.Root], c.Sense).Verified(bar) {
 			totalOwn++
 		}
 		totalOther += others

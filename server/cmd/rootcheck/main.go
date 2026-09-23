@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/MohammadBnei/wird/server/internal/rootsense"
 	"os"
 	"sort"
 	"text/tabwriter"
@@ -26,6 +27,8 @@ func main() {
   scan                  score every known-right sense against every root
   survey                how much evidence each root offers, before any sense exists
   cost <tsv>            how many senses in a root\tsense TSV each part of the bar keeps
+  evidence [root...]    the glosses a sense must be written from, heaviest first
+  build <tsv> <json>    check every proposed sense and write out the ones that hold
   reliability           which wazn-to-English rules the corpus supports
 
 `)
@@ -39,7 +42,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	roots, err := LoadRoots(*db)
+	roots, err := rootsense.LoadRoots(*db)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "rootcheck:", err)
 		os.Exit(1)
@@ -61,10 +64,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "rootcheck: root %q has no glossed words in the corpus\n", args[1])
 			os.Exit(1)
 		}
-		reportCheck(os.Stdout, Check(root, args[2]), bar)
+		reportCheck(os.Stdout, rootsense.Check(root, args[2]), bar)
 
 	case "calibrate":
-		sep, err := Calibrate(roots)
+		sep, err := rootsense.Calibrate(roots)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "rootcheck:", err)
 			os.Exit(1)
@@ -94,6 +97,24 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "evidence":
+		Evidence(os.Stdout, roots, args[1:], 12)
+
+	case "build":
+		if len(args) < 3 {
+			flag.Usage()
+			os.Exit(2)
+		}
+		bar, err := barFor(roots, *threshold)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			os.Exit(1)
+		}
+		if err := Build(os.Stdout, roots, args[1], args[2], bar); err != nil {
+			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			os.Exit(1)
+		}
+
 	case "survey":
 		Survey(os.Stdout, roots)
 
@@ -108,23 +129,23 @@ func main() {
 
 // barFor returns the calibrated bar, or a score-only bar when the operator
 // overrides the threshold by hand.
-func barFor(roots map[string]*Root, override float64) (Bar, error) {
+func barFor(roots map[string]*rootsense.Root, override float64) (rootsense.Bar, error) {
 	if override != 0 {
-		return Bar{Score: override}, nil
+		return rootsense.Bar{Score: override}, nil
 	}
-	sep, err := Calibrate(roots)
+	sep, err := rootsense.Calibrate(roots)
 	return sep.Bar, err
 }
 
-func reportCheck(w *os.File, r Result, bar Bar) {
+func reportCheck(w *os.File, r rootsense.Result, bar rootsense.Bar) {
 	fmt.Fprintf(w, "%s  %q\n", r.Root, r.Sense)
 	fmt.Fprintf(w, "%s  score %.3f/%.3f  coverage %.3f/%.3f of %d occurrences  dispersion %s/%d  slots %d/%d\n\n",
 		r.Verdict(bar), r.Score, bar.Score, r.Coverage, bar.Coverage, r.Tested,
-		disp(r.Dispersion), bar.Dispersion, r.SlotsHit, len(r.Slots))
+		rootsense.Disp(r.Dispersion), bar.Dispersion, r.SlotsHit, len(r.Slots))
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "slot\tagreed\tglosses that did not agree")
-	slots := append([]SlotResult(nil), r.Slots...)
+	slots := append([]rootsense.SlotResult(nil), r.Slots...)
 	sort.Slice(slots, func(i, j int) bool { return slots[i].Recall() > slots[j].Recall() })
 	for _, s := range slots {
 		miss := ""

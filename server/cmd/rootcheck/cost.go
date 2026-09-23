@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/MohammadBnei/wird/server/internal/rootsense"
 	"io"
 	"os"
 	"sort"
@@ -15,7 +16,7 @@ import (
 // rejects right senses phrased in English the corpus does not use, and the
 // number of senses left is the only honest way to say whether the method still
 // reaches enough of the Qur'an to be worth shipping.
-func Cost(w io.Writer, roots map[string]*Root, tsv string, bar Bar) error {
+func Cost(w io.Writer, roots map[string]*rootsense.Root, tsv string, bar rootsense.Bar) error {
 	f, err := os.Open(tsv)
 	if err != nil {
 		return err
@@ -24,7 +25,7 @@ func Cost(w io.Writer, roots map[string]*Root, tsv string, bar Bar) error {
 
 	type cand struct {
 		root, sense string
-		res         Result
+		res         rootsense.Result
 	}
 	var cands []cand
 	sc := bufio.NewScanner(f)
@@ -41,13 +42,13 @@ func Cost(w io.Writer, roots map[string]*Root, tsv string, bar Bar) error {
 		if !ok {
 			continue
 		}
-		cands = append(cands, cand{col[0], col[1], Check(r, col[1])})
+		cands = append(cands, cand{col[0], col[1], rootsense.Check(r, col[1])})
 	}
 	if err := sc.Err(); err != nil {
 		return err
 	}
 
-	old := Bar{Score: bar.Score}
+	old := rootsense.Bar{Score: bar.Score}
 	var passedOld, passedNew []cand
 	byScore, byCover, byDisp := 0, 0, 0
 	for _, c := range cands {
@@ -57,7 +58,7 @@ func Cost(w io.Writer, roots map[string]*Root, tsv string, bar Bar) error {
 		}
 		passedOld = append(passedOld, c)
 		switch {
-		case c.res.Coverage < bar.Coverage:
+		case c.res.Coverage <= bar.Coverage:
 			byCover++
 		case c.res.Dispersion < bar.Dispersion:
 			byDisp++
@@ -71,33 +72,12 @@ func Cost(w io.Writer, roots map[string]*Root, tsv string, bar Bar) error {
 	// right does. It is the only part of the ship gate that looks outside the
 	// root being checked, and leaving it out of this report would overstate what
 	// survives.
-	letters := make([]string, 0, len(roots))
-	for l := range roots {
-		letters = append(letters, l)
-	}
-	sort.Strings(letters)
-	fits := func(c cand) int {
-		n := 0
-		for _, l := range letters {
-			if l != c.root && Check(roots[l], c.sense).Verified(bar) {
-				n++
-			}
-		}
-		return n
-	}
-	widest := 0
-	for _, k := range calibration {
-		if !k.Right {
-			continue
-		}
-		if n := fits(cand{k.Root, k.Sense, Check(roots[k.Root], k.Sense)}); n > widest {
-			widest = n
-		}
-	}
+	letters := sortedLetters(roots)
+	widest := specificityBar(roots, letters, bar)
 	var shipped []cand
 	byFit := 0
 	for _, c := range passedNew {
-		if fits(c) > widest {
+		if otherRootsVerified(roots, letters, c.root, c.sense, bar) > widest {
 			byFit++
 			continue
 		}
@@ -144,41 +124,8 @@ func Cost(w io.Writer, roots map[string]*Root, tsv string, bar Bar) error {
 			break
 		}
 		shown++
-		fmt.Fprintf(tw, "%s\t%.3f\t%d\t%s\t%s\n", c.root, c.res.Coverage, c.res.Tested, c.sense, biggestMiss(roots[c.root], c.sense))
+		fmt.Fprintf(tw, "%s\t%.3f\t%d\t%s\t%s\n", c.root, c.res.Coverage, c.res.Tested, c.sense, rootsense.BiggestMiss(roots[c.root], c.sense))
 	}
 	tw.Flush()
 	return nil
-}
-
-// biggestMiss names the gloss carrying the most occurrences that the sense does
-// not explain: the branch of the root a reader would meet and the sense would
-// not cover.
-func biggestMiss(root *Root, sense string) string {
-	res := Check(root, sense)
-	if res.Tested == 0 {
-		return ""
-	}
-	stems := tokens(sense)
-	best, bestN := "", 0
-	for _, slot := range root.Slots {
-		for _, g := range slot.Glosses {
-			if g.N <= bestN {
-				continue
-			}
-			gs := tokens(g.Text)
-			if len(gs) == 0 {
-				continue
-			}
-			for _, a := range stems {
-				for _, b := range gs {
-					if related(a, b) {
-						goto next
-					}
-				}
-			}
-			best, bestN = g.Text, g.N
-		next:
-		}
-	}
-	return fmt.Sprintf("%q x%d", best, bestN)
 }
