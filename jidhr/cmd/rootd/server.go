@@ -24,17 +24,17 @@ const maxBatchWords = 100
 // caller cannot hold memory open by streaming forever.
 const maxBodyBytes = 1 << 20
 
-// defaultLangs are the languages jidhr authors meanings in. A caller that names
-// none gets both rather than none, because a root with no meaning is not an
-// answer anybody asked for.
-var defaultLangs = []string{"en", "ar"}
-
 type server struct {
 	resolver *root.Resolver
 	store    root.Store
-	limiter  *limiter
-	apiKey   string
-	log      *slog.Logger
+	// langs are the languages the loaded corpus holds meanings in, and are what a
+	// caller that names none is answered in. They are read off the corpus rather
+	// than written down here: a list of languages beside the data drifts from it,
+	// and a caller asking for a language nobody authored is answered with silence.
+	langs   []string
+	limiter *limiter
+	apiKey  string
+	log     *slog.Logger
 }
 
 // routes builds the public handler. Health checks sit outside the rate limiter
@@ -63,7 +63,7 @@ func (s *server) resolveWord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := s.resolver.Resolve(r.Context(), word, langsOf(query))
+	res, err := s.resolver.Resolve(r.Context(), word, s.langsOf(query))
 	if err != nil {
 		s.writeResolveError(w, r, err)
 		return
@@ -103,7 +103,7 @@ func (s *server) resolveBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	langs := langsOf(r.URL.Query())
+	langs := s.langsOf(r.URL.Query())
 	items := make([]batchItem, 0, len(req.Words))
 	for _, word := range req.Words {
 		res, err := s.resolver.Resolve(r.Context(), word, langs)
@@ -150,7 +150,7 @@ func (s *server) lookupRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	meanings, err := s.store.Meanings(r.Context(), rec.Letters, langsOf(r.URL.Query()))
+	meanings, err := s.store.Meanings(r.Context(), rec.Letters, s.langsOf(r.URL.Query()))
 	if err != nil {
 		s.writeInternal(w, r, "read the meanings of a root", err)
 		return
@@ -224,8 +224,8 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	}
 }
 
-// langsOf reads lang=en,ar, repeated or comma-separated.
-func langsOf(query map[string][]string) []string {
+// langsOf reads lang=en,fr, repeated or comma-separated.
+func (s *server) langsOf(query map[string][]string) []string {
 	var langs []string
 	for _, value := range query["lang"] {
 		for lang := range strings.SplitSeq(value, ",") {
@@ -235,7 +235,7 @@ func langsOf(query map[string][]string) []string {
 		}
 	}
 	if len(langs) == 0 {
-		return defaultLangs
+		return s.langs
 	}
 	return langs
 }

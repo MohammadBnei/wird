@@ -19,12 +19,12 @@ const burstPerRate = 4
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
-	corpusPath := env("ROOTD_CORPUS", "jidhr/testdata/corpus.json")
-	// ponytail: the whole corpus in memory, read from one JSON file. The ingested
-	// Qur'anic morphology is jidhr/testdata/quran.json and the authored meanings are
-	// jidhr/testdata/corpus.json; one process serves one of them until a Postgres
-	// Store joins the two. Nothing above here changes when it does, because the
-	// resolver only ever knew a Store.
+	corpusPath := env("ROOTD_CORPUS", "jidhr/testdata/quran.json")
+	// ponytail: the whole corpus in memory, read from one JSON file — 1,642 roots,
+	// 19,805 attested forms and 523 meanings is about a megabyte. Give the resolver
+	// a Store backed by a database when a corpus arrives that does not fit, or when
+	// a meaning has to change without a restart. Nothing above here changes when it
+	// does, because the resolver only ever knew a Store.
 	f, err := os.Open(corpusPath)
 	if err != nil {
 		log.Error("open the corpus", "path", corpusPath, "err", err)
@@ -41,6 +41,7 @@ func main() {
 	srv := &server{
 		resolver: root.New(store),
 		store:    store,
+		langs:    store.Languages(),
 		apiKey:   os.Getenv("ROOTD_API_KEY"),
 		log:      log,
 	}
@@ -61,7 +62,7 @@ func main() {
 	}
 
 	log.Info("rootd listening",
-		"addr", addr, "corpus", corpusPath,
+		"addr", addr, "corpus", corpusPath, "languages", srv.langs,
 		"authenticated", srv.apiKey != "", "rate_per_second", rate)
 	if err := httpd.ListenAndServe(); err != nil {
 		log.Error("rootd stopped", "err", err)

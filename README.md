@@ -221,5 +221,20 @@ text, every row and every payload flagged `"placeholder": true`, and an aya or
 root with nothing seeded answers 404. Inventing commentary in that gap would be
 the worst defect this project could ship.
 
+### The root engine
+
+`jidhr` needs nothing — no database, no network, no key:
+
+```bash
+go run ./jidhr/cmd/rootd                     # :8081
+curl -sG localhost:8081/v1/root --data-urlencode 'word=صَبَرُوا'
+```
+
+It serves `jidhr/testdata/quran.json`: 1,642 roots, 19,805 attested forms and the
+523 root meanings in English and French. `go run ./server/cmd/jidhrcorpus` rebuilds
+that file from `app/assets/corpus.db`, the database the app bundles, so the engine
+and the app answer from one body of data. `jidhr/cmd/rootd/README.md` is the whole
+API.
+
 `CONTRIBUTING.md` carries the conventions — including what a `ponytail:`
 comment means and why a test's name has to state the failure it prevents.

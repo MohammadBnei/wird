@@ -34,6 +34,7 @@ const (
 
 func testServer(t *testing.T, store root.Store) *server {
 	t.Helper()
+	var langs []string
 	if store == nil {
 		f, err := os.Open(filepath.Clean(corpusPath))
 		if err != nil {
@@ -44,11 +45,12 @@ func testServer(t *testing.T, store root.Store) *server {
 		if err != nil {
 			t.Fatalf("load the seed corpus: %v", err)
 		}
-		store = memory
+		store, langs = memory, memory.Languages()
 	}
 	return &server{
 		resolver: root.New(store),
 		store:    store,
+		langs:    langs,
 		log:      slog.New(slog.DiscardHandler),
 	}
 }
@@ -502,4 +504,22 @@ func (s failingStore) Root(context.Context, string) (root.RootRecord, error) {
 
 func (s failingStore) Meanings(context.Context, string, []string) (map[string]root.Meaning, error) {
 	return nil, s.err
+}
+
+func TestACallerThatNamesNoLanguageIsAnsweredInTheLanguagesTheCorpusHolds(t *testing.T) {
+	s := testServer(t, nil)
+	status, body := get(t, s, "/v1/root?word="+url.QueryEscape(attestedWord))
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %v", status, http.StatusOK, body)
+	}
+
+	got, _ := body["meanings"].(map[string]any)
+	if len(got) == 0 {
+		t.Fatal("a caller that named no language was answered with no meanings at all, so the one field this service exists for is opt-in and undocumented")
+	}
+	for _, lang := range s.store.(*root.MemoryStore).Languages() {
+		if _, present := got[lang]; !present {
+			t.Errorf("%s is written in this corpus and was not offered: %v — a language list written beside the data is a promise the data does not keep", lang, got)
+		}
+	}
 }

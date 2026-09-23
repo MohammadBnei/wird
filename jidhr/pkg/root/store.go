@@ -222,3 +222,19 @@ func (m *MemoryStore) Meanings(_ context.Context, letters string, langs []string
 	}
 	return out, nil
 }
+
+// Languages are the languages this corpus holds meanings in, sorted. A caller that
+// names none is answered in these, so the languages offered are the ones the data
+// actually carries rather than a list written down beside it that drifts from it.
+func (m *MemoryStore) Languages() []string {
+	var langs []string
+	for _, by := range m.meanings {
+		for lang := range by {
+			if !slices.Contains(langs, lang) {
+				langs = append(langs, lang)
+			}
+		}
+	}
+	slices.Sort(langs)
+	return langs
+}
