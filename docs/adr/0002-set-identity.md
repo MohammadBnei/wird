@@ -93,39 +93,57 @@ Its ids are minted rather than derived, so they are not checked against the
 range; only `set_prayed` bodies that carry a range are. A `set_prayed` without
 a range is the old shape and still requires its set to be there already.
 
-### What else crosses this boundary unchecked
+### What else crosses this boundary, and how it is now checked
 
 The set id shipped wrong because each half had a test that agreed with itself:
 the server built its fixtures with `store.SetID` and the device asserted
-against `setIdFor`, so neither could fail when the two disagreed. The vectors
-above close that for the set id. These are the other places the device and the
-server hold the same contract and each verify it alone — written down, not
-fixed:
+against `setIdFor`, so neither could fail when the two disagreed. Four more
+contracts were held the same circular way. They are closed the same way the
+set id was — a second checked-in vector file,
+`docs/adr/0002-sync-contract-vectors.json`, read by
+`server/internal/store/sync_contract_vectors_test.go` and
+`app/test/data/sync_contract_vectors_test.dart`, neither of which computes
+what it asserts. A one-sided change reddens the suite on that side; following
+it into the vectors reddens the suite on the other. No single-sided rename
+leaves both green.
 
-* **The `set_prayed` body's field names.** The decoder is
-  `DisallowUnknownFields`, so one renamed or extra key is a refusal, and a
-  refusal is permanent — the same loss the set id caused. The device lists the
-  names in `app/test/data/set_prayers_test.dart`; the server lists them in its
-  own structs and fixtures. Nothing compares the two lists. Same for
-  `ayah_understood`, `kept_upsert`, `kept_delete` and `prefs_set`.
-* **The op-result vocabulary.** `applied`, `duplicate`, `refused`, `failed`.
-  The device reads `refused` as permanent and everything else as transient;
-  `app/test/data/sync_test.dart` gets those strings from a fake server the
-  device itself writes. Rename one on the server and the device retries a write
-  that can never land, or parks one that could.
-* **The change-stream `kind` values.** The server emits `ayah_understood`,
-  `kept_items`, `sets`, `set_prayers`, `user_prefs`; `sync.dart`'s `_apply`
-  switches on the first, second and fifth and its default arm is `=> 0`. A
-  renamed kind is not an error on either side — the device simply stops
-  applying that table and says nothing.
-* **The reading-order words.** `mushaf` and `nuzul` are an enum on the device
-  and an unvalidated string on the server. The vectors above now pin their
-  spelling as a side effect, which is the only thing that does.
+* **Op body field names.** The decoder is `DisallowUnknownFields`, so one
+  renamed or extra key is a refusal, and a refusal is permanent — the same
+  loss the set id caused. The vectors carry a real body per op kind, exactly
+  as a device builds it. The server lands each of them against a real
+  Postgres and requires `applied`; the device builds each through its real
+  write path and requires the same key set. The legacy `set_recorded` shape is
+  in there too, since it exists only for phones that cannot be fixed.
+* **The op-result vocabulary.** `applied`, `duplicate`, `refused`, `failed`,
+  with what each one means for the queue. The server suite checks its
+  constants against the vectors *and* induces each answer from a real batch;
+  the device suite checks `OpVerdict.landed` and `.permanent` against the same
+  rows instead of against a fake server it wrote itself.
+* **The change-stream `kind` values.** The vectors name all five and carry one
+  row per kind. The server seeds every table through real ops and requires the
+  stream to emit exactly those kinds with exactly those row keys; the device
+  feeds the same rows through a real pull and requires each to land.
+* **The reading-order words.** `mushaf` and `nuzul`, spelled once.
+  `upsertSet` and `applyPrefsSet` now check the word rather than leaving it to
+  a column constraint whose refusal says nothing useful, and the device
+  asserts its enum against the same list.
 
-The `sets` and `set_prayers` changes are dropped on purpose (`sync.dart`
-says there is nothing local to write them to) — but the device now has both
-tables, so a second device counts only the prayers it made itself and "the
-fourth prayer on this set" differs per device.
+**`sets` and `set_prayers` changes are applied.** They used to be dropped,
+with a comment saying there was nothing local to write them to; the device
+has had both tables since this decision, so what that actually meant was that
+a second device counted only the prayers it had made itself and "the fourth
+prayer on this set" was a different number on the phone and on the tablet.
+Both are insert-only: a set's id is derived, so the same range is the same row
+everywhere and there is nothing to reconcile, and a prayer is an event that
+happened once. `ordinal` and `prayer_name` have no column on the device and
+are dropped on purpose — the numbering is the server's, and the app has never
+asked which of the five prayers it was.
+
+A change kind this build has never heard of is no longer a silent `_ => 0`.
+It asserts, which fails the suite and any debug build, and carries the name
+out in `SyncReport.unknownKinds`. The assert is stripped from a release build
+deliberately: a reader whose phone is older than the server keeps syncing the
+kinds it does understand rather than losing sync entirely.
 
 Sets recorded before this decision keep their minted ids. They are a different
 set from the derived one covering the same range, which shows as one extra row

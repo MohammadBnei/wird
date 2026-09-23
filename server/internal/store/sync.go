@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -296,6 +297,21 @@ func SetID(readingOrder string, startAyahID, endAyahID int) string {
 	return uuid.NewSHA1(setNamespace, []byte(key)).String()
 }
 
+// readingOrders are the only two words a reading order is ever spelled with.
+// The device holds them as an enum; here they were a free string that nothing
+// above the column constraint looked at, which refused a third spelling with
+// "it does not fit what is already recorded" — true, and no help to the
+// device that sent it. A set id is derived from this word, so a wrong
+// spelling is not a bad value: it is a set no other device can name.
+var readingOrders = []string{"mushaf", "nuzul"}
+
+func checkReadingOrder(order string) error {
+	if !slices.Contains(readingOrders, order) {
+		return refuse("%q is not a reading order", order)
+	}
+	return nil
+}
+
 // isAya says whether a number is one of the corpus's own natural keys. An id
 // outside them would count something that does not exist towards the numbers
 // this app exists to show.
@@ -315,6 +331,9 @@ func upsertSet(ctx context.Context, tx pgx.Tx, userID, setID string,
 ) error {
 	if !isAya(startAyahID) || !isAya(endAyahID) || endAyahID < startAyahID {
 		return refuse("%d to %d is not a range of ayas", startAyahID, endAyahID)
+	}
+	if err := checkReadingOrder(readingOrder); err != nil {
+		return err
 	}
 	// The id is recomputed rather than trusted. A device that derives ids
 	// differently from this server is a bug that would otherwise surface
@@ -414,6 +433,9 @@ func applyPrefsSet(ctx context.Context, tx pgx.Tx, userID string, body json.RawM
 		UpdatedAt    time.Time `json:"updated_at"`
 	}
 	if err := decode(body, &b); err != nil {
+		return err
+	}
+	if err := checkReadingOrder(b.ReadingOrder); err != nil {
 		return err
 	}
 	_, err := tx.Exec(ctx, `

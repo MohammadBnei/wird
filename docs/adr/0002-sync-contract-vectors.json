@@ -1,0 +1,141 @@
+{
+  "_": "The four contracts ADR 0002 names as crossing the device/server boundary unchecked, written down once so both halves answer to the same file: server/internal/store/sync_contract_vectors_test.go and app/test/data/sync_contract_vectors_test.dart. Neither suite computes what it asserts. Change a name on one side only and both suites redden, which is the whole point — round B lost every prayer because each side asserted against its own implementation.",
+
+  "op_bodies": {
+    "_": "Real op bodies, one per kind, exactly as a current device builds them. The server's decoder is DisallowUnknownFields, so one renamed or extra key is a refusal and a refusal is permanent: the write is dead-lettered and gone. The server suite lands each of these against a real Postgres and requires 'applied'; the device suite builds each body through the real write path and requires the same key set. Applied in this order — the kept item is deleted after it is kept.",
+    "vectors": [
+      {
+        "kind": "ayah_understood",
+        "label": "two ayas of al-Fatiha marked understood",
+        "built_by_device": true,
+        "body": {
+          "ayah_ids": [1001, 1002],
+          "understood_at": "2026-09-23T07:15:00Z"
+        }
+      },
+      {
+        "kind": "kept_upsert",
+        "label": "a note kept against an aya",
+        "built_by_device": true,
+        "body": {
+          "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+          "kind": "note",
+          "ayah_id": 1002,
+          "root_letters": null,
+          "body": "the mercy named twice",
+          "tags": ["fatiha"],
+          "created_at": "2026-09-23T07:16:00Z",
+          "updated_at": "2026-09-23T07:16:00Z"
+        }
+      },
+      {
+        "kind": "kept_delete",
+        "label": "that same note dropped, as a tombstone",
+        "built_by_device": true,
+        "body": {
+          "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+          "deleted_at": "2026-09-23T07:17:00Z"
+        }
+      },
+      {
+        "kind": "set_prayed",
+        "label": "al-Fatiha prayed, the set travelling with the prayer",
+        "built_by_device": true,
+        "body": {
+          "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3311",
+          "set_id": "6cb8c394-ae9a-5092-a2ea-8f88749613c7",
+          "start_ayah_id": 1001,
+          "end_ayah_id": 1007,
+          "reading_order": "mushaf",
+          "prayed_at": "2026-09-23T07:18:00Z"
+        }
+      },
+      {
+        "kind": "prefs_set",
+        "label": "the reading order switched to the order of revelation",
+        "built_by_device": true,
+        "body": {
+          "reading_order": "nuzul",
+          "updated_at": "2026-09-23T07:19:00Z"
+        }
+      },
+      {
+        "kind": "set_recorded",
+        "label": "the old two-op shape, which a phone that has not updated still sends",
+        "built_by_device": false,
+        "body": {
+          "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3312",
+          "ordinal": 1,
+          "start_ayah_id": 2001,
+          "end_ayah_id": 2005,
+          "reading_order": "nuzul",
+          "created_at": "2026-09-23T07:20:00Z"
+        }
+      }
+    ]
+  },
+
+  "op_results": {
+    "_": "What the server can say about one op, and what the device must make of each answer. The device parks a permanent answer for the reader and retries everything else. Rename one of these words on the server and the device either retries a write that can never land or parks one that could have — and before this file, both suites stayed green.",
+    "vectors": [
+      {"status": "applied", "landed": true, "permanent": false, "label": "the server has it"},
+      {"status": "duplicate", "landed": true, "permanent": false, "label": "the server already had it, which is what the op id is for"},
+      {"status": "refused", "landed": false, "permanent": true, "label": "it will never succeed however often it is sent"},
+      {"status": "failed", "landed": false, "permanent": false, "label": "the server is having a bad minute"}
+    ]
+  },
+
+  "change_kinds": {
+    "_": "Every kind the change stream emits, with one row as the server builds it. The device must apply all of them: a kind it does not recognise is a table it silently stops writing, which is invisible on both sides. The server suite requires the stream to emit exactly these kinds with exactly these row keys; the device suite feeds each row through the real pull path and requires it to land.",
+    "vectors": [
+      {
+        "kind": "ayah_understood",
+        "row": {"ayah_id": 1001, "understood_at": "2026-09-23T07:15:00Z"}
+      },
+      {
+        "kind": "kept_items",
+        "row": {
+          "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+          "kind": "note",
+          "ayah_id": 1002,
+          "root_letters": null,
+          "body": "the mercy named twice",
+          "tags": ["fatiha"],
+          "created_at": "2026-09-23T07:16:00Z",
+          "updated_at": "2026-09-23T07:16:00Z",
+          "deleted_at": null
+        }
+      },
+      {
+        "kind": "sets",
+        "row": {
+          "id": "6cb8c394-ae9a-5092-a2ea-8f88749613c7",
+          "ordinal": 1,
+          "start_ayah_id": 1001,
+          "end_ayah_id": 1007,
+          "reading_order": "mushaf",
+          "created_at": "2026-09-23T07:18:00Z"
+        }
+      },
+      {
+        "kind": "set_prayers",
+        "row": {
+          "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3311",
+          "set_id": "6cb8c394-ae9a-5092-a2ea-8f88749613c7",
+          "prayer_name": "",
+          "prayed_at": "2026-09-23T07:18:00Z"
+        }
+      },
+      {
+        "kind": "user_prefs",
+        "row": {"reading_order": "nuzul", "updated_at": "2026-09-23T07:19:00Z"}
+      }
+    ]
+  },
+
+  "reading_orders": {
+    "_": "The two words, spelled once. They are an enum on the device and were a free string on the server, checked by nothing above the column constraint. A set id is derived from one of these words, so a third spelling is not a bad value but a set no other device can name.",
+    "vectors": ["mushaf", "nuzul"],
+    "not_a_reading_order": "hijri"
+  }
+}

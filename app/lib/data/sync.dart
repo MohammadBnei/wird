@@ -86,6 +86,7 @@ class SyncReport {
     this.refused = 0,
     this.applied = 0,
     this.deadLettered = 0,
+    this.unknownKinds = const {},
   });
 
   /// False when the flush never got an answer. The queue is untouched and the
@@ -103,6 +104,10 @@ class SyncReport {
   /// Ops the reader has to be shown in settings: the server refused them
   /// outright, or failed on them until their retry budget ran out.
   final int deadLettered;
+
+  /// Change kinds the server streamed that this build applies none of. Empty
+  /// in every build that is not older than the server it is talking to.
+  final Set<String> unknownKinds;
 }
 
 /// Pushes everything queued, then pulls everything the other device wrote.
@@ -121,6 +126,7 @@ Future<SyncReport> syncNow(Database db, SyncApi api) async {
   // queue, and without this it would be picked up again by the very next
   // round and spend its whole retry budget inside one flush.
   final sent = <String>{};
+  final unknownKinds = <String>{};
   try {
     while (true) {
       final queue = [
@@ -138,7 +144,7 @@ Future<SyncReport> syncNow(Database db, SyncApi api) async {
     var cursor = await _cursor(db);
     while (true) {
       final page = await api.pull(cursor);
-      applied += await _apply(db, page.changes);
+      applied += await _apply(db, page.changes, unknownKinds);
       cursor = page.cursor;
       await _saveCursor(db, cursor);
       if (!page.more) break;
@@ -150,6 +156,7 @@ Future<SyncReport> syncNow(Database db, SyncApi api) async {
       refused: refused,
       applied: applied,
       deadLettered: (await deadLettered(db)).length,
+      unknownKinds: unknownKinds,
     );
   }
   return SyncReport(
@@ -158,6 +165,7 @@ Future<SyncReport> syncNow(Database db, SyncApi api) async {
     refused: refused,
     applied: applied,
     deadLettered: (await deadLettered(db)).length,
+    unknownKinds: unknownKinds,
   );
 }
 
@@ -175,22 +183,50 @@ Future<SyncReport> syncNow(Database db, SyncApi api) async {
 ///     asleep for a week, and the tablet's older answer can arrive later than
 ///     the phone's. It is one field, visible on screen, and the reader can set
 ///     it again — which is why it is accepted rather than versioned.
-///   * `sets` and `set_prayers` are recorded on the server and counted there.
-///     The device computes its own sets from the bundled corpus and reads the
-///     counts from `/v1/progress`, so there is nothing local to write them to.
-Future<int> _apply(Database db, List<Change> changes) async {
+///   * `sets` and `set_prayers` are inserted and never updated. A set's id is
+///     derived from its range and order, so the same range is the same row on
+///     every device and there is nothing to reconcile; a prayer is an event
+///     that happened once. They used to be dropped on the floor, back when the
+///     device had no tables to put them in — with the result that a phone
+///     counted only the prayers it had made itself, and "the fourth prayer on
+///     this set" was a different number on the tablet.
+Future<int> _apply(
+  Database db,
+  List<Change> changes,
+  Set<String> unknownKinds,
+) async {
   var applied = 0;
   await db.transaction((txn) async {
     for (final change in changes) {
       applied += switch (change.kind) {
         'ayah_understood' => await _applyUnderstood(txn, change.row),
         'kept_items' => await _applyKept(txn, change.row),
+        'sets' => await _applySet(txn, change.row),
+        'set_prayers' => await _applySetPrayer(txn, change.row),
         'user_prefs' => await _applyPrefs(txn, change.row),
-        _ => 0,
+        _ => _unknownKind(change.kind, unknownKinds),
       };
     }
   });
   return applied;
+}
+
+/// A kind this build has never heard of. It used to be `_ => 0`: the device
+/// stopped writing a whole table and said nothing, on either side of the wire.
+///
+/// The assert is what makes a renamed kind a failure while someone is still
+/// in a position to fix it. It is stripped from a release build on purpose —
+/// a reader whose phone is older than the server keeps syncing the kinds
+/// it does understand, and the name is carried out in [SyncReport.unknownKinds]
+/// rather than thrown at them mid-prayer.
+int _unknownKind(String kind, Set<String> seen) {
+  seen.add(kind);
+  assert(
+    false,
+    'the server streams changes of kind "$kind" and this build applies none '
+    'of them, so that table silently stops being written',
+  );
+  return 0;
 }
 
 Future<int> _applyUnderstood(Transaction txn, Map<String, dynamic> row) =>
@@ -231,6 +267,31 @@ Future<int> _applyKept(Transaction txn, Map<String, dynamic> row) async {
   }, conflictAlgorithm: ConflictAlgorithm.replace);
   return 1;
 }
+
+/// The set itself. `ordinal` is the server's own numbering and has no column
+/// here — the device names a set by the id derived from its range, and the
+/// number a reader's sets are counted in is the server's to keep.
+///
+/// A prayer can only arrive after the set it names, because the server writes
+/// both in one transaction and the stream is ordered by that, so the local
+/// foreign key is never reached before its row exists.
+Future<int> _applySet(Transaction txn, Map<String, dynamic> row) =>
+    txn.insert('sets', {
+      'id': row['id'],
+      'start_ayah_id': row['start_ayah_id'],
+      'end_ayah_id': row['end_ayah_id'],
+      'reading_order': row['reading_order'],
+      'created_at': _local(row['created_at'] as String),
+    }, conflictAlgorithm: ConflictAlgorithm.ignore).then((_) => 1);
+
+/// One prayer, which is what "the fourth prayer on this set" counts. There is
+/// no `prayer_name` column: the app has never asked which of the five it was.
+Future<int> _applySetPrayer(Transaction txn, Map<String, dynamic> row) =>
+    txn.insert('set_prayers', {
+      'id': row['id'],
+      'set_id': row['set_id'],
+      'prayed_at': _local(row['prayed_at'] as String),
+    }, conflictAlgorithm: ConflictAlgorithm.ignore).then((_) => 1);
 
 Future<int> _applyPrefs(Transaction txn, Map<String, dynamic> row) async {
   final remote = DateTime.parse(row['updated_at'] as String);
