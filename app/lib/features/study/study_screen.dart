@@ -11,6 +11,7 @@ import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_tag.dart';
+import 'word_row.dart';
 
 /// Screen 1a — the set the reader studies before praying it.
 class StudyScreen extends StatefulWidget {
@@ -63,6 +64,12 @@ class _StudyScreenState extends State<StudyScreen> {
 
   bool _loaded = false;
 
+  /// What the row draws, worked out once rather than at render time: whether
+  /// a word bears a root and whether its recitation is on the phone. Rebuilt
+  /// at the three moments any of it can change — the set arrives, a download
+  /// lands, an aya is marked — and at no other.
+  List<AyaFace> _faces = const [];
+
   /// The word whose transliteration stands in for audio it cannot play. One
   /// word at a time, and never a snackbar: 2:282 is 128 words, and tapping
   /// through them must not queue 128 of anything.
@@ -77,9 +84,14 @@ class _StudyScreenState extends State<StudyScreen> {
   /// nothing and the only thing left to do is walk on.
   bool _allUnderstood(StudySet set) => set.ayas.every((a) => a.understood);
 
+  void _bake() {
+    final set = _set;
+    _faces = set == null
+        ? const []
+        : facesOf(set, _audio?.speakable ?? const {});
+  }
+
   Prefs get _prefs => Wird.of(context).prefs;
-  bool get _showGloss => _prefs.showGloss;
-  bool get _showTranslit => _prefs.showTranslit;
   double get _arabicSize => _prefs.arabicSize;
 
   /// The set is read here rather than in initState because the reader's order
@@ -135,13 +147,14 @@ class _StudyScreenState extends State<StudyScreen> {
       _root = root;
       _audio = set == null ? null : recitation;
       _loaded = true;
+      _bake();
     });
     if (set == null) return;
     // The download runs behind the set rather than in front of it: the reader
     // studies while the recitation arrives, and an aeroplane leaves the screen
     // working with the play button honestly dark.
     await recitation.prefetch(keep);
-    if (mounted && generation == _generation) setState(() {});
+    if (mounted && generation == _generation) setState(_bake);
   }
 
   /// Marks what is open in the set and stays on it.
@@ -164,10 +177,11 @@ class _StudyScreenState extends State<StudyScreen> {
         for (final aya in set.ayas) aya.asUnderstood(),
       ]);
       _opId = newOpId();
+      _bake();
     });
   }
 
-  /// A tap speaks one word. An aya that was never downloaded shows the word's
+  /// Sounds one word. An aya that was never downloaded shows the word's
   /// transliteration under it and plays nothing — it must never spin, and it
   /// must not shout.
   Future<void> _speak(StudyWord word) async {
@@ -211,7 +225,7 @@ class _StudyScreenState extends State<StudyScreen> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          _ayas(n, set),
+                          _ayas(n),
                           Padding(
                             padding: EdgeInsets.symmetric(
                               horizontal: n.space('6'),
@@ -355,153 +369,46 @@ class _StudyScreenState extends State<StudyScreen> {
     ),
   );
 
-  Widget _ayas(Nocturne n, StudySet set) {
-    // Read once per set rather than per word per frame: this builder runs
-    // every 40 ms while the recitation plays, and the answer is a question
-    // about files on disk.
-    final speakable = _audio?.speakable ?? const <int>{};
-    return ValueListenableBuilder<int?>(
-      valueListenable: _audio?.currentWordId ?? _silent,
-      builder: (context, recited, _) => Padding(
-        padding: EdgeInsets.all(n.space('6')),
-        child: Column(
-          children: [
-            for (final (i, aya) in set.ayas.indexed) ...[
-              if (i > 0)
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: n.space('2')),
-                  child: const _DashedRule(),
-                ),
-              Wrap(
-                textDirection: TextDirection.rtl,
-                alignment: WrapAlignment.center,
-                // Tops, so the Arabic of a word carrying a two-line gloss
-                // stays in line with its neighbours and the gloss hangs below
-                // at whatever height it needs.
-                crossAxisAlignment: WrapCrossAlignment.start,
-                spacing: n.space('6'),
-                runSpacing: n.space('1'),
-                children: [
-                  for (final word in aya.words)
-                    _wordTile(n, word, recited, speakable),
-                  _ayaMark(n, aya.number, aya.understood),
-                ],
+  Widget _ayas(Nocturne n) => ValueListenableBuilder<int?>(
+    valueListenable: _audio?.currentWordId ?? _silent,
+    builder: (context, recited, _) => Padding(
+      padding: EdgeInsets.all(n.space('6')),
+      child: Column(
+        children: [
+          for (final (i, face) in _faces.indexed) ...[
+            if (i > 0)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: n.space('2')),
+                child: const _DashedRule(),
               ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// The underline says the word can be HEARD, which is what a tap now does.
-  /// An aya nobody has downloaded is left plain: the row has to be honest
-  /// that tapping those words will play nothing.
-  Widget _wordTile(
-    Nocturne n,
-    StudyWord word,
-    int? recited,
-    Set<int> speakable,
-  ) {
-    final sounding = word.id == recited;
-    final underline = sounding
-        ? n.accent
-        : speakable.contains(word.id)
-        ? n.color('accent-700')
-        : Colors.transparent;
-    return GestureDetector(
-      // Keyed by the corpus id so the tile keeps its element across a rebuild,
-      // rather than being matched by position against a different word.
-      key: ValueKey(word.id),
-      onTap: () => _speak(word),
-      onLongPress: word.root == null ? null : () => _openRoot(word),
-      child: Container(
-        padding: EdgeInsets.all(n.space('1')),
-        decoration: BoxDecoration(
-          color: sounding
-              ? n.accent.withValues(alpha: 0.16)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(n.radius('sm')),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // The line belongs to the Arabic rather than to the tile: on the
-            // tile it sits under the gloss, and a two-line gloss drops it out
-            // of the row.
-            Container(
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: underline, width: 2)),
-              ),
-              child: Text(
-                word.text,
-                textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: Nocturne.arabicFamily,
-                  fontSize: _arabicSize,
-                  height: 1.75,
-                  color: n.text,
-                ),
-              ),
-            ),
-            if ((_showTranslit || word.id == _unheard) && word.translit != null)
-              Text(
-                word.translit!,
-                textDirection: TextDirection.ltr,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  letterSpacing: 0.02 * 9.5,
-                  color: n.color('accent-400'),
-                ),
-              ),
-            if (_showGloss && word.gloss != null)
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 88),
-                child: Text(
-                  word.gloss!,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    height: 1.25,
-                    color: n.textAt(0.66),
+            Wrap(
+              textDirection: TextDirection.rtl,
+              alignment: WrapAlignment.center,
+              // Tops, so the Arabic of a word carrying a two-line gloss stays
+              // in line with its neighbours and the gloss hangs below at
+              // whatever height it needs.
+              crossAxisAlignment: WrapCrossAlignment.start,
+              spacing: n.space('6'),
+              runSpacing: n.space('1'),
+              children: [
+                for (final word in face.words)
+                  WordTile(
+                    // Keyed by the corpus id so the tile keeps its element
+                    // across a rebuild, rather than being matched by position
+                    // against a different word.
+                    key: ValueKey(word.word.id),
+                    face: word,
+                    voice: word.voice(sounding: recited, unheard: _unheard),
+                    open: word.word.id == _word?.id,
+                    prefs: _prefs,
+                    onOpen: _openRoot,
+                    onHear: _speak,
                   ),
-                ),
-              ),
+                AyaMark(aya: face.aya, arabicSize: _arabicSize),
+              ],
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  /// [understood] marks an aya the set was pulled across: it is recited with
-  /// the rest, and its mark is lit to say it is already counted.
-  ///
-  /// The row aligns tops, so the mark is let down onto the Arabic's baseline
-  /// by hand — a line box of 1.75 puts the baseline about 1.175 em below its
-  /// top, and the tile's own padding sits above that. Centred on the line box
-  /// instead it floats above the words, which is not where the design draws
-  /// it.
-  Widget _ayaMark(Nocturne n, int number, bool understood) => Container(
-    width: 26,
-    height: 26,
-    margin: EdgeInsets.only(top: n.space('1') + _arabicSize * 1.175 - 13),
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: understood ? n.accent.withValues(alpha: 0.16) : Colors.transparent,
-      border: Border.all(
-        color: n.color(understood ? 'accent-300' : 'accent-700'),
-      ),
-    ),
-    child: Text(
-      _arabicDigits(number),
-      textDirection: TextDirection.rtl,
-      style: TextStyle(
-        fontFamily: Nocturne.arabicFamily,
-        fontSize: 12,
-        color: n.color('accent-300'),
+        ],
       ),
     ),
   );
@@ -738,12 +645,6 @@ class _StudyScreenState extends State<StudyScreen> {
 
 String _capitalise(String word) =>
     word.isEmpty ? word : word[0].toUpperCase() + word.substring(1);
-
-String _arabicDigits(int number) => number
-    .toString()
-    .split('')
-    .map((d) => String.fromCharCode(0x0660 + int.parse(d)))
-    .join();
 
 String _progressCaption(List<StudyAya> ayas) {
   final done = [

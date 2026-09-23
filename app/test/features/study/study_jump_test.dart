@@ -80,7 +80,7 @@ void main() {
     await openStudy(tester);
     expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
 
-    await tester.tap(find.byKey(ValueKey('kin-${kin.ayahId}')));
+    await tester.tap(find.byKey(ValueKey('kin-${kin.text}-${kin.ayahId}')));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('$surah ${kin.ayahId % 1000}'), findsOneWidget);

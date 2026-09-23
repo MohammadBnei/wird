@@ -46,6 +46,23 @@ Color underlineOf(WidgetTester tester, int wordId) {
   return ((box.decoration! as BoxDecoration).border! as Border).bottom.color;
 }
 
+/// The frame around a word, which is how the row says the root panel below
+/// belongs to it.
+BoxDecoration frameOf(WidgetTester tester, int wordId) {
+  final box = tester.widget<Container>(
+    find.descendant(of: tile(wordId), matching: find.byType(Container)).first,
+  );
+  return box.decoration! as BoxDecoration;
+}
+
+/// Whether a word is drawn as the one the reader is looking at: an accent
+/// frame and its glow, not a step along a colour ramp.
+bool framed(WidgetTester tester, int wordId) {
+  final frame = frameOf(tester, wordId);
+  return (frame.border! as Border).top.color != Colors.transparent &&
+      (frame.boxShadow?.isNotEmpty ?? false);
+}
+
 void main() {
   late Database db;
   late AudioCache audio;
@@ -129,12 +146,12 @@ void main() {
     expect(painted.style!.fontFamily, Nocturne.arabicFamily);
   });
 
-  testWidgets('holding a word blanks the aya while the root panel catches up',
+  testWidgets('tapping a word blanks the aya while the root panel catches up',
       (tester) async {
     await openStudy(tester);
     expect(find.text('ق ر أ'), findsOneWidget);
 
-    await tester.longPress(tile(96002004));
+    await tester.tap(tile(96002004));
     await tester.pump();
     expect(
       tile(96002004),
@@ -147,11 +164,11 @@ void main() {
     expect(find.text('ق ر أ'), findsNothing);
   });
 
-  testWidgets('holding a word that carries no root throws away the root the '
+  testWidgets('tapping a word that carries no root throws away the root the '
       'reader was reading', (tester) async {
     await openStudy(tester);
 
-    await tester.longPress(tile(96001004));
+    await tester.tap(tile(96001004));
     await tester.pumpAndSettle();
 
     expect(find.text('ق ر أ'), findsOneWidget);
@@ -200,8 +217,8 @@ void main() {
     expect(after, inInclusiveRange(24, 44));
   });
 
-  testWidgets('tapping a word opens a root panel instead of speaking it',
-      (tester) async {
+  testWidgets('tapping a word sounds it instead of opening the root, which is '
+      'the intent the reader reaches for far more often', (tester) async {
     await openStudy(tester);
     final rows = await db.query('words', where: 'id = 96002004');
     final translit = rows.single['translit']! as String;
@@ -210,24 +227,65 @@ void main() {
     await tester.tap(tile(96002004));
     await tester.pumpAndSettle();
 
+    expect(find.text('ع ل ق'), findsOneWidget);
+    expect(
+      find.descendant(of: tile(96002004), matching: find.text(translit)),
+      findsNothing,
+      reason: 'a tap asked what the word means, not what it sounds like',
+    );
+
+    // The press is the one that asks for the sound, and this phone has never
+    // been online, so the transliteration stands in for it.
+    await tester.longPress(tile(96002004));
+    await tester.pumpAndSettle();
     expect(
       find.descendant(of: tile(96002004), matching: find.text(translit)),
       findsOneWidget,
-      reason: 'the tap asked for the word, and nothing is downloaded to play',
     );
-    expect(
-      find.text('ع ل ق'),
-      findsNothing,
-      reason: 'the root panel belongs to the long press now',
-    );
-
-    await tester.longPress(tile(96002004));
-    await tester.pumpAndSettle();
-    expect(find.text('ع ل ق'), findsOneWidget);
   });
 
-  testWidgets('a tap on an aya that was never downloaded spins, or shouts one '
-      'snackbar per word', (tester) async {
+  testWidgets('a word carrying no root is a dead tile that answers a tap with '
+      'nothing at all', (tester) async {
+    await openStudy(tester);
+    final rows = await db.query('words', where: 'id = 96001004');
+    final translit = rows.single['translit']! as String;
+
+    await tester.tap(tile(96001004));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: tile(96001004), matching: find.text(translit)),
+      findsOneWidget,
+      reason: 'with no root to open, the tap falls through to the word sound',
+    );
+  });
+
+  testWidgets('nothing on the row says which word the open root belongs to',
+      (tester) async {
+    await openStudy(tester);
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    final ids = [
+      for (final aya in set.ayas)
+        for (final word in aya.words) word.id,
+    ];
+    expect(
+      [for (final id in ids) if (framed(tester, id)) id],
+      [96001001],
+      reason: 'the panel opens on the first rooted word and says so',
+    );
+
+    await tester.tap(tile(96002004));
+    await tester.pumpAndSettle();
+
+    expect(
+      [for (final id in ids) if (framed(tester, id)) id],
+      [96002004],
+      reason: 'one word at a time wears the frame, and it is the one tapped',
+    );
+  });
+
+  testWidgets('working down a row of words spins, or shouts one snackbar per '
+      'word that cannot be heard', (tester) async {
     await openStudy(tester);
     final set = (await nextSet(db, ReadingOrder.nuzul))!;
     final shown = tester.getRect(find.byType(SingleChildScrollView));

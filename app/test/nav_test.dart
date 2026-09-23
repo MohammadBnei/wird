@@ -140,8 +140,8 @@ void main() {
     final detail = (await rootDetail(db, tapped.root!))!;
 
     await openTheSet(tester);
-    // The long press is what opens a root now; the tap speaks the word.
-    await tester.longPress(find.byKey(ValueKey(tapped.id)));
+    // The tap is what opens a root; the press is what sounds the word.
+    await tester.tap(find.byKey(ValueKey(tapped.id)));
     await tester.pumpAndSettle();
     expect(find.text(detail.display), findsOneWidget);
 

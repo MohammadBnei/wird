@@ -100,6 +100,9 @@ class Recitation {
   /// still running.
   List<int> _covers = const [];
 
+  /// Which word probe owns the transport.
+  int _probe = 0;
+
   static final _noWord = ValueNotifier<int?>(null);
   static final _silent = ValueNotifier<bool>(false);
 
@@ -137,12 +140,21 @@ class Recitation {
 
   /// Plays one word, and says so: the transport names the word rather than
   /// leaving the reader to guess whether a whole recitation just started.
+  ///
+  /// A word answers when its clip ENDS, so the reader's next word arrives
+  /// while this one is still in flight. The probe carries a number for the
+  /// same reason the player's own does: without it, the word that was
+  /// superseded clears the transport of the word that superseded it, and the
+  /// bar goes dark over a recitation that is still sounding.
   Future<bool> playWord(int wordId) async {
     final set = _set;
     if (set == null) return false;
+    final probe = ++_probe;
     sounding.value = (what: Sounded.word, label: _words[wordId] ?? '');
     final sounded = await set.playWord(wordId);
-    if (identical(_set, set) && sounding.value?.what == Sounded.word) {
+    if (identical(_set, set) &&
+        probe == _probe &&
+        sounding.value?.what == Sounded.word) {
       sounding.value = null;
     }
     return sounded;
