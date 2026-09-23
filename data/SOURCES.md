@@ -589,45 +589,6 @@ Corrections that cost a day each to find, kept here so they are not re-found.
   Wird's to state, and a duration derived from the last word's timing would be a
   number invented to fill a column nothing reads.
 
-## The root senses: Wird's own words, and what had to be true before they shipped
-
-`root_notes` holds one row per root, `word_id` NULL, carrying a plain English
-sense for that root. It is the only prose in `corpus.db` Wird wrote itself.
-Nothing in it is quoted from, attributed to, or derived from any lexicon or
-scholar, and nothing in it is a claim about a verse.
-
-```
-data/root_senses.tsv     what a person wrote: root, English, French
-data/root_senses.json    what survived the check, with the glosses that carried it
-```
-
-Senses were written root by root from the root's own attested words, then tested
-rather than trusted. `server/cmd/rootcheck` buckets a root's glossed words by
-morphological shape, strips out the English the wazn itself contributes, and
-asks whether a proposed sense predicts the remaining glosses in more than one
-shape. A sense is kept only if it clears a threshold placed at the midpoint of
-the gap between senses known to be right and senses deliberately written wrong,
-recomputed at every run, and only if it does not also fit more unrelated roots
-than a sense known to be right does.
-
-| Number | Value | What it means |
-| --- | --- | --- |
-| roots in the corpus | 1,642 | — |
-| roots one morphological shape can be checked in | 810 | the other 832 offer nothing to predict across and ship nothing |
-| senses written | 789 | 21 checkable roots had evidence too mixed to write one honest sense for |
-| senses shipped | 493 | — |
-| refused: agreed in fewer than two shapes | 229 | the sense held where the root was widest and nowhere else |
-| refused: fit more than 8 unrelated roots | 66 | English general enough to fit anything names nothing |
-| refused: below the threshold | 1 | — |
-| other roots each shipped sense also fits | 0.21% of all pairs | the same rate the senses known to be right reach |
-
-`server/cmd/etl` re-derives every one of those numbers from the corpus it is
-about to write and stops the build rather than ship a sense the glosses no
-longer bear out, a sense with no provenance, or a sense that names a sura or
-cites a verse. The French is a translation of the English that passed; the
-corpus carries no French gloss to check French against, so writing it
-independently would be a second guess with no evidence under it.
-
 ## Reconciliation, from `data/manifest.json`
 
 | Number | Value | What a wrong value would mean |
@@ -640,5 +601,4 @@ independently would be a second guess with no evidence under it.
 | segments ending before they start | 8 | the ETL clamps them |
 
 Built from these sources, `corpus.db` is 114 suras, 6,236 ayas, 77,429 words,
-1,642 roots, 493 root senses and 77,408 word segments, at 22.98 MB against a
-60 MB budget.
+1,642 roots and 77,408 word segments, at 22.95 MB against a 60 MB budget.

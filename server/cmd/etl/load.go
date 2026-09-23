@@ -73,10 +73,6 @@ type Corpus struct {
 	Audio    []Audio
 	Segments []Segment
 
-	// The senses Wird wrote for its roots, already checked against the corpus
-	// once and checked again by Check before any of them reaches corpus.db.
-	Senses *Senses
-
 	Clamped int // segments whose timings had to be pulled straight
 	Orphans int // ayas whose timings could not be reconciled with the text
 }
