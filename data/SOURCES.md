@@ -104,9 +104,11 @@ they are readings and not copies:
   is written in the 28-letter Buckwalter alphabet, which folds every hamza onto
   `A`; no Arabic root has a bare alef radical, and corpus.quran.com renders those
   radicals as أ. So `qrA` becomes `قرأ`, which is also what the fork had. The seat
-  is what the fold costs: لؤلؤ comes back as لألأ, and هات as هأت. Two roots of
-  1,642. `jidhr` keys its own roots the same way, but a join between the two
-  should fold rather than assume.
+  is what the fold costs: 135 of the 1,642 roots carry a hamza, and in two of them
+  the fold leaves Arabic that is simply wrong — لؤلؤ comes back as لألأ, and هات as
+  هأت. `jidhr` keys its own roots the same way, but a join between the two should
+  fold rather than assume, and the fold a join needs is now measured rather than
+  guessed at: see *Lane's Lexicon* below and `docs/lane-lexicon.md`.
 - **A verb with no form tag is Form I.** The file tags II to XII and never I.
   Taken as "no form", the label would go blank on 14,555 words. Participles of
   Form I verbs are left blank, because a participle is not itself a verb form —
@@ -380,6 +382,140 @@ is the documented second origin if it stops.
   scattered single suras; no complete per-aya recitation released by its
   rightsholder was found.
 
+## Lane's Lexicon: read on 2026-09-23, and the answer is no
+
+The working, every quotation's URL, and the script behind every number are in
+`docs/lane-lexicon.md`. What it settles:
+
+**Perseus publishes Lane under CC BY-SA 3.0 United States.** Its page for the
+text (`perseus.tufts.edu/hopper/text?doc=Perseus:text:2002.02.0015`, read live
+and in Wayback captures of 2024-02-26 and 2026-04-13) says, verbatim:
+
+> This work is licensed under a Creative Commons Attribution-ShareAlike 3.0
+> United States License.
+>
+> An XML version of this text is available for download, with the additional
+> restriction that you offer Perseus any modifications you make. Perseus
+> provides credit for all accepted changes, storing new additions in a
+> versioning system.
+
+The licence link resolves to `https://creativecommons.org/licenses/by-sa/3.0/us/`.
+Not 4.0, and the difference is the whole question.
+
+**CC BY-SA 3.0 has no path to AGPL-3.0.** §4(b) of the 3.0 US legal code,
+verbatim:
+
+> You may distribute, publicly display, publicly perform, or publicly digitally
+> perform a Derivative Work only under: (i) the terms of this License; (ii) a
+> later version of this License with the same License Elements as this License;
+> (iii) either the Creative Commons (Unported) license or a Creative Commons
+> jurisdiction license (either this or a later license version) that contains the
+> same License Elements as this License (e.g. Attribution-ShareAlike 3.0
+> (Unported)); (iv) a Creative Commons Compatible License.
+
+Route (iv) is the only one that could reach the GPL family, and Creative Commons's
+own compatibility page says, verbatim, **"Currently, no non-CC licenses have been
+designated as compatible with BY-SA 3.0."** The one-way route to GPLv3 exists
+only from 4.0: **"declared a 'BY-SA–Compatible License' for version 4.0 on 8
+October 2015"**. So `corpus.db` cannot carry Lane's sense text into an AGPL-3.0
+binary. `PerseusDL/lexica` *is* CC BY-SA 4.0 — its `license.md` is the full 4.0
+legal code — but that repository holds Greek and Latin only. Lane is in no
+PerseusDL repository at all.
+
+**A second bar, independent of the first: "you offer Perseus any modifications
+you make."** That term is in no Creative Commons licence; it is bolted on. AGPL-3.0
+§7 — `LICENSE` line 451 of this repository — says verbatim: *"You may not impose
+any further restrictions on the exercise of the rights granted or affirmed under
+this License."* A recipient of Wird's source who edited bundled Lane text would
+inherit an obligation to send it to Tufts. Even under a hypothetical 4.0 the Lane
+text would have to sit outside the AGPL-covered work as a separately licensed
+asset, not inside it.
+
+**The XML file says something narrower than the page does, and this is what
+`SOURCES.md` had already read.** Every one of the 36 files carries the same
+`<availability>` block, byte-identical:
+
+```xml
+<availability status="free">
+   <p>This text may be freely distributed, subject to the following
+      restrictions:</p>
+   <list>
+      <item>You credit Perseus, as follows, whenever you use the document:
+         <quote>Text provided by Perseus Digital Library, with funding from The
+         U.S. Department of Education and The Max Planck Society.</quote>
+      </item>
+      <item>You leave this availability statement intact.</item>
+      <item>You offer Perseus any modifications you make.</item>
+   </list>
+</availability>
+```
+
+Credit, keep the notice, offer modifications back — and **no ShareAlike, no
+NonCommercial, no Creative Commons licence named**. The earlier reading here was
+a correct reading of this block. The draft that claimed Perseus permits "closed
+or open redistribution with attribution" was reading a term that is in none of
+the three instruments.
+
+**Three instruments disagree, and that stays recorded as unresolved.** The file
+grants free distribution on three conditions; the per-text page says CC BY-SA 3.0
+US; the site-wide copyright page says, verbatim, *"Any commercial use or
+publication without authorization is strictly prohibited. Materials within the
+Perseus DL have varying copyright status: please contact the project for more
+information about a specific component or object."* Nobody has contacted them.
+Until somebody does, the conservative reading applies: **CC BY-SA 3.0 US plus the
+offer-back term, which is not bundleable.** Lane's Lexicon itself (1863–1893) is
+public domain; Perseus's claim runs only to the digitisation, and a faithful
+transcription of a public-domain text carries no new US copyright. That is a real
+argument and it is not one to bet a binary on.
+
+**Use the `originals` branch if it is ever used at all.**
+`github.com/laneslexicon/lexicon_xml` has two branches and no `LICENSE` file.
+Its README says, verbatim: *"This repository contains the updated XML files. The
+original Perseus XML files are in the 'originals' branch. The master branch has
+all the fixes."* So `originals` is Perseus's, under whichever instrument governs,
+and `master`'s amendments carry no stated grant from anybody. Choosing
+`originals` costs almost nothing: 34 of 36 files differ, but the whole of
+`master`'s work is 25 more root divisions and 37,262 more characters out of
+26.4 million — 0.14%.
+
+### The join was measured anyway, and the join is not the problem
+
+`server/cmd/etl/load.go:282-289` folds every hamza onto Buckwalter `A`, so our
+root keys are lossy before any join starts. Four folds are needed, not one:
+hamza seats onto أ and ى onto ي; a geminate `r1r2r2` onto Lane's biliteral
+(**153 roots, 4,624 occurrences** — ربب, أيي, كلل among them, which join to
+nothing without it); a reduplicated quadriliteral onto its biliteral (13 roots);
+a final-weak triliteral onto its biliteral (13 roots).
+
+A stub is calibrated, not picked: of 5,062 root divisions, 31 consist of nothing
+but a cross-reference and the longest of those is 146 characters, so **a stub is
+under 200 characters of article prose**.
+
+| | |
+| --- | --- |
+| our roots | 1,642, carrying 49,967 occurrences |
+| reach a Lane division after the fold | 1,611 (98.1%) |
+| **have a non-stub article after the fold** | **1,582 (96.3%), covering 49,563 occurrences (99.2%)** |
+| article of 2,000 characters or more | 1,379 (84.0%), covering 45,435 occurrences (90.9%) |
+| no Lane text at any key | 13 roots, 29 occurrences |
+
+**Coverage is not the obstacle; depth is.** Lane reached ق before he died in 1876
+and volumes six to eight are Stanley Lane-Poole's edit of unfinished notes. The
+seam is visible in the data: median article 9,681 characters for the 1,147 roots
+before ق, 5,547 under ق, **2,987 for the 415 after it**. 495 of our roots (30.1%)
+sit at ق or past it, and 33 of the hundred we meet most often are there, carrying
+34.4% of that hundred's occurrences — قول among them (1,722 occurrences, 3,221
+characters of article) and كون (1,390 occurrences, 1,755 characters), against
+صبر's 25,723.
+
+**One trap for whoever implements this: `div2/@n` is not a root index.** دبر has
+no division of its own — its article sits inside the one keyed `dbx` (دبخ), which
+measures 44,503 characters because it is two roots merged. نوم is filed under
+`nAm`, the vocalised past tense. 81 keys are ranges written `X &amp;c.` standing
+for several roots at once. Of the 31 roots reaching no division, 18 have their
+headword inside another division — including our mangled هأت, whose article is
+Lane's هيت. Resolve headwords, not division keys.
+
 ## What is still open
 
 1. Who wrote the word-by-word English gloss and transliteration served by
@@ -396,15 +532,26 @@ is the documented second origin if it stops.
    fetches from everyayah.com, which publishes no terms at all. **The MP3s are
    never mirrored either way** — that is the one act named and forbidden in
    writing.
-4. Tafsir, lexicon and iʿrāb prose have no source chosen — not a licence
-   problem, an unmade decision. The app renders the design's own mockup text,
-   flagged as placeholder in the payload and marked where a reader sees it. The
-   clean candidates are centuries old and public domain: Ibn Fāris's Maqāyīs,
-   Lane's Lexicon, Lisān al-ʿArab. Their DIGITISATIONS differ, and that is where
-   the care goes — Lane via Perseus TEI is licence-clean (attribution, keep the
-   notice, offer modifications back), while OpenITI's editions of Maqāyīs and
-   Lisān are CC BY-NC-SA, whose NonCommercial term rules them out of anything
-   sold. Deciding this is what replaces the placeholders.
+4. Tafsir, lexicon and iʿrāb prose still have no source chosen. The works are
+   centuries old and public domain — Ibn Fāris's Maqāyīs, Lane's Lexicon, Lisān
+   al-ʿArab — and their DIGITISATIONS are where the care goes. Two of the three
+   are now answered and both answers are no: **Lane via Perseus TEI is CC BY-SA
+   3.0 US plus an offer-back term and cannot be bundled in an AGPL-3.0 binary**
+   (see *Lane's Lexicon* above; the earlier note here read the XML's availability
+   block correctly but did not know Perseus's own page adds ShareAlike), and
+   OpenITI's Maqāyīs and Lisān are CC BY-NC-SA, whose NonCommercial term rules
+   them out of anything sold and whose share-alike term is a further restriction
+   AGPL-3.0 §7 forbids on a covered work either way. What remains open is which
+   route replaces them. Ranked by how cleanly the licence lands: prose written
+   here with Lane and Ibn Fāris as consulted references rather than copied text,
+   which is what the existing `root_notes` / `RootReading.coreSense` path was
+   built for; a non-Perseus digitisation of Lane, whose underlying book is public
+   domain and whose OCR is the expensive part; Wiktionary's Arabic root entries,
+   **CC BY-SA 4.0** and therefore the one candidate with a real one-way route
+   into the GPL family, coverage unmeasured; Penrice's 1873 Qur'anic glossary,
+   public domain, digitisations unexamined. And somebody should email Perseus:
+   three of their own instruments say three different things about this text, and
+   one email settles all three.
 
 ## What the data actually is
 

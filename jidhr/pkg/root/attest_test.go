@@ -117,7 +117,7 @@ func TestGrowingTheCorpusDoesNotMakeAKnownRootTheAnswerForAWordItNeverAttests(t 
 }
 
 func TestAWordTheQuranNeverUsesStaysAMissHoweverMuchTheCorpusGrows(t *testing.T) {
-	// The corpus went from 234 roots to 1,651 and from a handful of forms to
+	// The corpus went from 234 roots to 1,642 and from a handful of forms to
 	// nineteen thousand. Growth adds words the corpus attests; it never turns a
 	// foreign name into an Arabic word, and a reader must not be handed a root for
 	// تلفزيون because the table beneath it got bigger.
