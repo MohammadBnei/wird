@@ -105,3 +105,42 @@ able to tell by looking that a word can be heard. Underlining currently means
 **Constraint:** a word only speaks if its aya is cached. Uncached, the app
 shows the transliteration instead and plays nothing, deliberately — it must
 never spin. Whatever affordance is drawn has to be honest about that state.
+
+### 5. The reader cannot shape the prayer before entering it
+
+**Where:** set generation (`sets.dart`) and 1b (`prayer_cursor.dart:24`).
+
+**What the reader wants:** to decide in advance how many ayas the prayer will
+carry, knowing the portion is recited twice.
+
+**What the app does:** picks the portion itself. A set is a run of consecutive
+unread ayas sized by a word-count budget — a tunable constant with no control
+on any screen. 1b then counts readings open-endedly: `reading => _position ~/
+words + 1` yields a 3rd and a 4th reading with nothing saying a prayer has two.
+
+**The real gap, larger than the request:** the app models READING, not PRAYING.
+It knows sets, ayas and words; it does not know rakʿāt, or that the Qur'an
+portion after al-Fātiḥa falls in the first two rakʿāt whatever the prayer, or
+which of the five prayers this is. "Read twice" is currently an observation the
+cursor makes, not a structure the app holds.
+
+**The design assumed more than the build has.** 1a's header reads "Maghrib ·
+18:42 · set 412" — a named prayer at its time — and 1b's strip reads "2nd
+reading". So the design took a prayer-aware app for granted: which prayer, when
+it falls, how many readings it wants. None of that exists. There are no prayer
+times, no prayer names, and no rakʿah model anywhere in the code.
+
+**Shape of the gap:**
+- A prayer as a first-class thing: which of the five, how many rakʿāt, how many
+  readings of the portion.
+- The reader choosing the portion — by aya count, or by "as much as I can hold"
+  — instead of a constant choosing it for them.
+- 1b bounded by that choice: it knows when the prayer's readings are done
+  rather than counting upward forever.
+- Prayer times, if the header is to mean what the design says. That is a real
+  feature with its own dependencies (location, calculation method, madhhab for
+  ʿAsr) and should be decided separately rather than smuggled in.
+
+**Note:** the word-count budget was not arbitrary — it exists so that 2:282,
+128 words long, cannot stall the walk. Whatever the reader chooses, that guard
+still has to hold.
