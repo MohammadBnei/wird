@@ -27,6 +27,7 @@ func main() {
   scan                  score every known-right sense against every root
   survey                how much evidence each root offers, before any sense exists
   cost <tsv>            how many senses in a root\tsense TSV each part of the bar keeps
+  order <tsv>           rewrite the TSV so every sense leads with its heaviest clause
   evidence [root...]    the glosses a sense must be written from, heaviest first
   build <tsv> <json>    check every proposed sense and write out the ones that hold
   reliability           which wazn-to-English rules the corpus supports
@@ -93,6 +94,16 @@ func main() {
 			os.Exit(1)
 		}
 		if err := Cost(os.Stdout, roots, args[1], bar); err != nil {
+			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			os.Exit(1)
+		}
+
+	case "order":
+		if len(args) < 2 {
+			flag.Usage()
+			os.Exit(2)
+		}
+		if err := Order(os.Stdout, roots, args[1]); err != nil {
 			fmt.Fprintln(os.Stderr, "rootcheck:", err)
 			os.Exit(1)
 		}

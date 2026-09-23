@@ -48,9 +48,12 @@ func Cost(w io.Writer, roots map[string]*rootsense.Root, tsv string, bar rootsen
 		return err
 	}
 
+	// Only senses that clear every other term can collide with each other: a
+	// proposal the corpus does not bear out ships nothing whatever its words
+	// are, so counting it here would report a cost the reader never pays.
 	twice := map[string][]string{}
 	for _, c := range cands {
-		if k := strings.Join(rootsense.Content(c.sense), " "); k != "" {
+		if k := strings.Join(rootsense.Content(c.sense), " "); k != "" && c.res.Verified(bar) {
 			twice[k] = append(twice[k], c.root)
 		}
 	}

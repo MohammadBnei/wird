@@ -196,10 +196,21 @@ func Build(w io.Writer, roots map[string]*rootsense.Root, tsv, out string, bar r
 	// wrong, and no term can see it: every term asks about one root at a time.
 	// It is a refusal rather than a score, and it refuses both, because nothing
 	// here says which of the two the prose belongs to.
+	//
+	// Only senses that clear every other term can collide. A proposal the
+	// corpus does not bear out ships nothing whatever its words are, and
+	// letting it take a sense that does hold down with it refuses a root over
+	// prose no reader will ever be shown — which is how هلك, a root of 68
+	// occurrences, was refused by وبق, a root of two that fails the score.
+	// The ETL gate reads the shipped bundle and so has always been read this
+	// way; this is the builder saying the same thing.
 	twice := map[string][]string{}
 	for _, c := range cands {
 		k := strings.Join(rootsense.Content(c.En), " ")
-		if k != "" {
+		if k == "" || roots[c.Root] == nil {
+			continue
+		}
+		if rootsense.Check(roots[c.Root], c.En).Verified(bar) {
 			twice[k] = append(twice[k], c.Root)
 		}
 	}
