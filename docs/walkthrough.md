@@ -144,3 +144,46 @@ times, no prayer names, and no rakʿah model anywhere in the code.
 **Note:** the word-count budget was not arbitrary — it exists so that 2:282,
 128 words long, cannot stall the walk. Whatever the reader chooses, that guard
 still has to hold.
+
+### 6. A two-line gloss breaks the row, because the underline belongs to the wrong thing
+
+**Where:** 1a, the word row. `study_screen.dart:455-476`.
+
+**What:** when a gloss wraps to two lines, that word falls out of alignment
+with its neighbours.
+
+**Cause:** the underline is a bottom border on the WHOLE word tile, and the
+tile is as tall as its gloss. `Wrap` aligns tops, so the Arabic is correct and
+the underline of a two-line word sits lower than the rest. The row of
+underlines stops reading as a line.
+
+**The design has the same tension and dodged it the other way.** Its word box
+is `align-items:flex-end`, which levels the bottoms — underlines align, and the
+ARABIC falls out of line instead. The mockup hides this by hand-breaking its
+glosses ("By the<br>passing age", "righteous<br>deeds") so every word is the
+same height. Real gloss text is not that tidy.
+
+**Fix:** attach the underline to the Arabic rather than to the tile. Then the
+Arabic aligns, the underlines align, and the glosses hang below at whatever
+height they need. Neither of the two alignments has to lose.
+
+### 7. The bottom actions are too heavy for what they do
+
+**Where:** 1a, the bottom of the root panel. `study_screen.dart:386-392`.
+
+**What:** two full-width buttons in a permanent bottom bar, "Open
+constellation" and "Mark set understood", carrying equal visual weight.
+
+**Why:** taken from the design, which gives them `flex:1` and `flex:1.2` side
+by side.
+
+**What is wrong with it:** the two are not peers. "Mark set understood" is the
+one action that advances the reader through the Qur'an. "Open constellation"
+is an occasional detour into a tablet layout. Giving them near-equal weight
+tells the reader they are equally important, and the bar costs permanent
+vertical space that the aya — the thing the screen is for — does not get.
+
+**Shape of the fix:** one primary action, and demote the detour to something
+lighter within the root panel it belongs to. Worth taking together with finding
+2, since "Open constellation" and "Read the aya" are both navigation out of the
+root panel and should not each get their own button.
