@@ -48,6 +48,28 @@ void main() {
     expect(found, hasLength(1));
   });
 
+  test('an aya whose Uthmani spelling hides a long vowel behind a dagger alef '
+      'cannot be found in the spelling a reader types', () async {
+    // 1:2, which the corpus holds as ٱلْعَٰلَمِينَ: the long a is a superscript
+    // alef, U+0670, and nobody searching types it. Dropping that mark leaves
+    // العلمين, which the ordinary spelling does not match.
+    await keep(db, kind: KeptKind.aya, ayahId: 1002);
+
+    final found = await keptItems(db, kind: KeptKind.aya, search: 'العالمين');
+    expect(found, hasLength(1));
+  });
+
+  test('writing the dagger alef out as a full alef loses the words whose '
+      'ordinary spelling does not carry one either', () async {
+    // The other half of the same mark, and why one folding cannot serve both:
+    // ٱلرَّحْمَٰنِ is spelled الرحمن, with no alef, in the script a reader
+    // types. Expanding U+0670 would make it الرحمان and lose the aya.
+    await keep(db, kind: KeptKind.aya, ayahId: 1003);
+
+    final found = await keptItems(db, kind: KeptKind.aya, search: 'الرحمن');
+    expect(found, hasLength(1));
+  });
+
   test('a note the reader can only remember by their own words cannot be '
       'found', () async {
     await keep(

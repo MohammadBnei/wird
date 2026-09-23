@@ -175,21 +175,34 @@ Future<List<KeptItem>> keptItems(
   ];
 }
 
-String _haystack(KeptItem item) => foldArabic(
-  [
+/// Both readings of the stored text, so a needle matching either is a hit.
+/// The dagger alef is why there have to be two; see [foldArabic].
+String _haystack(KeptItem item) {
+  final text = [
     item.body,
     item.arabic ?? '',
     item.rootLetters ?? '',
     item.tags.join(' '),
     if (item.ayahId != null) '${item.surahId}:${item.ayahNumber}',
-  ].join(' '),
-);
+  ].join(' ');
+  return '${foldArabic(text)} ${foldArabic(text, daggerAlefIsAlef: true)}';
+}
 
-final _marks = RegExp('[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]');
+final _marks = RegExp('[\u0610-\u061a\u064b-\u065f\u06d6-\u06ed\u0640]');
 
 /// Folds a string to what a reader types: the corpus writes the Qur'an fully
 /// vowelled, and nobody searching for a root types the marks inside it.
-String foldArabic(String text) => text
+///
+/// The dagger alef — U+0670, a superscript alef standing for a long ā the
+/// Uthmani script does not write out — is the one mark with no single right
+/// answer, because modern spelling sometimes writes that alef and sometimes
+/// does not. Dropping it turns ٱلْعَـٰلَمِينَ into العلمين and a reader
+/// searching العالمين finds nothing; writing it out turns ٱلرَّحْمَٰنِ into
+/// الرحمان and loses الرحمن, which is how the word is actually spelled. So
+/// the stored text is folded both ways and the needle is matched against
+/// each. A reader types one of the two and never learns there was a choice.
+String foldArabic(String text, {bool daggerAlefIsAlef = false}) => text
+    .replaceAll('\u0670', daggerAlefIsAlef ? '\u0627' : '')
     .replaceAll(_marks, '')
     .replaceAll(RegExp('[\u0622\u0623\u0625\u0671]'), '\u0627')
     .replaceAll('\u0649', '\u064a')
