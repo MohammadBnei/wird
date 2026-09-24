@@ -257,7 +257,8 @@ Future<StudySet?> nextSet(
   return _setFrom(db, order, taken);
 }
 
-/// The aya at [ayahId], inside the sūra it belongs to.
+/// The aya at [ayahId], inside the sūra it belongs to, with [ayas] of them
+/// making the set.
 ///
 /// A reference the reader followed — a kin, a row in the index — names one
 /// aya, and that aya alone is the set: it is what gets marked, prayed and
@@ -265,10 +266,20 @@ Future<StudySet?> nextSet(
 /// hole a visit leaves rather than being moved by it. The rest of the sūra is
 /// [StudySet.reading] and is there to be read.
 ///
-/// Only the named aya arrives with its words. Al-Baqarah is 286 ayas and 6116
+/// A step of the footer is not a reference. It asks for a portion the width
+/// the reader reads in, at the place it names, which is what [ayas] widens
+/// the set to. It stops at the sūra's last aya: a set that a reference did
+/// not name does not run on past the end of what is being read.
+///
+/// Only the set arrives with its words. Al-Baqarah is 286 ayas and 6116
 /// words, and a screen shows twenty of them; the rest are read a chunk at a
 /// time by [wordsFor] as the reader reaches them.
-Future<StudySet?> ayaSet(Database db, ReadingOrder order, int ayahId) async {
+Future<StudySet?> ayaSet(
+  Database db,
+  ReadingOrder order,
+  int ayahId, {
+  int ayas = 1,
+}) async {
   final rows = await db.rawQuery(
     '''
     SELECT a.id, a.surah_id, a.number,
@@ -284,13 +295,30 @@ Future<StudySet?> ayaSet(Database db, ReadingOrder order, int ayahId) async {
   );
   final at = rows.indexWhere((r) => r['id'] == ayahId);
   if (at < 0) return null;
-  final words = await wordsFor(db, [ayahId]);
+  final acted = rows.sublist(at, min(at + max(1, ayas), rows.length));
+  final words = await wordsFor(db, [for (final r in acted) r['id']! as int]);
   return StudySet(
     order: order,
-    _ayasOf([rows[at]], words),
+    _ayasOf(acted, words),
     reading: _ayasOf(rows, words),
   );
 }
+
+/// How many ayas the reader takes at once.
+///
+/// It is the width of the set the walk has ready, which is the number the
+/// settings stepper prints under "how much you take at once" and the width
+/// the reader pulled it to. The footer steps by it, so the grain is one thing
+/// wherever the reader stands rather than something they must learn twice.
+///
+/// Measuring the width at the aya being visited instead would collapse it to
+/// one at the foot of every sūra, and a reader who chose five would find the
+/// footer stepping by one without ever having said so.
+///
+/// [setMaxAyas] when nothing is left unread: there is no next set to measure,
+/// and a reader still moving through the text needs the arrows to work.
+Future<int> readingWidth(Database db, ReadingOrder order) async =>
+    (await nextSet(db, order))?.ayas.length ?? setMaxAyas;
 
 /// How many ayas the sūra has.
 ///

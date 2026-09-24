@@ -19,6 +19,12 @@ import '../../wird.dart';
 /// reader who can read a whole sūra needs a way around it that is not
 /// scrolling, and a way out of it that is not the drawer — and the hand that
 /// does both is the hand that stops a recitation.
+///
+/// What the arrows move is the set — the ayas that go to the prayer — at the
+/// width the reader takes at once. The width is the walk's, wherever they
+/// stand, so it is one grain rather than one per way of arriving, and each
+/// arrow prints the ayas it will hand over rather than leaving that to be
+/// remembered.
 void main() {
   late Database db;
   late AudioCache audio;
@@ -62,8 +68,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// What a step prints on its face: the aya it lands on, and its sūra too
-  /// when the step leaves the one being read.
+  /// What a step prints on its face: the ayas it hands over, and their sūra
+  /// too when the step leaves the one being read.
   String? stepSays(WidgetTester tester, String which) {
     final label = find.descendant(
       of: find.byKey(Key(which)),
@@ -81,24 +87,75 @@ void main() {
     await tester.pump(const Duration(milliseconds: 60));
   }
 
-  testWidgets('the aya after the set can only be reached by marking the set '
-      'understood first', (tester) async {
+  testWidgets('the footer steps one aya while the screen is about a set, so a '
+      'reader who takes five at once is moved by four less than that', (
+    tester,
+  ) async {
     await openStudy(tester);
     expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
 
-    await step(tester, 'next aya');
+    expect(stepSays(tester, 'next set'), '6–10');
+    await step(tester, 'next set');
 
-    expect(find.textContaining("Al-'Alaq 6"), findsOneWidget);
+    expect(find.textContaining("Al-'Alaq 6–10"), findsOneWidget);
     expect(await db.query('ayah_understood'), isEmpty);
   });
 
-  testWidgets('the aya before the one the reader is visiting is out of reach, '
-      'so a sūra can only be read forwards', (tester) async {
+  testWidgets('the set the footer offers is reached by pressing the arrow, '
+      'not by marking the one on screen understood first', (tester) async {
+    await openStudy(tester);
+
+    await step(tester, 'next set');
+
+    expect(await db.query('ayah_understood'), isEmpty);
+  });
+
+  testWidgets('a sūra read from the index is stepped through one aya at a '
+      'time, forgetting how much the reader takes at once', (tester) async {
     await openStudy(tester, target: 2255);
 
-    await step(tester, 'previous aya');
+    expect(stepSays(tester, 'next set'), '256–260');
+    await step(tester, 'next set');
 
-    expect(find.textContaining('Al-Baqarah 254'), findsOneWidget);
+    expect(find.textContaining('Al-Baqarah 256–260'), findsOneWidget);
+  });
+
+  testWidgets('the set above the one being read is out of reach, so a sūra '
+      'can only be read forwards', (tester) async {
+    await openStudy(tester, target: 2255);
+
+    expect(stepSays(tester, 'previous set'), '250–254');
+    await step(tester, 'previous set');
+
+    expect(find.textContaining('Al-Baqarah 250–254'), findsOneWidget);
+  });
+
+  testWidgets('a step up near the start of a sūra reaches back past its first '
+      'aya, into a sūra the reader did not ask for', (tester) async {
+    await openStudy(tester, target: 2003);
+
+    expect(stepSays(tester, 'previous set'), '1–2');
+  });
+
+  testWidgets('a step down promises more ayas than the sūra it lands in has, '
+      'so the reader is offered a set that runs off the end of the text', (
+    tester,
+  ) async {
+    await openStudy(tester, target: 107007);
+
+    expect(stepSays(tester, 'next set'), '108:1–3');
+    await step(tester, 'next set');
+
+    expect(find.textContaining('Al-Kawthar 1–3'), findsOneWidget);
+  });
+
+  testWidgets('a step into a short sūra shrinks the reader’s grain to what '
+      'fitted there, so every step after it is narrower', (tester) async {
+    await openStudy(tester, target: 107007);
+
+    await step(tester, 'next set');
+
+    expect(stepSays(tester, 'next set'), '109:1–5');
   });
 
   testWidgets('a sūra opens at its first aya, where the step up is dark, so '
@@ -107,48 +164,49 @@ void main() {
   ) async {
     await openStudy(tester, target: 2001);
 
-    await step(tester, 'previous aya');
+    await step(tester, 'previous set');
 
-    expect(find.textContaining('Al-Fatihah 7'), findsOneWidget);
+    expect(find.textContaining('Al-Fatihah 3–7'), findsOneWidget);
   });
 
-  testWidgets('the reading stops dead at the foot of a sūra, so 96:19 offers '
-      'no way on into the sūra after it', (tester) async {
-    await openStudy(tester, target: 96019);
-
-    await step(tester, 'next aya');
-
-    expect(find.textContaining('Al-Qadr 1'), findsOneWidget);
-  });
-
-  testWidgets('a step out of the sūra prints only the aya number, so 2:1 '
-      'offers "7" and lands the reader somewhere else entirely', (
+  testWidgets('a step out of the sūra prints only the aya numbers, so 2:1 '
+      'offers "3–7" and lands the reader somewhere else entirely', (
     tester,
   ) async {
     await openStudy(tester, target: 2001);
 
-    expect(stepSays(tester, 'previous aya'), '1:7');
-    expect(stepSays(tester, 'next aya'), '2');
+    expect(stepSays(tester, 'previous set'), '1:3–7');
+    expect(stepSays(tester, 'next set'), '2–6');
   });
 
-  testWidgets('the first aya of the Qur’an offers a step above it, onto an '
-      'aya the corpus cannot serve', (tester) async {
+  testWidgets('the first aya of the Qur’an offers a step above it, onto ayas '
+      'the corpus cannot serve', (tester) async {
     await openStudy(tester, target: 1001);
 
-    expect(stepSays(tester, 'previous aya'), isNull);
-    await step(tester, 'previous aya');
+    expect(stepSays(tester, 'previous set'), isNull);
+    await step(tester, 'previous set');
 
     expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
   });
 
-  testWidgets('the last aya of the Qur’an offers a step below it, onto an '
-      'aya the corpus cannot serve', (tester) async {
+  testWidgets('the last aya of the Qur’an offers a step below it, onto ayas '
+      'the corpus cannot serve', (tester) async {
     await openStudy(tester, target: 114006);
 
-    expect(stepSays(tester, 'next aya'), isNull);
-    await step(tester, 'next aya');
+    expect(stepSays(tester, 'next set'), isNull);
+    await step(tester, 'next set');
 
     expect(find.textContaining('An-Nas 6'), findsOneWidget);
+  });
+
+  testWidgets('the middle of the footer names what the index answers with '
+      'rather than the move it makes, so the reader asks what it is', (
+    tester,
+  ) async {
+    await openStudy(tester);
+
+    expect(find.text('Go to…'), findsOneWidget);
+    expect(find.textContaining('Sūra or aya'), findsNothing);
   });
 
   testWidgets('the footer cannot reach the sūra index, so changing sūra means '
@@ -178,6 +236,18 @@ void main() {
     expect(find.byType(IndexScreen), findsNothing);
     expect(find.byType(StudyScreen), findsOneWidget);
     expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
+  });
+
+  testWidgets('a sūra chosen from the index opens on a set of five, marking '
+      'and praying four ayas the reader only asked to read', (tester) async {
+    await openStudy(tester);
+
+    await tester.tap(find.byKey(const Key('open the index')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('sura-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Al-Fatihah 1–'), findsNothing);
   });
 
   testWidgets('the transport is a screen away from the controls the reader is '

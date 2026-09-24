@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
@@ -66,10 +67,17 @@ class _StudyScreenState extends State<StudyScreen> {
 
   bool _loaded = false;
 
-  /// The ayas either side of the set in the written order, or null at the two
-  /// ends of the Qur'an, which are the only places a step has nowhere to go.
-  int? _before;
-  int? _after;
+  /// The sets either side of this one in the written order, or null at the
+  /// two ends of the Qur'an, which are the only places a step has nowhere to
+  /// go. A span rather than an aya, because the footer moves by the set.
+  AyaSpan? _before;
+  AyaSpan? _after;
+
+  /// How many ayas the reader takes at once, kept so a step hands over that
+  /// many. It is not read back off the span the arrow printed: a span stops
+  /// at the sūra's edge, so a step into Al-Kawthar's three ayas would
+  /// otherwise shrink every step after it to three.
+  int _width = 1;
 
   /// Which words the phone can sound, worked out once rather than at render
   /// time — it used to be an `existsSync` per word per frame. Rebuilt at the
@@ -118,24 +126,47 @@ class _StudyScreenState extends State<StudyScreen> {
     if (!_loaded) _load(target: widget.target);
   }
 
-  /// Reads what the screen shows: the walk's next set, or the one aya at
+  /// Reads what the screen shows: the walk's next set, or the portion at
   /// [target]. Everything after the set itself — the reciter, the root panel's
   /// first root, the recitation — is the same either way. What is downloaded
   /// is not, which is what `onTheWalk` says.
-  Future<void> _load({int? target}) async {
+  ///
+  /// [ayas] is how wide that portion is, and only a step of the footer passes
+  /// it. A reference — a kin, a row in the index — leaves it null and gets the
+  /// one aya it named, which is ADR 0003 and has not moved.
+  Future<void> _load({int? target, int? ayas}) async {
     final generation = ++_generation;
     final recitation = Wird.of(context).recitation;
     final order = _prefs.order;
     final set = target == null
         ? await nextSet(widget.db, order)
-        : await ayaSet(widget.db, order, target);
+        : await ayaSet(widget.db, order, target, ayas: ayas ?? 1);
     final reciter = await reciterLabel(widget.db);
+    // The width the reader reads in. On the walk the set already is it, the
+    // width they pulled in settings and all. A step keeps the width it was
+    // taken at rather than the width it got — a step into Al-Kawthar takes
+    // the three ayas there and must not shrink the reader's grain to three.
+    // A visit's one aya is a reference and not a width, so it asks.
+    final width = set == null
+        ? 1
+        : ayas ??
+              (target == null
+                  ? set.ayas.length
+                  : await readingWidth(widget.db, order));
     final before = set == null
         ? null
-        : await ayaBeside(widget.db, set.ayas.first.id, after: false);
+        : await _span(
+            await ayaBeside(widget.db, set.ayas.first.id, after: false),
+            width,
+            after: false,
+          );
     final after = set == null
         ? null
-        : await ayaBeside(widget.db, set.ayas.last.id, after: true);
+        : await _span(
+            await ayaBeside(widget.db, set.ayas.last.id, after: true),
+            width,
+            after: true,
+          );
     final rooted =
         set?.ayas
             .expand((a) => a.words)
@@ -165,6 +196,7 @@ class _StudyScreenState extends State<StudyScreen> {
       _target = target;
       _before = before;
       _after = after;
+      _width = width;
       _set = set;
       _reciter = reciter;
       _word = first;
@@ -184,6 +216,22 @@ class _StudyScreenState extends State<StudyScreen> {
     // working with the play button honestly dark.
     await recitation.prefetch(keep);
     if (mounted && generation == _generation) setState(_bake);
+  }
+
+  /// The set on one side of the reading, grown from the aya next to its edge.
+  ///
+  /// It is [width] ayas wide and stops at the sūra's edge: a step into
+  /// Al-Kawthar takes the three ayas that are there. That the edge aya itself
+  /// may belong to the next sūra is deliberate — see [ayaBeside].
+  Future<AyaSpan?> _span(int? edge, int width, {required bool after}) async {
+    if (edge == null) return null;
+    final surahId = edge ~/ 1000;
+    final number = edge % 1000;
+    final first = after ? number : max(1, number - width + 1);
+    final last = after
+        ? min(number + width - 1, await ayahCount(widget.db, surahId))
+        : number;
+    return (first: surahId * 1000 + first, last: surahId * 1000 + last);
   }
 
   /// Marks what is open in the set and stays on it.
@@ -308,7 +356,7 @@ class _StudyScreenState extends State<StudyScreen> {
           surahId: set.ayas.first.surahId,
           previous: _before,
           next: _after,
-          onStep: (ayahId) => _load(target: ayahId),
+          onStep: (to) => _load(target: to.first, ayas: _width),
           onIndex: () => _visit(Routes.index, const AStepFrom()),
         ),
       ],
