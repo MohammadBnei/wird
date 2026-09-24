@@ -29,7 +29,7 @@ var _ func(*store.Store, context.Context) (store.Health, error) = (*store.Store)
 // is not a number, and they are read by a method of their own, from a table
 // with no reader in it and no id that reaches one — that is what
 // TestAReportCannotCarryAReadersNotesProgressOrCorpus and
-// TestNoReportCanBeJoinedToTheReaderWhoSentIt hold.
+// TestTheFourClosedChannelsFromAReportToItsAuthorStayClosed hold.
 //
 // Those four are read off the text, and reading catches only what is spelled
 // out: `SELECT count(*) FROM users GROUP BY id` passes all four and answers one

@@ -41,14 +41,42 @@ lands in `report_inbox` inside the op's own transaction and is moved into
 `reports` by a sweep on a ten-minute tick that runs whether or not anybody
 reported. Nothing of the reader's moment reaches the table an operator reads.
 
-**What that leaves open, exactly**: a report sitting in `report_inbox` carries
-its author's transaction id, openly, for up to one tick. Somebody with a SQL
-prompt in that window can attribute it; nobody can attribute a report once it
-has been swept. ADR-0004 says how, and lists what has still never been checked
-— the statement log, `pg_locks`, the WAL, commit timestamps, and anything a
-superuser extension can reach. Anything written here or anywhere else about
-reports not naming their author is about one layer or the other, and about
-swept or unswept; say which.
+**What that leaves open, exactly.** Two things, both measured from a role
+holding nothing but `SELECT`, and both still open as of 2026-09-24:
+
+1. A report sitting in `report_inbox` carries its author's transaction id,
+   openly, for up to one tick.
+2. **A swept report is still attributable.** A report op writes `op_log` and
+   `report_inbox` and nothing else, and the sweep empties the inbox — so the
+   reporter's `op_log` row is left as the only live row in the schema carrying
+   its transaction id, while every ordinary write shares its id with the row it
+   made. Being alone is the signature. Measured: 3 of 3 reporters named, 0 of 6
+   quiet readers. `reports.written_on` then binds the name to a row, and where
+   only one reader was active that day it does so outright.
+
+**Five rounds found five channels, and each fix created the next one.** The op
+id, the shared transaction, the position on disk, the gap left by a transaction
+spent to hide in, and now a transaction that is not shared. They are one fact
+wearing five costumes: *a report is written because a particular reader asked,
+and the op that carries it is a receipt for that.* Moving the write off the
+reader's moment does not move the op.
+
+So the honest claim is the narrow one, and it is the one this document now
+makes: **an operator using the operations view cannot attribute a report.**
+That is structural — no store method the page can reach takes a reader,
+`adminweb` holds no SQL of its own, and no reader's id or subject appears in
+the rendered HTML. **An operator with a SQL prompt on this database can.**
+
+`platform-admins` is the same membership list that holds cluster database
+access, so those are not different people today. Closing the gap between them
+is a deployment change and not a schema one: a role that reaches this data only
+through views, because a view has no `xmin`. That decision is the project's,
+and until it is made the sentence above is the whole of what is true.
+
+Still never checked, listed rather than waved at: the statement log, `pg_locks`
+watched live, the WAL, commit timestamps if the cluster is ever run with
+`track_commit_timestamp`, and anything `pageinspect` or another superuser
+extension can reach, including dead row versions a sweep leaves until vacuum.
 
 ## Reports
 

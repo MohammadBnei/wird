@@ -110,10 +110,11 @@
   <p class="footnote text-muted">This page shows totals and what readers chose to send.
     It cannot show one reader's notes, progress, or when they prayed — not as a setting,
     but because nothing it can ask the store has a reader in it. That is a claim about
-    this page. The database under it is a separate claim, and it is kept by a test that
-    walks a real report for its author through values, system columns, transaction ids
-    and the clock. A report is kept to the day it was written because the minute it was
-    written named the reader who wrote it. ADR-0004 says what has been checked.</p>
+    this page, and it is the only one made here. The database under it is a different
+    matter: somebody with a SQL prompt can still work out who sent a report, and
+    ADR-0004 says exactly how and why five attempts to close that did not. A report is
+    kept only to the day it was written, because the minute it was written named its
+    author outright.</p>
 </main>
 
 </body>

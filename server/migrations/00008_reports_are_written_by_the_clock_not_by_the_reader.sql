@@ -29,10 +29,15 @@
 -- sitting in report_inbox carries its author's transaction id, openly, because
 -- it is written in the author's transaction. That window is one sweep interval
 -- wide and somebody with a SQL prompt inside it can attribute what is sitting
--- there. It is the price of not spending a transaction to hide in. Nothing in
--- reports can be attributed; report_inbox is not read by the operations view
--- and holds only what has not been swept yet. docs/adr/0004 carries the whole
--- of it, including what an operator with raw SQL can still do.
+-- there. It is the price of not spending a transaction to hide in.
+--
+-- This does NOT make a swept report unattributable, and an earlier version of
+-- this comment said it did. A report op writes op_log and report_inbox and
+-- nothing else, so after the sweep the reporter's op_log row is the only live
+-- row carrying its transaction id, while an ordinary write shares its id with
+-- the row it made. Being alone is the signature. What is true is that the
+-- operations view cannot attribute a report; somebody with a SQL prompt on
+-- this database can. docs/adr/0004 carries the whole of it.
 --
 -- The checks are the same as reports', so a report nobody triages is still
 -- refused where the reader can be told about it rather than at the sweep,

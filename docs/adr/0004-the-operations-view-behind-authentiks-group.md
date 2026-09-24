@@ -95,7 +95,7 @@ thing the design is accountable to, so it is structural rather than a habit:
   moment either. The day is still the device's day, and that was already
   decided.
 
-  What holds that shut is `TestNoReportCanBeJoinedToTheReaderWhoSentIt`, which
+  What holds that shut is `TestTheFourClosedChannelsFromAReportToItsAuthorStayClosed`, which
   walks a real database outwards from a real report — over the values, over
   the system columns, over the transaction ids and the clock as
   nearest-neighbours rather than as equalities, and over the order the rows
@@ -114,16 +114,36 @@ thing the design is accountable to, so it is structural rather than a habit:
     is tested three ways: the page has no store method that takes a reader,
     `adminweb` holds no SQL of its own, and no reader's id or subject appears
     in the rendered HTML.
-  - *In the database, a report that has been swept cannot be attributed; a
-    report that has not been swept can.* A row sitting in `report_inbox`
-    carries its author's transaction id openly, because it is written in its
-    author's transaction — which is exactly what stops a transaction being
-    spent to hide in, and is therefore the price of closing channel 4 rather
-    than an oversight. That window is one sweep interval wide, ten minutes,
-    and somebody with a SQL prompt inside it can attribute what is sitting
-    there. Nothing shortens it but a shorter tick, and nothing closes it
-    without a second durable store outside Postgres, which is machinery this
-    repository does not have a reason to own.
+  - *In the database, a report can be attributed — swept or not.* This
+    replaces a sentence that claimed the opposite, which a gate falsified from
+    a role holding nothing but `SELECT`.
+
+    Unswept, a row in `report_inbox` carries its author's transaction id
+    openly, because it is written in its author's transaction. That is the
+    price of not spending a transaction to hide in, and it lasts one tick.
+
+    Swept, **channel 5**: a report op writes `op_log` and `report_inbox` and
+    nothing else, so once the sweep empties the inbox the reporter's `op_log`
+    row is the only live row in the schema carrying its transaction id. Every
+    ordinary write — an understood aya, a kept note, a prayed set — shares its
+    transaction id with the row it made. Being alone is the signature, and it
+    is carried rather than missing, which is why the gap walk could not see it.
+    Measured: 3 of 3 reporters named, 0 of 6 quiet readers. `reports.written_on`
+    then binds the name to a row, outright where one reader was active that day.
+
+    Five rounds found five channels and each fix created the next: the op id,
+    the shared transaction, the position on disk, the gap left by a transaction
+    spent to hide in, and now a transaction that is not shared. They are one
+    fact in five costumes — *a report is written because a particular reader
+    asked, and the op carrying it is a receipt for that.* Moving the write off
+    the reader's moment does not move the op. A sixth patch would find a sixth
+    channel, so this stops here with the claim narrowed to what is true.
+
+    The upgrade, when the narrow claim stops being enough, is a role that
+    reaches this data only through views — a view has no `xmin` — and that is a
+    deployment change rather than a schema one. Note that `platform-admins` is
+    the same membership list holding cluster database access, so "the operator"
+    and "somebody with a SQL prompt" are not different people today.
 
   **And what has still not been checked**, so the next person does not read
   the above as more than it is: the database server's own statement log, which

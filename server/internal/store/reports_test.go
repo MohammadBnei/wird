@@ -162,7 +162,22 @@ func reportOp(id, kind, body string) store.Op {
 // same way; and the order the rows sit in on disk, which a heap would
 // otherwise leave as the order they arrived in. Each is then staged by hand,
 // so a walk that has stopped working cannot read as a pass.
-func TestNoReportCanBeJoinedToTheReaderWhoSentIt(t *testing.T) {
+//
+// WHAT THIS TEST DOES NOT PROVE, and the name used to claim it did: it does
+// not prove a report cannot be attributed. A fifth channel is open and this
+// test is green beside it. A report op writes op_log and report_inbox and
+// nothing else, so once the sweep empties the inbox the reporter's op_log row
+// is the only live row carrying its transaction id, while an ordinary write
+// shares its id with the row it made. Being alone is the signature, and it is
+// carried rather than missing, so none of the four walks below can see it.
+// Measured at 3 of 3 reporters and 0 of 6 quiet readers.
+//
+// Five rounds closed five channels and each fix opened the next, because the
+// op is a receipt for the reader having asked. The claim the project keeps is
+// the narrow one in docs/adr/0004: the operations view cannot attribute a
+// report, and somebody with a SQL prompt can. Do not widen this test's name
+// back out without closing channel 5 first.
+func TestTheFourClosedChannelsFromAReportToItsAuthorStayClosed(t *testing.T) {
 	db, pool := testenv.Postgres(t)
 
 	// Six readers rather than one. A nearest walk always names somebody, so
