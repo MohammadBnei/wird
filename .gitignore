@@ -32,3 +32,10 @@ app/macos/Pods/
 
 # Golden failure output: written by a failing run, never committed.
 app/test/failures/
+
+# CodeGraph's index: a local cache rebuilt by `codegraph init`, and it holds a
+# copy of the tree. Machine-local, like .dart_tool.
+/.codegraph/
+
+# Rendered screens a gate agent left behind while looking at its own work.
+app/gate-shots/
