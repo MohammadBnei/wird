@@ -26,6 +26,7 @@ const corpusPath = "../../testdata/corpus.json"
 const (
 	attestedWord     = "وَتَوَاصَوْا" // an exact Qur'anic spelling
 	borrowedName     = "إسطنبول"      // good Arabic, no derivable root
+	rootlessWord     = "مِنْ"         // good Arabic the morphology records with no root
 	nonQuranicWord   = "بَرمَجَة"     // Arabic with a root the Qur'an never uses
 	attestedLetters  = "وصي"
 	shapeOnlyWord    = "مالك" // good Arabic whose root only a template proposes, so it is never served one
@@ -479,6 +480,32 @@ func carries(v any, key string) bool {
 	return false
 }
 
+// TestAWordTheCorpusRecordsWithNoRootIsNotReportedAsAWordWeHaveNeverSeen pins the
+// published code apart from no_root. Both are 404 — there is no root to serve
+// either way — but a caller acts on them differently: إسطنبول means grow the corpus
+// or ask elsewhere, and مِنْ means the answer is in and the answer is that this word
+// comes from no root. One code for both tells a caller the engine failed where it
+// in fact succeeded.
+func TestAWordTheCorpusRecordsWithNoRootIsNotReportedAsAWordWeHaveNeverSeen(t *testing.T) {
+	s := testServer(t, nil)
+
+	status, body := get(t, s, wordURL(rootlessWord))
+	if status != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d: %v", status, http.StatusNotFound, body)
+	}
+	if code := errorCode(t, body); code != "rootless" {
+		t.Errorf("%s came back as %q, which a caller cannot tell from a word the corpus has never seen", rootlessWord, code)
+	}
+	if fail, _ := body["error"].(map[string]any); fail["candidates"] != nil {
+		t.Errorf("the answer lists candidates %v, and the top of a candidate list reads as a root for a word the authority gives none", fail["candidates"])
+	}
+
+	_, body = get(t, s, wordURL(borrowedName))
+	if code := errorCode(t, body); code != "no_root" {
+		t.Errorf("%s came back as %q, and a word we have simply never seen is not a word recorded as rootless", borrowedName, code)
+	}
+}
+
 // failingStore stands in for a corpus that is down rather than one that is empty.
 type failingStore struct{ err error }
 
@@ -500,6 +527,14 @@ func (s failingStore) Attests(context.Context, string) ([]string, error) {
 
 func (s failingStore) AttestsSurface(context.Context, string) ([]string, error) {
 	return nil, s.err
+}
+
+func (s failingStore) Rootless(context.Context, string) (bool, error) {
+	return false, s.err
+}
+
+func (s failingStore) RootlessSurface(context.Context, string) (bool, error) {
+	return false, s.err
 }
 
 func (s failingStore) Root(context.Context, string) (root.RootRecord, error) {

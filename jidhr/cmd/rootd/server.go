@@ -175,16 +175,21 @@ type apiError struct {
 	Candidates []root.Candidate `json:"candidates,omitempty"`
 }
 
-// apiErrorFor maps a resolution failure to its status. Bad input and an
-// unresolvable word are different answers: one tells the caller to fix what it
-// sent, the other tells it the input was fine and the corpus does not know the
-// word. Anything else is our failure and never a statement about the word.
+// apiErrorFor maps a resolution failure to its status and its code. Three answers
+// share the 404 and a caller acts on each differently: bad input is a 400 telling
+// the caller to fix what it sent, no_root says the input was fine and the corpus
+// does not know the word, and rootless says the corpus knows the word perfectly
+// well and records it with no root. Anything else is our failure and never a
+// statement about the word.
 func apiErrorFor(err error) apiError {
 	var miss *root.NoRootError
 	switch {
 	case errors.Is(err, root.ErrNotArabic):
 		return apiError{Status: http.StatusBadRequest, Code: "not_arabic",
 			Message: "the word is not Arabic"}
+	case errors.As(err, &miss) && miss.Rootless:
+		return apiError{Status: http.StatusNotFound, Code: "rootless",
+			Message: fmt.Sprintf("the corpus records %q with no root: it is a particle or a pronoun, and comes from none", miss.Word)}
 	case errors.As(err, &miss):
 		return apiError{Status: http.StatusNotFound, Code: "no_root",
 			Message:    fmt.Sprintf("no root could be derived for %q", miss.Word),

@@ -1,5 +1,5 @@
 {
-  "note": "The corpus a MemoryStore is seeded from, and the corpus the tests run against. The entries are the few attested forms phase 1 has; the roots are the real roots of the test battery beside the traps that battery walks into — لوك, ريض, صري, نير, ريم, انس, وسي and دير are all real classical triliterals that a template reads out of ملوك, مريض, مصري, منير, مريم, تونس, موسى and مدير, and none of the eight is among the 1,642 roots phase 3 ships, checked one by one against the shipped table on 2026-09-23 — 1,651 was the dropped fork’s count. A test that holds only because a root is missing holds by accident, so they are here from the start. It is also the worked example a caller outside Wird copies to run jidhr with no database. It deliberately attests no forms at all: the pattern rung asserts only from attestation, so a corpus with none keeps that rung proposing and lets the template tests measure the templates. The attestation is in quran.json.",
+  "note": "The corpus a MemoryStore is seeded from, and the corpus the tests run against. The entries are the few attested forms phase 1 has; the roots are the real roots of the test battery beside the traps that battery walks into — لوك, ريض, صري, نير, ريم, انس, وسي and دير are all real classical triliterals that a template reads out of ملوك, مريض, مصري, منير, مريم, تونس, موسى and مدير, and none of the eight is among the 1,642 roots phase 3 ships, checked one by one against the shipped table on 2026-09-23 — 1,651 was the dropped fork’s count. A test that holds only because a root is missing holds by accident, so they are here from the start. It is also the worked example a caller outside Wird copies to run jidhr with no database. It deliberately attests no forms at all: the pattern rung asserts only from attestation, so a corpus with none keeps that rung proposing and lets the template tests measure the templates. The attestation is in quran.json. It does carry two rootless forms, because a corpus author copying this file needs the shape: مِنْ and هُوَ are spellings the morphology records with no root at all, and a corpus that ships them can answer that a word has none instead of letting the ladder guess one.",
   "roots": [
     {
       "letters": "وصي",
@@ -242,5 +242,9 @@
         "plain": "To program a machine; to draw up a schedule."
       }
     }
-  }
+  },
+  "rootless": [
+    "مِنْ",
+    "هُوَ"
+  ]
 }

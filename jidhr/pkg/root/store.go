@@ -60,6 +60,19 @@ type Store interface {
 	// a nil error.
 	AttestsSurface(ctx context.Context, surface string) ([]string, error)
 
+	// Rootless reports whether the corpus records this normalised spelling under no
+	// root at all. It is the morphology's own statement about the particles and the
+	// pronouns, which come from no triliteral root, and it is not the absence of a
+	// record: مِنْ is rootless, باريس is merely unknown, and a caller cannot act on
+	// both with the same answer. The spelling asked about is the normalised key, so
+	// a yes here is shared with every other word that normalises to it.
+	Rootless(ctx context.Context, normalized string) (bool, error)
+
+	// RootlessSurface reports the same fact about the exact spelling, diacritics and
+	// all. It is what tells مِنْ, which the morphology writes with no root, apart from
+	// مَنَّ, which is منن and is the same letters once the diacritics are gone.
+	RootlessSurface(ctx context.Context, surface string) (bool, error)
+
 	// Attests returns the roots the corpus records this written form under, spelled
 	// as the corpus spells them. This is the identity question Root cannot answer:
 	// Root says لوك is a root, Attests says whether ملوك is one of its forms, and
@@ -92,19 +105,28 @@ type Corpus struct {
 	// into the index, so a fixture carries the corpus's own orthography and makes
 	// no spelling decisions of its own.
 	Attested map[string][]string `json:"attested,omitempty"`
+
+	// Rootless holds the written forms the morphology records under no root: the
+	// particles and the pronouns. They go in spelled as the corpus spells them,
+	// like Attested, because the question a reader asks is about the spelling they
+	// pasted. Carrying them is what lets a corpus say "this word has no root"
+	// instead of leaving the spelling absent and letting the ladder guess.
+	Rootless []string `json:"rootless,omitempty"`
 }
 
 // MemoryStore is a Store held entirely in memory, seeded from a Corpus. It is how
 // the resolver is tested before any corpus is ingested, and how a caller outside
 // Wird uses jidhr with no database at all.
 type MemoryStore struct {
-	bySurface    map[string]Entry
-	byNormalized map[string]Entry
-	byLemma      map[string]Entry
-	roots        map[string]RootRecord
-	attested     map[string][]string
-	bySpelling   map[string][]string
-	meanings     map[string]map[string]Meaning
+	bySurface       map[string]Entry
+	byNormalized    map[string]Entry
+	byLemma         map[string]Entry
+	roots           map[string]RootRecord
+	attested        map[string][]string
+	bySpelling      map[string][]string
+	rootless        map[string]bool
+	rootlessSpelled map[string]bool
+	meanings        map[string]map[string]Meaning
 }
 
 // NewMemoryStore indexes a corpus. The normalised indexes are built by running the
@@ -112,13 +134,15 @@ type MemoryStore struct {
 // store would answer differently.
 func NewMemoryStore(c Corpus) *MemoryStore {
 	m := &MemoryStore{
-		bySurface:    map[string]Entry{},
-		byNormalized: map[string]Entry{},
-		byLemma:      map[string]Entry{},
-		roots:        map[string]RootRecord{},
-		attested:     map[string][]string{},
-		bySpelling:   map[string][]string{},
-		meanings:     c.Meanings,
+		bySurface:       map[string]Entry{},
+		byNormalized:    map[string]Entry{},
+		byLemma:         map[string]Entry{},
+		roots:           map[string]RootRecord{},
+		attested:        map[string][]string{},
+		bySpelling:      map[string][]string{},
+		rootless:        map[string]bool{},
+		rootlessSpelled: map[string]bool{},
+		meanings:        c.Meanings,
 	}
 	for _, r := range c.Roots {
 		m.roots[r.Letters] = r
@@ -146,6 +170,16 @@ func NewMemoryStore(c Corpus) *MemoryStore {
 				if k != "" && !slices.Contains(m.attested[k], r) {
 					m.attested[k] = append(m.attested[k], r)
 				}
+			}
+		}
+	}
+	for _, form := range c.Rootless {
+		if spelling := TrimMarks(form); spelling != "" {
+			m.rootlessSpelled[spelling] = true
+		}
+		for _, k := range indexKeys(form) {
+			if k != "" {
+				m.rootless[k] = true
 			}
 		}
 	}
@@ -239,6 +273,14 @@ func (m *MemoryStore) Root(_ context.Context, letters string) (RootRecord, error
 
 func (m *MemoryStore) Attests(_ context.Context, form string) ([]string, error) {
 	return m.attested[form], nil
+}
+
+func (m *MemoryStore) Rootless(_ context.Context, normalized string) (bool, error) {
+	return m.rootless[normalized], nil
+}
+
+func (m *MemoryStore) RootlessSurface(_ context.Context, surface string) (bool, error) {
+	return m.rootlessSpelled[TrimMarks(surface)], nil
 }
 
 func (m *MemoryStore) AttestsSurface(_ context.Context, surface string) ([]string, error) {

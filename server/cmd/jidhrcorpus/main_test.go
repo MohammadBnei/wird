@@ -127,10 +127,9 @@ func TestAFormAttestedUnderTwoRootsKeepsBothRatherThanTheFirst(t *testing.T) {
 
 func TestAFormThatCarriesAPauseMarkShipsAsTheWordAndNotAsTheWordPlusTheMark(t *testing.T) {
 	// corpus.db keeps the recitation marks glued to the word they follow, space
-	// and all: 2,573 of the 19,805 form rows are written that way. Shipped
-	// verbatim, they are keyed under a spelling with a space in it, and for 682 of
-	// them no other row spells the same word cleanly — so no input a reader can
-	// type reaches them at all.
+	// and all: 2,573 of the 19,805 rooted form rows are written with a space in
+	// them. Shipped verbatim they are keyed under a spelling that carries the
+	// space, and no input a reader can type reaches them.
 	db := corpusDB(t, written,
 		`INSERT INTO words VALUES (1,'صَبَرُوا ۚ','صبر'), (2,'وَتَوَاصَوْا ۩','وصي')`)
 
@@ -150,6 +149,25 @@ func TestTwoSpellingsThatDifferOnlyByAPauseMarkShipAsOneForm(t *testing.T) {
 	roots, _ := attested["صَبَرُوا"].([]any)
 	if len(attested) != 1 || len(roots) != 1 {
 		t.Errorf("attested = %v, want the one form under the one root: cleaning merges the spellings, and a form listed under the same root three times is a corpus that counts punctuation as evidence", attested)
+	}
+}
+
+func TestAParticleTheMorphologyGivesNoRootIsShippedRatherThanLeftOutOfTheCorpus(t *testing.T) {
+	// 1,492 of the form rows carry no root: the particles and the pronouns, which
+	// come from no triliteral root and which the morphology records that way on
+	// purpose. Leaving them out is what made the engine answer مِنْ with منن — the
+	// root of مَنَّ, which is the same letters once the diacritics are gone — instead
+	// of with the fact the corpus already held.
+	db := corpusDB(t, `INSERT INTO roots VALUES ('منن','م ن ن','m-n-n',27,'')`,
+		`INSERT INTO words VALUES (1,'مَنَّ','منن'), (2,'مِنْ',NULL), (3,'مِنْ ۚ',''), (4,'هُوَ',NULL)`)
+
+	corpus := built(t, db)
+	got, _ := corpus["rootless"].([]any)
+	if len(got) != 2 {
+		t.Fatalf("the corpus ships %v as rootless, want مِنْ and هُوَ once each: a spelling the morphology denies a root is a fact the engine has no other way to learn", got)
+	}
+	if attested, _ := corpus["attested"].(map[string]any); len(attested) != 1 {
+		t.Errorf("attested = %v, want only the form that has a root: a rootless spelling listed as attested is the guess this fixes", attested)
 	}
 }
 

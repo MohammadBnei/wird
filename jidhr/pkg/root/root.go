@@ -17,11 +17,12 @@ import (
 // it to 400.
 var ErrNotArabic = errors.New("jidhr: input is not Arabic")
 
-// ErrNoRoot marks a valid Arabic word whose root no rung could derive. The HTTP
-// layer maps it to 404. It is deliberately a different error from ErrNotArabic:
-// one answer tells the caller to fix its input, the other tells it the input was
-// fine and we simply do not know the word, and a caller cannot act on both with
-// the same status code.
+// ErrNoRoot marks a valid Arabic word we have no root to give for — because no
+// rung could derive one, or because the corpus itself records the word with no
+// root. The HTTP layer maps it to 404. It is deliberately a different error from
+// ErrNotArabic: one answer tells the caller to fix its input, the other tells it
+// the input was fine, and a caller cannot act on both with the same status code.
+// NoRootError.Rootless tells the two kinds of 404 apart.
 var ErrNoRoot = errors.New("jidhr: no root found")
 
 // Candidate is one thing the ladder put on the table: a form it walked, or a
@@ -40,10 +41,20 @@ type Candidate struct {
 type NoRootError struct {
 	Word       string
 	Normalized string
+	// Rootless says the corpus recorded this spelling with no root, rather than the
+	// ladder having failed to find one. They are different answers: مِنْ is a
+	// particle the morphology deliberately gives no root, باريس is a word we have
+	// never seen, and a caller told "no root could be derived" for both cannot tell
+	// them apart. Candidates is empty when it is set, because nothing was
+	// considered — the authority answered.
+	Rootless   bool
 	Candidates []Candidate
 }
 
 func (e *NoRootError) Error() string {
+	if e.Rootless {
+		return fmt.Sprintf("jidhr: the corpus records %q with no root", e.Word)
+	}
 	letters := make([]string, 0, len(e.Candidates))
 	for _, c := range e.Candidates {
 		letters = append(letters, c.Letters)
@@ -88,8 +99,42 @@ func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Re
 		considered = append(considered, res.Normalized)
 	}
 
+	// The morphology records 1,189 spellings — مِنْ, هُوَ, ٱلَّذِينَ, عَلَيْهِمْ — under no
+	// root, deliberately: a particle comes from no triliteral root. That is the
+	// authority answering about the very word the caller handed us, and it is
+	// settled here, above every rung, because every rung below overrules it. Once
+	// the diacritics are gone مِنْ is مَنَّ and عَلَيْهِمْ is عَـٰلِيَهُمْ, so the attestation
+	// rung served منن and علو — roots the authority denies these words — as facts,
+	// with nothing in the answer to say so.
+	//
+	// A spelling the corpus also writes under a root is not settled by this and
+	// falls through: يَحْيَىٰ is the name, which has no root, and also "he lives",
+	// which is حيي, and the corpus writes the two identically, diacritics and all.
+	surfaceRootless, err := r.store.RootlessSurface(ctx, word)
+	if err != nil {
+		return Result{}, err
+	}
+	if surfaceRootless {
+		exact, err := r.store.AttestsSurface(ctx, word)
+		if err != nil {
+			return Result{}, err
+		}
+		if len(exact) == 0 {
+			return Result{}, &NoRootError{Word: word, Normalized: res.Normalized, Rootless: true}
+		}
+	}
+
+	// Whether the normalised key is one a rootless word shares. The collision lives
+	// in the key and not in the corpus, so this rides on every answer the key
+	// produced and on no answer the caller's own diacritics settled.
+	keyRootless, err := r.store.Rootless(ctx, res.Normalized)
+	if err != nil {
+		return Result{}, err
+	}
+
 	entry, method, err := r.lookup(ctx, word, res.Normalized)
 	if err == nil {
+		res.Rootless = keyRootless && method != MethodLexicon
 		return r.fromEntry(ctx, res, entry, method, langs)
 	}
 	if !errors.Is(err, ErrNotFound) {
@@ -106,6 +151,7 @@ func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Re
 		considered = append(considered, stem)
 		entry, _, err := r.lookup(ctx, "", stem)
 		if err == nil {
+			res.Rootless = keyRootless
 			return r.fromEntry(ctx, res, entry, MethodStripped, langs)
 		}
 		if !errors.Is(err, ErrNotFound) {
@@ -131,22 +177,30 @@ func (r *Resolver) Resolve(ctx context.Context, word string, langs []string) (Re
 	if err != nil {
 		return Result{}, err
 	}
-	if len(attested) == 1 {
+	if len(attested) == 0 && keyRootless {
+		// The corpus knows this spelling and gives it no root. That is an answer and
+		// not the miss that says we have never met the word.
+		return Result{}, &NoRootError{Word: word, Normalized: res.Normalized, Rootless: true}
+	}
+	if len(attested) == 1 && !keyRootless {
 		return r.fromLetters(ctx, res, attested[0], MethodPattern, langs)
 	}
-	if len(attested) > 1 {
+	if len(attested) > 0 {
 		// The caller's own diacritics settle it when they wrote any: قل is the
 		// spelling of both قول and قلل, but قُلْ is one word and the corpus records
 		// one root for it. The collision belongs to the normalised key, not to the
 		// authority, and refusing a word the authority spells unambiguously would
-		// turn a fact into a miss.
+		// turn a fact into a miss. A spelling the corpus also writes rootless is
+		// never settled this way, however fully the caller wrote it out: يَحْيَىٰ is
+		// both readings in the authority itself.
 		exact, err := r.store.AttestsSurface(ctx, word)
 		if err != nil {
 			return Result{}, err
 		}
-		if len(exact) == 1 && slices.Contains(attested, exact[0]) {
+		if !surfaceRootless && len(exact) == 1 && slices.Contains(attested, exact[0]) {
 			return r.fromLetters(ctx, res, exact[0], MethodLexicon, langs)
 		}
+		res.Rootless = keyRootless
 		return r.fromShared(ctx, res, attested, langs)
 	}
 

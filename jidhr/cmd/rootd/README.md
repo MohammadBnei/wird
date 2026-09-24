@@ -81,6 +81,7 @@ process.
 | --- | --- |
 | roots | 1,642, each with its transliteration and its Qur'anic occurrence count |
 | attested forms | 17,934 written spellings, each under the root the morphology records it under |
+| rootless forms | 1,189 written spellings the morphology records under no root at all |
 | meanings | 523 roots, in `en` and `fr`, plain register |
 | roots with no meaning | 1,119 |
 
@@ -93,28 +94,24 @@ did not bear out was refused rather than softened.
 ### What resolves, and what does not
 
 Every one of the 17,934 forms answers with the root the morphology records for it
-when you send it spelled as the corpus spells it. Typed without diacritics, 17,710
-of them answer with one root and 224 answer with the roots that spelling is shared
-between; none miss, and none come back under a root the corpus does not record for
-that spelling.
+when you send it spelled as the corpus spells it. Typed without diacritics, 17,653
+of them answer with one root and 281 answer with the readings that spelling is shared
+between — 57 of those because the spelling is shared with a particle that has no
+root. None miss, and none come back under a root the corpus does not record for that
+spelling.
 
 2,480 of those forms are written with a dagger alef — the superscript `ٱلْعَـٰلَمِينَ`
 carries, standing for a long ā that Uthmani orthography does not spell out. Each of
 them is indexed twice, under the spelling with that alef dropped and under the
 spelling with it written, so `العالمين` and `ٱلْعَـٰلَمِينَ` are the same word here and
-`الرحمن` and `ٱلرَّحْمَـٰنِ` are too. Before that, 2,697 of them were reachable only by a
-caller who reproduced the Uthmani spelling exactly.
+`الرحمن` and `ٱلرَّحْمَـٰنِ` are too. In the database those 2,480 are 2,791 rows, because a
+form written twice with different recitation marks is two rows there and one form
+here; 2,697 of the 2,791 were reachable only by a caller who reproduced the Uthmani
+spelling exactly.
 
-Four things are still out of reach, and they are what "a Qur'anic word resolves"
+Three things are still out of reach, and they are what "a Qur'anic word resolves"
 does not cover:
 
-- **The words the morphology gives no root.** `مِنْ`, `هُوَ`, `ٱلَّذِينَ`, `لَمْ` — 1,492
-  written forms, the pronouns and particles. The corpus ships only the forms that
-  have a root, so those spellings are simply absent, and two of them are worse than
-  absent: `مِنْ` is answered `منن` and `عَلَيْهِمْ` is answered `علو`, because `مَنَّ` and
-  `عَـٰلِيَهُمْ` are spelled the same way once the diacritics are gone. Shipping the
-  rootless forms is what fixes it: a spelling the corpus records with no root has an
-  answer, and the answer is that it has none.
 - **Three forms that are two words in one row.** `بَعْدَ مَا` and two others are stored
   with a space inside them and are reachable only by typing that space.
 - **Two Uthmani spellings that are not reduced.** `ءامنوا` does not reach `آمنوا`, and
@@ -124,9 +121,45 @@ does not cover:
   (see `shared` below), because the morphology does not settle them and neither may
   we.
 
-`jidhr/testdata/corpus.json` is the other corpus here: 44 roots, four meanings, and
-the worked example to copy if you want to hand `jidhr` a corpus of your own. Point
-`ROOTD_CORPUS` at it to see the shape a corpus file has.
+`jidhr/testdata/corpus.json` is the other corpus here: 44 roots, four meanings, two
+rootless spellings, and the worked example to copy if you want to hand `jidhr` a
+corpus of your own. Point `ROOTD_CORPUS` at it to see the shape a corpus file has.
+
+### The words that have no root
+
+1,492 of the form rows carry no root at all — `مِنْ`, `هُوَ`, `ٱلَّذِينَ`, `لَمْ`, `عَلَيْهِمْ`,
+the pronouns and the particles, 1,189 written spellings once the recitation marks
+are off. The morphology records them that way deliberately: a particle does not come
+from a triliteral root. The corpus ships them, so asking about one gets the
+authority's own answer instead of a guess.
+
+```bash
+# A word the corpus records with no root. 404, code rootless, and no candidates.
+curl -sG localhost:8081/v1/root --data-urlencode 'word=مِنْ'
+{"error":{"status":404,"code":"rootless",
+ "message":"the corpus records \"مِنْ\" with no root: it is a particle or a pronoun, and comes from none"}}
+
+# The same letters typed bare. They are the particle, and they are also مَنَّ, which is منن.
+curl -sG localhost:8081/v1/root --data-urlencode 'word=من'
+{"input":"من","normalized":"من","root":{"letters":"منن","display":"م ن ن","translit":"m-n-n"},
+ "roots":[{"letters":"منن","display":"م ن ن","translit":"m-n-n"}],
+ "rootless":true,"method":"shared","quran":{"occurrences":27}, …}
+```
+
+`rootless` and `no_root` are both 404 and they are not the same answer. `no_root`
+says the corpus does not know the word, so grow the corpus or ask elsewhere.
+`rootless` says the corpus knows the word perfectly well and records it as coming
+from no root, which is the end of the question — and it carries no `candidates`,
+because nothing was considered.
+
+Until those spellings shipped, **139 of the 1,492** were answered with a root the
+morphology denies them. `مِنْ` came back `منن` and `عَلَيْهِمْ` came back `علو`, because
+`مَنَّ` and `عَـٰلِيَهُمْ` are spelled that way once the diacritics are gone and only the
+forms that have a root were in the file. Those answers came back as
+`method: "pattern"`, which the table below calls an attested corpus fact, with
+nothing to mark them. The dagger-alef and the pause-mark fixes widened the class
+rather than narrowing it: both made spellings reachable that had reached nothing
+before, and some of what they reached was this.
 
 ### Languages
 
@@ -156,8 +189,8 @@ sense the root's own words no longer bear out — then rebuild:
 ```bash
 go run ./server/cmd/jidhrcorpus
 # ./jidhr/testdata/quran.json
-#   roots 1642  attested forms 17934  roots with a meaning 523  languages [en fr]
-#   0.78 MB
+#   roots 1642  attested forms 17934  rootless forms 1189  roots with a meaning 523  languages [en fr]
+#   0.80 MB
 ```
 
 `-db` and `-out` move either end. Editing the JSON by hand puts it out of step with
@@ -179,6 +212,11 @@ spelling and the ordinary one reach it.
 
 `quran` is **absent** when the root does not occur in the Qur'an. It is not zero,
 because zero is a measurement and absence is the truth.
+
+`rootless` is **present and true** only when the corpus also records the spelling you
+sent under no root at all, and it always comes with `method: "shared"`. It is the
+reading `roots` has no way to carry: `من` is `منن`, "he bestowed", and it is also the
+particle, and which of the two you meant is your sentence's to say.
 
 ### `POST /v1/roots:batch`
 
@@ -223,7 +261,7 @@ defined is something callers branch on without knowing what they are branching o
 | `lemma` | The dictionary form was found rather than this inflection. | The corpus knows the word; it had not written down this spelling. |
 | `stripped` | Prefixes and suffixes were peeled off, and the stem was found. | A derivation. Which affixes were peeled is a judgement. |
 | `pattern` | The corpus attests this very spelling under exactly one root. | An attested corpus fact about this spelling. |
-| `shared` | The spelling you sent is one the corpus attests under more than one root, and you wrote it without the diacritics that tell them apart. `roots` carries every one of them, most-used first, and `root` is the first. | An attested corpus fact about the spelling, and no claim about which of the roots this word came from. |
+| `shared` | The spelling you sent is one the corpus records under more than one reading, and you wrote it without the diacritics that tell them apart. `roots` carries every root it records, and `root` is the first; `rootless` says one of the readings is a particle or pronoun with no root, which `roots` cannot hold. | An attested corpus fact about the spelling, and no claim about which reading this word is. |
 
 The Qur'anic corpus answers almost everything at `pattern`, because it records which
 root each written form belongs to rather than a lexicon of entries: the first four
@@ -237,7 +275,16 @@ and the answer carries both under `roots` with `method: "shared"` — a 404 that
 both readings as known and then served neither told a reader less than the corpus
 knows. Diacritics settle it where the corpus writes them: `قل` is the spelling of both
 `قول` and `قلل`, but `قُلْ` is written under `قول` alone, so a caller who sends the
-diacritics gets that one root and `method: "lexicon"`.
+diacritics gets that one root and `method: "lexicon"`. They do not settle `يَحْيَىٰ`,
+which the corpus writes identically as the name, which has no root, and as "he
+lives", which is `حيي`: that answer is `shared` with `rootless: true`, diacritics and
+all.
+
+**`roots` is ordered by how much of the Qur'an is built on each root — counted over
+the whole book, not over the spelling you sent.** `كفوا` leads with `كفف`, which the
+Qur'an is built on 15 times against `كفأ`'s once, though the single verse that writes
+`كفوا` — 112:4 — is the `كفأ` one. Both roots are on the answer either way, and the
+order ranks the roots rather than reads your word.
 
 ## Errors
 
@@ -253,12 +300,14 @@ as roots first, each marked with `known`.
 | 400 | `bad_body` | The batch body is not `{"words": […]}` — including a body that never names `words` at all. |
 | 401 | `unauthorized` | A key is configured and yours did not match. |
 | 404 | `no_root` | Good Arabic, no derivable root — with the candidates considered. |
+| 404 | `rootless` | Good Arabic the corpus records as coming from no root: a particle or a pronoun. No candidates, because nothing was considered. |
 | 429 | `rate_limited` | Slow down; `Retry-After` says how long. |
 | 500 | `internal` | We failed. Nothing about your word is implied. |
 
 **400 and 404 are different answers on purpose.** 400 says the input was wrong; 404
-says the input was fine and we do not know the word. A service that returns 404 for
-both teaches every caller to keep sending garbage.
+says the input was fine. A service that returns 404 for both teaches every caller to
+keep sending garbage. The two 404 codes are different answers too: `no_root` is the
+corpus coming up empty, `rootless` is the corpus answering.
 
 A 500 is never a statement about the word. If the corpus is unreachable you get 500,
 not a 404 that says the word has no root.
@@ -268,8 +317,9 @@ not a 404 that says the word has no root.
 - **It does not read context.** One word in, one root out. An Arabic homograph that
   means two things depending on the sentence around it is answered from the one root
   the corpus records for that spelling, or — when the spelling is shared and you sent
-  no diacritics — with every root the corpus records for it. Which one the sentence
-  meant is the sentence's to say, and nothing here reads a sentence.
+  no diacritics — with every root the corpus records for it, and with `rootless` when
+  one of the readings has none. Which one the sentence meant is the sentence's to
+  say, and nothing here reads a sentence.
 - **It has no lemmas.** The corpus records a root per written form, not a dictionary
   entry, so `lemma` and `form` are absent from every answer it gives. They are in the
   response shape because a corpus that has them can fill them.

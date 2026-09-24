@@ -50,8 +50,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s\n  roots %d  attested forms %d  roots with a meaning %d  languages %v\n  %.2f MB\n",
-		*out, len(c.Roots), len(c.Attested), len(c.Meanings), languages(c), float64(fi.Size())/(1<<20))
+	fmt.Printf("%s\n  roots %d  attested forms %d  rootless forms %d  roots with a meaning %d  languages %v\n  %.2f MB\n",
+		*out, len(c.Roots), len(c.Attested), len(c.Rootless), len(c.Meanings), languages(c), float64(fi.Size())/(1<<20))
 }
 
 // corpusFile is what jidhr reads, with the provenance note the reader of the file
@@ -118,6 +118,32 @@ func build(db *sql.DB) (root.Corpus, error) {
 		}
 	}
 	if err := forms.Err(); err != nil {
+		return c, err
+	}
+
+	// The morphology records a particle or a pronoun under no root deliberately, and
+	// that is as much a corpus fact as a root is. Shipping those spellings is what
+	// lets jidhr answer مِنْ with "it has no root" instead of with منن, which is what
+	// the letters say once the diacritics are gone and what the authority denies.
+	// Same cleaning, for the same reason as the attested forms.
+	rootless, err := db.Query(`SELECT DISTINCT text_ar FROM words
+		WHERE root_letters IS NULL OR root_letters = '' ORDER BY text_ar`)
+	if err != nil {
+		return c, err
+	}
+	defer rootless.Close()
+	seen := map[string]bool{}
+	for rootless.Next() {
+		var form string
+		if err := rootless.Scan(&form); err != nil {
+			return c, err
+		}
+		if form = root.TrimMarks(form); form != "" && !seen[form] {
+			seen[form] = true
+			c.Rootless = append(c.Rootless, form)
+		}
+	}
+	if err := rootless.Err(); err != nil {
 		return c, err
 	}
 

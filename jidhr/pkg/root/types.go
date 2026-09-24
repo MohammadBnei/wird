@@ -16,12 +16,14 @@ const (
 	// from the corpus attesting this very spelling, never from the letters merely
 	// allowing it. The templates rank what a miss reports and decide nothing.
 	MethodPattern Method = "pattern"
-	// MethodShared names the answer for a spelling the corpus attests under more
-	// than one root and the caller wrote without the diacritics that would tell
+	// MethodShared names the answer for a spelling the corpus records under more
+	// than one reading and the caller wrote without the diacritics that would tell
 	// them apart. Every root is in Roots, most-used first, and Root is the first of
-	// them. It is a weaker claim than MethodPattern — the corpus does not settle
-	// which root this word came from — and a truer one than the 404 it replaces,
-	// which listed both roots and then refused to serve either.
+	// them; Rootless says one of the readings is the particle or pronoun that has
+	// no root at all, which Roots has no way to hold. It is a weaker claim than
+	// MethodPattern — the corpus does not settle which reading this word is — and a
+	// truer one than the 404 it replaces, which listed both roots and then refused
+	// to serve either.
 	MethodShared Method = "shared"
 )
 
@@ -61,7 +63,14 @@ type Result struct {
 	// Roots is present only when the spelling is shared. It holds every root the
 	// corpus attests it under, Root first, so a caller that reads only Root is not
 	// silently told that the reading it got is the only one.
-	Roots    []Root             `json:"roots,omitempty"`
+	Roots []Root `json:"roots,omitempty"`
+	// Rootless says the corpus also records this spelling under no root at all. It
+	// is one of the readings and the one Roots cannot carry: من is منن, "he
+	// bestowed", and it is also the particle, which comes from no root, and which
+	// of the two this is belongs to the sentence. It is set only where the answer
+	// came from the normalised key, because a spelling the caller's own diacritics
+	// settle is settled.
+	Rootless bool               `json:"rootless,omitempty"`
 	Lemma    string             `json:"lemma,omitempty"`
 	Form     string             `json:"form,omitempty"`
 	Method   Method             `json:"method"`
