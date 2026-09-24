@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -104,6 +105,20 @@ class ModelHost {
   }
 
   Future<void> close() => _server.close();
+}
+
+/// Stands in for the recogniser's isolate: it holds something only it can give
+/// back, and says so on the way out. The real one holds 160 MB of onnxruntime
+/// and cannot be run here without the model on disk.
+Future<void> _holder((SendPort, SendPort) args) async {
+  final (home, freed) = args;
+  final inbox = ReceivePort();
+  home.send(inbox.sendPort);
+  await for (final message in inbox) {
+    if (message is! Float32List) break;
+  }
+  freed.send('freed');
+  inbox.close();
 }
 
 void main() {
@@ -212,7 +227,7 @@ void main() {
     'a model the reader removed does not sit on the phone forever',
     () async {
       final voice = model();
-      await voice.fetch();
+      expect(await voice.fetch(), isNull);
       expect(voice.ready, isTrue);
       await voice.remove();
       expect(voice.ready, isFalse);
@@ -241,6 +256,26 @@ void main() {
       expect(voice.bytesOnDisk, 0, reason: 'a refusal is not a part file');
     },
   );
+
+  test('a prayer that ends kills the recogniser before it hands the model '
+      'back', () async {
+    final home = ReceivePort();
+    final freed = ReceivePort();
+    final isolate = await Isolate.spawn(_holder, (
+      home.sendPort,
+      freed.sendPort,
+    ));
+    final inbox = await home.first as SendPort;
+    home.close();
+
+    await stopIsolate(isolate, inbox);
+    expect(
+      await freed.first.timeout(const Duration(seconds: 2)),
+      'freed',
+      reason: 'killed with the whole model still malloc\'d, every prayer',
+    );
+    freed.close();
+  });
 
   test('the microphone is heard as the numbers the recogniser wants', () {
     // Sixteen-bit little-endian: silence, full positive, full negative.

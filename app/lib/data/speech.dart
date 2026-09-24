@@ -4,6 +4,10 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+// Transitive through flutter, and not worth a line in pubspec for one
+// annotation.
+// ignore: depend_on_referenced_packages
+import 'package:meta/meta.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
 /// The recogniser voice-follow listens with, and the download that fetches it.
@@ -32,12 +36,10 @@ const voiceModelParts = [
 /// files: 29.1 MB of encoder, 130.7 MB of decoder, 0.8 MB of tokens.
 const voiceModelBytes = 160 * 1000 * 1000;
 
-/// Where the three files are published, which is a Hugging Face model repo and
-/// not wird.bnei.dev. ADR 0007 has the reasoning; the short of it is that
-/// nothing in the estate serves 160 MB to a signed-out phone, and the weights
-/// Wird's own host, which answers a phone that has never signed in and hands
-/// it on to the store. `/models/` on wird-api mints a short-lived signed URL
-/// and answers 302; the bytes go phone-to-store and never cross the API.
+/// Where the three files are published: Wird's own host, which answers a phone
+/// that has never signed in and hands it on to the store. `/models/` on
+/// wird-api mints a short-lived signed URL and answers 302, so the bytes go
+/// phone-to-store and never cross the API. ADR 0007 has the reasoning.
 ///
 /// **A path, never a URL.** A signed URL expires, and a reader may press
 /// Download, put the phone in a pocket for a week, and resume. Holding the
@@ -128,6 +130,7 @@ class VoiceModel {
   /// happened in its own words — but it has to be told which thing happened,
   /// or the reader presses Download at a host that will never answer and the
   /// panel goes quiet as if they had mistyped their own wifi password.
+  @useResult
   Future<VoiceModelTrouble?> fetch({
     void Function(int received, int total)? onProgress,
     CancelToken? cancel,
@@ -274,16 +277,21 @@ class Recogniser {
     );
   }
 
-  void close() {
+  /// Ends the listening and gives the model back.
+  ///
+  /// The isolate is asked to stop and waited for rather than killed where it
+  /// stands, because killing reclaims only its Dart heap and the model is 160
+  /// MB that onnxruntime malloc'd. A prayer is left five times a day.
+  Future<void> close() {
     _pending = null;
     _from.close();
-    _isolate.kill(priority: Isolate.immediate);
+    return stopIsolate(_isolate, _to);
   }
 }
 
-/// The isolate: builds the recogniser once, then answers windows until it is
-/// killed. Everything it touches is native memory, which is why it is freed on
-/// the way out of every window rather than left to a finaliser.
+/// The isolate: builds the recogniser once, answers windows until it is sent
+/// anything that is not one, and frees the model on the way out. The stream a
+/// window is decoded on is native memory too, and is freed per window.
 Future<void> _serve((SendPort, String, String, String) args) async {
   final (home, encoder, decoder, tokens) = args;
   final inbox = ReceivePort();
@@ -329,6 +337,29 @@ Future<void> _serve((SendPort, String, String, String) args) async {
   }
   recogniser.free();
   inbox.close();
+}
+
+/// Ends an isolate by asking it to unwind, so that the native memory it holds
+/// is freed by the isolate itself. [Isolate.kill] reclaims only the Dart heap.
+///
+/// Anything that is not a window of samples is the word to stop on. An isolate
+/// still wedged after [wait] is killed regardless: on the way out of a prayer,
+/// leaking beats hanging.
+Future<void> stopIsolate(
+  Isolate isolate,
+  SendPort to, {
+  Duration wait = const Duration(seconds: 2),
+}) async {
+  final gone = ReceivePort();
+  isolate.addOnExitListener(gone.sendPort);
+  try {
+    to.send(null);
+    await gone.first.timeout(wait);
+  } on Object {
+    // The kill below is the whole of what is left to do about it.
+  }
+  gone.close();
+  isolate.kill(priority: Isolate.immediate);
 }
 
 /// Sixteen-bit little-endian PCM, which is what the microphone hands over, as
