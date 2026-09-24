@@ -82,11 +82,12 @@ func (s *Store) Health(ctx context.Context) (Health, error) {
 }
 
 // A Report is what somebody chose to send, and all of it. There is no reader
-// on it, and applyReport is where the reasons for that are written down: the
-// table has no column for one, the id is the server's own rather than the op
-// id, the row does not share a transaction with op_log, and the day is all
-// that is kept of the clock. WrittenOn is a date, so there is no time of day
-// to hand back.
+// on it, and applyReport and SweepReports are where the reasons for that are
+// written down: the table has no column for one, and every row in it was
+// written by a sweep on a clock rather than at the moment its author was
+// talking to the database, so the id, the transaction id and the place on disk
+// all came from the sweep. WrittenOn is a date, so there is no time of day to
+// hand back either.
 type Report struct {
 	ID            string    `json:"id"`
 	Kind          string    `json:"kind"`

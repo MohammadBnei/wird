@@ -28,12 +28,27 @@ time it would be convenient to break it.
 apart.** One is the page: what an operator can ask for and see. The other is
 the database the page sits on: what someone with a SQL prompt and the same
 group membership can work out. The page was right from the start; the database
-was not, and three channels have been found in it that no column showed — the
+was not, and four channels have been found in it that no column showed — the
 report stored under its op id, the report and its op_log row sharing a
-transaction id, and the report's clock sitting beside its author's flush. All
-three are closed and ADR-0004 says how, and what is still unchecked. Anything
-written here or anywhere else about reports not naming their author is about
-one layer or the other; say which.
+transaction id, the report's clock and its place on disk sitting beside its
+author's flush, and the transaction the report was given so it would not share
+one, which the rewrite then left carried by no row at all: a gap in the
+sequence directly above its author's.
+
+All four were the same fact — the report was written at the moment its author
+was talking to the database — so the fix is not a fifth patch. A report now
+lands in `report_inbox` inside the op's own transaction and is moved into
+`reports` by a sweep on a ten-minute tick that runs whether or not anybody
+reported. Nothing of the reader's moment reaches the table an operator reads.
+
+**What that leaves open, exactly**: a report sitting in `report_inbox` carries
+its author's transaction id, openly, for up to one tick. Somebody with a SQL
+prompt in that window can attribute it; nobody can attribute a report once it
+has been swept. ADR-0004 says how, and lists what has still never been checked
+— the statement log, `pg_locks`, the WAL, commit timestamps, and anything a
+superuser extension can reach. Anything written here or anywhere else about
+reports not naming their author is about one layer or the other, and about
+swept or unswept; say which.
 
 ## Reports
 
@@ -46,12 +61,13 @@ context that makes it actionable — app version, platform, the screen they were
 on. What it must NOT carry without the reader deciding: their notes, their
 progress, anything from the corpus they were reading.
 
-Server side: `reports` in the existing schema, the same `client_op_id`
+Server side: `report_inbox` in the existing schema, the same `client_op_id`
 idempotency as every other op, and never reaching the change stream, because
-reports are one-way. The write is the one op whose effect does not commit in
-the op's own transaction: two rows written together carry one transaction id,
-and that id is readable. The day it was written is kept; the time of day is
-not.
+reports are one-way. The sweep is what puts it in `reports`, where the
+operations view reads it, on a clock that belongs to nobody — so an operator
+sees a report within a tick rather than at once, which is the price of its
+write not being adjacent to its author's. The day it was written is kept; the
+time of day is not.
 
 ## The admin web app
 

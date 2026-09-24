@@ -10,12 +10,17 @@
 --
 -- There is no user_id, and that is the point: a report is what somebody chose
 -- to send, and an operator has no reader to read next. That is a claim about
--- this column list and nothing more. Three channels have since been found
+-- this column list and nothing more. Four channels have since been found
 -- under it, none of them a column: the row's id was the op id, which op_log
 -- holds against its author (00006); the report and that op_log row were
--- written in one transaction, so both carried the same xmin (00007); and the
--- time of day was the device's clock, which sits beside the flush that
--- carried it (00007). Read those two before trusting this paragraph.
+-- written in one transaction, so both carried the same xmin, and the time of
+-- day was the device's clock, which sits beside the flush that carried it
+-- (00007); and the transaction the report was moved into so it would not
+-- share one was then carried by no live row, leaving a gap in the sequence
+-- directly above its author's op_log row (00008). 00008 is also where reports
+-- stopped being written at the moment their author was on the wire: they
+-- arrive in report_inbox and a sweep moves them here. Read all three, and
+-- docs/adr/0004, before trusting this paragraph.
 -- Nothing is answered back, so nothing needs a reader to answer to.
 --
 -- There is no seq either. Reports are one-way, so they never join the change

@@ -3,6 +3,12 @@
 -- Two more ways a report named its author, neither of them visible in the
 -- column list, and both proved against a real database rather than argued.
 --
+-- What this migration decided has since been undone by 00008, and the rewrite
+-- it describes below is no longer what a report write does: giving the report
+-- a transaction of its own spent an id that the rewrite then left carried by
+-- no live row, which is a gap in the sequence sitting directly above the
+-- author's op_log row. Read 00008 for the shape that replaced it.
+--
 -- The first was the transaction. The report row and the op_log row that holds
 -- its op id against its author were written in one transaction, so both row
 -- versions carried the same xmin. xmin is a system column and any role that

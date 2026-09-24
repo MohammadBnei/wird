@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // An Op is one write a device made, carrying the id it minted for it. The id
@@ -89,7 +88,7 @@ func (s *Store) attempt(ctx context.Context, userID string, op Op) (OpResult, er
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	result := applyInTx(ctx, tx, s.pool, userID, op)
+	result := applyInTx(ctx, tx, userID, op)
 	if result.Status != OpApplied {
 		return result, nil
 	}
@@ -102,9 +101,7 @@ func (s *Store) attempt(ctx context.Context, userID string, op Op) (OpResult, er
 // applyInTx is everything but the commit. It is a function of its own so a
 // test can hold the transaction open and choose the moment it commits, which
 // is the only way to stage two writes landing at once.
-//
-// outside is the pool, for the one op whose effect must not commit in tx.
-func applyInTx(ctx context.Context, tx pgx.Tx, outside *pgxpool.Pool, userID string, op Op) OpResult {
+func applyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) OpResult {
 	if err := lockReader(ctx, tx, userID); err != nil {
 		return classify(op, err)
 	}
@@ -115,7 +112,7 @@ func applyInTx(ctx context.Context, tx pgx.Tx, outside *pgxpool.Pool, userID str
 	if !first {
 		return OpResult{ClientOpID: op.ClientOpID, Status: OpDuplicate}
 	}
-	if err := applyKind(ctx, tx, outside, userID, op); err != nil {
+	if err := applyKind(ctx, tx, userID, op); err != nil {
 		return classify(op, err)
 	}
 	return OpResult{ClientOpID: op.ClientOpID, Status: OpApplied}
@@ -177,7 +174,7 @@ func reason(err error) string {
 	return "refused"
 }
 
-func applyKind(ctx context.Context, tx pgx.Tx, outside *pgxpool.Pool, userID string, op Op) error {
+func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 	switch op.Kind {
 	case "ayah_understood":
 		return applyAyahUnderstood(ctx, tx, userID, op.Body)
@@ -192,7 +189,7 @@ func applyKind(ctx context.Context, tx pgx.Tx, outside *pgxpool.Pool, userID str
 	case "prefs_set":
 		return applyPrefsSet(ctx, tx, userID, op.Body)
 	case "report_written":
-		return applyReport(ctx, outside, op)
+		return applyReport(ctx, tx, op)
 	default:
 		return refuse("unknown kind %q", op.Kind)
 	}
@@ -468,37 +465,27 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 }
 
 // The one apply that is not handed the reader, because a report has nowhere
-// to put one. It reaches the same table an operator reads, so the reader it
-// came from must not be recoverable from it — and the column list is the
-// smallest part of that. Three channels have been found under it so far, each
-// one proved against a real database:
+// to put one. It reaches a table an operator reads, so the reader it came from
+// must not be recoverable from it — and the column list is the smallest part
+// of that. Four channels were found under that sentence, each proved against a
+// real Postgres, and every one of them was the same fact: the report was
+// written at the moment its author was talking to the database. Its id was the
+// op id; then it shared a transaction with the op_log row; then it sat on disk
+// where it arrived; then the transaction it was given to hide in became a gap
+// in the sequence that nothing else accounted for, one id above its author's.
 //
-// The row's id used to be the op id, and op_log holds that against the reader
-// who sent it for the ninety days of OpLogWindow. So the id is minted here.
+// So the write is not done here at all. The report goes into report_inbox, in
+// the op's own transaction, and SweepReports moves it into reports on a clock
+// that belongs to nobody. Nothing is minted here and no transaction is spent
+// beyond the one the op_log row already accounts for, so there is no gap to
+// walk and nothing of the reader's moment survives into the table that is read.
 //
-// The report used to be written in the op's own transaction, and two row
-// versions written in one transaction carry the same xmin — a system column
-// any role that can SELECT can read. So it is written on the pool, in a
-// transaction of its own, while the op's transaction still holds this reader's
-// advisory lock and has not committed. If this fails, the op id rolls back
-// with it and the device's retry is clean; if that commit fails after this
-// one, the device files a duplicate rather than losing the report.
-//
-// Separate transactions are not enough by themselves, because transaction ids
-// are handed out in order and a report that commits between two of a reader's
-// ops still sits next to them. So the write also regroups: every report row is
-// deleted and written again in one transaction, which leaves them all carrying
-// that transaction's id and none of them nearer their author's op_log row than
-// the rest. Ordered by id, because a heap appends and the order rows sit in on
-// disk would otherwise be the order they arrived in.
-//
-// The device's clock is kept to the day, because the op_log row nearest a
-// microsecond-accurate time was its author's.
-//
-// ponytail: the whole table is rewritten on every report. Reports arrive a
-// handful a day and there is no second writer to contend with. Regroup on the
-// ticker alone, and wear the window it leaves, if that ever stops being true.
-func applyReport(ctx context.Context, pool *pgxpool.Pool, op Op) error {
+// The inbox row does carry its author's transaction id, and that is not hidden
+// or worked around: it is written in the author's transaction because that is
+// what makes the op id and the report commit together. What it costs is a
+// window one sweep wide in which a SQL prompt can attribute an unswept report.
+// docs/adr/0004 says so in those words.
+func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	var b struct {
 		Kind          string    `json:"kind"`
 		Body          string    `json:"body"`
@@ -514,39 +501,43 @@ func applyReport(ctx context.Context, pool *pgxpool.Pool, op Op) error {
 	if b.CreatedAt.IsZero() {
 		b.CreatedAt = time.Now().UTC()
 	}
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		uuid.NewString(), b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen,
-		b.CorpusVersion, b.CreatedAt.UTC()); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, regroupReportsSQL); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	_, err := tx.Exec(ctx, `
+		INSERT INTO report_inbox (kind, body, app_version, platform, screen, corpus_version, written_on)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.CreatedAt.UTC())
+	return err
 }
 
-// regroupReportsSQL rewrites every report row in one statement, so that they
-// all carry one transaction id and sit on disk in the order of their ids
-// rather than the order they were written.
-const regroupReportsSQL = `
-WITH gone AS (DELETE FROM reports RETURNING *)
+// sweepReportsSQL empties the inbox into reports and rewrites every report row
+// that was already there, all in one statement and so under one transaction
+// id. The id each report carries is therefore the last sweep's and no report's
+// own. Ids are minted here rather than on arrival, and the rows are laid down
+// in the order of those ids, because a heap appends and the order rows sit in
+// would otherwise be the order they arrived in.
+const sweepReportsSQL = `
+WITH arrived AS (DELETE FROM report_inbox RETURNING *),
+     held AS (DELETE FROM reports RETURNING *),
+     all_of_them AS (
+       SELECT gen_random_uuid() AS id, kind, body, app_version, platform, screen, corpus_version, written_on
+         FROM arrived
+       UNION ALL
+       SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
+         FROM held
+     )
 INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
-SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
-  FROM gone ORDER BY id`
+SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on FROM all_of_them ORDER BY id`
 
-// RegroupReports runs that rewrite on its own. Every report write already
-// does it, which leaves the shared transaction id sitting next to the op_log
-// row of whoever reported last. A pass on the ticker moves it to a moment
-// that belongs to nobody in particular.
-func (s *Store) RegroupReports(ctx context.Context) error {
-	_, err := s.pool.Exec(ctx, regroupReportsSQL)
+// SweepReports is the write that belongs to the schedule rather than to a
+// reader. It runs on its tick whether or not anything arrived, and rewrites
+// the whole table either way: a sweep that only did work when a report was
+// waiting would make the transaction id on reports say which tick a report
+// came in on, which is the same channel one interval wide.
+//
+// ponytail: the whole table is rewritten on every tick. Reports arrive a
+// handful a day and nothing else writes the table. Sweep the inbox alone, and
+// wear a transaction id per batch, if reports ever arrive in volume.
+func (s *Store) SweepReports(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, sweepReportsSQL)
 	return err
 }
 

@@ -289,3 +289,12 @@ func count(t *testing.T, pool *pgxpool.Pool, sql string) int {
 	}
 	return n
 }
+
+// sweep is the tick that moves what readers sent from the inbox into the table
+// an operator reads. Nothing is in reports until it has run.
+func sweep(t *testing.T, db *store.Store) {
+	t.Helper()
+	if err := db.SweepReports(t.Context()); err != nil {
+		t.Fatalf("sweep the reports: %v", err)
+	}
+}

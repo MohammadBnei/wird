@@ -185,6 +185,9 @@ func seedTwoReadersWithPractice(t *testing.T, db *store.Store) {
 	t.Helper()
 	seedReaderWithPractice(t, db, "sub-admin-one", 800, 1001, 1)
 	seedReaderWithPractice(t, db, "sub-admin-two", 810, 1002, 4)
+	// A report is not in the table the dashboard reads until a sweep puts it
+	// there, which is the whole of what separates its write from its author's.
+	sweep(t, db)
 }
 
 func seedReaderWithPractice(t *testing.T, db *store.Store, subject string, base, ayah, corpusVersion int) {

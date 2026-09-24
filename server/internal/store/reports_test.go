@@ -6,6 +6,7 @@ import (
 	"maps"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -31,6 +32,7 @@ func TestAReportFlushedTwiceIsOneReportAndNotTwo(t *testing.T) {
 	if got := status(t, db, user, op); got != store.OpDuplicate {
 		t.Fatalf("a replayed report came back %q, not duplicate", got)
 	}
+	sweep(t, db)
 	if n := count(t, pool, `SELECT count(*) FROM reports`); n != 1 {
 		t.Fatalf("one report written, %d stored: a retried flush is filing the same bug again", n)
 	}
@@ -67,23 +69,29 @@ func TestAReportCannotCarryAReadersNotesProgressOrCorpus(t *testing.T) {
 	db, pool := testenv.Postgres(t)
 	user := reader(t, db, "sub-report-clean")
 
-	var columns []string
-	rows, err := pool.Query(t.Context(),
-		`SELECT column_name FROM information_schema.columns WHERE table_name = 'reports'`)
-	if err != nil {
-		t.Fatalf("read the reports columns: %v", err)
-	}
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			t.Fatalf("read the reports columns: %v", err)
+	// Both tables a report passes through, because the inbox holds the same
+	// text for a sweep interval and a column added there is the same column.
+	for table, want := range map[string][]string{
+		"reports":      {"app_version", "body", "corpus_version", "id", "kind", "platform", "screen", "written_on"},
+		"report_inbox": {"app_version", "body", "corpus_version", "kind", "platform", "screen", "written_on"},
+	} {
+		var columns []string
+		rows, err := pool.Query(t.Context(),
+			`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, table)
+		if err != nil {
+			t.Fatalf("read the %s columns: %v", table, err)
 		}
-		columns = append(columns, name)
-	}
-	slices.Sort(columns)
-	want := []string{"app_version", "body", "corpus_version", "id", "kind", "platform", "screen", "written_on"}
-	if !slices.Equal(columns, want) {
-		t.Fatalf("reports carries %v where a report is only %v — a column here is a place somebody's practice can end up", columns, want)
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				t.Fatalf("read the %s columns: %v", table, err)
+			}
+			columns = append(columns, name)
+		}
+		slices.Sort(columns)
+		if !slices.Equal(columns, want) {
+			t.Fatalf("%s carries %v where a report is only %v — a column here is a place somebody's practice can end up", table, columns, want)
+		}
 	}
 
 	smuggled := store.Op{ClientOpID: opID(920), Kind: "report_written", Body: json.RawMessage(
@@ -93,7 +101,7 @@ func TestAReportCannotCarryAReadersNotesProgressOrCorpus(t *testing.T) {
 		t.Fatalf("a report carrying the reader's ayas and note came back %q, so their practice is now in the operator's list", got)
 	}
 
-	if n := count(t, pool, `SELECT count(*) FROM reports`); n != 0 {
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox`); n != 0 {
 		t.Fatalf("%d reports stored from a body that was refused", n)
 	}
 }
@@ -135,22 +143,25 @@ func reportOp(id, kind, body string) store.Op {
 // it — and from that name read their notes, their progress and when they
 // prayed.
 //
-// Three channels have been found here, one under the other, and not one of
-// them was a column. The row's id was the op id, and op_log holds that against
-// its author. Then the report row and that op_log row were written in one
+// Four channels were found here, one under the other, and not one of them was
+// a column. The row's id was the op id, and op_log holds that against its
+// author. Then the report row and that op_log row were written in one
 // transaction, so both row versions carried the same xmin: a system column,
 // which to_jsonb does not return, which is why the first version of this test
 // passed while a join on xmin named three authors out of three. Then the day
 // and time came from the device clock to the microsecond, and the op_log row
-// nearest a report in time was its author's.
+// nearest a report in time was its author's. Then the transaction the report
+// was given so it would not share one became a gap in the sequence that no
+// live row accounted for, sitting one id above its author's op_log row —
+// TestAReportsArrivalLeavesNoGapInTheTransactionIds is that one.
 //
-// So four things are walked and every one of them has to come up empty: the
-// values, now with the system columns among them; the transaction ids, as a
-// nearest rather than as an equality, because they are handed out in order and
-// sitting beside a reader's op is as good as sharing one; the clock, the same
-// way; and the order the rows sit in on disk, which a heap would otherwise
-// leave as the order they arrived in. Each is then staged by hand, so a walk
-// that has stopped working cannot read as a pass.
+// So four things are walked here and every one of them has to come up empty:
+// the values, now with the system columns among them; the transaction ids, as
+// a nearest rather than as an equality, because they are handed out in order
+// and sitting beside a reader's op is as good as sharing one; the clock, the
+// same way; and the order the rows sit in on disk, which a heap would
+// otherwise leave as the order they arrived in. Each is then staged by hand,
+// so a walk that has stopped working cannot read as a pass.
 func TestNoReportCanBeJoinedToTheReaderWhoSentIt(t *testing.T) {
 	db, pool := testenv.Postgres(t)
 
@@ -177,6 +188,14 @@ func TestNoReportCanBeJoinedToTheReaderWhoSentIt(t *testing.T) {
 		readers[user] = "the reader's id"
 		readers[subject] = "the reader's subject"
 	}
+
+	// Nothing is in reports until the sweep puts it there, which is the whole
+	// of the change: the write an operator can read happened on a clock, not
+	// in the moment any of these readers was talking to the database.
+	if n := count(t, pool, `SELECT count(*) FROM reports`); n != 0 {
+		t.Fatalf("%d reports were written while their authors were still on the wire", n)
+	}
+	sweep(t, db)
 
 	for _, r := range reports {
 		if trail := reaches(t, pool, reportRow(t, pool, r.body), readers); trail != "" {
@@ -221,11 +240,11 @@ func TestNoReportCanBeJoinedToTheReaderWhoSentIt(t *testing.T) {
 	for i, r := range reports {
 		arrived[i] = r.body
 	}
-	exec(t, pool, regroupedIn("array_position($1::text[], body)"), arrived)
+	exec(t, pool, rewrittenIn("array_position($1::text[], body)"), arrived)
 	if disk := order(t, pool, "ctid"); !slices.Equal(disk, arrived) {
 		t.Fatalf("the rows would not sit in the order they arrived (%v), so their order on disk is not being read", disk)
 	}
-	exec(t, pool, regroupedIn("id DESC"))
+	exec(t, pool, rewrittenIn("id DESC"))
 	if disk, byID := order(t, pool, "ctid"), order(t, pool, "id"); slices.Equal(disk, byID) {
 		t.Fatal("rows written in the reverse of their id order still read as being in it, so the walk over their order proves nothing")
 	}
@@ -313,10 +332,10 @@ func clockOf(t *testing.T, op store.Op) time.Time {
 	return b.CreatedAt
 }
 
-// regroupedIn is the rewrite applyReport does, with the order it lays the rows
+// rewrittenIn is the rewrite the sweep does, with the order it lays the rows
 // down in left to the caller, so a test can put them back the way a heap
 // leaves them.
-func regroupedIn(order string) string {
+func rewrittenIn(order string) string {
 	return `
 WITH gone AS (DELETE FROM reports RETURNING *)
 INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
@@ -542,4 +561,158 @@ func wholeDatabase(t *testing.T, pool *pgxpool.Pool) map[string][]map[string]str
 		rows.Close()
 	}
 	return out
+}
+
+// The failure: a report's write spends a transaction id of its own, and the
+// rewrite that follows leaves that id carried by no live row anywhere — a gap
+// in the sequence, sitting immediately above the op_log row of the reader who
+// caused it. Walking the gaps then names every reporter, out of a plain
+// SELECT, with no statement log and no superuser. Measured at three of three
+// before the inbox, and the daily rewrite that was supposed to mitigate it
+// took it from two of three to three of three by turning the last report's
+// transaction into a gap like the rest.
+func TestAReportsArrivalLeavesNoGapInTheTransactionIds(t *testing.T) {
+	db, pool := testenv.Postgres(t)
+
+	// Readers who never report, so that naming a reporter is a fact about
+	// reporting rather than about being one of the readers here at all.
+	for i := range 3 {
+		user := reader(t, db, fmt.Sprintf("sub-gap-quiet-%d", i))
+		land(t, db, user, understood(opID(1000+i), 1001+i, time.Now()))
+	}
+	reporters := map[string]bool{}
+	for i := range 3 {
+		user := reader(t, db, fmt.Sprintf("sub-gap-reporter-%d", i))
+		land(t, db, user, understood(opID(1010+i), 2001+i, time.Now()))
+		land(t, db, user, reportOp(opID(1020+i), "bug", fmt.Sprintf("report %d: the audio stops", i)))
+		reporters[user] = true
+	}
+	sweep(t, db)
+
+	for _, user := range namedByGaps(t, pool) {
+		if reporters[user] {
+			t.Errorf("a gap in the transaction ids names a reader who reported, so a report still says when its author flushed")
+		}
+	}
+
+	// Staged by hand, so a walk that has stopped working cannot read as a
+	// pass: a report written the way it used to be, in a transaction of its
+	// own after its author's op, with the table rewritten afterwards so that
+	// transaction is left carried by nothing.
+	staged := reader(t, db, "sub-gap-staged")
+	land(t, db, staged, understood(opID(1030), 3001, time.Now()))
+	exec(t, pool, `INSERT INTO op_log (user_id, client_op_id) VALUES ($1, gen_random_uuid())`, staged)
+	exec(t, pool, `
+		INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
+		VALUES (gen_random_uuid(), 'bug', 'a report written in a transaction of its own',
+		        '1.4.0', 'ios', 'prayer', 1, current_date)`)
+	exec(t, pool, rewrittenIn("id"))
+	if !slices.Contains(namedByGaps(t, pool), staged) {
+		t.Fatal("a report written in a transaction of its own was not found by the walk over the gaps, so the walk proves nothing")
+	}
+}
+
+// The failure: a report is written to the table an operator reads at the
+// moment its author is on the wire, so whatever that write leaves behind — a
+// transaction id, a place on disk, a gap — is adjacent to that author. Nothing
+// about a report reaches reports until a sweep puts it there.
+func TestNoReportReachesTheOperatorsTableUntilTheSweepRunsOnItsOwnClock(t *testing.T) {
+	db, pool := testenv.Postgres(t)
+	user := reader(t, db, "sub-report-sweep")
+
+	land(t, db, user, reportOp(opID(1040), "request", "a way to hide the translation"))
+	if n := count(t, pool, `SELECT count(*) FROM reports`); n != 0 {
+		t.Fatalf("%d reports were written while their author was still talking to the database", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox`); n != 1 {
+		t.Fatalf("the inbox holds %d reports where one was sent, so the report is nowhere", n)
+	}
+
+	sweep(t, db)
+	if n := count(t, pool, `SELECT count(*) FROM reports`); n != 1 {
+		t.Fatalf("the sweep left %d reports, so what somebody wrote is not in front of an operator", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox`); n != 0 {
+		t.Fatalf("%d reports are still in the inbox after a sweep, where they carry their author's transaction id", n)
+	}
+}
+
+// The failure: the sweep only does work when a report is waiting, so the
+// transaction id every report carries moves exactly when one arrived. That is
+// the same channel as before, one sweep interval wide, and the fix for it is
+// that the tick is a fact about the clock and never about reports.
+func TestTheSweepRewritesTheReportsOnTicksWhenNothingArrived(t *testing.T) {
+	db, pool := testenv.Postgres(t)
+	user := reader(t, db, "sub-report-idle-sweep")
+
+	land(t, db, user, reportOp(opID(1050), "bug", "the audio stops at the end of the set"))
+	sweep(t, db)
+	first := txid(t, pool)
+
+	sweep(t, db)
+	if second := txid(t, pool); second == first {
+		t.Fatalf("a tick with nothing waiting left the reports under transaction %d, so the id on a report says which tick it came in on", first)
+	}
+}
+
+// txid is the one transaction id every report row carries.
+func txid(t *testing.T, pool *pgxpool.Pool) int64 {
+	t.Helper()
+	var ids []int64
+	rows, err := pool.Query(t.Context(), `SELECT DISTINCT xmin::text::bigint FROM reports`)
+	if err != nil {
+		t.Fatalf("read the reports transaction id: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			t.Fatalf("read the reports transaction id: %v", err)
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) != 1 {
+		t.Fatalf("the reports carry %d transaction ids where they all carry the sweep's one", len(ids))
+	}
+	return ids[0]
+}
+
+// namedByGaps takes every transaction id a live row anywhere in the schema
+// carries, finds the ids in between that nothing carries, and answers which
+// readers hold the op_log row immediately below one. A write that spends a
+// transaction and leaves nothing behind it puts its author one row down.
+func namedByGaps(t *testing.T, pool *pgxpool.Pool) []string {
+	t.Helper()
+	tables := wholeDatabase(t, pool)
+
+	live := map[int64]bool{}
+	owner := map[int64]string{}
+	for table, rows := range tables {
+		for _, row := range rows {
+			id, err := strconv.ParseInt(strings.TrimPrefix(row["xmin"], "tx:"), 10, 64)
+			if err != nil {
+				continue
+			}
+			live[id] = true
+			if table == "op_log" {
+				owner[id] = row["user_id"]
+			}
+		}
+	}
+	ids := slices.Sorted(maps.Keys(live))
+
+	var named []string
+	for i := 1; i < len(ids); i++ {
+		// Only a short run of unaccounted ids is a gap worth walking: a long
+		// one is another database on the same cluster spending its own.
+		if ids[i]-ids[i-1] > 64 {
+			continue
+		}
+		for gap := ids[i-1] + 1; gap < ids[i]; gap++ {
+			if user, ok := owner[gap-1]; ok && !slices.Contains(named, user) {
+				named = append(named, user)
+			}
+		}
+	}
+	return named
 }
