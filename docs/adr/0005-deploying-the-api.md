@@ -185,3 +185,11 @@ must not be synced before that has happened, or the first reconcile is an
 needs `MohammadBnei/wird` added to the Infisical OIDC identity's repository
 allowlist, or the registry-password step fails with an authentication error
 that reads like a broken identity.
+
+**`Synced Healthy` does not mean your commit is running.** The deploy job bumps
+`tag:` in a commit of its own, and ArgoCD reported `Synced Healthy` for about
+twenty minutes afterwards — truthfully, against the revision it had last
+reconciled, which predated the bump. To know whether a release landed, compare
+the Deployment's image tag against `helm/values.yaml`, or ask the route itself.
+Measured on run `36074938048`, the first push-triggered release to reach
+`deploy`: every earlier run was a manual dispatch, which the job skips.
