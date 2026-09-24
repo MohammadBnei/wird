@@ -41,23 +41,42 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   Waiting? _waiting;
+
+  /// Which read owns the screen. Two can be in flight at once — the one the
+  /// prayer's return asks for, and the one this screen asks for after the
+  /// prayer has been recorded — and only the last one asked for is current.
+  int _read = 0;
 
   // The first read happens here rather than in initState because the corpus
   // and the reader's order are reached through the application above this
-  // screen. Every later read is asked for by the push that could have changed
-  // the answer.
+  // screen.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<void>) routeObserver.subscribe(this, route);
     _load();
   }
 
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  /// Home lies under everything, and everything above it can move the walk: a
+  /// set marked understood, a prayer, a change of reading order. Being
+  /// uncovered is the one moment all three have in common.
+  @override
+  void didPopNext() => _load();
+
   Future<void> _load() async {
+    final read = ++_read;
     final wird = Wird.of(context);
     final waiting = await whatIsWaiting(wird.db, wird.prefs.order);
-    if (mounted) setState(() => _waiting = waiting);
+    if (mounted && read == _read) setState(() => _waiting = waiting);
   }
 
   Future<void> _pray(StudySet set) async {
@@ -65,17 +84,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) await _load();
   }
 
-  /// Opens a screen and reads the walk again on the way back: the reader may
-  /// have marked the waiting set understood, or prayed it, while they were
-  /// away.
-  ///
   /// The index answers with an aya rather than by staying open, so home
   /// carries it on to the one screen that reads one.
   Future<void> _open(String route) async {
     final nav = Navigator.of(context);
     final chosen = await nav.pushNamed(route);
     if (chosen is int) await nav.pushNamed(Routes.study, arguments: chosen);
-    if (mounted) await _load();
   }
 
   @override

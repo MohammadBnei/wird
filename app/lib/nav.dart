@@ -97,6 +97,16 @@ final screens = <String, ScreenBuilder>{
   Routes.index: (db, _) => IndexScreen(db: db),
 };
 
+/// Tells the screen underneath that whatever was above it has been popped.
+///
+/// [Wird] holds the corpus and the reader's preferences, and nothing holds what
+/// is derived from them: every screen that shows where the walk is works it out
+/// for itself, so each needs telling when to work it out again. A push answers
+/// its own caller, but the drawer returns a reader by popping and the route
+/// underneath hears nothing — which is how home went on offering a set the
+/// reader had already finished, in an order they had already left.
+final routeObserver = RouteObserver<PageRoute<void>>();
+
 /// One place the drawer can send the reader.
 typedef Destination = ({String route, String label});
 
@@ -184,6 +194,7 @@ Widget wirdApp(
       title: 'Wird',
       theme: nocturneTheme(),
       initialRoute: Routes.dashboard,
+      navigatorObservers: [routeObserver],
       onGenerateRoute: (settings) => screenRoute(settings, db),
     ),
   ),
