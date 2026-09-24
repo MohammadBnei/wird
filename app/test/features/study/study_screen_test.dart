@@ -76,6 +76,7 @@ void main() {
       await wirdAround(
         db,
         StudyScreen(db: db),
+        route: Routes.study,
         cache: audio,
         // Screen 1b stands in as a bare page: what is under test is that the
         // prayer is recorded when the reader gets back, whatever 1b did.
@@ -329,6 +330,7 @@ void main() {
       await wirdAround(
         db,
         StudyScreen(db: db),
+        route: Routes.study,
         cache: AudioCache(dir, fetch: RadioOff().call),
       ),
     );

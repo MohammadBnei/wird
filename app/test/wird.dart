@@ -15,9 +15,14 @@ import 'package:wird/theme/nocturne.dart';
 /// audio and the preferences belong to the app above it rather than to the
 /// screen, so a test that mounts a screen without them is testing something
 /// the reader never runs.
+///
+/// [route] puts it inside the shell as well, which a destination needs: the
+/// drawer the burger opens is the shell's, and a screen mounted without one
+/// has no way out to test.
 Future<Widget> wirdAround(
   Database db,
   Widget screen, {
+  String? route,
   AudioCache? cache,
   Recitation? recitation,
   RouteFactory? onGenerateRoute,
@@ -32,7 +37,13 @@ Future<Widget> wirdAround(
     theme: nocturneTheme(),
     onGenerateRoute:
         onGenerateRoute ?? (settings) => screenRoute(settings, db),
-    home: screen,
+    home: route == null
+        ? screen
+        : WirdShell(
+            route: route,
+            bar: shellDrawsTheBar(route),
+            child: screen,
+          ),
   ),
 );
 

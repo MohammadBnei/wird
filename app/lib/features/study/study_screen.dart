@@ -7,6 +7,7 @@ import '../../app.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
 import '../../data/sets.dart';
+import '../../shell/wird_shell.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import 'study_chrome.dart';
@@ -232,10 +233,8 @@ class _StudyScreenState extends State<StudyScreen> {
     // from having changed them.
     return ListenableBuilder(
       listenable: _prefs,
-      builder: (context, _) => Scaffold(
-        backgroundColor: n.bg,
-        body: SafeArea(
-          child: !_loaded
+      builder: (context, _) => SafeArea(
+        child: !_loaded
               ? const SizedBox.shrink()
               : set == null
               ? _finished(n)
@@ -250,6 +249,14 @@ class _StudyScreenState extends State<StudyScreen> {
                       open: _prefs.headerOpen,
                       onToggle: () => _prefs.setHeaderOpen(!_prefs.headerOpen),
                       onBackToTheWalk: () => _load(),
+                    ),
+                    // The transport belongs to the shell's row everywhere
+                    // else. This screen carries that row, so it carries this
+                    // too — and it takes no height at all while nothing is
+                    // sounding.
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: n.space('6')),
+                      child: const SoundingNow(),
                     ),
                     Expanded(child: _reading(n, set)),
                     RootPanel(
@@ -266,7 +273,6 @@ class _StudyScreenState extends State<StudyScreen> {
                     ),
                   ],
                 ),
-        ),
       ),
     );
   }

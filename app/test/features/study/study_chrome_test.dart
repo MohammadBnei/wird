@@ -5,6 +5,7 @@ import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/nav.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -29,7 +30,12 @@ void main() {
   Future<void> openStudy(WidgetTester tester, {int? target}) async =>
       pumpPhone(
         tester,
-        await wirdAround(db, StudyScreen(db: db, target: target), cache: audio),
+        await wirdAround(
+          db,
+          StudyScreen(db: db, target: target),
+          route: Routes.study,
+          cache: audio,
+        ),
       );
 
   Future<void> tapHeader(WidgetTester tester) async {

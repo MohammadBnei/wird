@@ -126,6 +126,15 @@ const destinations = <Destination>[
 
 bool isDestination(String? route) => destinations.any((d) => d.route == route);
 
+/// Whether the shell draws the bar's row over this destination, or the screen
+/// draws it itself.
+///
+/// The reading screen draws it. What that row has to say — the sūra, which of
+/// its ayas, whether the chrome is folded, and the act the reading is for — is
+/// more than a shell can know, and a shell row above the screen's own was a
+/// second line of chrome between the reader and the first aya.
+bool shellDrawsTheBar(String route) => route != Routes.study;
+
 /// A destination opened as a step inside another screen rather than chosen in
 /// the drawer.
 ///
@@ -167,7 +176,12 @@ Route<void> screenRoute(RouteSettings settings, Database db) {
     builder: (_) {
       final screen = build(db, arguments);
       return isDestination(settings.name)
-          ? WirdShell(route: settings.name!, step: step, child: screen)
+          ? WirdShell(
+              route: settings.name!,
+              step: step,
+              bar: shellDrawsTheBar(settings.name!),
+              child: screen,
+            )
           : screen;
     },
   );

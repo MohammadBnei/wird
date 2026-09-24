@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
-import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/features/study/word_row.dart';
+import 'package:wird/nav.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -34,7 +34,12 @@ void main() {
   Future<void> openStudy(WidgetTester tester, {int? target}) async {
     await pumpPhone(
       tester,
-      await wirdAround(db, StudyScreen(db: db, target: target), cache: audio),
+      await wirdAround(
+        db,
+        StudyScreen(db: db, target: target),
+        route: Routes.study,
+        cache: audio,
+      ),
     );
   }
 

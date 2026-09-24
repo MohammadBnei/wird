@@ -7,6 +7,7 @@ import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/nav.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -53,6 +54,7 @@ void main() {
       await wirdAround(
         db,
         StudyScreen(db: db, target: target),
+        route: Routes.study,
         cache: AudioCache(dir, fetch: cdn.call, capBytes: _cap),
       ),
     );

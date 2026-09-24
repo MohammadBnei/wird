@@ -302,6 +302,46 @@ void main() {
     );
   });
 
+  testWidgets('the reading screen draws its heading under a bar of the '
+      'shell\'s, so the reader reads past two rows of chrome to reach the '
+      'first aya', (tester) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await goTo(tester, 'The set');
+
+    final burger = find.byIcon(Icons.menu);
+    expect(burger, findsOneWidget, reason: 'one way out, not two');
+    // The burger, where the reader is, and the act the reading is for share
+    // one row: a second bar above would push the title down off its centre.
+    for (final beside in [
+      find.textContaining("Al-'Alaq 1–5"),
+      find.byKey(const Key('pray the set')),
+    ]) {
+      expect(
+        tester.getCenter(beside).dy,
+        closeTo(tester.getCenter(burger).dy, 4),
+        reason: 'it sits on a row of its own under the burger',
+      );
+    }
+    expect(
+      tester.getRect(find.byKey(const Key('study header'))).top,
+      lessThan(24),
+      reason: 'the heading starts below a bar the shell drew',
+    );
+  });
+
+  testWidgets('the burger the reading screen draws opens nothing, because '
+      'the drawer belongs to a shell row that is no longer there', (
+    tester,
+  ) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await goTo(tester, 'The set');
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WirdDrawer), findsOneWidget);
+  });
+
   testWidgets('the prayer is started from a preferences panel rather than '
       'from the screen the app opens on', (tester) async {
     await pumpPhone(tester, await wholeApp(db, cache: silent));

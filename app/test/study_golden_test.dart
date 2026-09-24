@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/nav.dart';
+import 'package:wird/shell/wird_shell.dart';
 
 import 'corpus.dart';
 import 'fonts.dart';
@@ -26,10 +28,18 @@ void main() {
       'test can see: type, spacing, or the layout of the set', (tester) async {
     // No recitation on disk and no network: the golden captures the screen a
     // phone shows before anything has been downloaded.
-    await pumpPhone(tester, await wirdAround(db, StudyScreen(db: db), cache: audio));
+    await pumpPhone(
+      tester,
+      await wirdAround(
+        db,
+        StudyScreen(db: db),
+        route: Routes.study,
+        cache: audio,
+      ),
+    );
 
     await expectLater(
-      find.byType(StudyScreen),
+      find.byType(WirdShell),
       matchesGoldenFile('goldens/study.png'),
     );
   });
@@ -38,13 +48,18 @@ void main() {
       'masthead over the set, or the root under it', (tester) async {
     await pumpPhone(
       tester,
-      await wirdAround(db, StudyScreen(db: db), cache: audio),
+      await wirdAround(
+        db,
+        StudyScreen(db: db),
+        route: Routes.study,
+        cache: audio,
+      ),
     );
     await tester.tap(find.byKey(const Key('toggle header')));
     await tester.pumpAndSettle();
 
     await expectLater(
-      find.byType(StudyScreen),
+      find.byType(WirdShell),
       matchesGoldenFile('goldens/study_unfolded.png'),
     );
   });
@@ -53,13 +68,18 @@ void main() {
       'act it still carries', (tester) async {
     await pumpPhone(
       tester,
-      await wirdAround(db, StudyScreen(db: db), cache: audio),
+      await wirdAround(
+        db,
+        StudyScreen(db: db),
+        route: Routes.study,
+        cache: audio,
+      ),
     );
     await tester.tap(find.byKey(const Key('toggle root panel')));
     await tester.pumpAndSettle();
 
     await expectLater(
-      find.byType(StudyScreen),
+      find.byType(WirdShell),
       matchesGoldenFile('goldens/study_folded.png'),
     );
   });

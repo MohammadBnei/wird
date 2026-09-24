@@ -25,6 +25,7 @@ class WirdShell extends StatelessWidget {
     required this.route,
     required this.child,
     this.step = false,
+    this.bar = true,
   });
 
   /// Which destination is open, so the drawer can mark it.
@@ -35,6 +36,16 @@ class WirdShell extends StatelessWidget {
   /// screen never draws a second one of its own: a destination is where the
   /// reader is and opens the drawer, a step is one they took and goes back.
   final bool step;
+
+  /// Whether the shell draws the bar's row.
+  ///
+  /// One screen carries it itself. Where the reader is, on the reading screen,
+  /// is the sūra, which of its ayas, and whether the chrome is folded — none of
+  /// which the shell can know — so a shell row above the screen's own said
+  /// "where am I" twice and cost the reader a second line of chrome before the
+  /// first aya. That screen is handed the row, burger and all, and the shell
+  /// draws none. Every other destination keeps the shell's.
+  final bool bar;
 
   final Widget child;
 
@@ -49,7 +60,7 @@ class WirdShell extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _bar(context, n),
+            if (bar) _bar(context, n),
             Expanded(child: child),
           ],
         ),
@@ -59,9 +70,10 @@ class WirdShell extends StatelessWidget {
 
   /// The way out, and beside it the transport.
   ///
-  /// No title: each of the seven screens draws its own, and a shell that
+  /// No title: every screen drawn in here draws its own, and a shell that
   /// repeated it would say the same thing twice on a 402px screen. Where the
-  /// reader is, is marked in the drawer.
+  /// reader is, is marked in the drawer. The screen that cannot afford the
+  /// second row takes this row over instead — see [bar].
   Widget _bar(BuildContext context, Nocturne n) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -75,23 +87,37 @@ class WirdShell extends StatelessWidget {
         child: Row(
           spacing: n.space('2'),
           children: [
-            Builder(
-              builder: (context) => NocturneButton(
-                variant: NocturneButtonVariant.icon,
-                onPressed: step
-                    ? Navigator.of(context).maybePop
-                    : Scaffold.of(context).openDrawer,
-                child: step
-                    ? const Icon(Icons.arrow_back_ios_new, size: 16)
-                    : const Icon(Icons.menu),
-              ),
-            ),
+            ShellBurger(step: step),
             const Expanded(child: SoundingNow()),
           ],
         ),
       ),
       const NocturneRule(fade: 48),
     ],
+  );
+}
+
+/// The way out of a screen, wherever the row that holds it is drawn.
+///
+/// There is one of these in the app so that a screen carrying the bar's row
+/// itself opens the same drawer, by the same glyph, as the shell's own row —
+/// and reaches it through the shell's [Scaffold], which is the only one that
+/// has a drawer.
+class ShellBurger extends StatelessWidget {
+  const ShellBurger({super.key, this.step = false});
+
+  /// A step back rather than a way into the drawer — see [WirdShell.step].
+  final bool step;
+
+  @override
+  Widget build(BuildContext context) => NocturneButton(
+    variant: NocturneButtonVariant.icon,
+    onPressed: step
+        ? Navigator.of(context).maybePop
+        : Scaffold.of(context).openDrawer,
+    child: step
+        ? const Icon(Icons.arrow_back_ios_new, size: 16)
+        : const Icon(Icons.menu),
   );
 }
 

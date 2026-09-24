@@ -4,21 +4,27 @@ import '../../app.dart';
 import '../../data/db.dart';
 import '../../data/sets.dart';
 import '../../nav.dart';
+import '../../shell/wird_shell.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_tag.dart';
 
-/// Where the reader is, above the set.
+/// Where the reader is — and, since this screen carries the shell's row
+/// itself, the way out of it as well.
 ///
-/// Folded it is one line — the set's title, the sūra in Arabic, and the aya
-/// markers — because that is the whole of "where am I". Unfolded it adds the
-/// revelation kicker and spells out which ayas are marked. The two acts on a
-/// set, praying it and going back to the walk, are reachable in both.
+/// It is one row: the burger, the set's title with the sūra's own name beside
+/// it, the fold, and the act the reading is for. Under it the aya markers are
+/// the bar's rule, three pixels of the reader's place in the set rather than a
+/// line. Unfolding adds the revelation kicker and the sentence spelling out
+/// which ayas are marked, and nothing else — the title is already in the row,
+/// and a second, larger copy of it was the screen saying "where am I" twice.
 ///
-/// It folds because on a 402x874 phone the two ends of screen 1a took 40% of
-/// it between them and the reader could not see past them. Which state it is
-/// in is the reader's, and is held in [Prefs] rather than here, so it
-/// survives the screen being rebuilt, left, and come back to.
+/// The burger used to sit in a row of the shell's above all of this, which on
+/// a 402x874 phone meant three lines of chrome before the first aya. Now there
+/// is one, and [WirdShell.bar] is how the shell is told to draw none.
+///
+/// Which fold state it is in is the reader's, and is held in [Prefs] rather
+/// than here, so it survives the screen being rebuilt, left, and come back to.
 class StudyHeader extends StatelessWidget {
   const StudyHeader({
     super.key,
@@ -49,53 +55,29 @@ class StudyHeader extends StatelessWidget {
         ? 'Revelation ${first.revelationOrder} · ${_capitalise(first.revelationPlace)}'
         : 'Sūra ${first.surahId} · ${_capitalise(first.revelationPlace)}';
     return Padding(
-      padding: EdgeInsets.fromLTRB(n.space('6'), n.space('2'), n.space('6'), 0),
+      padding: EdgeInsets.fromLTRB(n.space('3'), n.space('2'), n.space('6'), 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // The shell draws no row above this one, so the way out is the
+              // first thing in it.
+              const ShellBurger(),
               Expanded(
                 child: GestureDetector(
                   key: const Key('toggle header'),
                   behavior: HitTestBehavior.opaque,
                   onTap: onToggle,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: open
-                                ? _kicker(n, visiting ? 'Visiting · $where' : where)
-                                : _oneLine(context, n),
-                          ),
-                          SizedBox(width: n.space('2')),
-                          Icon(
-                            open ? Icons.expand_less : Icons.expand_more,
-                            size: 16,
-                            color: n.textAt(0.45),
-                          ),
-                        ],
+                      Flexible(child: _oneLine(context, n)),
+                      SizedBox(width: n.space('2')),
+                      Icon(
+                        open ? Icons.expand_less : Icons.expand_more,
+                        size: 16,
+                        color: n.textAt(0.45),
                       ),
-                      if (open) ...[
-                        SizedBox(height: n.space('1')),
-                        Text(
-                          set.title,
-                          style: Theme.of(context).textTheme.displaySmall,
-                        ),
-                        SizedBox(height: n.space('1')),
-                        Text(
-                          first.surahNameAr,
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            fontFamily: Nocturne.arabicFamily,
-                            fontSize: 13,
-                            color: n.textAt(0.5),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -123,6 +105,13 @@ class StudyHeader extends StatelessWidget {
               ),
             ],
           ),
+          if (open)
+            Padding(
+              padding: EdgeInsets.only(top: n.space('1')),
+              // The row above already says the reader is visiting, so this
+              // says only where they are.
+              child: _kicker(n, where),
+            ),
           _progress(n),
         ],
       ),
@@ -182,10 +171,14 @@ class StudyHeader extends StatelessWidget {
     ],
   );
 
-  /// One segment per aya, lit when it is understood. It stays in the folded
-  /// header: three pixels is what the reader's place in the set costs, and
-  /// without it a folded header could not say how far through they are. The
-  /// sentence spelling out which ayas is what unfolding adds.
+  /// One segment per aya, lit when it is understood.
+  ///
+  /// It is the rule under the bar rather than a row of its own: three pixels
+  /// is what the reader's place in the set costs, and every other screen pays
+  /// the same height for a line that says nothing. Without it a folded header
+  /// could not say how far through the set the reader is, and the only other
+  /// place that answers is screen 1d. The sentence spelling out which ayas is
+  /// what unfolding adds.
   Widget _progress(Nocturne n) => Padding(
     padding: EdgeInsets.only(top: n.space(open ? '6' : '2')),
     child: Column(
