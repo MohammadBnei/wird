@@ -106,8 +106,16 @@ them is indexed twice, under the spelling with that alef dropped and under the
 spelling with it written, so `العالمين` and `ٱلْعَـٰلَمِينَ` are the same word here and
 `الرحمن` and `ٱلرَّحْمَـٰنِ` are too. In the database those 2,480 are 2,791 rows, because a
 form written twice with different recitation marks is two rows there and one form
-here; 2,697 of the 2,791 were reachable only by a caller who reproduced the Uthmani
-spelling exactly.
+here.
+
+Indexing them once was the defect: **every one of these was a miss for a caller
+who typed the ordinary spelling**, and Al-Fatiha is mostly these words —
+`العالمين`, `مالك`, `الصراط`, `الإنسان`. Counting exactly how many were
+unreachable turns on which of two sibling fixes you hold out and on whether
+"reachable" means the right root or any answer at all; the reconstructions land
+between 2,687 and 2,721 and no single number is the number. What is measurable
+from the tree as it stands is the part that matters: **of the 2,480, none miss,
+in either spelling.**
 
 Three things are still out of reach, and they are what "a Qur'anic word resolves"
 does not cover:
@@ -214,7 +222,7 @@ spelling and the ordinary one reach it.
 because zero is a measurement and absence is the truth.
 
 `rootless` is **present and true** only when the corpus also records the spelling you
-sent under no root at all, and it always comes with `method: "shared"`. It is the
+sent under no root at all, and it always comes with `method: "shared"` over this corpus. It is the
 reading `roots` has no way to carry: `من` is `منن`, "he bestowed", and it is also the
 particle, and which of the two you meant is your sentence's to say.
 

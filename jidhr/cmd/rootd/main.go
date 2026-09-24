@@ -22,7 +22,7 @@ func main() {
 
 	corpusPath := env("ROOTD_CORPUS", "jidhr/testdata/quran.json")
 	// ponytail: the whole corpus in memory, read from one JSON file — 1,642 roots,
-	// 19,805 attested forms and 523 meanings is about a megabyte. Give the resolver
+	// 17,934 attested forms and 523 meanings is about a megabyte. Give the resolver
 	// a Store backed by a database when a corpus arrives that does not fit, or when
 	// a meaning has to change without a restart. Nothing above here changes when it
 	// does, because the resolver only ever knew a Store.
