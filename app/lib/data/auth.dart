@@ -33,18 +33,28 @@ const authClientId = String.fromEnvironment(
 /// Where the issuer sends the reader back to, and the only place the string is
 /// written: [Account.begin] puts it in the authorization URL, the exchange
 /// sends it again, and the BROWSABLE intent-filter in
-/// `android/app/src/main/AndroidManifest.xml` claims its scheme so the browser
-/// has somewhere to hand the code to.
+/// `android/app/src/main/AndroidManifest.xml` claims it as an App Link so the
+/// browser has somewhere to hand the code to.
 ///
 /// It has to be, character for character, a redirect registered on the
 /// Authentik client. When it is not, the issuer answers with a bad-redirect
 /// error before the reader is ever shown a password field, and no amount of
-/// correct code on this side changes that. docs/authentik-wiring.md records
-/// `dev.bnei.wird://` and `https://wird.bnei.dev/auth/callback` as the two
-/// that are registered; nobody has yet read that back off the live client.
+/// correct code on this side changes that — which is exactly what a reader
+/// walking the app hit.
+///
+/// The client registers **one**, read off the blueprint rather than assumed:
+/// `https://wird.bnei.dev/auth/callback`, `matching_mode: strict`, which is a
+/// fullmatch. An earlier version of this comment said there were two and named
+/// `dev.bnei.wird://` as the other. There is no such registration and its
+/// absence is deliberate: infra-bootstrap ADR-0050 records that a custom
+/// scheme is first-come and unclaimable on both platforms, that PKCE does not
+/// close that because a copycat runs its own flow with its own challenge, and
+/// that against this client's implicit-consent flow a registered scheme would
+/// hand a copycat an access token and a ninety-day refresh token without the
+/// reader doing anything.
 const authRedirect = String.fromEnvironment(
   'WIRD_REDIRECT',
-  defaultValue: 'dev.bnei.wird://',
+  defaultValue: 'https://wird.bnei.dev/auth/callback',
 );
 
 /// `offline_access` is what makes a refresh token come back, and a refresh
