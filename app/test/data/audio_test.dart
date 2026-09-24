@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -58,6 +59,42 @@ void main() {
     expect(await second, isTrue);
     expect(audio.currentWordId.value, isNull);
     expect(audio.playing.value, isFalse);
+  });
+
+  test('the word the reader taps lights a word they never touched, because '
+      'the set they just played is still moving the highlight', () async {
+    final tracks = await tracksFor(db, firstSet);
+    JustAudioPlatform.instance = FakePlayers();
+    final audio = SetAudio(cache: await cacheHolding(firstSet), tracks: tracks);
+
+    unawaited(audio.toggle());
+    await pumpEventQueue();
+
+    unawaited(audio.playWord(96002003));
+    await pumpEventQueue();
+
+    expect(
+      audio.currentWordId.value,
+      96002003,
+      reason: 'the word under the reader\'s finger is the one lit',
+    );
+  });
+
+  test('the word the reader tapped a moment before they pressed play lights '
+      'over the recitation they started', () async {
+    final tracks = await tracksFor(db, firstSet);
+    JustAudioPlatform.instance = FakePlayers();
+    final audio = SetAudio(cache: await cacheHolding(firstSet), tracks: tracks);
+
+    unawaited(audio.playWord(96003001));
+    unawaited(audio.toggle());
+    await pumpEventQueue();
+
+    expect(
+      audio.currentWordId.value,
+      isNot(96003001),
+      reason: 'the set owns the highlight once the reader has pressed play',
+    );
   });
 
   test('an audio platform that refuses a word throws out of the tap instead '

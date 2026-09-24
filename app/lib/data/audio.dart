@@ -296,7 +296,18 @@ class SetAudio {
   StreamSubscription<Duration>? _positions;
   var _speakable = <int>{};
   DateTime? _speakableAt;
-  var _speaking = 0;
+
+  /// Which playback owns the transport: every word probe takes a turn, and so
+  /// does the set's own play. One player serves both, and neither answers when
+  /// it starts — a word clip answers when it ends, and the position stream is
+  /// still delivering events from the playback before it — so without a turn
+  /// the one that was superseded writes over the one that superseded it.
+  var _turn = 0;
+
+  /// The turn the set's own playback took. The position stream lights a word
+  /// only while that playback still holds the transport, so a stale event
+  /// cannot light a word the reader is not on.
+  var _setTurn = -1;
 
   /// Every aya of the set is on disk, so play will not reach for the network.
   bool get ready =>
@@ -315,6 +326,7 @@ class SetAudio {
       return;
     }
     if (!ready) return;
+    final turn = _setTurn = ++_turn;
     try {
       final player = _player ??= AudioPlayer();
       await player.setAudioSources([
@@ -322,14 +334,17 @@ class SetAudio {
           AudioSource.file(cache.fileFor(track.relPath).path),
       ]);
       _listen(player);
+      if (turn != _turn) return;
       playing.value = true;
       await player.play();
     } on Exception {
       // A platform that will not take the set, or a load the reader cut
       // short. The bar goes back to dark and the screen says nothing.
     } finally {
-      playing.value = false;
-      currentWordId.value = null;
+      if (turn == _turn) {
+        playing.value = false;
+        currentWordId.value = null;
+      }
     }
   }
 
@@ -356,15 +371,15 @@ class SetAudio {
   /// A tap is the gesture now, so the reader's next word arrives while this
   /// one is still sounding — `play()` answers when the clip ENDS, not when it
   /// starts. The word already sounding is stopped first, so its future is
-  /// settled before the next word takes the highlight, and the token keeps a
-  /// superseded word from clearing the highlight of the word that superseded
-  /// it.
+  /// settled before the next word takes the highlight, and taking the turn
+  /// keeps a superseded word, and the set's own position stream, from writing
+  /// over the word that superseded them.
   Future<bool> playWord(int wordId) async {
     final found = locate(tracks, wordId);
     if (found == null) return false;
     final file = cache.cached(found.track.relPath);
     if (file == null) return false;
-    final token = ++_speaking;
+    final token = ++_turn;
     try {
       final player = _player ??= AudioPlayer();
       await player.pause();
@@ -373,7 +388,7 @@ class SetAudio {
         start: clipStart(found.span.startMs),
         end: Duration(milliseconds: found.span.endMs),
       );
-      if (token != _speaking) return true;
+      if (token != _turn) return true;
       currentWordId.value = wordId;
       playing.value = true;
       await player.play();
@@ -382,7 +397,7 @@ class SetAudio {
       // under the reader's finger.
       return false;
     } finally {
-      if (token == _speaking) {
+      if (token == _turn) {
         playing.value = false;
         currentWordId.value = null;
       }
@@ -396,13 +411,14 @@ class SetAudio {
           minPeriod: highlightPeriod,
           maxPeriod: highlightPeriod,
         )
-        .listen(
-          (position) => currentWordId.value = wordAt(
+        .listen((position) {
+          if (_setTurn != _turn) return;
+          currentWordId.value = wordAt(
             tracks,
             player.currentIndex ?? 0,
             position.inMilliseconds,
-          ),
-        );
+          );
+        });
   }
 
   /// ponytail: the two notifiers are left alive. A screen swapping one set's
