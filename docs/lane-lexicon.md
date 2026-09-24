@@ -1,5 +1,14 @@
 # Lane's Lexicon: the licence, and the join
 
+> **What happened instead.** Lane was not used. Wird wrote its own root senses
+> from the Qur'an's own words, checked against the glosses of each root across
+> its morphological shapes, and ships 523 of them — see
+> [`root-meanings-research.md`](root-meanings-research.md). This document is
+> kept because the two answers below are the reason that path was taken, and
+> because the join measurement is the only place anyone has counted how far a
+> public-domain lexicon would actually have reached.
+
+
 Two questions decide whether Lane's *An Arabic-English Lexicon* can be the source
 of root meanings in Wird. Both were open. Both were answered on 2026-09-23 by
 reading the instruments and measuring the data rather than by assuming either.
