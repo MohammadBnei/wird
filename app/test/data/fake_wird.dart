@@ -42,6 +42,16 @@ class FakeWird {
   /// nothing has changed.
   List<Map<String, dynamic>> pages = [];
 
+  /// Every Authorization header that arrived, in order, so a test can say
+  /// which token the device chose to send.
+  final bearers = <String?>[];
+
+  /// What this server will take. The real one verifies the token against the
+  /// issuer's JWKS and answers 401 with nothing else in it; a test that says
+  /// no here is an expired token, a revoked session, or a device with nobody
+  /// signed in.
+  bool Function(String? bearer) accepts = (_) => true;
+
   Dio get dio => Dio(BaseOptions(baseUrl: 'http://127.0.0.1:$port'));
 
   List<Map<String, dynamic>> get opsReceived => [
@@ -57,6 +67,16 @@ class FakeWird {
         request.response
           ..headers.contentType = ContentType.html
           ..write(portal);
+        unawaited(request.response.close());
+        continue;
+      }
+      final bearer = request.headers.value(HttpHeaders.authorizationHeader);
+      bearers.add(bearer);
+      if (!accepts(bearer)) {
+        request.response
+          ..statusCode = HttpStatus.unauthorized
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({'error': 'token rejected'}));
         unawaited(request.response.close());
         continue;
       }

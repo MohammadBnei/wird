@@ -4,16 +4,19 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'auth.dart';
 import 'sync.dart';
 
 /// The server this build carries the queue to. The define is how a debug run
 /// is pointed at a laptop instead.
 ///
-/// ponytail: one origin, no token. Until the identity round lands nothing
-/// signs the request and the server answers 401, which is a [DioException] and
-/// so reads here as "never reached the server": the queue is untouched, no
-/// attempt is spent and nothing is parked. Attach the bearer to this Dio when
-/// there is one.
+/// The default is a guess that has not come true yet. `wird.bnei.dev` is the
+/// host in the client's registered redirect and it resolves, but on 2026-09-24
+/// every path under it — `/v1/sync`, `/v1/changes`, `/healthz` — answered Go's
+/// bare `404 page not found`, so the API is not behind it today. It stays the
+/// default because it is the name the app was given, and it is a define so
+/// that a build can say otherwise without a release; whoever deploys the API
+/// settles it.
 const syncOrigin = String.fromEnvironment(
   'WIRD_ORIGIN',
   defaultValue: 'https://wird.bnei.dev',
@@ -93,8 +96,19 @@ class Flusher with WidgetsBindingObserver {
   }
 }
 
-Flusher flusherFor(Database db) =>
-    Flusher(db, SyncApi(Dio(BaseOptions(baseUrl: syncOrigin))));
+/// The queue, signed as whoever is signed in on this device.
+///
+/// The token attaches here, in the interceptor, and nowhere else: the screens
+/// and the repositories above this line do not know one exists. A device with
+/// nobody signed in flushes unsigned, is answered 401, and keeps its queue —
+/// which is the same ending as a flight with the radio off.
+Flusher flusherFor(Database db) => Flusher(
+  db,
+  SyncApi(
+    Dio(BaseOptions(baseUrl: syncOrigin))
+      ..interceptors.add(AuthHeader(Account(db))),
+  ),
+);
 
 /// Holds one [Flusher] for as long as the app is up, which is the only thing
 /// the widget tree owes it. It sits here rather than in the app layer because

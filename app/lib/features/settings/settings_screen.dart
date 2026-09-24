@@ -7,6 +7,7 @@ import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
 import '../../widgets/nocturne_segmented.dart';
+import 'account_panel.dart';
 import 'parked_writes.dart';
 
 /// What the reader sets and forgets.
@@ -159,6 +160,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // here. It draws its own heading and stays silent when there
               // are none, so a reader with a healthy outbox sees nothing.
               ParkedWrites(db: wird.db),
+              // Last, because it is the one thing on this screen a reader
+              // never has to do. Nothing above it — or anywhere else in the
+              // app — waits on an account.
+              _section(n, 'ACCOUNT'),
+              AccountPanel(db: wird.db),
             ],
           ),
         ),
