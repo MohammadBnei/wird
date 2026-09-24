@@ -1,6 +1,16 @@
 # 7. The voice model is published where its weights already live
 
-Date: 2026-09-24. Status: accepted. Amends ADR 0005 (voice-follow).
+Date: 2026-09-24. Status: superseded by ADR 0008, the day after it was written.
+Amends ADR 0005 (voice-follow).
+
+> What this decided is not what runs. The recogniser is served from
+> `wird.bnei.dev/models/`, which is the option rejected below under *Not
+> `wird.bnei.dev/models/` proxied from Garage by the API* — and what shipped is
+> not a proxy. Read
+> `0008-the-recogniser-is-served-from-wirds-own-host.md` for the decision in
+> force and for what each objection below turned out to be worth. The context
+> here — why a signed-out phone must be able to fetch this at all, and how
+> three shipped features in one day had no host — is why this document stays.
 
 ## Context
 

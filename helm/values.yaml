@@ -90,11 +90,15 @@ securityContext:
   capabilities:
     drop: [ALL]
 
-# DATABASE_URL, and only DATABASE_URL. The secret is built by
-# infra-bootstrap's gitops/bootstrap/wird-secret.yaml, which assembles the DSN
-# from DBUSER_WIRD_PASSWORD in the root Infisical project — the same shape
-# authentik-secret.yaml uses, and for the same reason: the password exists in
-# exactly one place, so rotating it is one edit rather than a hunt.
+# Three values, and only these three: DATABASE_URL, and the Garage key pair
+# WIRD_MODELS_S3_ACCESS_KEY / WIRD_MODELS_S3_SECRET that /models/ signs with.
+# The secret is built by infra-bootstrap's gitops/bootstrap/wird-secret.yaml,
+# which assembles the DSN from DBUSER_WIRD_PASSWORD in the root Infisical
+# project — the same shape authentik-secret.yaml uses, and for the same
+# reason: a credential exists in exactly one place, so rotating it is one edit
+# rather than a hunt. The Garage pair belongs to a key granted read on the
+# wird-models bucket and nothing else; a key that can write is a key that can
+# replace the weights a phone is about to trust.
 #
 # NOT `infisical.enabled: true` with projectSlug infra-bootstrap-1-ge1. That
 # would mount the whole root project — PVE tokens, the pigsty CA, every DB
@@ -106,9 +110,6 @@ envFrom:
       name: wird-config
 
 env:
-  # Trailing slash deliberate: go-oidc compares the discovery document's
-  # `issuer` claim against this string verbatim, and authentik publishes it
-  # with the slash. app/lib/data/auth.dart carries the same value.
   # The certificates Android will accept as Wird's, so it verifies
   # /auth/callback as this app's link and hands a finished sign-in straight
   # back to it. Without this the browser keeps the link and the reader copies
@@ -123,6 +124,9 @@ env:
   # Not a secret: a certificate fingerprint is readable from any installed app.
   - name: WIRD_ANDROID_SHA256
     value: "45:85:EA:58:05:B0:DC:C7:86:E1:2C:12:A0:5A:59:80:7B:8C:0C:D2:CC:6D:7B:34:14:C2:CC:24:8C:22:F2:5E"
+  # Trailing slash deliberate: go-oidc compares the discovery document's
+  # `issuer` claim against this string verbatim, and authentik publishes it
+  # with the slash. app/lib/data/auth.dart carries the same value.
   - name: OIDC_ISSUER
     value: https://authentik.bnei.dev/application/o/wird/
   # The client id, NOT the string "wird". authentik puts the client id in the
@@ -135,3 +139,28 @@ env:
   # WIRD_OIDC_CLIENT_ID row for exactly that reason.
   - name: OIDC_AUDIENCE
     value: Um9Je1MQghdZ4SqAjB7cWtGNubP64phIuGqzdzro
+  # Where /models/ signs for. The route mints a 15-minute presigned GET and
+  # answers 302; the 160 MB then goes phone-to-store and never crosses this
+  # pod, which is sized for JSON (docs/adr/0008-the-recogniser-is-served-from-wirds-own-host.md).
+  #
+  # Four variables are required together — these two, plus the key pair in the
+  # secret above. With any of them missing server/internal/api/models.go builds
+  # no store and every /models/ request answers 503: the rest of the API is
+  # healthy, the probes pass, and the only thing broken is a reader's Download
+  # button. There is no fifth: WIRD_MODELS_S3_REGION defaults to `garage` in
+  # the same file and the store is in that region, so setting it here would be
+  # a second place to drift. It is not cosmetic if it ever moves — the
+  # signature is computed over the region, so a wrong one is a 403 carrying a
+  # signature that looks perfectly well-formed.
+  #
+  # The bucket is NOT world-readable: an unsigned GET against it answers 403.
+  # Anonymous reach is this route's job, not the store's, which is what keeps
+  # the download behind Traefik's rate limiter.
+  - name: WIRD_MODELS_S3_BUCKET
+    value: wird-models
+  # Path-style and grey: https://s3.bnei.dev/<bucket>/<key>. The certificate is
+  # issued for this one name, so a bucket-vhost URL lands on a name nothing has
+  # a cert for. Grey rather than orange is the point — the bytes leave
+  # Cloudflare's free plan alone, and only the JSON-sized 302 is orange.
+  - name: WIRD_MODELS_S3_ENDPOINT
+    value: https://s3.bnei.dev
