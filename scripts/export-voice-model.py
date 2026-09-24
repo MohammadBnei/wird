@@ -14,6 +14,7 @@ an error.
 """
 
 import argparse
+import hashlib
 import pathlib
 import subprocess
 import sys
@@ -22,6 +23,47 @@ import urllib.request
 import torch
 import whisper
 from transformers import WhisperForConditionalGeneration
+
+# Apache-2.0 grants the conversion and its republication, and asks in return
+# that the licence travel with it and that the changes be stated. Both happen
+# here rather than by hand, so the upload is one command with nothing to
+# remember. ADR 0007 has the rest.
+CARD = """---
+license: apache-2.0
+base_model: {repo}
+pipeline_tag: automatic-speech-recognition
+language: ar
+tags:
+  - onnx
+  - int8
+  - sherpa-onnx
+  - quran
+---
+
+# {name}, exported to ONNX for Wird
+
+`{repo}` — whisper-base fine-tuned on `tarteel-ai/everyayah` — converted to
+openai-whisper's own format, exported to ONNX with sherpa-onnx's
+`export-onnx.py`, and quantised to int8 on `MatMul` only.
+
+Three files, {size:.0f} MB together:
+
+| File | What it is |
+| --- | --- |
+| `quran-encoder.int8.onnx` | the encoder |
+| `quran-decoder.int8.onnx` | the decoder |
+| `quran-tokens.txt` | the token table |
+
+They are loaded by `sherpa-onnx` 1.13.8 as an offline Whisper recogniser, on
+the phone, so that nothing anybody recites leaves it. Wird downloads them only
+when a reader asks for voice-follow in Settings.
+
+Nothing was retrained: the weights are upstream's, in another file format.
+Reproduce with `scripts/export-voice-model.py` in
+<https://github.com/MohammadBnei/wird>.
+
+Licensed Apache-2.0, the licence the base model carries.
+"""
 
 EXPORTER = (
     'https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/master/'
@@ -107,6 +149,7 @@ def main() -> None:
     parser.add_argument('--repo', default='tarteel-ai/whisper-base-ar-quran')
     parser.add_argument('--name', default='base-ar-quran')
     parser.add_argument('--out', default='build/voice-model', type=pathlib.Path)
+    parser.add_argument('--publish', default='MohammadBnei/wird-voice-base-ar-quran')
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -119,6 +162,7 @@ def main() -> None:
     )
 
     # The names the app asks the model origin for, in speech.dart.
+    total = 0
     for was, now in [
         (f'{args.name}-encoder.int8.onnx', 'quran-encoder.int8.onnx'),
         (f'{args.name}-decoder.int8.onnx', 'quran-decoder.int8.onnx'),
@@ -126,7 +170,22 @@ def main() -> None:
     ]:
         served = args.out / now
         (args.out / was).rename(served)
-        print(f'{served}  {served.stat().st_size / 1e6:.1f} MB')
+        total += served.stat().st_size
+        digest = hashlib.sha256(served.read_bytes()).hexdigest()
+        print(f'{served}  {served.stat().st_size / 1e6:.1f} MB  sha256:{digest}')
+
+    card = args.out / 'README.md'
+    card.write_text(CARD.format(repo=args.repo, name=args.name, size=total / 1e6))
+
+    # Exporting is not publishing, and a file on the exporter's laptop is the
+    # whole of what went wrong before: the app asked an origin that had never
+    # been given anything. The last line of this script is the command that
+    # makes the download real.
+    print(
+        f'\nexported, not published. To publish:\n'
+        f'  hf upload {args.publish} {args.out} . --repo-type=model\n'
+        f'then check speech.dart\'s defaultVoiceModelOrigin names {args.publish}'
+    )
 
 
 if __name__ == '__main__':

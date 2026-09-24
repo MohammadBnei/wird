@@ -28,6 +28,10 @@ class ModelHost {
   /// Bytes to send before hanging up. Null serves the whole file.
   int? cutAfter;
 
+  /// A status to answer with instead of the file, the way a host that has
+  /// never been given the model answers for it.
+  int? refuse;
+
   /// The range header of every request, so a test can prove the second attempt
   /// asked for the rest rather than for the whole file again.
   final ranges = <String?>[];
@@ -48,6 +52,17 @@ class ModelHost {
           .where((line) => line.toLowerCase().startsWith('range:'))
           .firstOrNull;
       ranges.add(range?.split(':').last.trim());
+      final refused = refuse;
+      if (refused != null) {
+        socket.write(
+          'HTTP/1.1 $refused Unauthorized\r\n'
+          'Content-Length: 0\r\n'
+          'Connection: close\r\n\r\n',
+        );
+        await socket.flush();
+        socket.destroy();
+        return;
+      }
       final from = range == null
           ? 0
           : int.parse(range.split('=')[1].split('-')[0]);
@@ -90,7 +105,7 @@ void main() {
   test('the prayer never listens to half a model', () async {
     final voice = model();
     expect(voice.ready, isFalse);
-    expect(await voice.fetch(), isTrue);
+    expect(await voice.fetch(), isNull);
     expect(voice.ready, isTrue);
 
     // One part gone is the whole model gone: a recogniser opened on a missing
@@ -103,13 +118,13 @@ void main() {
       'not from nothing', () async {
     host.cutAfter = 1000;
     final voice = model();
-    expect(await voice.fetch(), isFalse);
+    expect(await voice.fetch(), VoiceModelTrouble.interrupted);
     expect(voice.ready, isFalse);
     expect(voice.bytesOnDisk, 1000, reason: 'what arrived is kept');
 
     host.cutAfter = null;
     host.ranges.clear();
-    expect(await voice.fetch(), isTrue);
+    expect(await voice.fetch(), isNull);
     expect(
       host.ranges.first,
       'bytes=1000-',
@@ -125,7 +140,7 @@ void main() {
       final cancel = CancelToken();
       final fetching = voice.fetch(cancel: cancel);
       cancel.cancel();
-      expect(await fetching, isFalse);
+      expect(await fetching, VoiceModelTrouble.interrupted);
       expect(voice.ready, isFalse);
     },
   );
@@ -146,7 +161,21 @@ void main() {
     'a host that will not answer leaves Settings a sentence, not a crash',
     () async {
       final voice = VoiceModel(dir, origin: 'http://127.0.0.1:1/');
-      expect(await voice.fetch(), isFalse);
+      expect(await voice.fetch(), VoiceModelTrouble.interrupted);
+    },
+  );
+
+  test(
+    'a model nobody has published is not handed to the reader as their own '
+    'bad connection',
+    () async {
+      // What wird.bnei.dev/models/ answered for a fortnight: a host with no
+      // such route, so the request fell through to the authenticator. A reader
+      // told to check their signal would have checked it forever.
+      host.refuse = 401;
+      final voice = model();
+      expect(await voice.fetch(), VoiceModelTrouble.notServed);
+      expect(voice.bytesOnDisk, 0, reason: 'a refusal is not a part file');
     },
   );
 

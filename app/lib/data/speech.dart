@@ -32,9 +32,17 @@ const voiceModelParts = [
 /// files: 29.1 MB of encoder, 130.7 MB of decoder, 0.8 MB of tokens.
 const voiceModelBytes = 160 * 1000 * 1000;
 
-/// Relative like [defaultAudioOrigin], so the model can move host without an
-/// App Store release.
-const defaultVoiceModelOrigin = 'https://wird.bnei.dev/models/base-ar-quran/';
+/// Where the three files are published, which is a Hugging Face model repo and
+/// not wird.bnei.dev. ADR 0007 has the reasoning; the short of it is that
+/// nothing in the estate serves 160 MB to a signed-out phone, and the weights
+/// this was exported from already live here under a licence that grants the
+/// conversion being republished.
+///
+/// Moving it costs a release. There is no server override — saying there was
+/// one is how this stayed pointed for a fortnight at a host where the three
+/// files answered 401 and nothing had ever been uploaded.
+const defaultVoiceModelOrigin =
+    'https://huggingface.co/MohammadBnei/wird-voice-base-ar-quran/resolve/main/';
 
 /// How much recitation the recogniser is asked about at once, and how often.
 ///
@@ -48,6 +56,19 @@ const defaultVoiceModelOrigin = 'https://wird.bnei.dev/models/base-ar-quran/';
 const heardWindow = Duration(seconds: 4);
 const heardHop = Duration(milliseconds: 1200);
 const heardSampleRate = 16000;
+
+/// Why a download stopped, in the two shapes that mean different things to the
+/// reader. Nothing else about a failed fetch is worth a sentence.
+enum VoiceModelTrouble {
+  /// The origin answered, and not with the file: a 401 from a host with no
+  /// such route, a 404 from one that has the route and is serving nothing.
+  /// No phone can fix this and the reader must not be told to try.
+  notServed,
+
+  /// The bytes stopped arriving. A tunnel, a full disk, or the reader's own
+  /// Stop — the panel holds the cancel token and knows which.
+  interrupted,
+}
 
 /// The model on disk: whether it is there, and how to get it.
 class VoiceModel {
@@ -89,10 +110,14 @@ class VoiceModel {
   /// Fetches whatever is missing, resuming a part that was interrupted.
   ///
   /// A stopped download leaves its `.part` file where it is, so the reader who
-  /// lost signal on a train picks up from there rather than from nothing. It
-  /// answers false instead of throwing: the only place this is called from is
-  /// Settings, which says what happened in its own words.
-  Future<bool> fetch({
+  /// lost signal on a train picks up from there rather than from nothing.
+  ///
+  /// Null once the model is on the phone, otherwise why it is not. It answers
+  /// rather than throwing because the only caller is Settings, which says what
+  /// happened in its own words — but it has to be told which thing happened,
+  /// or the reader presses Download at a host that will never answer and the
+  /// panel goes quiet as if they had mistyped their own wifi password.
+  Future<VoiceModelTrouble?> fetch({
     void Function(int received, int total)? onProgress,
     CancelToken? cancel,
   }) async {
@@ -130,9 +155,13 @@ class VoiceModel {
         }
         await partial.rename(fileFor(part).path);
       }
-      return ready;
+      return ready ? null : VoiceModelTrouble.interrupted;
+    } on DioException catch (failure) {
+      return failure.type == DioExceptionType.badResponse
+          ? VoiceModelTrouble.notServed
+          : VoiceModelTrouble.interrupted;
     } on Object {
-      return false;
+      return VoiceModelTrouble.interrupted;
     }
   }
 

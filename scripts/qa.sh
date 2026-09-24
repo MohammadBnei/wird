@@ -144,6 +144,36 @@ the_app_calls_what_it_ships() {
 	return $bad
 }
 
+# The sibling of the check above, and today it is the one that keeps finding
+# things. That one asks whether the app ever calls what it ships; this one asks
+# whether anything answers what the app calls. Both defects are invisible to a
+# green suite, because a unit test answers its own request from a fake it
+# built: `/auth/callback` was drawn, tested and redirected to for a fortnight
+# while the route returned 401, and the voice model's three files were
+# downloaded, resumed and cancelled against a socket in the test process while
+# the origin they name had never been given a byte.
+#
+# Every URL below is one a reader's phone actually requests. A one-byte range
+# is deliberate: it proves the file is there AND that the host honours `range:`,
+# which is what a reader on a train is resuming with.
+every_url_the_app_ships_answers() {
+	local bad=0 code
+	while IFS='|' read -r want url why; do
+		[ -z "$want" ] && continue
+		code=$(curl -sSL -o /dev/null -w '%{http_code}' -r 0-0 --max-time 30 "$url" 2>/dev/null)
+		[ "$code" = "$want" ] && continue
+		printf '%s answered %s where a phone needs %s, so %s\n' "$url" "${code:-nothing}" "$want" "$why"
+		bad=1
+	done <<-'URLS'
+		206|https://huggingface.co/MohammadBnei/wird-voice-base-ar-quran/resolve/main/quran-encoder.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
+		206|https://huggingface.co/MohammadBnei/wird-voice-base-ar-quran/resolve/main/quran-decoder.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
+		206|https://huggingface.co/MohammadBnei/wird-voice-base-ar-quran/resolve/main/quran-tokens.txt|voice-follow can never be turned on: Settings offers a download that cannot arrive
+		206|https://everyayah.com/data/Husary_Muallim_128kbps/001001.mp3|every recitation is silent and the highlight follows nothing
+		200|https://wird.bnei.dev/auth/callback?code=gate&state=gate|a reader who signs in is handed a 401 instead of the address they paste back into the app
+	URLS
+	return $bad
+}
+
 gates_all_accounted() {
 	local missing
 	missing=$(jq -s -r '[range(1;8)] - ([.[].gate] | unique) | join(", ")' "$ENTRIES")
@@ -329,6 +359,12 @@ if [ -d "$ROOT/app/lib" ]; then
 	check "the app calls what it ships" the_app_calls_what_it_ships
 else
 	skip "the app calls what it ships" "app/lib does not exist before the client is built"
+fi
+
+if [ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 https://www.google.com/generate_204 2>/dev/null)" = 204 ]; then
+	check "every URL the app ships answers" every_url_the_app_ships_answers
+else
+	skip "every URL the app ships answers" "this machine has no network, so the origins a reader's phone requests went unchecked"
 fi
 
 if [ -f "$ROOT/app/android/app/src/main/AndroidManifest.xml" ]; then
