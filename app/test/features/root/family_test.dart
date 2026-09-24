@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
@@ -8,7 +10,6 @@ import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/root/family.dart';
 import 'package:wird/features/root/root_dial.dart';
 import 'package:wird/features/root/root_screen.dart';
-import 'package:wird/features/study/study_screen.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -32,33 +33,38 @@ const phone = Size(402, 874);
 void main() {
   late Database db;
 
-  setUpAll(loadBundledFonts);
-  setUp(() async => db = await testCorpus());
+  /// The aya the screen under test answered the screen beneath it with.
+  int? answered;
 
+  setUpAll(loadBundledFonts);
+  setUp(() async {
+    db = await testCorpus();
+    answered = null;
+  });
+
+  /// The screen under test, pushed the way the reading screen pushes it. A
+  /// family is only ever drawn above screen 1a, so a reference answers by
+  /// popping its aya down to it rather than by stacking a second reader on
+  /// top — ADR-0003.
   Future<void> open(WidgetTester tester, Widget screen, {Size at = phone}) async {
     tester.view.physicalSize = at;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(await wirdAround(db, screen));
+    await tester.pumpWidget(await wirdAround(db, const SizedBox.shrink()));
+    await tester.pumpAndSettle();
+    unawaited(
+      tester
+          .state<NavigatorState>(find.byType(Navigator).first)
+          .push<int>(MaterialPageRoute(builder: (_) => screen))
+          .then((aya) => answered = aya),
+    );
     await tester.pumpAndSettle();
   }
 
-  /// That the reader is now reading the aya a reference named. The screen
-  /// pushed onto reads the corpus, and real file work only completes on the
-  /// real event loop rather than inside the test's own zone.
-  Future<void> expectReading(WidgetTester tester, int ayahId) async {
-    for (var turn = 0; turn < 8; turn++) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 1)),
-      );
-      await tester.pumpAndSettle();
-    }
-    expect(find.byType(StudyScreen), findsOneWidget);
-    expect(
-      find.textContaining(await surahAndAya(db, ayahId)),
-      findsOneWidget,
-      reason: ayahRef(ayahId),
-    );
+  /// That the reader is on their way to the aya a reference named: the screen
+  /// carrying the reference closed, and handed the aya down.
+  void expectAnswered(WidgetTester tester, int ayahId) {
+    expect(answered, ayahId, reason: ayahRef(ayahId));
   }
 
   Finder refTo(int ayahId) => find.byWidgetPredicate(
@@ -66,7 +72,7 @@ void main() {
   );
 
   testWidgets('the reference on a kin row is a caption: a reader looking at a '
-      "root's family cannot open the aya any of it is read in", (tester) async {
+      "root's family cannot reach the aya any of it is read in", (tester) async {
     final reading = (await rootReading(db, onTheDial))!;
     final kin = reading.derivatives[2];
     // A tall phone, so the spine is laid out rather than below the fold.
@@ -79,7 +85,8 @@ void main() {
     await tester.tap(refTo(kin.ayahId).last);
     await tester.pumpAndSettle();
 
-    await expectReading(tester, kin.ayahId);
+    expectAnswered(tester, kin.ayahId);
+    expect(find.byType(RootScreen), findsNothing);
   });
 
   testWidgets('a constellation node is a drawing of a word: tapping the form '
@@ -101,7 +108,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(reading.derivatives, contains(star.derivative));
-    await expectReading(tester, star.derivative.ayahId);
+    expectAnswered(tester, star.derivative.ayahId);
+    expect(find.byType(DeepDiveScreen), findsNothing);
   });
 
   testWidgets('the phone is handed the tablet drawing shrunk: five of the '

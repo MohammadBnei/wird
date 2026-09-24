@@ -26,12 +26,16 @@ drawn while visiting: the width is remembered against the aya a set starts at,
 and a set pulled wider while merely visiting would change what the walk proposes
 when it arrives there months later.
 
-**The jump happens in place, and never as a push.** `Routes.study` is the
-initial route. Pushing a second 1a onto it would leave two live `AudioPlayer`s,
-the lower one disposed only when the upper is popped, behind a reader who
-believes they went forward. So there is one 1a and it changes what it shows; a
+**The jump happens in place, and never as a push.** The recitation belongs to
+the application, and there is one of it. A second 1a pushed onto the first takes
+it over: the new screen carries its own set into it, while the first — which
+loads once and never again — goes on drawing the set it loaded. The reader is
+then looking at one aya and pressing play on another, the highlight never lights
+because the word ids belong to the set underneath, and every word tap falls
+through to a transliteration. So there is one 1a and it changes what it shows; a
 screen above it names the aya the reader chose by **popping the id down** to it.
-1d passes the index's answer on the same way. `StudyScreen.target` exists for
+1d passes the index's answer on the same way, and so does 1a itself for the
+root, the spine and the constellation it pushes. `StudyScreen.target` exists for
 the same reason in reverse: it is how the screen is *built* on an aya, which is
 what a pop-with-result and any future deep link need.
 

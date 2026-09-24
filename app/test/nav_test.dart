@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
+import 'package:wird/data/root_repo.dart';
+import 'package:wird/features/root/family.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/about/about_screen.dart';
 import 'package:wird/features/dashboard/dashboard_screen.dart';
@@ -231,5 +233,33 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pumpAndSettle();
     expect(find.byType(StudyScreen), findsOneWidget);
+  });
+
+  testWidgets('following a root’s aya reference stacks a second reading screen '
+      'on the first, so the play button recites the aya the reader left', (
+    tester,
+  ) async {
+    await openTheSet(tester);
+    await tester.tap(find.byKey(const ValueKey('open-root')));
+    await tester.pumpAndSettle();
+
+    final reference = tester.widget<AyaRef>(find.byType(AyaRef).first);
+    await tester.tap(find.byWidget(reference));
+    await tester.pumpAndSettle();
+
+    // One reader, changed in place. A second one stacked here would dispose
+    // the first's player while the first's words stayed on screen, so the
+    // count is taken over the whole stack rather than over what is on top.
+    expect(find.byType(StudyScreen, skipOffstage: false), findsOneWidget);
+    expect(find.byType(RootScreen, skipOffstage: false), findsNothing);
+    expect(
+      find.textContaining(await surahAndAya(db, reference.ayahId)),
+      findsOneWidget,
+      reason: ayahRef(reference.ayahId),
+    );
+    // And back from the visited aya is home, not a second reader.
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(DashboardScreen), findsOneWidget);
   });
 }

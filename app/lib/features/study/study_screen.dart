@@ -189,6 +189,19 @@ class _StudyScreenState extends State<StudyScreen> {
     if (mounted) setState(() => _unheard = sounded ? null : word.id);
   }
 
+  /// Pushes a screen that reads a root, and takes the aya it answers with.
+  ///
+  /// A root, its spine and the constellation all print aya references, and a
+  /// reference answers by popping the aya down to here rather than by stacking
+  /// a second reader over this one — ADR-0003. This is the screen that catches
+  /// it, and it changes in place, exactly as a kin tag in the panel does.
+  Future<void> _visit(String route, Object arguments) async {
+    final chosen = await Navigator.of(
+      context,
+    ).pushNamed(route, arguments: arguments);
+    if (mounted && chosen is int) await _load(target: chosen);
+  }
+
   /// The panel keeps the root it is showing until the next one has been read,
   /// so a tap never blanks the screen the reader is looking at.
   Future<void> _openRoot(StudyWord word) async {
@@ -512,9 +525,7 @@ class _StudyScreenState extends State<StudyScreen> {
               behavior: HitTestBehavior.opaque,
               onTap: letters == null
                   ? null
-                  : () =>
-                        Navigator.of(context)
-                            .pushNamed(Routes.root, arguments: letters),
+                  : () => _visit(Routes.root, letters),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -574,10 +585,10 @@ class _StudyScreenState extends State<StudyScreen> {
                 if (letters != null)
                   NocturneButton(
                     variant: NocturneButtonVariant.ghost,
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      Routes.deepDive,
-                      arguments: (ayahId: _word!.id ~/ 1000, letters: letters),
-                    ),
+                    onPressed: () => _visit(Routes.deepDive, (
+                      ayahId: _word!.id ~/ 1000,
+                      letters: letters,
+                    )),
                     child: const Text(
                       'Constellation',
                       style: TextStyle(fontSize: 11),

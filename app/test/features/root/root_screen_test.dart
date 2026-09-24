@@ -7,7 +7,6 @@ import 'package:wird/features/root/root_sections.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/features/root/root_spine_screen.dart';
-import 'package:wird/features/study/study_screen.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -264,24 +263,35 @@ void main() {
   testWidgets('"Read the aya" opens a different aya than the derivative the '
       'dial is pointing at', (tester) async {
     final reading = (await rootReading(db, onTheDial))!;
-    await open(tester, RootScreen(db: db, letters: onTheDial));
+    int? answered;
+    await open(
+      tester,
+      Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () async {
+              answered =
+                  await Navigator.of(
+                        context,
+                      ).pushNamed(Routes.root, arguments: onTheDial)
+                      as int?;
+            },
+            child: const Text('the set'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('the set'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Next'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Read the aya'));
-    // The screen pushed onto reads the corpus, and real file work only
-    // completes on the real event loop rather than in the test's own zone.
-    for (var turn = 0; turn < 8; turn++) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 1)),
-      );
-      await tester.pumpAndSettle();
-    }
+    await tester.pumpAndSettle();
 
-    expect(find.byType(StudyScreen), findsOneWidget);
-    expect(
-      find.textContaining(await surahAndAya(db, reading.derivatives[1].ayahId)),
-      findsOneWidget,
-    );
+    // The aya is answered DOWN to the set the reader came from, which is the
+    // one screen that reads one: see ADR-0003.
+    expect(find.byType(RootScreen), findsNothing);
+    expect(answered, reading.derivatives[1].ayahId);
   });
 }

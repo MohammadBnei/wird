@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../data/root_repo.dart';
-import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../deepdive/constellation.dart';
 import 'root_dial.dart';
@@ -29,8 +28,14 @@ const constellationFloor = 500.0;
 /// drawing calls it: a kin row's reference, the card under the dial, a node of
 /// the constellation. A reference the reader can see is a reference the reader
 /// can follow.
+///
+/// A family is only ever drawn on a screen pushed from the one reading screen,
+/// so the aya is answered DOWN to it rather than stacked on top of it. A second
+/// 1a takes the application's one recitation over, and the first — which loads
+/// once and never again — goes on drawing its own set's words over the new
+/// aya's player. See ADR-0003.
 void openAya(BuildContext context, int ayahId) =>
-    Navigator.of(context).pushNamed(Routes.study, arguments: ayahId);
+    Navigator.of(context).pop(ayahId);
 
 /// An aya reference, printed the way a reference is printed and opening the
 /// aya it names.
