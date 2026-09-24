@@ -7,10 +7,9 @@ import '../../app.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
 import '../../data/sets.dart';
-import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
-import '../../widgets/nocturne_tag.dart';
+import 'study_chrome.dart';
 import 'word_row.dart';
 
 /// Screen 1a — the set the reader studies before praying it.
@@ -64,11 +63,25 @@ class _StudyScreenState extends State<StudyScreen> {
 
   bool _loaded = false;
 
-  /// What the row draws, worked out once rather than at render time: whether
-  /// a word bears a root and whether its recitation is on the phone. Rebuilt
-  /// at the three moments any of it can change — the set arrives, a download
-  /// lands, an aya is marked — and at no other.
-  List<AyaFace> _faces = const [];
+  /// Which words the phone can sound, worked out once rather than at render
+  /// time — it used to be an `existsSync` per word per frame. Rebuilt at the
+  /// three moments it can change: the set arrives, a download lands, an aya is
+  /// marked.
+  Set<int> _speakable = const {};
+
+  /// The words of the passage, by aya, as far as they have been read. A sūra
+  /// arrives as ayas alone and its words come a chunk at a time, because
+  /// Al-Baqarah is 6116 of them and the screen shows twenty.
+  Map<int, List<StudyWord>> _words = {};
+
+  /// Ayas whose words are on their way. Without it the list asks for the same
+  /// chunk on every frame it draws a gap.
+  final _pending = <int>{};
+
+  /// Where the passage hangs from. Everything before it in the sliver list
+  /// grows upward, so opening Al-Baqarah at 255 costs nothing for the 254
+  /// ayas above and the reader can still move up into them.
+  static const _anchor = ValueKey('reading-anchor');
 
   /// The word whose transliteration stands in for audio it cannot play. One
   /// word at a time, and never a snackbar: 2:282 is 128 words, and tapping
@@ -84,12 +97,7 @@ class _StudyScreenState extends State<StudyScreen> {
   /// nothing and the only thing left to do is walk on.
   bool _allUnderstood(StudySet set) => set.ayas.every((a) => a.understood);
 
-  void _bake() {
-    final set = _set;
-    _faces = set == null
-        ? const []
-        : facesOf(set, _audio?.speakable ?? const {});
-  }
+  void _bake() => _speakable = _audio?.speakable ?? const {};
 
   Prefs get _prefs => Wird.of(context).prefs;
   double get _arabicSize => _prefs.arabicSize;
@@ -147,6 +155,11 @@ class _StudyScreenState extends State<StudyScreen> {
       _root = root;
       _audio = set == null ? null : recitation;
       _loaded = true;
+      _pending.clear();
+      _words = {
+        for (final aya in set?.reading ?? const <StudyAya>[])
+          if (aya.words.isNotEmpty) aya.id: aya.words,
+      };
       _bake();
     });
     if (set == null) return;
@@ -173,9 +186,7 @@ class _StudyScreenState extends State<StudyScreen> {
     await markSetUnderstood(widget.db, _opId, open);
     if (!mounted) return;
     setState(() {
-      _set = StudySet(order: set.order, [
-        for (final aya in set.ayas) aya.asUnderstood(),
-      ]);
+      _set = set.withUnderstood(open.toSet());
       _opId = newOpId();
       _bake();
     });
@@ -196,9 +207,8 @@ class _StudyScreenState extends State<StudyScreen> {
   /// a second reader over this one — ADR-0003. This is the screen that catches
   /// it, and it changes in place, exactly as a kin tag in the panel does.
   Future<void> _visit(String route, Object arguments) async {
-    final chosen = await Navigator.of(
-      context,
-    ).pushNamed(route, arguments: arguments);
+    final chosen = await Navigator.of(context)
+        .pushNamed(route, arguments: arguments);
     if (mounted && chosen is int) await _load(target: chosen);
   }
 
@@ -223,37 +233,40 @@ class _StudyScreenState extends State<StudyScreen> {
     return ListenableBuilder(
       listenable: _prefs,
       builder: (context, _) => Scaffold(
-      backgroundColor: n.bg,
-      body: SafeArea(
-        child: !_loaded
-            ? const SizedBox.shrink()
-            : set == null
-            ? _finished(n)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _header(n, set),
-                  _progress(n, set),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _ayas(n),
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: n.space('6'),
-                            ),
-                            child: _audioBar(n),
-                          ),
-                          SizedBox(height: n.space('6')),
-                        ],
-                      ),
+        backgroundColor: n.bg,
+        body: SafeArea(
+          child: !_loaded
+              ? const SizedBox.shrink()
+              : set == null
+              ? _finished(n)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    StudyHeader(
+                      key: const Key('study header'),
+                      set: set,
+                      order: _order,
+                      visiting: _target != null,
+                      open: _prefs.headerOpen,
+                      onToggle: () => _prefs.setHeaderOpen(!_prefs.headerOpen),
+                      onBackToTheWalk: () => _load(),
                     ),
-                  ),
-                  _rootPanel(n, set),
-                ],
-              ),
-      ),
+                    Expanded(child: _reading(n, set)),
+                    RootPanel(
+                      root: _root,
+                      word: _word,
+                      open: _prefs.rootOpen,
+                      onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
+                      onVisit: _visit,
+                      onKin: (ayahId) => _load(target: ayahId),
+                      allUnderstood: _allUnderstood(set),
+                      onMark: _allUnderstood(set)
+                          ? () => _load()
+                          : () => _markUnderstood(set),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -269,158 +282,144 @@ class _StudyScreenState extends State<StudyScreen> {
     ),
   );
 
-  Widget _header(Nocturne n, StudySet set) {
-    final first = set.ayas.first;
-    final place = first.revelationPlace;
-    final where = _order == ReadingOrder.nuzul
-        ? 'Revelation ${first.revelationOrder} · ${_capitalise(place)}'
-        : 'Sūra ${first.surahId} · ${_capitalise(place)}';
-    // An aya the reader asked for is not where the walk left them, and nothing
-    // else on the screen says so. Without this the only way back to the walk
-    // would be to mark the visited aya understood.
-    final kicker = _target == null ? where : 'Visiting · $where';
-    return Padding(
-      padding: EdgeInsets.fromLTRB(n.space('6'), n.space('2'), n.space('6'), 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  kicker.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    height: 1.2,
-                    letterSpacing: 0.11 * 10,
-                    color: n.accent,
-                  ),
-                ),
-                SizedBox(height: n.space('1')),
-                Text(
-                  set.title,
-                  style: Theme.of(context).textTheme.displaySmall,
-                ),
-                SizedBox(height: n.space('1')),
-                Text(
-                  first.surahNameAr,
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontFamily: Nocturne.arabicFamily,
-                    fontSize: 13,
-                    color: n.textAt(0.5),
-                  ),
-                ),
-              ],
+
+  /// The passage, hung from the aya the reader opened on.
+  ///
+  /// An aya is built when it comes near the viewport and not before: the walk
+  /// serves five ayas, but a sūra is up to 286 and Al-Baqarah's 6116 words
+  /// laid out in one `Column` is a frame no phone can draw. The slivers before
+  /// [_anchor] grow upward, which is what lets the screen open at 2:255
+  /// without building the 254 ayas above it and still let the reader move up
+  /// into them — a sūra is continuous.
+  Widget _reading(Nocturne n, StudySet set) {
+    final ayas = set.reading;
+    final focus = set.focusIndex;
+    return ValueListenableBuilder<int?>(
+      valueListenable: _audio?.currentWordId ?? _silent,
+      builder: (context, recited, _) => CustomScrollView(
+        // A new passage starts at its own aya rather than at the offset the
+        // last one was left scrolled to.
+        key: ValueKey(set.ayas.first.id),
+        center: _anchor,
+        slivers: [
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => _ayaTile(n, ayas, focus - 1 - i, recited),
+              childCount: focus,
             ),
           ),
-          if (_target != null)
-            NocturneButton(
-              variant: NocturneButtonVariant.ghost,
-              onPressed: () => _load(),
-              child: const Text(
-                'Back to the walk',
-                style: TextStyle(fontSize: 11),
-              ),
-            ),
-          // The preferences the tune icon used to open have a screen of their
-          // own now, and this is what belongs beside the set instead: the act
-          // the reading is for.
-          NocturneButton(
-            key: const Key('pray the set'),
-            variant: NocturneButtonVariant.ghost,
-            onPressed: () => prayTheSet(context, set),
-            child: const Text(
-              'Pray this set',
-              style: TextStyle(fontSize: 11),
+          const SliverToBoxAdapter(key: _anchor, child: SizedBox.shrink()),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => i == set.ayas.length
+                  // The recitation carries the acted set and nothing else, so
+                  // the bar sits where that set ends: under the last aya on
+                  // the walk, and under the visited aya rather than 285 ayas
+                  // below it while a sūra is being read.
+                  ? Padding(
+                      padding: EdgeInsets.symmetric(horizontal: n.space('6')),
+                      child: _audioBar(n),
+                    )
+                  : _ayaTile(
+                      n,
+                      ayas,
+                      focus + (i > set.ayas.length ? i - 1 : i),
+                      recited,
+                      lastBeforeBar: focus + set.ayas.length - 1,
+                    ),
+              childCount: ayas.length - focus + 1,
             ),
           ),
+          SliverToBoxAdapter(child: SizedBox(height: n.space('6'))),
         ],
       ),
     );
   }
 
-  Widget _progress(Nocturne n, StudySet set) => Padding(
-    padding: EdgeInsets.fromLTRB(n.space('6'), n.space('6'), n.space('6'), 0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          spacing: n.space('2'),
-          children: [
-            for (final aya in set.ayas)
-              Expanded(
-                child: Container(
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: aya.understood ? n.accent : n.color('neutral-800'),
-                    borderRadius: BorderRadius.circular(2),
-                    boxShadow: aya.understood
-                        ? [
-                            BoxShadow(
-                              color: n.accent.withValues(alpha: 0.6),
-                              blurRadius: 10,
-                            ),
-                          ]
-                        : null,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        SizedBox(height: n.space('2')),
-        Text(
-          _progressCaption(set.ayas),
-          style: TextStyle(fontSize: 10.5, color: n.textAt(0.42)),
-        ),
-      ],
-    ),
-  );
-
-  Widget _ayas(Nocturne n) => ValueListenableBuilder<int?>(
-    valueListenable: _audio?.currentWordId ?? _silent,
-    builder: (context, recited, _) => Padding(
-      padding: EdgeInsets.all(n.space('6')),
+  Widget _ayaTile(
+    Nocturne n,
+    List<StudyAya> ayas,
+    int index,
+    int? recited, {
+    int lastBeforeBar = -1,
+  }) {
+    final aya = ayas[index];
+    final words = _words[aya.id];
+    if (words == null) {
+      _readWordsAround(index, ayas);
+      // ponytail: a word is about 28 px of column once it has wrapped. The
+      // guess only has to keep an aya above the reader from shoving the one
+      // they are reading when its words land, and the chunk read ahead means
+      // the gap is rarely drawn at all. Measure a tile if scrolling up ever
+      // jumps.
+      return SizedBox(height: 28.0 * aya.wordCount);
+    }
+    final face = faceOf(aya, words, _speakable);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: n.space('6')),
       child: Column(
         children: [
-          for (final (i, face) in _faces.indexed) ...[
-            if (i > 0)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: n.space('2')),
-                child: const _DashedRule(),
-              ),
-            Wrap(
-              textDirection: TextDirection.rtl,
-              alignment: WrapAlignment.center,
-              // Tops, so the Arabic of a word carrying a two-line gloss stays
-              // in line with its neighbours and the gloss hangs below at
-              // whatever height it needs.
-              crossAxisAlignment: WrapCrossAlignment.start,
-              spacing: n.space('6'),
-              runSpacing: n.space('1'),
-              children: [
-                for (final word in face.words)
-                  WordTile(
-                    // Keyed by the corpus id so the tile keeps its element
-                    // across a rebuild, rather than being matched by position
-                    // against a different word.
-                    key: ValueKey(word.word.id),
-                    face: word,
-                    voice: word.voice(sounding: recited, unheard: _unheard),
-                    open: word.word.id == _word?.id,
-                    prefs: _prefs,
-                    onOpen: _openRoot,
-                    onHear: _speak,
-                  ),
-                AyaMark(aya: face.aya, arabicSize: _arabicSize),
-              ],
+          if (index == 0)
+            SizedBox(height: n.space('6'))
+          else
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: n.space('2')),
+              child: const DashedRule(),
             ),
-          ],
+          Wrap(
+            textDirection: TextDirection.rtl,
+            alignment: WrapAlignment.center,
+            // Tops, so the Arabic of a word carrying a two-line gloss stays
+            // in line with its neighbours and the gloss hangs below at
+            // whatever height it needs.
+            crossAxisAlignment: WrapCrossAlignment.start,
+            spacing: n.space('6'),
+            runSpacing: n.space('1'),
+            children: [
+              for (final word in face.words)
+                WordTile(
+                  // Keyed by the corpus id so the tile keeps its element
+                  // across a rebuild, rather than being matched by position
+                  // against a different word.
+                  key: ValueKey(word.word.id),
+                  face: word,
+                  voice: word.voice(sounding: recited, unheard: _unheard),
+                  open: word.word.id == _word?.id,
+                  prefs: _prefs,
+                  onOpen: _openRoot,
+                  onHear: _speak,
+                ),
+              AyaMark(aya: face.aya, arabicSize: _arabicSize),
+            ],
+          ),
+          if (index == lastBeforeBar || index == ayas.length - 1)
+            SizedBox(height: n.space('6')),
         ],
       ),
-    ),
-  );
+    );
+  }
+
+  /// Reads the words of the ayas around [index], a chunk at a time.
+  ///
+  /// The chunk reaches further down than up because that is the direction a
+  /// reader moves, and it is one query however many ayas it covers: a query
+  /// per aya would be 286 of them to read Al-Baqarah.
+  Future<void> _readWordsAround(int index, List<StudyAya> ayas) async {
+    final generation = _generation;
+    final want = <int>[];
+    for (
+      var i = (index - 4).clamp(0, ayas.length - 1);
+      i <= (index + 12).clamp(0, ayas.length - 1);
+      i++
+    ) {
+      final id = ayas[i].id;
+      if (!_words.containsKey(id) && _pending.add(id)) want.add(id);
+    }
+    if (want.isEmpty) return;
+    final read = await wordsFor(widget.db, want);
+    if (!mounted || generation != _generation) return;
+    setState(() => _words.addAll(read));
+  }
 
   Widget _audioBar(Nocturne n) => Container(
     padding: EdgeInsets.symmetric(
@@ -468,7 +467,7 @@ class _StudyScreenState extends State<StudyScreen> {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(bottom: n.space('3')),
-                  child: const _DashedRule(),
+                  child: const DashedRule(),
                 ),
               ),
             ],
@@ -482,222 +481,4 @@ class _StudyScreenState extends State<StudyScreen> {
     ),
   );
 
-  Widget _rootPanel(Nocturne n, StudySet set) {
-    final root = _root;
-    final letters = _word?.root;
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        n.space('6'),
-        n.space('4'),
-        n.space('6'),
-        n.space('8'),
-      ),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: n.divider)),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          stops: const [0, 0.7],
-          colors: [
-            n.accent.withValues(alpha: 0.07),
-            n.accent.withValues(alpha: 0),
-          ],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (root == null)
-            Text(
-              'No word in this set carries a root.',
-              style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
-            )
-          else ...[
-            // The design reaches 3a by tapping a word in 1a, but the word's
-            // gestures are spoken for — a tap speaks it, a long press swaps
-            // this panel — so the root the panel names opens the root screen.
-            GestureDetector(
-              key: const ValueKey('open-root'),
-              behavior: HitTestBehavior.opaque,
-              onTap: letters == null
-                  ? null
-                  : () => _visit(Routes.root, letters),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    root.display,
-                    textDirection: TextDirection.rtl,
-                    style: TextStyle(
-                      fontFamily: Nocturne.arabicFamily,
-                      fontSize: 26,
-                      letterSpacing: 0.14 * 26,
-                      color: n.color('accent-300'),
-                    ),
-                  ),
-                  SizedBox(width: n.space('3')),
-                  Expanded(
-                    child: Text(
-                      root.translit,
-                      style: TextStyle(
-                        fontSize: 11,
-                        letterSpacing: 0.06 * 11,
-                        color: n.textAt(0.55),
-                      ),
-                    ),
-                  ),
-                  NocturneTag(
-                    '${root.occurrences}×',
-                    variant: NocturneTagVariant.outline,
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: n.space('3')),
-              child: const _DashedRule(),
-            ),
-            // The design's "core sense" prose is lexicon text, which arrives
-            // over the network in a later phase. What the corpus itself knows
-            // about this word is its gloss in this aya, so that is what the
-            // section says it is.
-            // "Open constellation" used to sit beside "Mark set understood"
-            // at equal weight. One of the two moves the reader through the
-            // Qur'an and the other is an occasional detour, so the detour is
-            // demoted into the panel it belongs to and the bottom of the screen
-            // carries one action.
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'IN THIS AYA',
-                    style: TextStyle(
-                      fontSize: 10,
-                      letterSpacing: 0.11 * 10,
-                      color: n.accent,
-                    ),
-                  ),
-                ),
-                if (letters != null)
-                  NocturneButton(
-                    variant: NocturneButtonVariant.ghost,
-                    onPressed: () => _visit(Routes.deepDive, (
-                      ayahId: _word!.id ~/ 1000,
-                      letters: letters,
-                    )),
-                    child: const Text(
-                      'Constellation',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ),
-              ],
-            ),
-            SizedBox(height: n.space('1')),
-            Text(
-              _word?.gloss ?? '—',
-              style: TextStyle(fontSize: 13.5, height: 1.5, color: n.text),
-            ),
-            SizedBox(height: n.space('3')),
-            Wrap(
-              spacing: n.space('2'),
-              runSpacing: n.space('2'),
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                // The tag sets everything about its label but the family, so
-                // the Arabic face reaches it through the default style.
-                for (final kin in root.kin)
-                  GestureDetector(
-                    // Keyed by the form as well as the aya: two derivatives
-                    // are first met in the same aya often enough, and the two
-                    // tags cannot carry one key.
-                    key: ValueKey('kin-${kin.text}-${kin.ayahId}'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _load(target: kin.ayahId),
-                    child: DefaultTextStyle.merge(
-                      style: const TextStyle(fontFamily: Nocturne.arabicFamily),
-                      child: NocturneTag(
-                        kin.text,
-                        variant: NocturneTagVariant.neutral,
-                      ),
-                    ),
-                  ),
-                Text(
-                  root.sources.join(', '),
-                  style: TextStyle(fontSize: 11, color: n.textAt(0.45)),
-                ),
-              ],
-            ),
-            SizedBox(height: n.space('2')),
-            Text(
-              'A kin opens the aya it is first met in.',
-              style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
-            ),
-          ],
-          SizedBox(height: n.space('3')),
-          NocturneButton(
-            block: true,
-            variant: NocturneButtonVariant.primary,
-            onPressed: _allUnderstood(set)
-                ? () => _load()
-                : () => _markUnderstood(set),
-            child: Text(
-              _allUnderstood(set) ? 'Next set' : 'Mark set understood',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String _capitalise(String word) =>
-    word.isEmpty ? word : word[0].toUpperCase() + word.substring(1);
-
-String _progressCaption(List<StudyAya> ayas) {
-  final done = [
-    for (final a in ayas)
-      if (a.understood) a.number,
-  ];
-  final open = [
-    for (final a in ayas)
-      if (!a.understood) a.number,
-  ];
-  if (done.isEmpty) return 'No aya marked understood yet';
-  if (open.isEmpty) return 'Every aya in this set is understood';
-  return 'Aya ${_numbers(done)} marked understood · aya ${_numbers(open)} open';
-}
-
-String _numbers(List<int> numbers) => numbers.length == 1
-    ? '${numbers.first}'
-    : '${numbers.sublist(0, numbers.length - 1).join(', ')} and ${numbers.last}';
-
-/// The design's separators are dashes, not rules: 2 px on, 5 px off.
-class _DashedRule extends StatelessWidget {
-  const _DashedRule();
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: double.infinity,
-    height: 1,
-    child: CustomPaint(
-      painter: _DashPainter(Nocturne.of(context).textAt(0.22)),
-    ),
-  );
-}
-
-class _DashPainter extends CustomPainter {
-  const _DashPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    for (var x = 0.0; x < size.width; x += 7) {
-      canvas.drawRect(Rect.fromLTWH(x, 0, 2, size.height), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashPainter old) => old.color != color;
 }

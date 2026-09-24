@@ -75,12 +75,33 @@ void main() {
   testWidgets('choosing an aya in the index leaves without naming it, so the '
       'reader lands back on the set they came from', (tester) async {
     await open(tester);
-    await tester.tap(find.byKey(const ValueKey('sura-1')));
+    await tester.tap(find.byKey(const ValueKey('ayas-1')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('aya-1005')));
     await tester.pumpAndSettle();
 
     expect(chosen, 1005);
     expect(find.byType(IndexScreen), findsNothing);
+  });
+
+  testWidgets('choosing a sūra only unfolds its aya numbers, so the reader who '
+      'wanted to read Al-Baqarah has to pick one of 286 boxes first',
+      (tester) async {
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('sura-2')));
+    await tester.pumpAndSettle();
+
+    expect(chosen, 2001, reason: 'a sūra opens at its first aya');
+    expect(find.byType(IndexScreen), findsNothing);
+  });
+
+  testWidgets('nothing on a sūra row says the arrow does something other than '
+      'the row, so the aya numbers are found by accident', (tester) async {
+    await open(tester);
+
+    expect(
+      find.text('A sūra opens at its first aya. The arrow picks one inside it.'),
+      findsOneWidget,
+    );
   });
 }

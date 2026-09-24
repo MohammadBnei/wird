@@ -78,8 +78,11 @@ Future<Database> openWirdAt(String path) async {
     CREATE TABLE IF NOT EXISTS display_prefs (
       id          INTEGER PRIMARY KEY CHECK (id = 1),
       display     INTEGER NOT NULL,
-      arabic_size REAL NOT NULL
+      arabic_size REAL NOT NULL,
+      header_open INTEGER NOT NULL DEFAULT 0,
+      root_open   INTEGER NOT NULL DEFAULT 1
     )''');
+  await ensureChromeColumns(db);
   await db.execute('''
     CREATE TABLE IF NOT EXISTS mic_consent (
       id          INTEGER PRIMARY KEY CHECK (id = 1),
@@ -256,27 +259,69 @@ Future<void> setReadingOrder(Database db, ReadingOrder order) =>
 const defaultDisplay = 0;
 const defaultArabicSize = 31.0;
 
-typedef DisplayPrefs = ({int display, double arabicSize});
+/// The header arrives collapsed and the root panel open. On a 402x874 phone
+/// the two ends of screen 1a used to take 55% of it between them; the header
+/// is orientation, which a reader wants once, and the panel is the study,
+/// which is what a word tap fills.
+const defaultHeaderOpen = false;
+const defaultRootOpen = true;
+
+typedef DisplayPrefs = ({
+  int display,
+  double arabicSize,
+  bool headerOpen,
+  bool rootOpen,
+});
+
+/// Adds the collapse columns to a `display_prefs` written before either end
+/// of screen 1a could be folded away.
+Future<void> ensureChromeColumns(Database db) async {
+  final columns = await db.rawQuery('PRAGMA table_info(display_prefs)');
+  final have = {for (final c in columns) c['name'] as String};
+  for (final (column, byDefault) in [
+    ('header_open', defaultHeaderOpen),
+    ('root_open', defaultRootOpen),
+  ]) {
+    if (have.contains(column)) continue;
+    await db.execute(
+      'ALTER TABLE display_prefs ADD COLUMN $column '
+      'INTEGER NOT NULL DEFAULT ${byDefault ? 1 : 0}',
+    );
+  }
+}
 
 Future<DisplayPrefs> displayPrefs(Database db) async {
   final rows = await db.query('display_prefs', limit: 1);
   if (rows.isEmpty) {
-    return (display: defaultDisplay, arabicSize: defaultArabicSize);
+    return (
+      display: defaultDisplay,
+      arabicSize: defaultArabicSize,
+      headerOpen: defaultHeaderOpen,
+      rootOpen: defaultRootOpen,
+    );
   }
   return (
     display: rows.first['display']! as int,
     arabicSize: rows.first['arabic_size']! as double,
+    headerOpen: rows.first['header_open'] == 1,
+    rootOpen: rows.first['root_open'] == 1,
   );
 }
 
+/// Writes the whole row. The caller holds all four in memory, and a partial
+/// write under `REPLACE` would silently reset the ones it left out.
 Future<void> setDisplayPrefs(
   Database db, {
   required int display,
   required double arabicSize,
+  required bool headerOpen,
+  required bool rootOpen,
 }) => db.insert('display_prefs', {
   'id': 1,
   'display': display,
   'arabic_size': arabicSize,
+  'header_open': headerOpen ? 1 : 0,
+  'root_open': rootOpen ? 1 : 0,
 }, conflictAlgorithm: ConflictAlgorithm.replace);
 
 /// A root's family, as screen 1a's root panel reads it.

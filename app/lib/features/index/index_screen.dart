@@ -49,6 +49,11 @@ Future<List<SuraEntry>> suraIndex(Database db) async {
 /// stack to screen 1a, which is the app's initial route and the one screen that
 /// reads an aya — so there is never a second reader, and never a second live
 /// audio player, stacked on the first.
+///
+/// A sūra row answers with its first aya, because choosing a sūra means
+/// reading it. The numbers behind the arrow are for the reader who wants a
+/// particular aya of a long one, which is a second, rarer intent and does not
+/// get the whole row.
 class IndexScreen extends StatefulWidget {
   const IndexScreen({super.key, required this.db});
 
@@ -61,9 +66,12 @@ class IndexScreen extends StatefulWidget {
 class _IndexScreenState extends State<IndexScreen> {
   List<SuraEntry>? _suras;
 
-  /// The sūra whose ayas are showing. A sūra is 286 ayas at its longest, so
-  /// they are opened one sūra at a time rather than all at once.
+  /// The sūra whose aya numbers are showing. A sūra is 286 ayas at its
+  /// longest, so they are unfolded one sūra at a time rather than all at once.
   int? _opened;
+
+  /// Leaves the index on [ayahId], which screen 1a opens the sūra at.
+  void _read(int ayahId) => Navigator.of(context).pop(ayahId);
 
   @override
   void initState() {
@@ -123,6 +131,11 @@ class _IndexScreenState extends State<IndexScreen> {
         ),
         SizedBox(height: n.space('1')),
         Text('All 114', style: Theme.of(context).textTheme.displaySmall),
+        SizedBox(height: n.space('1')),
+        Text(
+          'A sūra opens at its first aya. The arrow picks one inside it.',
+          style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
+        ),
       ],
     ),
   );
@@ -132,66 +145,96 @@ class _IndexScreenState extends State<IndexScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GestureDetector(
-          key: ValueKey('sura-${sura.id}'),
-          behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _opened = opened ? null : sura.id),
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: n.space('2')),
-            child: Row(
-              spacing: n.space('3'),
-              children: [
-                SizedBox(
-                  width: 74,
-                  child: Text(
-                    sura.nameAr,
-                    textAlign: TextAlign.right,
-                    textDirection: TextDirection.rtl,
-                    style: TextStyle(
-                      fontFamily: Nocturne.arabicFamily,
-                      fontSize: 19,
-                      color: n.textAt(opened ? 1 : 0.75),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+        Row(
+          spacing: n.space('3'),
+          children: [
+            Expanded(
+              child: GestureDetector(
+                key: ValueKey('sura-${sura.id}'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _read(sura.id * 1000 + 1),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: n.space('2')),
+                  child: Row(
+                    spacing: n.space('3'),
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${sura.id} · ${sura.nameEn}',
-                            style: TextStyle(fontSize: 11, color: n.text),
+                      SizedBox(
+                        width: 74,
+                        child: Text(
+                          sura.nameAr,
+                          textAlign: TextAlign.right,
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            fontFamily: Nocturne.arabicFamily,
+                            fontSize: 19,
+                            color: n.textAt(opened ? 1 : 0.75),
                           ),
-                          Text(
-                            '${sura.understood} / ${sura.ayahCount}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: n.textAt(0.55),
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${sura.id} · ${sura.nameEn}',
+                                  style: TextStyle(fontSize: 11, color: n.text),
+                                ),
+                                Text(
+                                  '${sura.understood} / ${sura.ayahCount}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: n.textAt(0.55),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            // The revelation order is the other way the app reads the
+                            // Qur'an, so a reader in that order can find their place
+                            // by it rather than by the written number. It is spelled
+                            // out because a bare number under a count of ayas reads
+                            // as a second count.
+                            Text(
+                              '${_ordinal(sura.revelationOrder)} to be revealed',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: n.textAt(0.42),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _bar(n, sura),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      // The revelation order is the other way the app reads the
-                      // Qur'an, so a reader in that order can find their place
-                      // by it rather than by the written number. It is spelled
-                      // out because a bare number under a count of ayas reads
-                      // as a second count.
-                      Text(
-                        '${_ordinal(sura.revelationOrder)} to be revealed',
-                        style: TextStyle(fontSize: 10, color: n.textAt(0.42)),
-                      ),
-                      const SizedBox(height: 4),
-                      _bar(n, sura),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            Semantics(
+              button: true,
+              label: 'Pick an aya of ${sura.nameEn}',
+              child: GestureDetector(
+                key: ValueKey('ayas-${sura.id}'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _opened = opened ? null : sura.id),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: n.space('2'),
+                    vertical: n.space('3'),
+                  ),
+                  child: Icon(
+                    opened ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: n.color('accent-300'),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         if (opened) _ayas(n, sura),
         const NocturneRule(fade: 30),
@@ -222,7 +265,7 @@ class _IndexScreenState extends State<IndexScreen> {
           GestureDetector(
             key: ValueKey('aya-${sura.id * 1000 + number}'),
             behavior: HitTestBehavior.opaque,
-            onTap: () => Navigator.of(context).pop(sura.id * 1000 + number),
+            onTap: () => _read(sura.id * 1000 + number),
             child: Container(
               width: 34,
               height: 28,

@@ -170,7 +170,7 @@ void main() {
     expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
 
     await goTo(tester, 'Sūra index');
-    await tester.tap(find.byKey(const ValueKey('sura-1')));
+    await tester.tap(find.byKey(const ValueKey('ayas-1')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('aya-1005')));
     await tester.pumpAndSettle();
@@ -185,7 +185,7 @@ void main() {
     await goTo(tester, 'Your passage');
     await tester.tap(find.text('All 114'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('sura-1')));
+    await tester.tap(find.byKey(const ValueKey('ayas-1')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('aya-1005')));
     await tester.pumpAndSettle();

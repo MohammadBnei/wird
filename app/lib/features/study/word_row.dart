@@ -63,17 +63,17 @@ enum WordVoice {
 /// mark that closes it.
 typedef AyaFace = ({StudyAya aya, List<WordFace> words});
 
-/// The set as the row draws it.
-List<AyaFace> facesOf(StudySet set, Set<int> hearable) => [
-  for (final aya in set.ayas)
-    (
-      aya: aya,
-      words: [
-        for (final word in aya.words)
-          WordFace(word, hearable: hearable.contains(word.id)),
-      ],
-    ),
-];
+/// One aya as the row draws it.
+///
+/// Per aya rather than per set: a sūra's words arrive a chunk at a time, so
+/// there is no moment at which every face in the passage is known.
+AyaFace faceOf(StudyAya aya, List<StudyWord> words, Set<int> hearable) => (
+  aya: aya,
+  words: [
+    for (final word in words)
+      WordFace(word, hearable: hearable.contains(word.id)),
+  ],
+);
 
 /// One word of the set.
 ///
@@ -154,9 +154,7 @@ class WordTile extends StatelessWidget {
             // of the row.
             Container(
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: _line(n), width: 2),
-                ),
+                border: Border(bottom: BorderSide(color: _line(n), width: 2)),
               ),
               // Arabic hangs below its baseline by a variable amount: 0.27 em
               // in the shallowest word of the corpus and 1.22 em in the

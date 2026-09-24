@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
@@ -15,6 +16,7 @@ import 'package:wird/widgets/nocturne_button.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
+import '../../microphone.dart';
 import '../../offline.dart';
 import '../../wird.dart';
 
@@ -177,6 +179,9 @@ void main() {
       findsNothing,
       reason: 'aya 2 is understood, so the set ends before it',
     );
+    // The sentence spelling the marks out lives in the unfolded header.
+    await tester.tap(find.byKey(const Key('toggle header')));
+    await tester.pumpAndSettle();
     expect(find.text('No aya marked understood yet'), findsOneWidget);
   });
 
@@ -279,7 +284,7 @@ void main() {
       'word that cannot be heard', (tester) async {
     await openStudy(tester);
     final set = (await nextSet(db, ReadingOrder.nuzul))!;
-    final shown = tester.getRect(find.byType(SingleChildScrollView));
+    final shown = tester.getRect(find.byType(CustomScrollView));
     var tapped = 0;
 
     for (final aya in set.ayas) {
@@ -405,6 +410,10 @@ void main() {
   testWidgets('the recitation offers to play a set that is not on the phone, '
       'and stalls on a file it cannot fetch', (tester) async {
     await openStudy(tester);
+    // The bar sits under the last aya of the set, and an aya is only built
+    // when it comes near the viewport now that a sūra can be 286 of them.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -2000));
+    await tester.pumpAndSettle();
 
     expect(find.text('Not downloaded'), findsOneWidget);
     final play = tester.widget<NocturneButton>(
@@ -435,6 +444,7 @@ void main() {
 
   testWidgets('the microphone is asked for on the way into the prayer, where '
       'no dialog may appear', (tester) async {
+    RecordPlatform.instance = FakeMic();
     await openStudy(tester);
     expect(
       await micPermission(db),
@@ -446,8 +456,10 @@ void main() {
     await tester.tap(find.text('Allow microphone'));
     await tester.pumpAndSettle();
 
-    expect(await micPermission(db), isNot(MicPermission.notAsked));
-    expect(find.textContaining('advances on a tap'), findsOneWidget);
+    expect(await micPermission(db), MicPermission.granted);
+    // Allowing the microphone is not turning voice-follow on: the recogniser
+    // is a separate, printed, opt-in download.
+    expect(find.textContaining('Download recogniser'), findsOneWidget);
   });
 
   testWidgets('the reader is carried off the set the moment they mark it, '
@@ -459,6 +471,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
+    await tester.tap(find.byKey(const Key('toggle header')));
+    await tester.pumpAndSettle();
     expect(find.text('Every aya in this set is understood'), findsOneWidget);
     expect((await db.query('outbox')).length, 1);
     expect((await db.query('ayah_understood')).length, 5);

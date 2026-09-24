@@ -43,7 +43,10 @@ String _uuidV5(String namespace, String name) {
     for (var i = 0; i < flat.length; i += 2)
       int.parse(flat.substring(i, i + 2), radix: 16),
   ];
-  final bytes = sha1.convert([...ns, ...utf8.encode(name)]).bytes.sublist(0, 16);
+  final bytes = sha1
+      .convert([...ns, ...utf8.encode(name)])
+      .bytes
+      .sublist(0, 16);
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
@@ -79,7 +82,7 @@ class StudyWord {
 }
 
 class StudyAya {
-  const StudyAya({
+  StudyAya({
     required this.id,
     required this.surahId,
     required this.number,
@@ -89,7 +92,8 @@ class StudyAya {
     required this.revelationPlace,
     required this.understood,
     required this.words,
-  });
+    int? wordCount,
+  }) : wordCount = wordCount ?? words.length;
 
   final int id;
   final int surahId;
@@ -99,7 +103,15 @@ class StudyAya {
   final int revelationOrder;
   final String revelationPlace;
   final bool understood;
+
+  /// Its words, or empty while the reader is still far enough from this aya
+  /// that they have not been read. A sūra arrives as ayas and its words come
+  /// a chunk at a time, so [wordCount] is what the list has to hold a place
+  /// with until they land.
   final List<StudyWord> words;
+
+  /// How many words the aya has, whether or not they are loaded.
+  final int wordCount;
 
   /// The same aya, now marked. The flag is baked at load, so a screen that
   /// marks a set without reloading it refreshes the copies it is showing —
@@ -114,16 +126,53 @@ class StudyAya {
     revelationPlace: revelationPlace,
     understood: true,
     words: words,
+    wordCount: wordCount,
   );
 }
 
 class StudySet {
-  const StudySet(this.ayas, {required this.order});
+  const StudySet(this.ayas, {required this.order, List<StudyAya>? reading})
+    : reading = reading ?? ayas;
 
+  /// The ayas the reader acts on: what is marked, prayed, named in the header
+  /// and kept on disk. On the walk it is the set the walk proposed; off it,
+  /// the one aya the reader asked for.
   final List<StudyAya> ayas;
+
+  /// What the screen draws around [ayas], which on the walk is the set itself
+  /// and off it is the whole sūra the visited aya sits in.
+  ///
+  /// Reading is not acting. An app named for a daily portion of recitation had
+  /// no way to recite, because a visit was one aya and there was no third
+  /// thing between that and a set the walk proposed. The sūra is what the
+  /// reader reads; the set is what the reader answers for. Widening [ayas] to
+  /// the sūra instead would mark, pray and download 286 ayas at a stroke.
+  final List<StudyAya> reading;
 
   /// The order the set was read in, which is half of what names it.
   final ReadingOrder order;
+
+  /// Where in [reading] the acted set begins, so a reader who asked for
+  /// Al-Baqarah 255 lands on it instead of scrolling through 254 ayas.
+  int get focusIndex {
+    final at = reading.indexWhere((a) => a.id == ayas.first.id);
+    return at < 0 ? 0 : at;
+  }
+
+  /// The same set with [ids] marked, in what is read as well as in what is
+  /// acted on. The flag is baked at load, so a screen that marks without
+  /// reloading would otherwise go on calling a marked aya open.
+  StudySet withUnderstood(Set<int> ids) {
+    StudyAya mark(StudyAya a) => ids.contains(a.id) ? a.asUnderstood() : a;
+    final acted = [for (final aya in ayas) mark(aya)];
+    return StudySet(
+      order: order,
+      acted,
+      reading: identical(reading, ayas)
+          ? acted
+          : [for (final aya in reading) mark(aya)],
+    );
+  }
 
   /// Derived, never minted: see [setIdFor].
   String get id => setIdFor(order, ayas.first.id, ayas.last.id);
@@ -208,41 +257,62 @@ Future<StudySet?> nextSet(
   return _setFrom(db, order, taken);
 }
 
-/// The one aya at [ayahId], wherever the reader is in the walk.
+/// The aya at [ayahId], inside the sūra it belongs to.
 ///
-/// A reference the reader followed — a kin, a row in the index — is one aya
-/// and not a set the walk proposed, so it is shown where it stands. Marking it
-/// understood counts like any other mark: the walk's position is derived from
-/// `ayah_understood`, so it recomputes around the hole rather than being moved
-/// by the visit.
+/// A reference the reader followed — a kin, a row in the index — names one
+/// aya, and that aya alone is the set: it is what gets marked, prayed and
+/// kept on the phone, so the walk's derived position recomputes around the
+/// hole a visit leaves rather than being moved by it. The rest of the sūra is
+/// [StudySet.reading] and is there to be read.
+///
+/// Only the named aya arrives with its words. Al-Baqarah is 286 ayas and 6116
+/// words, and a screen shows twenty of them; the rest are read a chunk at a
+/// time by [wordsFor] as the reader reaches them.
 Future<StudySet?> ayaSet(Database db, ReadingOrder order, int ayahId) async {
-  final rows = await db.rawQuery('''
+  final rows = await db.rawQuery(
+    '''
     SELECT a.id, a.surah_id, a.number,
            s.name_en, s.name_ar, s.revelation_order, s.revelation_place,
+           (SELECT COUNT(*) FROM words w WHERE w.ayah_id = a.id) AS word_count,
            (u.ayah_id IS NOT NULL) AS understood
       FROM ayahs a
       JOIN surahs s ON s.id = a.surah_id
       LEFT JOIN ayah_understood u ON u.ayah_id = a.id
-     WHERE a.id = ?''', [ayahId]);
-  return rows.isEmpty ? null : _setFrom(db, order, rows);
+     WHERE a.surah_id = ?
+     ORDER BY a.number''',
+    [ayahId ~/ 1000],
+  );
+  final at = rows.indexWhere((r) => r['id'] == ayahId);
+  if (at < 0) return null;
+  final words = await wordsFor(db, [ayahId]);
+  return StudySet(
+    order: order,
+    _ayasOf([rows[at]], words),
+    reading: _ayasOf(rows, words),
+  );
 }
 
-/// The ayas these rows name, with their words read in one query.
-Future<StudySet> _setFrom(
+/// The words of these ayas, keyed by aya, in one query.
+///
+/// An aya that was asked for and has no words comes back with an empty list
+/// rather than missing, so a caller can tell "read, and empty" from "not read
+/// yet" — which is what stops the screen asking for the same chunk every
+/// frame.
+Future<Map<int, List<StudyWord>>> wordsFor(
   Database db,
-  ReadingOrder order,
-  List<Map<String, Object?>> taken,
+  List<int> ayahIds,
 ) async {
-  final byAya = <int, List<StudyWord>>{for (final r in taken) r['id']! as int: []};
+  final byAya = <int, List<StudyWord>>{for (final id in ayahIds) id: []};
+  if (byAya.isEmpty) return byAya;
   final marks = List.filled(byAya.length, '?').join(',');
-  final wordRows = await db.rawQuery(
+  final rows = await db.rawQuery(
     '''SELECT id, ayah_id, text_ar, translit, gloss_en, root_letters
          FROM words
         WHERE ayah_id IN ($marks)
         ORDER BY ayah_id, position''',
     byAya.keys.toList(),
   );
-  for (final w in wordRows) {
+  for (final w in rows) {
     final root = w['root_letters'] as String?;
     byAya[w['ayah_id']! as int]!.add(
       StudyWord(
@@ -254,22 +324,38 @@ Future<StudySet> _setFrom(
       ),
     );
   }
-
-  return StudySet(order: order, [
-    for (final r in taken)
-      StudyAya(
-        id: r['id']! as int,
-        surahId: r['surah_id']! as int,
-        number: r['number']! as int,
-        surahNameEn: r['name_en']! as String,
-        surahNameAr: r['name_ar']! as String,
-        revelationOrder: r['revelation_order']! as int,
-        revelationPlace: r['revelation_place']! as String,
-        understood: (r['understood']! as int) == 1,
-        words: byAya[r['id']! as int]!,
-      ),
-  ]);
+  return byAya;
 }
+
+/// The ayas these rows name, wearing whichever of [words] have been read.
+List<StudyAya> _ayasOf(
+  List<Map<String, Object?>> rows,
+  Map<int, List<StudyWord>> words,
+) => [
+  for (final r in rows)
+    StudyAya(
+      id: r['id']! as int,
+      surahId: r['surah_id']! as int,
+      number: r['number']! as int,
+      surahNameEn: r['name_en']! as String,
+      surahNameAr: r['name_ar']! as String,
+      revelationOrder: r['revelation_order']! as int,
+      revelationPlace: r['revelation_place']! as String,
+      understood: (r['understood']! as int) == 1,
+      words: words[r['id']! as int] ?? const [],
+      wordCount: r['word_count'] as int?,
+    ),
+];
+
+/// The ayas these rows name, with their words read in one query.
+Future<StudySet> _setFrom(
+  Database db,
+  ReadingOrder order,
+  List<Map<String, Object?>> taken,
+) async => StudySet(
+  order: order,
+  _ayasOf(taken, await wordsFor(db, [for (final r in taken) r['id']! as int])),
+);
 
 /// How many ayas the set starting at the head of [wordCounts] holds.
 ///
@@ -278,7 +364,9 @@ Future<StudySet> _setFrom(
 /// costs, because 2:282 is 128 words and would otherwise be skipped forever,
 /// stalling the walk at the same place.
 int _setWidth(List<int> wordCounts, {int? span}) {
-  if (span != null) return span.clamp(1, max(1, min(setMaxDragAyas, wordCounts.length)));
+  if (span != null) {
+    return span.clamp(1, max(1, min(setMaxDragAyas, wordCounts.length)));
+  }
   var taken = 0;
   var words = 0;
   for (final count in wordCounts) {

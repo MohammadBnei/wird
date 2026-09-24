@@ -194,7 +194,15 @@ class Recitation {
 /// screen's State. A reader who set them, walked to the sūra index and came
 /// back found them reset, because the screen they lived on had been disposed.
 class Prefs extends ChangeNotifier {
-  Prefs._(this._db, this._order, this._display, this._arabicSize, this._mic);
+  Prefs._(
+    this._db,
+    this._order,
+    this._display,
+    this._arabicSize,
+    this._headerOpen,
+    this._rootOpen,
+    this._mic,
+  );
 
   static Future<Prefs> read(Database db) async {
     final display = await displayPrefs(db);
@@ -203,6 +211,8 @@ class Prefs extends ChangeNotifier {
       await readingOrder(db),
       display.display,
       display.arabicSize,
+      display.headerOpen,
+      display.rootOpen,
       await micPermission(db),
     );
   }
@@ -211,6 +221,8 @@ class Prefs extends ChangeNotifier {
   ReadingOrder _order;
   int _display;
   double _arabicSize;
+  bool _headerOpen;
+  bool _rootOpen;
   MicPermission _mic;
 
   ReadingOrder get order => _order;
@@ -219,6 +231,14 @@ class Prefs extends ChangeNotifier {
   /// control offers, in the order it offers them.
   int get display => _display;
   double get arabicSize => _arabicSize;
+
+  /// Whether each end of screen 1a is unfolded. It lives here rather than on
+  /// the screen for the reason the display settings do: a reader who folded
+  /// the chrome away, walked to the sūra index and came back would find it
+  /// back, because the screen it lived on had been disposed.
+  bool get headerOpen => _headerOpen;
+  bool get rootOpen => _rootOpen;
+
   MicPermission get mic => _mic;
 
   bool get showGloss => _display == 0 || _display == 2;
@@ -234,14 +254,34 @@ class Prefs extends ChangeNotifier {
   Future<void> setDisplay(int display) async {
     _display = display;
     notifyListeners();
-    await setDisplayPrefs(_db, display: display, arabicSize: _arabicSize);
+    await _write();
   }
 
   Future<void> setArabicSize(double size) async {
     _arabicSize = size;
     notifyListeners();
-    await setDisplayPrefs(_db, display: _display, arabicSize: size);
+    await _write();
   }
+
+  Future<void> setHeaderOpen(bool open) async {
+    _headerOpen = open;
+    notifyListeners();
+    await _write();
+  }
+
+  Future<void> setRootOpen(bool open) async {
+    _rootOpen = open;
+    notifyListeners();
+    await _write();
+  }
+
+  Future<void> _write() => setDisplayPrefs(
+    _db,
+    display: _display,
+    arabicSize: _arabicSize,
+    headerOpen: _headerOpen,
+    rootOpen: _rootOpen,
+  );
 
   Future<void> askForTheMic() async {
     _mic = await askForMic(_db);
