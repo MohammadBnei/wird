@@ -2,6 +2,7 @@ package api
 
 import (
 	"html/template"
+	"log/slog"
 	"net/http"
 	"net/url"
 )
@@ -94,12 +95,23 @@ func authCallback(w http.ResponseWriter, r *http.Request) {
 		RawQuery: r.URL.RawQuery,
 	}
 
-	fail := q.Get("error")
-	if fail != "" {
-		if d := q.Get("error_description"); d != "" {
-			fail = d
+	// The sentence this page speaks is one Wird wrote. error_description is
+	// written by whoever wrote the link, and a reader in the middle of signing
+	// in would read it as Wird's own words on Wird's own domain. OAuth names a
+	// small fixed vocabulary in ?error=, which is enough to say what happened;
+	// the description goes to the operator instead.
+	var fail string
+	switch code := q.Get("error"); {
+	case code != "":
+		d := q.Get("error_description")
+		slog.Default().Warn("the issuer refused a sign-in", "error", code,
+			"description", d[:min(len(d), 200)])
+		fail = "The identity server refused this sign-in."
+		if code == "access_denied" {
+			fail = "The identity server did not let this sign-in through. An " +
+				"account that is new here may not have been given access to Wird yet."
 		}
-	} else if q.Get("code") == "" {
+	case q.Get("code") == "":
 		fail = "The identity server sent no authorization code."
 	}
 

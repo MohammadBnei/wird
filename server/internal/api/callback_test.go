@@ -56,7 +56,7 @@ func TestARefusedSignInIsDrawnAsAnAddressToPasteAnyway(t *testing.T) {
 		t.Errorf("a refused sign-in answered %d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "Request has been denied") {
+	if !strings.Contains(body, "did not let this sign-in through") {
 		t.Error("the reader is not told why it failed")
 	}
 	if strings.Contains(body, "Copy this back into Wird") {
@@ -88,5 +88,25 @@ func TestTheCodeIsLeftWhereACacheOrTheNextSiteCanReadIt(t *testing.T) {
 	}
 	if got := w.Header().Get("Referrer-Policy"); got != "no-referrer" {
 		t.Errorf("Referrer-Policy is %q", got)
+	}
+}
+
+// ?error_description= is written by whoever wrote the link, and this page
+// speaks in Wird's voice on Wird's domain to a reader in the middle of signing
+// in — the moment they are least sceptical. Escaping it stops a script, not a
+// sentence: the fix is that the page says what Wird wrote and nothing else.
+func TestALinkFromAnywhereMakesWirdSayWhatTheAttackerWrote(t *testing.T) {
+	h := newHarness(t)
+
+	w := h.get(t, "/auth/callback?error=access_denied&error_description="+
+		"Wird+support+needs+to+verify+you.+Call+555-0112+with+your+password.", "")
+
+	body := w.Body.String()
+	if strings.Contains(body, "555-0112") || strings.Contains(body, "Call") {
+		t.Error("the page speaks a sentence the link wrote, under Wird's own " +
+			"heading and on Wird's own domain")
+	}
+	if !strings.Contains(body, "That sign-in did not finish") {
+		t.Error("the refusal is no longer drawn at all")
 	}
 }
