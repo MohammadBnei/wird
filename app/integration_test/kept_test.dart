@@ -65,6 +65,7 @@ void main() {
     body: (tester) async {
       await launchFresh(tester);
       final before = ayasOnScreen(tester);
+      final set = ayasInTheSet(tester);
 
       await finishSet(tester);
       await waitFor(
@@ -80,7 +81,7 @@ void main() {
       // cannot see them reads them.
       final semantics = tester.ensureSemantics();
       expect(
-        find.bySemanticsLabel(RegExp('${before.length} of 6,236 ayas')),
+        find.bySemanticsLabel(RegExp('${set.length} of 6,236 ayas')),
         findsOneWidget,
         reason:
             'a set the reader marked understood did not reach the one '

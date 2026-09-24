@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/main.dart' as app;
+import 'package:wird/features/study/study_chrome.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:wird/shell/wird_shell.dart';
 
@@ -121,7 +122,9 @@ Future<void> waitFor(
   final deadline = DateTime.now().add(timeout);
   while (!ready()) {
     if (DateTime.now().isAfter(deadline)) {
-      fail('$what never arrived, after ${timeout.inSeconds} seconds of waiting');
+      fail(
+        '$what never arrived, after ${timeout.inSeconds} seconds of waiting',
+      );
     }
     await tester.pump(const Duration(milliseconds: 100));
   }
@@ -130,7 +133,8 @@ Future<void> waitFor(
 /// The corpus the app is reading, opened beside it so a journey can assert
 /// the screen shows what the corpus actually records rather than a string
 /// typed into the test.
-Future<Database> openCorpusBeside() async => openReadOnlyDatabase(await _dbPath);
+Future<Database> openCorpusBeside() async =>
+    openReadOnlyDatabase(await _dbPath);
 
 /// The corpus ids of the words drawn on screen. A word tile carries a
 /// [WordKey], so this identifies the set the reader is looking at without
@@ -146,8 +150,21 @@ Set<int> wordsOnScreen(WidgetTester tester) => {
     (e.widget.key! as WordKey).value,
 };
 
+/// The ayas *drawn*, which is fewer than the set: the reading builds an aya
+/// as it nears the viewport, and on a phone three of a five-aya set are on
+/// screen at once. Good for "the reading moved on", never for "this is what
+/// the reader marked" — [ayasInTheSet] is that.
 Set<int> ayasOnScreen(WidgetTester tester) => {
   for (final id in wordsOnScreen(tester)) id ~/ 1000,
+};
+
+/// The ayas the reader answers for: the set the header names, which is what
+/// "Mark set understood" marks and what screen 1d then counts. Off the walk
+/// the screen reads a whole sūra around it, so this is not what is on screen.
+Set<int> ayasInTheSet(WidgetTester tester) => {
+  for (final aya
+      in tester.widget<StudyHeader>(find.byType(StudyHeader)).set.ayas)
+    aya.id,
 };
 
 /// The root the corpus gives a word, spelled the way the root panel prints
@@ -194,7 +211,10 @@ Future<({int id, String display})> aWordToTap(
     if (display == null || display == showing) continue;
     final tile = find.byKey(WordKey(id));
     final box = tester.renderObject<RenderBox>(tile);
-    if (tester.hitTestOnBinding(tester.getCenter(tile)).path.any((e) => e.target == box)) {
+    if (tester
+        .hitTestOnBinding(tester.getCenter(tile))
+        .path
+        .any((e) => e.target == box)) {
       return (id: id, display: display);
     }
   }
@@ -272,7 +292,9 @@ void expectNoSpinnerAndNoApology(WidgetTester tester, String moment) {
     'check your connection',
     'unable to',
   ];
-  for (final text in tester.widgetList<Text>(find.byType(Text, skipOffstage: false))) {
+  for (final text in tester.widgetList<Text>(
+    find.byType(Text, skipOffstage: false),
+  )) {
     final shown = (text.data ?? '').toLowerCase();
     for (final apology in apologies) {
       expect(
