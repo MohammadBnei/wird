@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/features/study/word_row.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
@@ -158,7 +159,7 @@ void main() {
       'so the reader cannot tell where they are', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
     await tapOn(tester, PrayerScreen.nextZone);
-    final recited = _opacityOf(tester, find.byKey(const ValueKey(103002001)));
+    final recited = _opacityOf(tester, find.byKey(const WordKey(103002001)));
     for (final neighbour in [103001, 103003]) {
       final aya = set.ayas.firstWhere((a) => a.id == neighbour);
       final line = find.text([for (final w in aya.words) w.text].join(' '));

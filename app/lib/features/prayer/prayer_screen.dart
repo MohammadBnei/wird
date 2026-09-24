@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../data/sets.dart';
+import '../study/word_row.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import 'prayer_cursor.dart';
@@ -392,7 +393,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
       for (final word in here.aya.words)
         Text(
           word.text,
-          key: ValueKey(word.id),
+          key: WordKey(word.id),
           textDirection: TextDirection.rtl,
           style: TextStyle(
             fontFamily: Nocturne.arabicFamily,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/features/study/word_row.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
@@ -228,7 +229,7 @@ void main() {
     final arabic = tester.widget<Text>(
       find
           .descendant(
-            of: find.byKey(const ValueKey(96001001)),
+            of: find.byKey(const WordKey(96001001)),
             matching: find.byType(Text),
           )
           .first,
