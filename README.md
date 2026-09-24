@@ -40,10 +40,12 @@ Wird is built on other people's work. Each source below is named with what it
 provides and the terms it is used under. `data/SOURCES.md` carries the same
 record per database table, with the endpoint each row was fetched from.
 
-The app itself carries this list on its **Sources and licences** screen,
-reachable from the settings panel on the study screen — a licence file in a git
-repository does not reach someone using the app, and several of these terms ask
-to be shown to users rather than to readers of the source.
+The app itself carries this list on its **Sources and licences** screen, which
+is a destination in the drawer — a licence file in a git repository does not
+reach someone using the app, and several of these terms ask to be shown to
+users rather than to readers of the source. It used to be a button at the
+bottom of the study screen's settings panel, which is a place nobody goes to
+read a licence.
 
 ### Quranic Arabic Corpus — morphology, roots, word forms
 
@@ -184,10 +186,16 @@ questions and not implementation ones:
    rather than from an origin that publishes no terms — at the price of a
    permanent seven-day re-sync and a published privacy policy. Settled by the
    project, not by the code.
-4. **Blocking.** The Sources and licences screen still credits neither
-   quran-align nor Collin Fair, and still describes the recitation as "personal
-   use only — not cleared" with a link to quranicaudio.com. Neither is true any
-   more, and the first is a licence condition rather than a nicety.
+4. ~~**Blocking.** The Sources and licences screen credits neither quran-align
+   nor Collin Fair.~~ **Closed 2026-09-24.** The screen names quran-align,
+   carries "Copyright (c) 2016 Collin Fair" and the CC BY 4.0 licence by name,
+   and records that the timings were reindexed onto this schema — which is the
+   fourth of CC BY's conditions and the one that is easiest to forget. The
+   stale "personal use only — not cleared" text is gone with it.
+
+   Held by tests that read the rendered screen rather than the constant it
+   renders from, so deleting an entry fails the suite instead of quietly
+   moving it. `app/test/features/about/about_screen_test.dart`.
 
 ## Building
 
