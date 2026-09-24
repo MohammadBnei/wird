@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/data/mic.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
+import '../../microphone.dart';
 import 'sets.dart';
 
 /// The phone's own screen, and whether the prayer left it awake.
@@ -175,5 +178,34 @@ void main() {
     );
     await tapOn(tester, PrayerScreen.nextZone, times: 3);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the prayer opens the microphone on a reader who never allowed '
+      'it', (tester) async {
+    final mic = FakeMic();
+    RecordPlatform.instance = mic;
+    await setMicPermission(db, MicPermission.denied);
+
+    await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
+
+    expect(mic.opened, isEmpty);
+    // And the screen does not claim to be hearing anyone.
+    expect(find.text('IN PRAYER'), findsOneWidget);
+    expect(find.text('FOLLOWING YOUR VOICE'), findsNothing);
+  });
+
+  testWidgets('a reader who allowed the microphone but never downloaded the '
+      'recogniser is listened to anyway', (tester) async {
+    final mic = FakeMic();
+    RecordPlatform.instance = mic;
+    await setMicPermission(db, MicPermission.granted);
+
+    await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
+
+    // Permission alone is not voice-follow. Without the model there is nothing
+    // to listen with, and opening the microphone would be a recording nobody
+    // asked for.
+    expect(mic.opened, isEmpty);
+    expect(find.text('IN PRAYER'), findsOneWidget);
   });
 }

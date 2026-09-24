@@ -8,6 +8,7 @@ import '../../data/sets.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import 'prayer_cursor.dart';
+import 'prayer_voice.dart';
 
 /// Screen 1b — the set recited inside the prayer.
 ///
@@ -18,10 +19,12 @@ import 'prayer_cursor.dart';
 /// show. The recitation is the reader's own voice, so the audio the app holds
 /// stays silent here.
 ///
-/// The design reads "nothing to tap". Until voice-follow lands in phase 11 the
-/// cursor is moved by hand, so the field is split into two tap zones — a large
-/// one that goes on and a smaller one that steps back — sized to be hit
-/// without being looked at. The deviation is recorded in the plan.
+/// The design reads "nothing to tap", and voice-follow is what makes that
+/// true — when the reader has allowed the microphone and downloaded the model,
+/// both of which happen in Settings. It stays off for everyone else, and it
+/// gives up silently for anyone it fails: the field is split into two tap
+/// zones, a large one that goes on and a smaller one that steps back, sized to
+/// be hit without being looked at. The deviation is recorded in the plan.
 class PrayerScreen extends StatefulWidget {
   const PrayerScreen({
     super.key,
@@ -64,19 +67,40 @@ class _PrayerScreenState extends State<PrayerScreen> {
   ];
   late final PrayerCursor _cursor = widget.cursor ?? PrayerCursor(_flat.length);
 
+  /// Null until the microphone is open, and null for good on a phone where it
+  /// never will be. Nothing on this screen tells the reader which, because
+  /// there is nothing they could do about it while praying.
+  PrayerVoice? _voice;
+
   @override
   void initState() {
     super.initState();
     _cursor.addListener(_redraw);
     unawaited(_keepAwake(true));
+    unawaited(_followTheReciter());
   }
 
   @override
   void dispose() {
     _cursor.removeListener(_redraw);
     unawaited(_keepAwake(false));
+    unawaited(_voice?.stop());
     if (widget.cursor == null) _cursor.dispose();
     super.dispose();
+  }
+
+  Future<void> _followTheReciter() async {
+    final voice = await PrayerVoice.start(widget.db, _cursor, [
+      for (final here in _flat) here.word.text,
+    ]);
+    // The prayer can be over before the model is loaded, and a microphone left
+    // open behind a screen nobody is looking at is the worst of the failures
+    // available here.
+    if (!mounted) {
+      await voice?.stop();
+      return;
+    }
+    if (voice != null) setState(() => _voice = voice);
   }
 
   void _redraw() => setState(() {});
@@ -151,11 +175,11 @@ class _PrayerScreenState extends State<PrayerScreen> {
                 boxShadow: [BoxShadow(color: n.accent, blurRadius: 8)],
               ),
             ),
-            // The design says "Following your voice". Nothing is listening
-            // until phase 11 turns voice-follow on, and a screen that claims
-            // to hear the reader when it does not is worse than a plain one.
+            // The design says "Following your voice", and it says so only
+            // while something is: a screen that claims to hear the reader
+            // when it does not is worse than a plain one.
             Text(
-              'IN PRAYER',
+              _voice == null ? 'IN PRAYER' : 'FOLLOWING YOUR VOICE',
               style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 0.13 * 10,
@@ -389,7 +413,9 @@ class _PrayerScreenState extends State<PrayerScreen> {
           ),
           SizedBox(height: n.space('4')),
           Text(
-            'Screen stays awake · tap to go on · left edge steps back',
+            _voice == null
+                ? 'Screen stays awake · tap to go on · left edge steps back'
+                : 'Screen stays awake · tap any time · left edge steps back',
             style: TextStyle(fontSize: 10.5, color: n.textAt(0.58)),
           ),
         ],

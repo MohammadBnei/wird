@@ -1,8 +1,13 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../../app.dart';
 import '../../data/mic.dart';
 import '../../data/sets.dart';
+import '../../data/speech.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
@@ -59,13 +64,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     MicPermission.notAsked =>
       'Voice-follow needs the microphone. Off by default; never asked for '
           'during a prayer.',
-    MicPermission.granted =>
-      'Microphone allowed. Voice-follow stays off until you turn it on.',
+    MicPermission.granted => 'Microphone allowed.',
     MicPermission.denied =>
       'Microphone refused. The prayer screen advances on a tap, as it always '
           'does.',
     MicPermission.unavailable =>
-      'This build cannot reach the microphone. The prayer screen advances on '
+      'This device has no microphone to offer. The prayer screen advances on '
           'a tap.',
   };
 
@@ -150,12 +154,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // microphone is asked for here and only here: the in-prayer
               // screen may not raise a dialog, so it can never be the screen
               // that asks.
-              NocturneButton(
-                onPressed: prefs.askForTheMic,
-                child: const Text('Allow microphone'),
-              ),
+              if (prefs.mic != MicPermission.granted)
+                NocturneButton(
+                  onPressed: prefs.mic == MicPermission.unavailable
+                      ? null
+                      : prefs.askForTheMic,
+                  child: const Text('Allow microphone'),
+                ),
               SizedBox(height: n.space('1')),
               _caption(n, _micCaption(prefs.mic)),
+              // The recogniser is settled here too, and for the same reason:
+              // a 160 MB download is not something to discover mid-prayer.
+              if (prefs.mic == MicPermission.granted) const _VoiceModel(),
               // Writes the server would not take are named here and only
               // here. It draws its own heading and stays silent when there
               // are none, so a reader with a healthy outbox sees nothing.
@@ -245,4 +255,146 @@ class _SettingsScreenState extends State<SettingsScreen> {
     text,
     style: TextStyle(fontSize: 10.5, height: 1.4, color: n.textAt(0.5)),
   );
+}
+
+/// The recogniser voice-follow listens with: whether it is on the phone, and
+/// the one button that changes that.
+///
+/// There is no separate "turn voice-follow on" switch. Downloading a hundred
+/// and sixty megabytes is the clearest yes a reader can give, and Remove is
+/// the no. A reader who wants the microphone but not the model simply never
+/// presses Download, and the prayer screen advances on a tap the way it has
+/// since before any of this existed.
+class _VoiceModel extends StatefulWidget {
+  const _VoiceModel();
+
+  static const download = Key('download recogniser');
+  static const stop = Key('stop recogniser download');
+  static const remove = Key('remove recogniser');
+
+  @override
+  State<_VoiceModel> createState() => _VoiceModelState();
+}
+
+class _VoiceModelState extends State<_VoiceModel> {
+  VoiceModel? _model;
+  CancelToken? _fetching;
+  bool _ready = false;
+  int _received = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_find());
+  }
+
+  @override
+  void dispose() {
+    // A reader who walks away from Settings has stopped asking for the model.
+    _fetching?.cancel();
+    super.dispose();
+  }
+
+  /// Where the model would be, which is real file work and so cannot be what
+  /// the first frame waits on. Until it answers the panel says what is true of
+  /// every phone that has never downloaded it.
+  Future<VoiceModel?> _find() async {
+    try {
+      final model = _model ?? await VoiceModel.beside(await getDatabasesPath());
+      if (mounted) {
+        setState(() {
+          _model = model;
+          _ready = model.ready;
+          _received = model.bytesOnDisk;
+        });
+      }
+      return model;
+    } on Object {
+      // No directory to put a model in is the same answer as no model.
+      return null;
+    }
+  }
+
+  Future<void> _download() async {
+    final model = await _find();
+    if (model == null || !mounted) return;
+    final cancel = CancelToken();
+    setState(() => _fetching = cancel);
+    await model.fetch(
+      cancel: cancel,
+      onProgress: (received, _) {
+        if (mounted) setState(() => _received = received);
+      },
+    );
+    if (mounted) {
+      setState(() {
+        _fetching = null;
+        _ready = model.ready;
+        _received = model.bytesOnDisk;
+      });
+    }
+  }
+
+  Future<void> _remove() async {
+    await _model?.remove();
+    if (mounted) {
+      setState(() {
+        _ready = false;
+        _received = 0;
+      });
+    }
+  }
+
+  String get _size => '${(voiceModelBytes / 1000000).round()} MB';
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Nocturne.of(context);
+    final done = (_received / voiceModelBytes * 100).clamp(0, 99).round();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: n.space('3')),
+        if (_fetching != null)
+          NocturneButton(
+            key: _VoiceModel.stop,
+            variant: NocturneButtonVariant.ghost,
+            onPressed: () => _fetching?.cancel(),
+            child: Text('Stop · $done%'),
+          )
+        else if (_ready)
+          NocturneButton(
+            key: _VoiceModel.remove,
+            variant: NocturneButtonVariant.ghost,
+            onPressed: _remove,
+            child: const Text('Remove recogniser'),
+          )
+        else
+          NocturneButton(
+            key: _VoiceModel.download,
+            onPressed: _download,
+            child: Text('Download recogniser · $_size'),
+          ),
+        SizedBox(height: n.space('1')),
+        Text(
+          _caption,
+          style: TextStyle(fontSize: 10.5, height: 1.4, color: n.textAt(0.5)),
+        ),
+      ],
+    );
+  }
+
+  String get _caption => _fetching != null
+      ? 'Downloading. Stopping keeps what has arrived, and pressing Download '
+            'again carries on from there.'
+      : _ready
+      ? 'The prayer screen follows your voice. Your recitation is recognised '
+            'on this phone and never leaves it.'
+      : _received > 0
+      ? 'A stopped download is still on the phone. Downloading again carries '
+            'on from where it stopped.'
+      : "A Qur'an recogniser that runs on the phone, so nothing you recite is "
+            'sent anywhere. Downloading it is what turns voice-follow on; the '
+            'prayer screen advances on a tap until you do, and after you '
+            'remove it.';
 }
