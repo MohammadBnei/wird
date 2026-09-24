@@ -424,7 +424,7 @@ class _StudyScreenState extends State<StudyScreen> {
                   // Keyed by the corpus id so the tile keeps its element
                   // across a rebuild, rather than being matched by position
                   // against a different word.
-                  key: ValueKey(word.word.id),
+                  key: WordKey(word.word.id),
                   face: word,
                   voice: word.voice(sounding: recited, unheard: _unheard),
                   open: word.word.id == _word?.id,

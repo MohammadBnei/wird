@@ -105,12 +105,12 @@ void main() {
     await openStudy(tester, target: _kursi);
 
     expect(
-      find.byKey(ValueKey(_word(_kursi, 1))),
+      find.byKey(WordKey(_word(_kursi, 1))),
       findsOneWidget,
       reason: 'the reader lands on the aya they asked for',
     );
     expect(
-      find.byKey(ValueKey(_word(2001, 1))),
+      find.byKey(WordKey(_word(2001, 1))),
       findsNothing,
       reason: 'the first aya of the sūra is 254 ayas away and is not built',
     );
@@ -128,7 +128,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, 900));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(ValueKey(_word(2254, 1))), findsOneWidget);
+    expect(find.byKey(WordKey(_word(2254, 1))), findsOneWidget);
   });
 
   testWidgets('the aya the reader asked for is all there is, so the sūra '
@@ -138,7 +138,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(ValueKey(_word(2256, 1))), findsOneWidget);
+    expect(find.byKey(WordKey(_word(2256, 1))), findsOneWidget);
   });
 
   testWidgets('reading past an aya marks it, so a reader who scrolled through '
@@ -164,9 +164,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(StudyScreen), findsOneWidget);
-    expect(find.byKey(ValueKey(_word(2001, 1))), findsOneWidget);
+    expect(find.byKey(WordKey(_word(2001, 1))), findsOneWidget);
     expect(
-      find.byKey(ValueKey(_word(2002, 1))),
+      find.byKey(WordKey(_word(2002, 1))),
       findsOneWidget,
       reason: 'the sūra goes on under the aya it opened at',
     );

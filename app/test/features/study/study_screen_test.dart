@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wird/features/study/word_row.dart';
 import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
@@ -30,7 +31,7 @@ Future<String> word(Database db, int id) async {
 
 /// A word by its corpus id. Al-ʿAlaq repeats ٱقْرَأْ and ٱلَّذِى inside one
 /// set, so a finder on the text alone matches the wrong tile.
-Finder tile(int wordId) => find.byKey(ValueKey(wordId));
+Finder tile(int wordId) => find.byKey(WordKey(wordId));
 
 /// The Arabic of a word: the first thing painted in its tile, above the
 /// transliteration and the gloss.

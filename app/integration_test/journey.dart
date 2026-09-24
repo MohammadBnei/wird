@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/main.dart' as app;
+import 'package:wird/features/study/word_row.dart';
 import 'package:wird/shell/wird_shell.dart';
 
 /// What the resolved e2e target can do. A physical iPhone is the only place
@@ -131,12 +132,18 @@ Future<void> waitFor(
 /// typed into the test.
 Future<Database> openCorpusBeside() async => openReadOnlyDatabase(await _dbPath);
 
-/// The corpus ids of the words drawn on screen. Each word tile is keyed by
-/// its id, so this identifies the set the reader is looking at without
+/// The corpus ids of the words drawn on screen. A word tile carries a
+/// [WordKey], so this identifies the set the reader is looking at without
 /// depending on any of the screen's wording.
+///
+/// It used to collect every widget holding a `ValueKey<int>`, which is a
+/// convention rather than a statement — and the reading screen's scroll view,
+/// keyed by the aya it opens at, joined the set as soon as a reader could open
+/// a whole sūra. An aya id then reached [rootDisplayOf], which expects a word
+/// id, and three journeys died on a word that does not exist.
 Set<int> wordsOnScreen(WidgetTester tester) => {
-  for (final e in find.byWidgetPredicate((w) => w.key is ValueKey<int>).evaluate())
-    (e.widget.key! as ValueKey<int>).value,
+  for (final e in find.byWidgetPredicate((w) => w.key is WordKey).evaluate())
+    (e.widget.key! as WordKey).value,
 };
 
 Set<int> ayasOnScreen(WidgetTester tester) => {
@@ -152,6 +159,16 @@ Future<String?> rootDisplayOf(Database corpus, int wordId) async {
     where: 'id = ?',
     whereArgs: [wordId],
   );
+  if (word.isEmpty) {
+    // Only reachable by being handed something that is not a word id. `.single`
+    // answered that with "Bad state: No element", which names neither the id
+    // nor the mistake, and cost an afternoon.
+    throw StateError(
+      'the corpus holds no word $wordId: an id that is not a word id reached '
+      'rootDisplayOf, and word ids are surah * 1000000 while aya ids are '
+      'surah * 1000',
+    );
+  }
   final letters = word.single['root_letters'] as String?;
   if (letters == null || letters.isEmpty) return null;
   final root = await corpus.query(
@@ -175,7 +192,7 @@ Future<({int id, String display})> aWordToTap(
   for (final id in ids) {
     final display = await rootDisplayOf(corpus, id);
     if (display == null || display == showing) continue;
-    final tile = find.byKey(ValueKey(id));
+    final tile = find.byKey(WordKey(id));
     final box = tester.renderObject<RenderBox>(tile);
     if (tester.hitTestOnBinding(tester.getCenter(tile)).path.any((e) => e.target == box)) {
       return (id: id, display: display);

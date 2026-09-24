@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:wird/features/study/word_row.dart';
 
 import 'journey.dart';
 
@@ -39,7 +40,7 @@ void main() {
       // Reading the second set, not merely receiving it: its words have to
       // carry roots and open the panel the way the first set's did.
       final word = await aWordToTap(tester, corpus);
-      await tester.tap(find.byKey(ValueKey(word.id)));
+      await tester.tap(find.byKey(WordKey(word.id)));
       await waitFor(
         tester,
         () => find.text(word.display).evaluate().isNotEmpty,
@@ -79,7 +80,7 @@ void main() {
         );
 
         final word = await aWordToTap(tester, corpus);
-        await tester.tap(find.byKey(ValueKey(word.id)));
+        await tester.tap(find.byKey(WordKey(word.id)));
         await waitFor(
           tester,
           () => find.text(word.display).evaluate().isNotEmpty,
@@ -107,10 +108,18 @@ void main() {
       await launchFresh(tester);
       corpus = await openCorpusBeside();
 
-      final ayas = find.descendant(
-        of: find.byType(SingleChildScrollView),
-        matching: find.byType(Scrollable),
-      );
+      // The scrollable the words are IN, rather than whichever widget class
+      // the screen currently scrolls with. It was found through
+      // SingleChildScrollView, which stopped being the answer the moment the
+      // reading screen went lazy to hold a whole sūra — and a journey that
+      // encodes a screen's choice of scroller fails on a change that no
+      // reader can see.
+      final ayas = find
+          .ancestor(
+            of: find.byWidgetPredicate((w) => w.key is WordKey),
+            matching: find.byType(Scrollable),
+          )
+          .first;
       final position = tester.state<ScrollableState>(ayas).position;
       if (position.maxScrollExtent > 0) {
         await tester.drag(ayas, const Offset(0, -80));
@@ -121,7 +130,7 @@ void main() {
       // Chosen after the scroll: the reader taps what is under their thumb
       // now, not what was there before they moved the aya.
       final target = await aWordToTap(tester, corpus);
-      final tile = find.byKey(ValueKey(target.id));
+      final tile = find.byKey(WordKey(target.id));
       final before = tester.element(tile);
       final neighbours = wordsOnScreen(tester);
 

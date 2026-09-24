@@ -15,6 +15,23 @@ import '../../theme/nocturne.dart';
 /// is looking at was a colour branch rather than a state.
 ///
 /// A word says what it is once, here, and the tile only draws it.
+/// The key a word tile carries, and the reason it is a type of its own.
+///
+/// Anything that walks the tree looking for words has to be able to say which
+/// widgets are words. Having a `ValueKey<int>` was the convention, and it is
+/// not a statement anything can enforce: the reading screen's own scroll view is
+/// keyed by the aya it starts at, which is also an int, and it joined the set
+/// the moment a reader could open a whole sūra. What follows is worse than a
+/// wrong count — an aya id was handed to a lookup expecting a word id, and
+/// three journeys died on a word that does not exist.
+///
+/// Two kinds of id that cannot be told apart is the defect. A type tells them
+/// apart, and nothing can wander into this one by accident.
+@immutable
+final class WordKey extends ValueKey<int> {
+  const WordKey(super.value);
+}
+
 class WordFace {
   const WordFace(this.word, {required this.hearable});
 
