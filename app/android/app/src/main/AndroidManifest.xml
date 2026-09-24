@@ -5,6 +5,14 @@
          silently had no network: prefetch swallows its errors by design, so
          nothing surfaced except audio that never arrived. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Voice-follow listens to the reciter so the screen keeps their place.
+         The recitation is transcribed on the device and never leaves it: the
+         model is downloaded once, on request, and runs locally. A devotional
+         recording going to somebody else's server is the thing this app does
+         not do. The reader is asked in settings, never during a prayer —
+         a permission dialog raised mid-prayer is the one thing the prayer
+         screen may not put in front of them. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- Off, and it is the reader's own record that decides it. wird.db holds
          their refresh token, every aya they have understood, every note they
          wrote and when they prayed. allowBackup defaults to true, so all of
@@ -39,6 +47,33 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Where the identity server sends the reader back to.
+                 An https App Link, not a dev.bnei.wird:// custom scheme, and
+                 the difference is the whole security of the sign-in. A custom
+                 scheme is first-come and unclaimable on both platforms, so any
+                 app may register it; PKCE does not help, because a copycat
+                 runs the whole flow itself with its own challenge. Against
+                 this client's implicit-consent flow that would hand a copycat
+                 an access token and a ninety-day refresh token with no
+                 interaction from the reader. infra-bootstrap ADR-0050 decided
+                 this and the Authentik client registers exactly one redirect,
+                 strict: https://wird.bnei.dev/auth/callback.
+
+                 autoVerify makes Android check
+                 https://wird.bnei.dev/.well-known/assetlinks.json against this
+                 app's signing certificate. Until that file is served and the
+                 app is signed with a stable release key, Android treats this
+                 as an ordinary web link and the browser keeps it — sign-in
+                 then still works by the paste-back path, which is what the
+                 settings panel already does. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"
+                      android:host="wird.bnei.dev"
+                      android:path="/auth/callback"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

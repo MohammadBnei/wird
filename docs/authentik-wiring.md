@@ -19,7 +19,34 @@ provider usually does.
 | grants | `authorization_code`, `refresh_token`, and four others |
 
 client_id `Um9Je1MQghdZ4SqAjB7cWtGNubP64phIuGqzdzro`, a public client.
-Redirects `dev.bnei.wird://` and `https://wird.bnei.dev/auth/callback`.
+**Redirects: exactly one**, and this document said otherwise until 2026-09-24.
+
+```
+redirect_uris:
+  - matching_mode: strict
+    url: https://wird.bnei.dev/auth/callback
+```
+
+`strict` is a fullmatch, so `dev.bnei.wird://` is not a near miss — it is absent,
+and the flow dies with a bad-redirect error. A reader walking the app hit
+exactly that. `app/lib/data/auth.dart`'s `authRedirect` still defaults to the
+custom scheme, which is the bug.
+
+**The custom scheme is missing on purpose.** infra-bootstrap ADR-0050 decided
+it: a custom scheme is first-come and unclaimable on Android and iOS alike, so
+any app may register `dev.bnei.wird://`. PKCE does not close that, because a
+copycat does not intercept our flow — it runs its own, with its own challenge.
+Against this client's implicit-consent authorization flow, registering the
+scheme would hand a copycat an access token and a ninety-day refresh token with
+no interaction from the reader at all.
+
+So the redirect is an **https App Link**. The Android manifest declares it with
+`android:autoVerify="true"`, which makes the platform check
+`https://wird.bnei.dev/.well-known/assetlinks.json` against the app's signing
+certificate — which is one more reason the debug signing key has to go before
+anyone else installs this. Until that file is served and the app is signed with
+a stable key, the browser keeps the link and sign-in works by the paste-back
+path the settings panel already implements.
 
 The server needs `OIDC_ISSUER` set to the issuer above and nothing else
 changed. `server/internal/auth/auth.go` discovers the issuer and verifies
