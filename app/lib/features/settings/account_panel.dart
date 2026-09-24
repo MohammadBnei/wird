@@ -1,11 +1,13 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/auth.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
-import '../../widgets/nocturne_input.dart';
 
 /// Signing in, which the reader may never do.
 ///
@@ -14,27 +16,53 @@ import '../../widgets/nocturne_input.dart';
 /// asks about an account: the reading loop is local, and a signed-out reader
 /// is never stopped, queued behind a spinner or shown a login wall.
 ///
-/// ponytail: the address is copied and the answer is pasted back, exactly as
-/// `SourceLink` on the about screen copies a licence URL. Opening a browser
-/// needs `url_launcher` and catching the redirect needs a scheme in the
-/// Android and iOS manifests, neither of which this screen owns. Swap the two
-/// halves for `launchUrl` and a deep-link listener when that lands — the token
-/// path underneath does not change, only who fetches the code.
+/// The address opens in the phone's own browser, and the issuer sends the
+/// reader back to a link on [authRedirect]'s scheme, which the Android
+/// manifest's second intent-filter hands to this running app. Both halves read
+/// that one constant, so the string the issuer has registered is written here
+/// once.
+///
+/// ponytail: the pending sign-in lives on this State, so it survives the
+/// reader stepping out to the browser and back but not the OS killing the app
+/// behind them, and it is dropped when they leave the panel. Store the
+/// verifier and the state beside the tokens when a cold start has to be able
+/// to finish one.
 class AccountPanel extends StatefulWidget {
-  const AccountPanel({super.key, required this.db});
+  const AccountPanel({
+    super.key,
+    required this.db,
+    this.account,
+    this.open,
+    this.redirects,
+  });
 
   final Database db;
+
+  /// The three things the phone supplies and a test stands in for: the issuer
+  /// this device signs in at, the browser the address is opened in, and the
+  /// links the OS delivers when the issuer sends the reader back.
+  final Account? account;
+  final Future<bool> Function(Uri url)? open;
+  final Stream<Uri>? redirects;
 
   @override
   State<AccountPanel> createState() => _AccountPanelState();
 }
 
 class _AccountPanelState extends State<AccountPanel> {
-  late final Account _account = Account(widget.db);
-  final _pasted = TextEditingController();
+  late final Account _account = widget.account ?? Account(widget.db);
+
+  /// Built on the first sign-in rather than in [initState]: every screen that
+  /// shows this panel would otherwise reach for the plugin, including the ones
+  /// no reader ever signs in from.
+  late final Stream<Uri> _redirects =
+      widget.redirects ?? AppLinks().uriLinkStream;
+
+  late final String _ours = Uri.parse(_account.redirect).scheme;
 
   Tokens? _reader;
   SignIn? _started;
+  StreamSubscription<Uri>? _listening;
   String? _trouble;
   bool _working = false;
 
@@ -46,7 +74,7 @@ class _AccountPanelState extends State<AccountPanel> {
 
   @override
   void dispose() {
-    _pasted.dispose();
+    _listening?.cancel();
     super.dispose();
   }
 
@@ -73,18 +101,41 @@ class _AccountPanelState extends State<AccountPanel> {
 
   Future<void> _begin() => _attempt(() async {
     final started = await _account.begin();
-    await Clipboard.setData(ClipboardData(text: started.url.toString()));
+    // Listening before the browser opens: the link is the only thing that can
+    // finish this, and a phone that is not listening when it arrives loses it.
+    _listening ??= _redirects.listen(_returned);
     if (mounted) setState(() => _started = started);
+    if (!await (widget.open ?? _inTheBrowser)(started.url)) {
+      _giveUp();
+      throw const AuthFailed('no browser here would open the sign-in address');
+    }
   });
 
-  Future<void> _finish() => _attempt(() async {
+  /// A link the OS handed us. Only a sign-in this device started can be
+  /// finished by one, and only a link on our own scheme is even looked at.
+  void _returned(Uri back) {
     final started = _started;
-    if (started == null) return;
-    await _account.complete(started, Uri.parse(_pasted.text.trim()));
-    _pasted.clear();
+    if (started == null || back.scheme != _ours) return;
+    unawaited(
+      _attempt(() async {
+        // The verifier is spent whatever the answer is, and the panel offers a
+        // fresh sign-in rather than waiting on a link that has already come.
+        _giveUp();
+        await _account.complete(started, back);
+        await _load();
+      }),
+    );
+  }
+
+  /// Drops the pending sign-in: its verifier, its state, and the listening.
+  /// The reader who opened the browser and never came back is left where they
+  /// started, which is the one place the panel must always be able to return
+  /// to.
+  void _giveUp() {
+    _listening?.cancel();
+    _listening = null;
     if (mounted) setState(() => _started = null);
-    await _load();
-  });
+  }
 
   Future<void> _signOut() async {
     await _account.signOut();
@@ -125,52 +176,40 @@ class _AccountPanelState extends State<AccountPanel> {
     ),
   ];
 
-  List<Widget> _signedOut(Nocturne n) {
-    final started = _started;
-    return [
+  List<Widget> _signedOut(Nocturne n) => [
+    _caption(
+      n,
+      'Wird works signed out. Signing in carries what you mark and keep to '
+      'your other devices.',
+    ),
+    SizedBox(height: n.space('2')),
+    if (_started == null)
+      NocturneButton(
+        onPressed: _working ? null : _begin,
+        child: const Text('Sign in'),
+      )
+    else ...[
       _caption(
         n,
-        'Wird works signed out. Signing in carries what you mark and keep to '
-        'your other devices.',
+        'Finish signing in in your browser. This phone is waiting for it to '
+        'send you back.',
       ),
       SizedBox(height: n.space('2')),
-      if (started == null)
-        NocturneButton(
-          onPressed: _working ? null : _begin,
-          child: const Text('Sign in'),
-        )
-      else ...[
-        _caption(
-          n,
-          'The sign-in address is on your clipboard. Open it in a browser, '
-          'then paste the address it sends you back to.',
-        ),
-        SizedBox(height: n.space('1')),
-        SelectableText(
-          started.url.toString(),
-          maxLines: 2,
-          style: TextStyle(fontSize: 10.5, color: n.accent),
-        ),
-        SizedBox(height: n.space('2')),
-        NocturneInput(
-          controller: _pasted,
-          hint: 'The address it sent you back to',
-          onChanged: (_) => setState(() {}),
-        ),
-        SizedBox(height: n.space('2')),
-        NocturneButton(
-          onPressed: _working || _pasted.text.trim().isEmpty ? null : _finish,
-          child: const Text('Finish signing in'),
-        ),
-      ],
-    ];
-  }
+      NocturneButton(onPressed: _giveUp, child: const Text('Cancel')),
+    ],
+  ];
 
   Widget _caption(Nocturne n, String text) => Text(
     text,
     style: TextStyle(fontSize: 10.5, height: 1.4, color: n.textAt(0.5)),
   );
 }
+
+/// The phone's own browser, never a webview this app is holding: a webview
+/// puts the issuer's password field in a window the app itself controls, and
+/// Authentik is entitled to refuse one.
+Future<bool> _inTheBrowser(Uri url) =>
+    launchUrl(url, mode: LaunchMode.externalApplication);
 
 /// What went wrong, in the reader's language. A thrown [AuthFailed] already
 /// says it; anything else here is the network, and the honest thing to say is

@@ -30,8 +30,18 @@ const authClientId = String.fromEnvironment(
   defaultValue: 'Um9Je1MQghdZ4SqAjB7cWtGNubP64phIuGqzdzro',
 );
 
-/// Where the issuer sends the reader back to. Authentik holds two for this
-/// client: this one and `https://wird.bnei.dev/auth/callback`.
+/// Where the issuer sends the reader back to, and the only place the string is
+/// written: [Account.begin] puts it in the authorization URL, the exchange
+/// sends it again, and the BROWSABLE intent-filter in
+/// `android/app/src/main/AndroidManifest.xml` claims its scheme so the browser
+/// has somewhere to hand the code to.
+///
+/// It has to be, character for character, a redirect registered on the
+/// Authentik client. When it is not, the issuer answers with a bad-redirect
+/// error before the reader is ever shown a password field, and no amount of
+/// correct code on this side changes that. docs/authentik-wiring.md records
+/// `dev.bnei.wird://` and `https://wird.bnei.dev/auth/callback` as the two
+/// that are registered; nobody has yet read that back off the live client.
 const authRedirect = String.fromEnvironment(
   'WIRD_REDIRECT',
   defaultValue: 'dev.bnei.wird://',

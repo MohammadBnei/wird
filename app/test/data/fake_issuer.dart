@@ -96,7 +96,7 @@ class FakeIssuer {
           }
           final exp = DateTime.now().add(life).millisecondsSinceEpoch ~/ 1000;
           final jti = '${++_minted}';
-          idToken = _jwt({
+          idToken = jwt({
             'sub': subject,
             'email': email ?? subject,
             'aud': form['client_id'],
@@ -106,7 +106,7 @@ class FakeIssuer {
           // `aud` is the trap this whole decision turns on: the access token
           // carries an audience that is not the client, so a server verifying
           // an ID token refuses it.
-          accessToken = _jwt({
+          accessToken = jwt({
             'sub': subject,
             'aud': 'default',
             'exp': exp,
@@ -134,7 +134,9 @@ class FakeIssuer {
   }
 }
 
-String _jwt(Map<String, dynamic> claims) => [
+/// A token with the claims asked for and no signature, which is all any test
+/// on this side needs: nothing on the device checks one.
+String jwt(Map<String, dynamic> claims) => [
   _segment({'alg': 'none'}),
   _segment(claims),
   'not-a-signature',
