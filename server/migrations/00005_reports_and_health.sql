@@ -3,14 +3,17 @@
 -- A report is a write like any other: it arrives through the outbox, under a
 -- client-minted op id, and op_log deduplicates it exactly as it does a prayer.
 --
--- The column list is the whole promise. A reader's notes, their progress and
--- the corpus they were reading have no column here, and the op decoder refuses
--- a body carrying a key this table has no room for, so "a report must not
--- carry their practice" is a shape rather than a habit.
+-- A reader's notes, their progress and the corpus they were reading have no
+-- column here, and the op decoder refuses a body carrying a key this table has
+-- no room for, so "a report must not carry their practice" is a shape rather
+-- than a habit.
 --
 -- There is no user_id, and that is the point: a report is what somebody chose
--- to send, and an operator reading it cannot turn it into a person. Nothing is
--- answered back, so nothing needs a reader to answer to.
+-- to send, and an operator reading it has no reader to read next. The column
+-- list is not the whole of that promise, though. id is minted by the server
+-- rather than taken from the op, because op_log holds the op id against the
+-- reader who sent it, and a value two tables share joins as well as a foreign
+-- key does. Nothing is answered back, so nothing needs a reader to answer to.
 --
 -- There is no seq either. Reports are one-way, so they never join the change
 -- stream and never take a number out of change_seq: a device that flushes a

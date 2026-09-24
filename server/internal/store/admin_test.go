@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/MohammadBnei/wird/server/internal/store"
 	"github.com/MohammadBnei/wird/server/internal/testenv"
 )
@@ -20,16 +22,26 @@ var _ func(*store.Store, context.Context) (store.Health, error) = (*store.Store)
 // and Wird — which knows which ayas a person understood, what they wrote and
 // when they prayed — becomes a way to watch one named person's devotion.
 //
-// So every statement the dashboard can run is held to the same shape: it binds
-// no argument, so a call site cannot narrow it; it never names a reader, so the
-// text cannot narrow it either; it tallies rather than lists; and every value
-// that comes back is a number. Reports are the one thing that is not a number,
-// and they are read by a method of their own, from a table with no reader in
-// it — that is what TestAReportCannotCarryAReadersNotesProgressOrCorpus holds.
+// So every statement the dashboard can run is held to four rules it can be read
+// for: it binds no argument, so a call site cannot narrow it; it never names a
+// reader, so the text cannot narrow it either; it tallies rather than lists;
+// and every value that comes back is a number. Reports are the one thing that
+// is not a number, and they are read by a method of their own, from a table
+// with no reader in it and no id that reaches one — that is what
+// TestAReportCannotCarryAReadersNotesProgressOrCorpus and
+// TestNoReportCanBeJoinedToTheReaderWhoSentIt hold.
+//
+// Those four are read off the text, and reading catches only what is spelled
+// out: `SELECT count(*) FROM users GROUP BY id` passes all four and answers one
+// row per reader. So the statements are held to their shape as well, by running
+// them: a reader added to the database must not add a row to any answer. That
+// is what separates a tally of everybody from a tally per person, whatever the
+// key is called.
 func TestNoDashboardAggregateCanBeNarrowedToOneNamedReader(t *testing.T) {
 	db, pool := testenv.Postgres(t)
 	seedTwoReadersWithPractice(t, db)
 
+	rows := map[string]int{}
 	for _, sql := range store.AdminAggregates {
 		short := strings.Join(strings.Fields(sql), " ")
 		if strings.Contains(sql, "$") {
@@ -46,28 +58,51 @@ func TestNoDashboardAggregateCanBeNarrowedToOneNamedReader(t *testing.T) {
 		}
 
 		// And it really is a tally when it runs, not only when it is read.
-		rows, err := pool.Query(t.Context(), sql)
-		if err != nil {
-			t.Fatalf("%s: %v", short, err)
-		}
-		for rows.Next() {
-			values, err := rows.Values()
-			if err != nil {
-				t.Fatalf("%s: %v", short, err)
-			}
-			for _, v := range values {
+		for _, row := range answer(t, pool, sql) {
+			for _, v := range row {
 				switch v.(type) {
 				case int64, int32, int16, int, float64:
 				default:
 					t.Errorf("an aggregate answered with %T (%v), and a number is the only answer that cannot be somebody: %s", v, v, short)
 				}
 			}
+			rows[sql]++
 		}
-		if err := rows.Err(); err != nil {
-			t.Fatalf("%s: %v", short, err)
-		}
-		rows.Close()
 	}
+
+	// A third reader whose practice is a copy of the second's: nothing new is
+	// being counted, there is only one more person doing it.
+	seedReaderWithPractice(t, db, "sub-admin-three", 820, 1003, 4)
+
+	for _, sql := range store.AdminAggregates {
+		short := strings.Join(strings.Fields(sql), " ")
+		if grew := len(answer(t, pool, sql)); grew != rows[sql] {
+			t.Errorf("an aggregate answered %d rows where it answered %d before a reader was added, so it is a row per person however its key is spelled: %s",
+				grew, rows[sql], short)
+		}
+	}
+}
+
+func answer(t *testing.T, pool *pgxpool.Pool, sql string) [][]any {
+	t.Helper()
+	rows, err := pool.Query(t.Context(), sql)
+	if err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	defer rows.Close()
+
+	var out [][]any
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+		out = append(out, values)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	return out
 }
 
 // The failure: the dashboard's numbers are one reader's rather than everyone's,
@@ -143,22 +178,24 @@ func TestAnOpKindNobodyRecognisesIsCountedUnderOneWordRatherThanItsOwn(t *testin
 // the server refused.
 func seedTwoReadersWithPractice(t *testing.T, db *store.Store) {
 	t.Helper()
-	for i, subject := range []string{"sub-admin-one", "sub-admin-two"} {
-		user := reader(t, db, subject)
-		base := 800 + 10*i
-		ayah := 1001 + i
-		land(t, db, user, understood(opID(base), ayah, time.Now()))
-		land(t, db, user, prayedOp(opID(base+1), "mushaf", 1001, 1007, time.Now()))
-		land(t, db, user, keptOp(opID(base+2), "what the reader wrote down"))
+	seedReaderWithPractice(t, db, "sub-admin-one", 800, 1001, 1)
+	seedReaderWithPractice(t, db, "sub-admin-two", 810, 1002, 4)
+}
 
-		report := reportOp(opID(base+3), "bug", "the audio stops at the end of the set")
-		report.Body = withCorpusVersion(t, report.Body, 1+3*i)
-		land(t, db, user, report)
+func seedReaderWithPractice(t *testing.T, db *store.Store, subject string, base, ayah, corpusVersion int) {
+	t.Helper()
+	user := reader(t, db, subject)
+	land(t, db, user, understood(opID(base), ayah, time.Now()))
+	land(t, db, user, prayedOp(opID(base+1), "mushaf", 1001, 1007, time.Now()))
+	land(t, db, user, keptOp(opID(base+2), "what the reader wrote down"))
 
-		bad := store.Op{ClientOpID: opID(base + 4), Kind: "ayah_understood", Body: json.RawMessage(`{"nope":1}`)}
-		if got := status(t, db, user, bad); got != store.OpRefused {
-			t.Fatalf("the seeded bad write came back %q, not refused", got)
-		}
+	report := reportOp(opID(base+3), "bug", "the audio stops at the end of the set")
+	report.Body = withCorpusVersion(t, report.Body, corpusVersion)
+	land(t, db, user, report)
+
+	bad := store.Op{ClientOpID: opID(base + 4), Kind: "ayah_understood", Body: json.RawMessage(`{"nope":1}`)}
+	if got := status(t, db, user, bad); got != store.OpRefused {
+		t.Fatalf("the seeded bad write came back %q, not refused", got)
 	}
 }
 

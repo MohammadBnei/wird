@@ -466,12 +466,15 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 
 // The one apply that is not handed the reader, because a report has nowhere to
 // put one. It reaches the same table an operator reads, so the reader it came
-// from must not be recoverable from it — and the way to guarantee that is to
-// never have it here.
+// from must not be recoverable from it.
 //
-// The op id is the report's id: op_log already turns a replayed flush into a
-// duplicate, and this keeps a flush replayed after the log was pruned landing
-// on the same row rather than as a second report.
+// The row's id is minted here rather than taken from the op. op_log holds the
+// op id against the reader who sent it, so a report stored under that id would
+// be joinable to its author for the ninety days of OpLogWindow — a foreign key
+// to the reader in all but name, and from there every table keyed by user_id.
+// Replays are op_log's job and it catches one before this runs; what a minted
+// id costs is a flush replayed after that window filing a second report, which
+// is a duplicate in a list somebody reads rather than a name on a private one.
 func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	var b struct {
 		Kind          string    `json:"kind"`
@@ -490,9 +493,8 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		ON CONFLICT (id) DO NOTHING`,
-		op.ClientOpID, b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.CreatedAt)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		uuid.NewString(), b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.CreatedAt)
 	return err
 }
 

@@ -50,8 +50,11 @@ thing the design is accountable to, so it is structural rather than a habit:
 
 - Every number on the page comes from `store.Health`, and every report from
   `store.Reports`. Neither takes a reader, and `reports` has no `user_id`
-  column to join on — a report is what somebody chose to send, and an operator
-  reading it cannot turn it back into a person.
+  column. The column list is not the whole of it, though: the row's id is
+  minted by the server rather than taken from the op, because `op_log` holds
+  the op id against the reader who sent it, and a value two tables share joins
+  as well as a foreign key does. With that cut, an operator reading a report
+  has nothing on it that names a person.
 - `adminweb` holds no SQL of its own. A test parses this package's source, and
   fails if it calls any exported store method other than `Health`, `Reports`
   and `CorpusVersion`, or if a string literal in it looks like a query. The
@@ -90,3 +93,10 @@ one until somebody names a person who needs it.
 
 Reports are one-way. There is nothing on this page to answer with, which is
 also why no report carries a reader to answer to.
+
+A report's id being the server's own costs the one thing the op id bought past
+`OpLogWindow`: a flush replayed more than ninety days later files a second
+report rather than landing on the first. Inside the window `op_log` still
+catches the replay before the report is written. A duplicate in a list somebody
+reads is a smaller harm than a private report that names its author, and the
+device that replays a ninety-day-old op is already broken.

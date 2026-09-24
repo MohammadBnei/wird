@@ -81,8 +81,9 @@ func (s *Store) Health(ctx context.Context) (Health, error) {
 	return h, rows.Err()
 }
 
-// A Report is what somebody chose to send, and all of it. There is no reader
-// on it because the table has no column for one.
+// A Report is what somebody chose to send, and all of it. There is no reader on
+// it: the table has no column for one, and the id is the server's own rather
+// than the op id, which op_log holds against the reader who sent it.
 type Report struct {
 	ID            string    `json:"id"`
 	Kind          string    `json:"kind"`
