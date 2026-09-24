@@ -41,7 +41,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
+class _DashboardScreenState extends State<DashboardScreen> {
   Waiting? _waiting;
 
   /// Which read owns the screen. Two can be in flight at once — the one the
@@ -52,25 +52,24 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   // The first read happens here rather than in initState because the corpus
   // and the reader's order are reached through the application above this
   // screen.
+  /// Home lies under everything, and everything above it can move the walk: a
+  /// set marked understood, a prayer, a change of reading order. Being
+  /// uncovered is the one moment all three have in common, and this is where
+  /// the screen hears about it.
+  ///
+  /// **`ModalRoute.of(context)` is the subscription.** It is not a lookup
+  /// whose result is discarded — reading it registers a dependency on the
+  /// route's `_ModalScopeStatus`, which Flutter rebuilds when the route stops
+  /// being covered. That is what calls this method again, and calling `_load`
+  /// from here is what keeps home from offering a set the reader has already
+  /// finished. Delete the line and home silently goes stale; there is a test
+  /// named for exactly that.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final route = ModalRoute.of(context);
-    if (route is PageRoute<void>) routeObserver.subscribe(this, route);
+    ModalRoute.of(context);
     _load();
   }
-
-  @override
-  void dispose() {
-    routeObserver.unsubscribe(this);
-    super.dispose();
-  }
-
-  /// Home lies under everything, and everything above it can move the walk: a
-  /// set marked understood, a prayer, a change of reading order. Being
-  /// uncovered is the one moment all three have in common.
-  @override
-  void didPopNext() => _load();
 
   Future<void> _load() async {
     final read = ++_read;
