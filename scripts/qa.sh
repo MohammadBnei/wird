@@ -109,6 +109,33 @@ release_manifest_is_shippable() {
 	return $bad
 }
 
+# A unit test builds the thing it tests, so a green suite says the unit works
+# and says nothing about whether the app ever calls it. `syncNow` had
+# twenty-four call sites, all of them in app/test and none in app/lib: the
+# outbox, the retry budget, the park and dead-letter rules and the change
+# cursor were all built, certified and never once run in a shipped build. No
+# understood aya, no prayer and no kept note had ever left a phone.
+#
+# Each name below is a door out of the app. The reason it is listed is that
+# nothing inside the app breaks when it is never called, which is exactly the
+# defect a test suite cannot see.
+the_app_calls_what_it_ships() {
+	local bad=0 home callers
+	while IFS='|' read -r fn why; do
+		[ -z "$fn" ] && continue
+		# Called from somewhere other than the file that declares it. A door
+		# used only by its own room is not a door.
+		home=$(grep -rl "^[A-Za-z].*[[:space:]]$fn(" "$ROOT/app/lib" --include='*.dart' | head -1)
+		callers=$(grep -rl "$fn(" "$ROOT/app/lib" --include='*.dart' | grep -vcx "$home")
+		[ "${callers:-0}" -gt 0 ] && continue
+		printf 'nothing in app/lib calls %s, so %s\n' "$fn" "$why"
+		bad=1
+	done <<-'NAMES'
+		syncNow|no write a reader makes ever leaves their phone
+	NAMES
+	return $bad
+}
+
 gates_all_accounted() {
 	local missing
 	missing=$(jq -s -r '[range(1;8)] - ([.[].gate] | unique) | join(", ")' "$ENTRIES")
@@ -288,6 +315,12 @@ if command -v brew >/dev/null 2>&1; then
 	check "toolchain ledger matches what is installed" toolchain_recorded
 else
 	skip "toolchain ledger matches what is installed" "Homebrew is not installed on this machine"
+fi
+
+if [ -d "$ROOT/app/lib" ]; then
+	check "the app calls what it ships" the_app_calls_what_it_ships
+else
+	skip "the app calls what it ships" "app/lib does not exist before the client is built"
 fi
 
 if [ -f "$ROOT/app/android/app/src/main/AndroidManifest.xml" ]; then
