@@ -27,6 +27,11 @@ class FakeIssuer {
   /// Who the reader is, in the `sub` of every token minted from here.
   String subject = 'reader@bnei.dev';
 
+  /// What the reader calls themselves, in the `email` claim. Theirs to change
+  /// at the issuer without becoming anybody else, which is why it is a second
+  /// field rather than the subject again.
+  String? email;
+
   /// How long the ID token it mints is good for. Negative mints one that has
   /// already expired, which is the state a phone that has been asleep for a
   /// day wakes up in.
@@ -93,7 +98,7 @@ class FakeIssuer {
           final jti = '${++_minted}';
           idToken = _jwt({
             'sub': subject,
-            'email': subject,
+            'email': email ?? subject,
             'aud': form['client_id'],
             'exp': exp,
             'jti': jti,

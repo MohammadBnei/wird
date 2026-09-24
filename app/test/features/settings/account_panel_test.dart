@@ -32,6 +32,7 @@ void main() {
     db = await testCorpus();
     await db.delete('ayah_understood');
     await db.execute('DROP TABLE IF EXISTS auth_tokens');
+    await db.execute('DROP TABLE IF EXISTS local_reader');
     audio = await emptyCache();
     issuer = await FakeIssuer.start();
   });

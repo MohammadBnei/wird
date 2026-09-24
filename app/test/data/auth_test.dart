@@ -9,6 +9,7 @@ import 'package:wird/data/auth.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/kept_repo.dart';
 import 'package:wird/data/outbox.dart';
+import 'package:wird/data/sets.dart';
 import 'package:wird/data/sync.dart';
 
 import '../corpus.dart';
@@ -36,6 +37,7 @@ void main() {
     await db.delete('ayah_understood');
     await db.execute('DROP TABLE IF EXISTS sync_state');
     await db.execute('DROP TABLE IF EXISTS auth_tokens');
+    await db.execute('DROP TABLE IF EXISTS local_reader');
     issuer = await FakeIssuer.start();
     server = await FakeWird.start();
   });
@@ -64,6 +66,12 @@ void main() {
     await answer.drain<void>();
     client.close();
     await account.complete(begun, back);
+  }
+
+  /// One reader signing in on this device, browser and all.
+  Future<void> signInAs(String reader) async {
+    issuer.subject = reader;
+    await signIn(theAccount());
   }
 
   SyncApi syncAs(Account account) => SyncApi(
@@ -210,6 +218,110 @@ void main() {
     expect(await understood(db), 2);
     expect(await queued(db), 2);
     expect((await db.query('kept_items')), hasLength(1));
+  });
+
+  // The household tablet. Two people, one device, and nothing in the sign-in
+  // that notices the reader changed: every table below is keyed by aya or by
+  // op id, never by who wrote the row.
+  test("a second reader on the tablet is handed the first one's notes and "
+      'prayers', () async {
+    await signInAs('aisha@bnei.dev');
+    await aMonthOfReading();
+    await recordSetPrayed(db, (await nextSet(db, ReadingOrder.nuzul))!);
+    await theAccount().signOut();
+
+    await signInAs('bilal@bnei.dev');
+
+    expect(await db.query('kept_items'), isEmpty);
+    expect(await understood(db), 0);
+    expect(await db.query('set_prayers'), isEmpty);
+  });
+
+  // Worse than seeing them: sending them. The queue is carried by whoever is
+  // signed in when the network comes back, so one reader's unsent note is
+  // written into another reader's account with no act of theirs.
+  test("the first reader's queued notes land in the second reader's account",
+      () async {
+    await signInAs('aisha@bnei.dev');
+    await aMonthOfReading();
+    await theAccount().signOut();
+
+    await signInAs('bilal@bnei.dev');
+    final report = await syncNow(db, syncAs(theAccount()));
+
+    expect(report.reachedServer, isTrue);
+    expect(server.opsReceived, isEmpty);
+    expect(await queued(db), 0);
+  });
+
+  // The cursor is how far down the stream this device has read, and it means
+  // nothing to anyone but the account it was earned in. Kept across readers,
+  // it silently swallows everything the new one did before that point.
+  test("the second reader pulls from the first one's cursor and never sees "
+      'their own history', () async {
+    await signInAs('aisha@bnei.dev');
+    server.pages = [
+      {'changes': <dynamic>[], 'cursor': 'a-month-of-aisha', 'more': false},
+    ];
+    await syncNow(db, syncAs(theAccount()));
+    await theAccount().signOut();
+
+    await signInAs('bilal@bnei.dev');
+    await syncNow(db, syncAs(theAccount()));
+
+    expect(
+      server.cursorsAsked.last,
+      '',
+      reason: 'a new reader has read none of their own stream yet',
+    );
+  });
+
+  // The other half of the same rule, and the one that is easy to break while
+  // fixing the first. Signing out is not asking to forget, so signing back in
+  // cannot be a reader arriving.
+  test('signing back in after signing out forgets the month waiting to be '
+      'sent', () async {
+    await signInAs('aisha@bnei.dev');
+    await aMonthOfReading();
+    await theAccount().signOut();
+
+    await signInAs('aisha@bnei.dev');
+
+    expect(await understood(db), 2);
+    expect(await queued(db), 2);
+    expect(await db.query('kept_items'), hasLength(1));
+  });
+
+  // A reader may use Wird for a month before deciding an account is worth it.
+  // The device has their whole reading on it and has never met an issuer, so
+  // there is nobody for them to be different from.
+  test('a first sign-in throws away the month the reader read before it',
+      () async {
+    await aMonthOfReading();
+
+    await signInAs('aisha@bnei.dev');
+
+    expect(await understood(db), 2);
+    expect(await queued(db), 2);
+    expect(await db.query('kept_items'), hasLength(1));
+  });
+
+  // The trap under the comparison. What settings prints is an email or a
+  // username — the reader's to change, and changed at the issuer rather than
+  // here. Only `sub` names the account, and comparing anything else empties a
+  // device over a renamed mailbox.
+  test('a reader who changed their email at the issuer comes back to an empty '
+      'device', () async {
+    await signInAs('aisha@bnei.dev');
+    await aMonthOfReading();
+    await theAccount().signOut();
+
+    issuer.email = 'aisha@elsewhere.example';
+    await signInAs('aisha@bnei.dev');
+
+    expect(await understood(db), 2);
+    expect(await db.query('kept_items'), hasLength(1));
+    expect((await theAccount().current())!.subject, 'aisha@elsewhere.example');
   });
 
   test('a sign-in link from anywhere signs this phone into that account',

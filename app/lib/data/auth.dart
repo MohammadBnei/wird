@@ -14,7 +14,8 @@ import 'package:sqflite/sqflite.dart';
 /// reader is reading on, and there is no login wall anywhere in the app.
 ///
 /// Signing out drops the tokens and nothing else. A reader who signs out has
-/// not asked to forget what they have understood.
+/// not asked to forget what they have understood. A *different* reader signing
+/// in is the one act that clears this device: see [_handOver].
 
 /// The identity server, and who we are to it. All three are compile-time
 /// defines so a debug run can be pointed at the local stub in
@@ -86,6 +87,19 @@ Future<void> ensureAuthTable(Database db) => db.execute('''
     id_token      TEXT NOT NULL,
     refresh_token TEXT,
     expires_at    TEXT NOT NULL
+  )''');
+
+/// Whose reading this device holds, named by the `sub` of the account it was
+/// last signed into.
+///
+/// It outlives the tokens on purpose. Signing out drops the tokens and keeps
+/// the reading, so the row beside them cannot answer who the reading belongs
+/// to; this one can, and it is the only way to tell a reader coming back from
+/// a second reader arriving.
+Future<void> _ensureReaderTable(Database db) => db.execute('''
+  CREATE TABLE IF NOT EXISTS local_reader (
+    id  INTEGER PRIMARY KEY CHECK (id = 1),
+    sub TEXT NOT NULL
   )''');
 
 /// A sign-in that has been started and not yet finished: the address the
@@ -208,8 +222,9 @@ class Account {
   ///
   /// It deletes one row. Everything the reader has understood, kept, prayed
   /// and queued stays exactly where it is, including the ops in the outbox —
-  /// they wait for the next account to carry them, which for a reader signing
-  /// back into their own account is the same account.
+  /// they wait for this reader to sign back in. Handing the device to somebody
+  /// else and watching them sign in is the other story, and [_handOver] tells
+  /// it.
   ///
   /// ponytail: local only. The refresh token is dropped rather than revoked at
   /// the issuer, so it stays live there until it expires. Call the discovery
@@ -254,6 +269,10 @@ class Account {
       throw const AuthFailed('the issuer returned no ID token');
     }
     final claims = claimsOf(idToken);
+    final sub = claims['sub'];
+    if (sub is! String || sub.isEmpty) {
+      throw const AuthFailed('the issuer returned a token naming no reader');
+    }
     final tokens = Tokens(
       subject:
           (claims['email'] ??
@@ -269,13 +288,20 @@ class Account {
       expiresAt: _expiry(claims),
     );
     await ensureAuthTable(db);
-    await db.insert('auth_tokens', {
-      'id': 1,
-      'subject': tokens.subject,
-      'id_token': tokens.idToken,
-      'refresh_token': tokens.refreshToken,
-      'expires_at': tokens.expiresAt.toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _ensureReaderTable(db);
+    // One transaction, so there is no instant in which the device has been
+    // cleared for a reader whose token was never written, or signed in with
+    // somebody else's reading still under it.
+    await db.transaction((txn) async {
+      await _handOver(txn, sub);
+      await txn.insert('auth_tokens', {
+        'id': 1,
+        'subject': tokens.subject,
+        'id_token': tokens.idToken,
+        'refresh_token': tokens.refreshToken,
+        'expires_at': tokens.expiresAt.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
     return tokens;
   }
 
@@ -300,6 +326,74 @@ class Account {
     );
     return (answer.data as Map).cast<String, dynamic>();
   }
+}
+
+/// What one reader's own reading is kept in. The corpus is the same for
+/// everyone and is not here; neither are `display_prefs` and `mic_consent`,
+/// which are how this glass is set up rather than anything about who is
+/// holding it.
+///
+/// ponytail: a list, because no local row carries a user id — the column
+/// db.dart's opening comment promised never arrived, and adding one now would
+/// mean a key on every table for a device that shows one reader at a time.
+/// Give the rows an owner if this device ever has to hold two readings at once.
+const _theReadersOwn = [
+  'ayah_understood',
+  'kept_items',
+  'user_prefs',
+  'sets',
+  'set_prayers',
+  'set_span',
+  'outbox',
+  'sync_state',
+];
+
+/// Hands the device to whoever has just signed in.
+///
+/// A device remembers one reader. When that is the reader signing in, nothing
+/// happens: signing out is not asking to forget, so signing back in is not
+/// somebody arriving. Neither is a first sign-in on a device that has never
+/// met an issuer — a month read before deciding an account was worth it is
+/// that reader's own, and they keep it.
+///
+/// A different `sub` is a second person on a shared tablet, and they are not
+/// shown the first one's reading. That is the whole of it: every table in
+/// [_theReadersOwn] is keyed by aya or by op id and none of them says whose,
+/// so the only way a note of one reader's stays out of the other's screen is
+/// that it is no longer here.
+///
+/// The comparison is on `sub` rather than on [Tokens.subject]. What settings
+/// prints is an email or a username, the reader's own to change at the
+/// issuer, and a device emptied over a renamed mailbox is the same loss by
+/// another road.
+///
+/// The outbox goes with the rest, and that is a deletion of writing nobody
+/// asked to delete. It is still the better ending: an op left here would
+/// flush under the new reader's token and write the first reader's notes into
+/// an account that is not theirs, and an op parked instead would print those
+/// notes in the parked-writes panel of the person now holding the tablet.
+/// Both endings hand the writing to the wrong reader; this one only loses it,
+/// and only the part that never reached the server.
+Future<void> _handOver(Transaction txn, String sub) async {
+  final held = await txn.query('local_reader', columns: ['sub'], limit: 1);
+  if (held.isNotEmpty && held.first['sub'] != sub) {
+    // `kept_items` and `sync_state` are created by the first write that needs
+    // them, so on a device that has never kept a note or synced they are not
+    // there to empty.
+    final present = {
+      for (final row in await txn.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type = 'table'",
+      ))
+        row['name'],
+    };
+    for (final table in _theReadersOwn) {
+      if (present.contains(table)) await txn.delete(table);
+    }
+  }
+  await txn.insert('local_reader', {
+    'id': 1,
+    'sub': sub,
+  }, conflictAlgorithm: ConflictAlgorithm.replace);
 }
 
 /// A sign-in that cannot go on, in words the settings screen can print.
