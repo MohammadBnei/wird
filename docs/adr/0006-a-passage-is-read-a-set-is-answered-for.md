@@ -108,3 +108,39 @@ words read in one go is 18.3 ms for 6116 rows; a chunk of seventeen ayas is
   no longer all the screen *shows*.
 - The set-width handle is still unreachable while visiting, for the reason ADR
   0003 gave: a width is remembered against the aya a set starts at.
+
+## Open: what the prayer tiles on screen 1d count
+
+Recorded 2026-09-25, undecided.
+
+The prayer write falls through the split this ADR drew. `recordSetPrayed`
+writes `set.ayas`, and off the walk that is the one aya the reader went to
+see — so "Pray this set" on a visited aya lands a `set_prayers` row against a
+set id the walk will never derive and the reader will never be asked to mark.
+That is not a defect: praying a passage you chose is what the app is for, and
+the button is drawn while visiting on purpose.
+
+Screen 1d then read those rows twice over. "Sets understood" is replayed from
+the walk; "prayers on them" was `COUNT(*) FROM set_prayers` with no predicate;
+"prayers per set" divided the second by the first. Two populations, one
+division. Two finished sets and thirty prayers on visited ayas read "prayers
+per set 15.0" where the walk's own figure was 0.0. Before addressability the
+two could already disagree — a set prayed twice and never marked has always
+counted — but that gap closed: a walk set is eventually marked and rejoins the
+denominator, and a visited aya never is. The drift only went one way.
+
+What shipped is the small half: the tile is called **prayers recorded**, which
+is what the query counts, and nothing divides by the walk any more. No
+plausible-looking number that nobody computed.
+
+The recommendation is to scope the numerator instead of deleting the ratio:
+count only prayers on sets the walk has finished, and "prayers per set" is
+honest again. It costs no second walk — `setsUnderstood` already replays the
+walk aya by aya and can emit each finished set's id as it goes, which is
+exactly the predicate the count needs.
+
+It is left open because it is a decision about what the tile is for, not about
+arithmetic. Scoping the numerator means a reader who prays a chosen passage
+every evening sees no trace of it on this screen, which reads as the app not
+noticing. The third reading — two prayer tiles, one for the walk and one for
+everything else — says the true thing twice and costs a tile. The owner picks.

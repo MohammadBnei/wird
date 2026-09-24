@@ -26,19 +26,9 @@ void main() {
     await pumpPhone(tester, await wirdAround(db, ProgressScreen(db: db)));
   }
 
-  testWidgets('a reader who has prayed no set at all is shown a division by '
-      'zero where the prayers-per-set tile belongs', (tester) async {
-    await open(tester);
-
-    expect(find.text('—'), findsOneWidget);
-    expect(find.textContaining('NaN'), findsNothing);
-    expect(find.textContaining('Infinity'), findsNothing);
-  });
-
-  testWidgets('the tiles count the sets the reader prayed as sets they '
-      'understood, so a set prayed twice reads as two sets read', (
-    tester,
-  ) async {
+  testWidgets('the tiles divide every prayer on record by the sets the walk '
+      'finished, so a prayer on an aya the walk never proposes lifts the '
+      'figure and nothing ever brings it back down', (tester) async {
     // Two sets read and marked, and a third the reader has prayed twice
     // without marking: the set rows and the walk disagree on purpose.
     for (var i = 0; i < 2; i++) {
@@ -49,9 +39,14 @@ void main() {
     await recordSetPrayed(db, praying);
     await recordSetPrayed(db, praying);
 
+    // Al-Fātiḥa 1:1 on its own: the nuzul walk opens at Al-ʿAlaq and will
+    // never propose this set, so marking it is never asked of the reader and
+    // it can only ever add to the numerator.
+    await recordSetPrayed(db, (await ayaSet(db, await readingOrder(db), 1001))!);
+
     final passage = await readPassage(db);
     expect(passage.setsUnderstood, 2);
-    expect(passage.prayers, 2);
+    expect(passage.prayersRecorded, 3);
     expect(passage.currentSet, 3, reason: 'the walk is on its third set');
     expect(
       passage.prayersOnCurrentSet,
@@ -60,7 +55,10 @@ void main() {
     );
 
     await open(tester);
-    expect(find.text('1.0'), findsOneWidget);
+    expect(find.text('prayers recorded'), findsOneWidget);
+    expect(find.text('prayers on them'), findsNothing);
+    expect(find.text('prayers per set'), findsNothing);
+    expect(find.text('1.5'), findsNothing);
   });
 
   testWidgets('the passage is counted against something other than the 6,236 '

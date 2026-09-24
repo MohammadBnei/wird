@@ -125,26 +125,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  Widget _tiles(Nocturne n, Passage passage) {
-    final ratio = passage.prayersPerSet;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: _gutter),
-      child: Row(
-        spacing: 9,
-        children: [
-          _tile(n, _grouped(passage.setsUnderstood), 'sets understood'),
-          _tile(n, _grouped(passage.prayers), 'prayers on them'),
-          // An em dash, never a division by zero: a reader who has understood
-          // no sets has not prayed any per set either.
-          _tile(
-            n,
-            ratio == null ? '—' : ratio.toStringAsFixed(1),
-            'prayers per set',
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _tiles(Nocturne n, Passage passage) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: _gutter),
+    child: Row(
+      spacing: 9,
+      children: [
+        _tile(n, _grouped(passage.setsUnderstood), 'sets understood'),
+        _tile(n, _grouped(passage.prayersRecorded), 'prayers recorded'),
+      ],
+    ),
+  );
 
   Widget _tile(Nocturne n, String value, String label) => Expanded(
     child: Container(

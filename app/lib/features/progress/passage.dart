@@ -47,7 +47,7 @@ class Passage {
   const Passage({
     required this.understood,
     required this.setsUnderstood,
-    required this.prayers,
+    required this.prayersRecorded,
     required this.juz,
     required this.suras,
     required this.rootsKnown,
@@ -61,7 +61,11 @@ class Passage {
 
   final int understood;
   final int setsUnderstood;
-  final int prayers;
+
+  /// Every prayer on record, whatever was prayed. A set the walk proposed and
+  /// an aya the reader went to see both land here, and the two are not the
+  /// same population, so nothing on this screen divides by the other.
+  final int prayersRecorded;
 
   /// Thirty fractions, one per juz, which is what the ring's arcs are lit by.
   final List<double> juz;
@@ -88,11 +92,6 @@ class Passage {
   final int prayersOnCurrentSet;
 
   double get fraction => understood / ayasInTheQuran;
-
-  /// Prayers per set. Null before the first set, because a new reader must be
-  /// shown an em dash rather than a division by zero.
-  double? get prayersPerSet =>
-      setsUnderstood == 0 ? null : prayers / setsUnderstood;
 
   int get coverageAhead =>
       wordsAhead == 0 ? 0 : (100 * wordsAheadKnown / wordsAhead).round();
@@ -162,7 +161,7 @@ Future<Passage> readPassage(Database db) async {
   return Passage(
     understood: understood,
     setsUnderstood: finished,
-    prayers: Sqflite.firstIntValue(
+    prayersRecorded: Sqflite.firstIntValue(
       await db.rawQuery('SELECT COUNT(*) FROM set_prayers'),
     )!,
     juz: [
