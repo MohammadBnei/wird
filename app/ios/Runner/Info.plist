@@ -14,6 +14,13 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- iOS does not deny a microphone request that has no usage string: it
+	     terminates the app. Voice-follow opens the mic only after the reader
+	     allows it in settings and downloads the recogniser, and never during a
+	     prayer, but the string has to exist before the first request or the
+	     process dies instead of being refused. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Wird listens while you recite so the screen keeps your place. Your recitation is transcribed on this device and never leaves it.</string>
 	<key>CFBundleName</key>
 	<string>wird</string>
 	<key>CFBundlePackageType</key>
