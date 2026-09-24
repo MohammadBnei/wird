@@ -228,8 +228,12 @@ class Recogniser {
   static Future<Recogniser?> open(VoiceModel model) async {
     if (!model.ready) return null;
     final from = ReceivePort();
+    // Held outside the try because the isolate now answers only once a 160 MB
+    // model is loaded, so the timeout below is reachable on a slow phone and
+    // would otherwise abandon a live isolate holding the model.
+    Isolate? isolate;
     try {
-      final isolate = await Isolate.spawn(
+      isolate = await Isolate.spawn(
         _serve,
         (
           from.sendPort,
@@ -252,6 +256,7 @@ class Recogniser {
       first.send(replies.sendPort);
       return Recogniser._(isolate, first, replies).._listen();
     } on Object {
+      isolate?.kill(priority: Isolate.immediate);
       from.close();
       return null;
     }
