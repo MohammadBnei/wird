@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/sets.dart';
@@ -16,12 +20,26 @@ const rooted = StudyWord(
   root: 'ق ر أ',
 );
 
+/// The word on screen 1a whose kasratayn the rule was drawn straight
+/// through. Arabic inks anywhere from 0.27 em to 1.22 em below the baseline
+/// across the corpus, against the 0.60 em the line box the rule hangs from
+/// allows, so no fixed line clears the deep words without floating a finger's
+/// width under the ordinary ones.
+const straddling = StudyWord(
+  id: 96001002,
+  text: 'عَلَقٍ',
+  gloss: 'a clinging substance',
+  root: 'ع ل ق',
+);
+
 const rootless = StudyWord(
   id: 96001004,
   text: 'ٱلَّذِى',
   translit: 'alladhī',
   gloss: 'the One Who',
 );
+
+final tileKey = GlobalKey();
 
 void main() {
   late Prefs prefs;
@@ -47,13 +65,22 @@ void main() {
             n = Nocturne.of(context);
             return Scaffold(
               body: Center(
-                child: WordTile(
-                  face: face,
-                  voice: voice ?? face.voice(),
-                  open: open,
-                  prefs: prefs,
-                  onOpen: (_) {},
-                  onHear: (_) {},
+                child: RepaintBoundary(
+                  key: tileKey,
+                  // The page behind the tile, so a capture of the boundary
+                  // carries the colours a reader sees rather than the tile's
+                  // own translucency over nothing.
+                  child: ColoredBox(
+                    color: Nocturne.of(context).bg,
+                    child: WordTile(
+                      face: face,
+                      voice: voice ?? face.voice(),
+                      open: open,
+                      prefs: prefs,
+                      onOpen: (_) {},
+                      onHear: (_) {},
+                    ),
+                  ),
                 ),
               ),
             );
@@ -142,6 +169,87 @@ void main() {
       line(tester).color,
       isNot(n.accent),
       reason: 'sounding is not open, and the rule speaks only for the root',
+    );
+  });
+
+  /// The tile's pixels, as painted.
+  Future<(Uint8List, int)> pixels(WidgetTester tester) async {
+    final boundary =
+        tileKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+    // The engine answers outside the fake-async zone a widget test body runs
+    // in; awaited inside it, the picture never arrives.
+    late Uint8List px;
+    late int width;
+    await tester.runAsync(() async {
+      final image = await boundary.toImage();
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      px = data!.buffer.asUint8List();
+      width = image.width;
+      image.dispose();
+    });
+    return (px, width);
+  }
+
+  testWidgets('the rule under a rooted word is drawn through the marks that '
+      'hang below the line, so a kasratayn reads as part of the underline', (
+    tester,
+  ) async {
+    const word = straddling;
+    await show(tester, word);
+    final (px, width) = await pixels(tester);
+    final rows = px.length ~/ 4 ~/ width;
+
+    // The rule is a solid two-pixel border over the page, so its pixels are
+    // exactly that blend. An antialiased glyph edge can land on the same
+    // colour, so the rule is found as the rows carrying a run of it.
+    final rule = Color.alphaBlend(n.textAt(0.20), n.bg);
+    bool isRule(int x, int y) {
+      final at = (y * width + x) * 4;
+      return px[at] == (rule.r * 255).round() &&
+          px[at + 1] == (rule.g * 255).round() &&
+          px[at + 2] == (rule.b * 255).round();
+    }
+
+    bool isInk(int x, int y) {
+      final at = (y * width + x) * 4;
+      return (px[at] + px[at + 1] + px[at + 2]) / (3 * 255) > 0.6;
+    }
+
+    final perRow = [
+      for (var y = 0; y < rows; y++)
+        [
+          for (var x = 0; x < width; x++)
+            if (isRule(x, y)) x,
+        ].length,
+    ];
+    final drawn = perRow.reduce((a, b) => a > b ? a : b);
+    final band = [
+      for (var y = 0; y < rows; y++)
+        if (perRow[y] > drawn ~/ 2) y,
+    ];
+
+    expect(drawn, greaterThan(10), reason: 'the rule is drawn at all');
+
+    // Where the word crosses the rule, the rule gives way — the skip-ink a
+    // browser does for a descender. A rule pixel in a column the Arabic
+    // inks through, or inks within a pixel of, is the rule drawn into the
+    // Arabic.
+    final through = <int>[];
+    for (var x = 0; x < width; x++) {
+      final inked = [
+        for (var y = band.first - 1; y <= band.last + 1; y++)
+          if (y >= 0 && y < rows && isInk(x, y)) y,
+      ];
+      if (inked.isEmpty) continue;
+      if (band.any((y) => isRule(x, y))) through.add(x);
+    }
+
+    expect(
+      through,
+      isEmpty,
+      reason:
+          'the rule is painted at columns $through where '
+          '${word.text} inks through it',
     );
   });
 }

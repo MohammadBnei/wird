@@ -114,6 +114,20 @@ class WordTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
     final word = face.word;
+    final arabic = TextStyle(
+      fontFamily: Nocturne.arabicFamily,
+      fontSize: prefs.arabicSize,
+      height: 1.75,
+      color: n.text,
+    );
+    // What the word is drawn against. The halo below carves the rule, so it
+    // has to be the colour behind the rule rather than a grey guess.
+    // ponytail: the page under the aya is flat. Put a gradient there and the
+    // halo shows as a smudge, and the rule wants a painter that erases with
+    // a blend mode instead of a second copy of the word.
+    final behind = voice == WordVoice.sounding
+        ? Color.alphaBlend(n.accent.withValues(alpha: 0.16), n.bg)
+        : n.bg;
     return GestureDetector(
       onTap: () => face.rooted ? onOpen(word) : onHear(word),
       onLongPress: () => onHear(word),
@@ -144,15 +158,28 @@ class WordTile extends StatelessWidget {
                   bottom: BorderSide(color: _line(n), width: 2),
                 ),
               ),
-              child: Text(
-                word.text,
-                textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: Nocturne.arabicFamily,
-                  fontSize: prefs.arabicSize,
-                  height: 1.75,
-                  color: n.text,
-                ),
+              // Arabic hangs below its baseline by a variable amount: 0.27 em
+              // in the shallowest word of the corpus and 1.22 em in the
+              // deepest, against the 0.60 em this line box gives. So one in
+              // thirteen words was drawn through, and no lower line fixes it —
+              // a rule that clears the deepest mark sits half a finger under
+              // the ordinary word and reads as a divider, not a mark. The word
+              // gives way instead: a copy of it stroked in the colour behind
+              // carves the rule where the glyphs cross, which is the skip-ink
+              // a browser does for a descender.
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _Halo(word.text, arabic, behind),
+                    ),
+                  ),
+                  Text(
+                    word.text,
+                    textDirection: TextDirection.rtl,
+                    style: arabic,
+                  ),
+                ],
               ),
             ),
             if ((prefs.showTranslit || voice == WordVoice.unheard) &&
@@ -211,6 +238,41 @@ class WordTile extends StatelessWidget {
     if (open) return n.accent;
     return face.rooted ? n.textAt(0.20) : Colors.transparent;
   }
+}
+
+/// The word stroked in the colour behind it, painted under the word itself so
+/// that the glyphs carve the rule they hang over.
+///
+/// It is a painter rather than a second [Text] on purpose: a second Text is a
+/// second node in the tree, which a screen reader reads out twice and every
+/// finder trips over.
+class _Halo extends CustomPainter {
+  const _Halo(this.text, this.style, this.colour);
+
+  final String text;
+  final TextStyle style;
+  final Color colour;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroked = style.copyWith(
+      color: null,
+      foreground: Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeJoin = StrokeJoin.round
+        ..color = colour,
+    );
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: stroked),
+      textDirection: TextDirection.rtl,
+    )..layout(maxWidth: size.width);
+    painter.paint(canvas, Offset.zero);
+  }
+
+  @override
+  bool shouldRepaint(_Halo old) =>
+      old.text != text || old.style != style || old.colour != colour;
 }
 
 /// The mark that closes an aya. It is lit on an aya the set was pulled
