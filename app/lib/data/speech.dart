@@ -215,17 +215,31 @@ class Recogniser {
   Completer<String>? _pending;
 
   /// Null when the model is missing or the platform will not load it. Every
-  /// caller treats that as "the reader taps", which is what they did before.
+  /// caller treats that as "the reader taps", which is what they did before,
+  /// and the prayer screen says IN PRAYER rather than claiming to listen.
+  ///
+  /// Three files of the right names and the wrong bytes — a download the
+  /// phone truncated — are enough to pass [VoiceModel.ready], so whether the
+  /// model loads is only knowable from inside the isolate. The isolate
+  /// therefore says nothing until its recogniser is built, and a build that
+  /// throws arrives here as the isolate's death instead: `onExit`/`onError`
+  /// put that on the same port, and anything that is not the inbox is a
+  /// failure to open rather than a recogniser that hears nothing.
   static Future<Recogniser?> open(VoiceModel model) async {
     if (!model.ready) return null;
     final from = ReceivePort();
     try {
-      final isolate = await Isolate.spawn(_serve, (
-        from.sendPort,
-        model.fileFor(voiceModelParts[0]).path,
-        model.fileFor(voiceModelParts[1]).path,
-        model.fileFor(voiceModelParts[2]).path,
-      ));
+      final isolate = await Isolate.spawn(
+        _serve,
+        (
+          from.sendPort,
+          model.fileFor(voiceModelParts[0]).path,
+          model.fileFor(voiceModelParts[1]).path,
+          model.fileFor(voiceModelParts[2]).path,
+        ),
+        onExit: from.sendPort,
+        onError: from.sendPort,
+      );
       final first = await from.first.timeout(const Duration(seconds: 20));
       if (first is! SendPort) {
         isolate.kill(priority: Isolate.immediate);
@@ -292,10 +306,13 @@ class Recogniser {
 /// The isolate: builds the recogniser once, answers windows until it is sent
 /// anything that is not one, and frees the model on the way out. The stream a
 /// window is decoded on is native memory too, and is freed per window.
+///
+/// The inbox is handed back only once the recogniser stands. Announcing it
+/// first would mean a model that cannot load still answers every window with
+/// the empty string, and [Recogniser.open] would hand the prayer screen a
+/// recogniser to print FOLLOWING YOUR VOICE about.
 Future<void> _serve((SendPort, String, String, String) args) async {
   final (home, encoder, decoder, tokens) = args;
-  final inbox = ReceivePort();
-  home.send(inbox.sendPort);
 
   sherpa.initBindings();
   final recogniser = sherpa.OfflineRecognizer(
@@ -315,6 +332,9 @@ Future<void> _serve((SendPort, String, String, String) args) async {
       ),
     ),
   );
+
+  final inbox = ReceivePort();
+  home.send(inbox.sendPort);
 
   SendPort? replies;
   await for (final message in inbox) {

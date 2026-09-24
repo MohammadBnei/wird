@@ -257,6 +257,28 @@ void main() {
     },
   );
 
+  // Three files of the right names are all [VoiceModel.ready] can see, and a
+  // truncated download leaves exactly that. Whether the bytes are a model is
+  // known only where it is built, so the isolate must not announce itself
+  // before it has one — otherwise the prayer screen prints FOLLOWING YOUR
+  // VOICE over a recogniser that answers every window with the empty string,
+  // which is the silent failure a dynamo export and two mismatched int8
+  // halves already cost this project once each.
+  test('a model that will not load is not handed back as a recogniser that '
+      'hears nothing', () async {
+    for (final part in voiceModelParts) {
+      File('${dir.path}/$part').writeAsStringSync('');
+    }
+    final voice = model();
+    expect(voice.ready, isTrue, reason: 'the files a truncated download left');
+
+    expect(
+      await Recogniser.open(voice),
+      isNull,
+      reason: 'the reader is told the app is listening while it is not',
+    );
+  });
+
   test('a prayer that ends kills the recogniser before it hands the model '
       'back', () async {
     final home = ReceivePort();
