@@ -50,8 +50,9 @@ never prompt.
 Uthmani and the recogniser's plain Arabic to the letters they agree on, scores
 the last four heard words against every position from the cursor forward to one
 reading on, weights the most recent word heaviest, and moves only above a
-measured threshold. Ties go to the nearer position, because a reciter is more
-likely at the first of two places that sound alike.
+threshold. Ties go to the nearer position, because a reciter is more likely at
+the first of two places that sound alike. The constants are bounds rather than
+fits — see what the measurement below does not establish.
 
 ## Measured
 
@@ -78,6 +79,16 @@ of the reciter. The two lags of two words both closed on the next window.
 Base over tiny: 57 MB is a real cost, and one wrong advance in 52 windows is a
 worse one. Under the rule that a wrong advance is worse than no advance, the
 smaller model does not qualify.
+
+**What this measurement does not establish.** It discriminates against a bad
+matcher — one that advances a word per window scores 52 wrong out of 52, and
+dropping the threshold, the per-word similarity floor and the context window
+together puts 4 wrong advances into 52 — but it does not pin any single
+constant. Removing any one guard on its own still measures zero wrong
+advances, and the threshold sweeps from 0.10 to 0.80 with no wrong advance at
+any setting. One clean recording of one reciter is not enough to tune against;
+the constants are conservative bounds, and the honest next measurement is a
+phone in a room with a reader who hesitates.
 
 **Cost per window**, base int8, twenty 4-second windows on an M4 at
 `num_threads=2`: median 346 ms, worst 456 ms. At one thread, 504 ms median.

@@ -18,10 +18,21 @@ import 'prayer_cursor.dart';
 /// where the reciter is now; anything earlier only has to agree.
 const heardTail = 4;
 
-/// The score below which nothing moves. Measured on Ḥuṣarī reciting
-/// Al-ʿAlaq 1-5 through whisper-base-ar-quran, in
-/// `test/features/prayer/voice_follow_test.dart`, which fails if a change here lets
-/// the app advance onto a word the reciter has not reached.
+/// The score below which nothing moves.
+///
+/// It is a bound and not a fit. Swept from 0.10 to 0.80 against Ḥuṣarī on
+/// Al-ʿAlaq 1-5 the wrong-advance count stays at zero throughout, so that
+/// recording does not pin this number: a clean studio reciter never puts a
+/// hypothesis near the line. What it guards is the room this has not been
+/// measured in — a hesitant reader, a fan, a child — and the cost of being
+/// conservative there is measured and small: one extra window of lag over the
+/// whole of Al-ʿAlaq 1-5. Lower it on evidence from a real room, not on the
+/// studio recording, which would only be over-fitting to it.
+///
+/// The guards below and this one carry the safety together rather than
+/// severally: dropping any one of them alone leaves the measurement at zero
+/// wrong advances, and dropping this, [_similar]'s floor and [heardTail]
+/// together puts four wrong advances into 52 windows.
 const followThreshold = 0.62;
 
 /// Two candidates this close together are one answer told twice, and the

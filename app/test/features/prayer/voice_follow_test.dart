@@ -65,60 +65,101 @@ void main() {
     expect(locate(keys, 0, 'اقْرَأْ'), isNull);
   });
 
-  test('real recitation never carries the prayer past where the reciter is', () {
-    final recitation = _recitation();
-    final keys = recitationKeys(recitation.words);
-    final cursor = PrayerCursor(keys.length);
+  test(
+    'real recitation never carries the prayer past where the reciter is',
+    () {
+      final grade = _grade(followHeard);
+      // ignore: avoid_print
+      print(
+        'voice-follow, Ḥuṣarī on Al-ʿAlaq 1-5: ${grade.windows} windows, '
+        '${grade.advances} advances of which ${grade.ahead} wrong, '
+        '${grade.stood} stood still, in step with the reciter in '
+        '${grade.inStep}, worst lag ${grade.worstLag} words.',
+      );
 
-    /// Which word the recording is on at a given moment. Between two ayas the
-    /// reciter is still on the last word of the one just finished.
-    int recitingAt(int ms) {
-      var word = 0;
-      for (var i = 0; i < recitation.spans.length; i++) {
-        if (recitation.spans[i].startMs <= ms) word = i;
-      }
-      return word;
-    }
+      // The number that decides whether this may ever be on by default.
+      expect(grade.ahead, 0, reason: grade.wrong.join('\n'));
+      // A follower that never advances is safe and useless, so it has to have
+      // walked the whole set and arrived at its last word.
+      expect(grade.ended, _recitation().words.length - 1);
+      expect(grade.worstLag, lessThanOrEqualTo(2));
+      expect(grade.inStep, greaterThanOrEqualTo(grade.windows - 4));
+    },
+  );
 
-    var advances = 0, ahead = 0, stood = 0, inStep = 0, worstLag = 0;
-    final wrong = <String>[];
-    for (final window in recitation.windows) {
-      final was = cursor.position;
-      followHeard(cursor, keys, window.heard);
-      final reciter = recitingAt(window.atMs);
-      final lag = reciter - cursor.position;
-      if (lag > worstLag) worstLag = lag;
-      if (lag.abs() <= 1) inStep++;
-      if (cursor.position == was) {
-        stood++;
-      } else {
-        advances++;
-        // The window ends at atMs and describes the seconds before it, so a
-        // word of lag is the recogniser being honest rather than the app being
-        // wrong. Landing beyond the reciter is the failure that matters.
-        if (lag < 0) {
-          ahead++;
-          wrong.add(
-            '${window.atMs}ms "${window.heard}" landed on ${cursor.position}, '
-            'reciter was on $reciter',
-          );
-        }
-      }
-    }
-
-    // ignore: avoid_print
-    print(
-      'voice-follow, Ḥuṣarī on Al-ʿAlaq 1-5: ${recitation.windows.length} '
-      'windows, $advances advances of which $ahead wrong, $stood stood still, '
-      'in step with the reciter in $inStep, worst lag $worstLag words.',
+  test('the recitation is easy enough that any matcher would score well on '
+      'it', () {
+    // The grading above is only worth reading if it can tell a matcher that
+    // listens from one that does not. This is the one that does not: it walks
+    // a word on every window, whatever it heard.
+    final grade = _grade(
+      (cursor, keys, heard) => cursor.follow(cursor.position + 1),
     );
-
-    // The number that decides whether this may ever be on by default.
-    expect(ahead, 0, reason: wrong.join('\n'));
-    // A follower that never advances is safe and useless, so it has to have
-    // walked the whole set and arrived at its last word.
-    expect(cursor.position, keys.length - 1);
-    expect(worstLag, lessThanOrEqualTo(2));
-    expect(inStep, greaterThanOrEqualTo(recitation.windows.length - 4));
+    expect(grade.ahead, greaterThan(grade.windows ~/ 2));
+    expect(grade.inStep, lessThan(10));
   });
+}
+
+/// Walks the whole recording through [advance] and counts what it did to the
+/// prayer, against where the reciter actually was at each window.
+({
+  int windows,
+  int advances,
+  int ahead,
+  int stood,
+  int inStep,
+  int worstLag,
+  int ended,
+  List<String> wrong,
+})
+_grade(void Function(PrayerCursor, List<String>, String) advance) {
+  final recitation = _recitation();
+  final keys = recitationKeys(recitation.words);
+  final cursor = PrayerCursor(keys.length);
+
+  /// Which word the recording is on at a given moment. Between two ayas the
+  /// reciter is still on the last word of the one just finished.
+  int recitingAt(int ms) {
+    var word = 0;
+    for (var i = 0; i < recitation.spans.length; i++) {
+      if (recitation.spans[i].startMs <= ms) word = i;
+    }
+    return word;
+  }
+
+  var advances = 0, ahead = 0, stood = 0, inStep = 0, worstLag = 0;
+  final wrong = <String>[];
+  for (final window in recitation.windows) {
+    final was = cursor.position;
+    advance(cursor, keys, window.heard);
+    final reciter = recitingAt(window.atMs);
+    final lag = reciter - cursor.position;
+    if (lag > worstLag) worstLag = lag;
+    if (lag.abs() <= 1) inStep++;
+    if (cursor.position == was) {
+      stood++;
+      continue;
+    }
+    advances++;
+    // The window ends at atMs and describes the seconds before it, so a word
+    // of lag is the recogniser being honest rather than the app being wrong.
+    // Landing beyond the reciter is the failure that matters.
+    if (lag < 0) {
+      wrong.add(
+        '${window.atMs}ms "${window.heard}" landed on ${cursor.position}, '
+        'reciter was on $reciter',
+      );
+      ahead++;
+    }
+  }
+  return (
+    windows: recitation.windows.length,
+    advances: advances,
+    ahead: ahead,
+    stood: stood,
+    inStep: inStep,
+    worstLag: worstLag,
+    ended: cursor.position,
+    wrong: wrong,
+  );
 }
