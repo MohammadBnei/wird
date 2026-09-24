@@ -48,11 +48,16 @@ never prompt.
 
 **The matcher refuses rather than guesses.** It normalises both the muṣḥaf's
 Uthmani and the recogniser's plain Arabic to the letters they agree on, scores
-the last four heard words against every position from the cursor forward to one
-reading on, weights the most recent word heaviest, and moves only above a
-threshold. Ties go to the nearer position, because a reciter is more likely at
-the first of two places that sound alike. The constants are bounds rather than
-fits — see what the measurement below does not establish.
+the last four heard words against every position from the cursor forward to a
+handful of words on, weights the most recent word heaviest, and moves only above
+a threshold. Ties go to the nearer position, because a reciter is more likely at
+the first of two places that sound alike. The forward reach is a distance and
+not the end of the reading: the count runs straight through repetitions, so a
+reciter carrying on into the next reading is one position away and still
+followed, while a cursor standing ahead of the reciter — which is where a tap on
+the go-on zone leaves it — cannot be dragged a whole reading on by the word
+just recited coming round again. The constants are bounds rather than fits —
+see what the measurement below does not establish.
 
 ## Measured
 

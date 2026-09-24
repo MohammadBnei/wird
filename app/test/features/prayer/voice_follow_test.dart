@@ -2,8 +2,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:record/record.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:wird/data/mic.dart';
+import 'package:wird/data/speech.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
+import 'package:wird/features/prayer/prayer_voice.dart';
 import 'package:wird/features/prayer/voice_follow.dart';
+
+import '../../corpus.dart';
+import '../../microphone.dart';
 
 /// Ḥuṣarī reciting Al-ʿAlaq 1-5 — the same everyayah files the app plays —
 /// heard by whisper-base-ar-quran in 4-second windows every 750 ms. The word
@@ -65,6 +73,34 @@ void main() {
     expect(locate(keys, 0, 'اقْرَأْ'), isNull);
   });
 
+  test('a window from behind the cursor does not come back a reading on', () {
+    // The reader brushed the go-on zone, so the prayer stands on word 8 while
+    // the reciter is still finishing 5-7 and the buffered seconds still
+    // describe them. Read straight through, word 7 is also position 27.
+    final keys = recitationKeys(_recitation().words);
+    expect(locate(keys, 8, 'خَلَقَ الْإِنْسَانَ مِنْ'), isNull);
+  });
+
+  test(
+    'a cursor one word ahead of the reciter is not carried a reading on',
+    () {
+      // _onToTheNextAya lands on the first word of the next aya while the
+      // reciter is still on the last of this one, so one word ahead is the
+      // ordinary state after every tap, not an unlucky one.
+      final keys = recitationKeys(_recitation().words);
+      expect(locate(keys, 6, 'رَبِّكَ الَّذِي خَلَقَ'), isNull);
+    },
+  );
+
+  test('a reciter who runs on into the next reading is still followed', () {
+    // The case the wrap exists for, and the reason the reach is a distance
+    // rather than the end of the reading: the next reading's first word is one
+    // position on, not twenty.
+    final keys = recitationKeys(_recitation().words);
+    expect(locate(keys, 19, 'مَا لَمْ يَعْلَمْ اقْرَأْ')?.position, 20);
+    expect(locate(keys, 19, 'لَمْ يَعْلَمْ اقْرَأْ بِاسْمِ')?.position, 21);
+  });
+
   test(
     'real recitation never carries the prayer past where the reciter is',
     () {
@@ -84,6 +120,28 @@ void main() {
       expect(grade.ended, _recitation().words.length - 1);
       expect(grade.worstLag, lessThanOrEqualTo(2));
       expect(grade.inStep, greaterThanOrEqualTo(grade.windows - 4));
+    },
+  );
+
+  test(
+    'a microphone taken away since Settings leaves nothing listening',
+    () async {
+      // Granted in Settings and revoked in the OS afterwards, which is the one
+      // case `request: false` is written for. By the time the recorder says no
+      // the recogniser is open and nothing upstream has been handed it, so an
+      // answer of null that walked out past it would leave it behind for the
+      // length of the app.
+      final db = await testCorpus();
+      await setMicPermission(db, MicPermission.granted);
+      await _aModelOnDisk();
+      final mic = FakeMic(allows: false);
+      RecordPlatform.instance = mic;
+
+      expect(
+        await PrayerVoice.start(db, PrayerCursor(20), ['ٱقْرَأْ']),
+        isNull,
+      );
+      expect(mic.opened, isEmpty);
     },
   );
 
@@ -162,4 +220,16 @@ _grade(void Function(PrayerCursor, List<String>, String) advance) {
     ended: cursor.position,
     wrong: wrong,
   );
+}
+
+/// Enough of a model for [PrayerVoice.start] to get as far as the microphone.
+/// The parts are not weights and the recogniser's isolate says so once it has
+/// handed back the port — which is after `start` has the recogniser, which is
+/// the point: this is the state the prayer is in when the microphone answers.
+Future<void> _aModelOnDisk() async {
+  final model = await VoiceModel.beside(await getDatabasesPath());
+  for (final part in voiceModelParts) {
+    model.fileFor(part).writeAsStringSync('');
+  }
+  addTearDown(() => model.dir.delete(recursive: true));
 }

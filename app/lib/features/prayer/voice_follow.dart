@@ -40,6 +40,19 @@ const followThreshold = 0.62;
 /// that sound alike than at the second.
 const _tie = 0.05;
 
+/// How far past the cursor a window may put the reciter.
+///
+/// A window describes four seconds of voice and the next one is asked for a
+/// second or two later, so the reciter has moved a handful of words since the
+/// last one, never a reading. Without this the strongest match for a cursor
+/// standing ahead of the reciter — after a tap on the go-on zone, or a brushed
+/// one — is the word just recited, found again a whole reading on through the
+/// wrap in [_agreement], at a perfect score and with the prayer's own ceiling
+/// no help. It is a distance and not an end-of-reading bound on purpose: the
+/// reciter who runs straight on into the next reading is one or two positions
+/// away, which is what the wrap is there for.
+const followReach = 8;
+
 /// The muṣḥaf and a recogniser do not spell one word the same way. One is
 /// fully vowelled Uthmani carrying the Qur'anic annotation marks, the other
 /// writes plain Arabic and guesses at a hamza. Both sides are reduced to the
@@ -78,8 +91,8 @@ List<String> recitationKeys(Iterable<String> words) => [
 ///
 /// Only positions at or after [from] are considered, so a matcher that is
 /// wrong is wrong by standing still or by running ahead, never by proposing
-/// the rewind the cursor would refuse anyway. The far end of the search is one
-/// whole reading on, which is the furthest the cursor would take in one step.
+/// the rewind the cursor would refuse anyway. The far end of the search is
+/// [followReach] words on, which is as far as a reciter gets between windows.
 ({int position, double score})? locate(
   List<String> keys,
   int from,
@@ -97,7 +110,7 @@ List<String> recitationKeys(Iterable<String> words) => [
       : tail.sublist(tail.length - heardTail);
 
   var best = (position: from, score: 0.0);
-  for (var at = from; at <= from + keys.length; at++) {
+  for (var at = from; at <= from + followReach; at++) {
     final score = _agreement(keys, at, recent);
     if (score > best.score + _tie) best = (position: at, score: score);
   }

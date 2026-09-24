@@ -35,6 +35,9 @@ class PrayerVoice {
   /// The last [heardWindow] of recitation, oldest first.
   final _recent = <double>[];
 
+  /// Whether the cursor is moving because this class just moved it.
+  var _ourOwn = false;
+
   /// Starts listening, or answers null and leaves the prayer to the thumb.
   ///
   /// Null is the ordinary outcome and not a fault: no permission, no model, no
@@ -48,6 +51,9 @@ class PrayerVoice {
   ) async {
     Recogniser? recogniser;
     AudioRecorder? mic;
+    // Nothing is allocated before the recogniser, and nothing past it returns:
+    // an exit from there on throws, so the one handler that knows what is open
+    // is the one that closes it.
     try {
       if (await micPermission(db) != MicPermission.granted) return null;
       final model = await VoiceModel.beside(await getDatabasesPath());
@@ -57,8 +63,12 @@ class PrayerVoice {
       mic = AudioRecorder();
       // Asked without a prompt. The reader already answered in Settings, and
       // a device that has since had the permission taken away answers false
-      // here rather than raising anything over the prayer.
-      if (!await mic.hasPermission(request: false)) return null;
+      // here rather than raising anything over the prayer. Thrown rather than
+      // returned: the recogniser above is open by now, and only the handler
+      // below knows to close it.
+      if (!await mic.hasPermission(request: false)) {
+        throw StateError('the microphone was taken away since Settings');
+      }
       final voice = PrayerVoice._(
         cursor,
         recitationKeys(words),
@@ -88,6 +98,7 @@ class PrayerVoice {
       ),
     );
     _stream = audio.listen(_keep, onError: (_) {});
+    _cursor.addListener(_forgetWhatCameBefore);
     _schedule(heardHop);
   }
 
@@ -102,6 +113,14 @@ class PrayerVoice {
         _schedule(_lastWindow > heardHop ? _lastWindow : heardHop);
       }
     });
+  }
+
+  /// The thumb moved the prayer, so the seconds held here describe words the
+  /// reader has left behind. Kept, they would argue with the tap for as long
+  /// as the window is wide. The follower's own advances are exempt: they came
+  /// out of this window and throwing it away would blind the next one.
+  void _forgetWhatCameBefore() {
+    if (!_ourOwn) _recent.clear();
   }
 
   void _keep(Uint8List chunk) {
@@ -124,13 +143,18 @@ class PrayerVoice {
     try {
       final heard = await _recogniser.hear(Float32List.fromList(_recent));
       _lastWindow = DateTime.now().difference(started);
-      if (heard.isNotEmpty) followHeard(_cursor, _keys, heard);
+      if (heard.isNotEmpty) {
+        _ourOwn = true;
+        followHeard(_cursor, _keys, heard);
+        _ourOwn = false;
+      }
     } on Object {
       // Silence. The reader taps, as they always could.
     }
   }
 
   Future<void> stop() async {
+    _cursor.removeListener(_forgetWhatCameBefore);
     _hop?.cancel();
     _hop = null;
     await _stream?.cancel();
