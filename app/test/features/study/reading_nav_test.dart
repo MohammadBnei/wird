@@ -137,6 +137,17 @@ void main() {
     expect(stepSays(tester, 'previous set'), '1–2');
   });
 
+  testWidgets('a step up near the start of a sūra opens a wider set than the '
+      'arrow named, so marking it closes ayas the reader never chose', (
+    tester,
+  ) async {
+    await openStudy(tester, target: 2003);
+
+    await step(tester, 'previous set');
+
+    expect(find.textContaining('Al-Baqarah 1–2'), findsOneWidget);
+  });
+
   testWidgets('a step down promises more ayas than the sūra it lands in has, '
       'so the reader is offered a set that runs off the end of the text', (
     tester,

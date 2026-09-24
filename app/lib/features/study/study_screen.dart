@@ -126,21 +126,32 @@ class _StudyScreenState extends State<StudyScreen> {
     if (!_loaded) _load(target: widget.target);
   }
 
-  /// Reads what the screen shows: the walk's next set, or the portion at
-  /// [target]. Everything after the set itself — the reciter, the root panel's
-  /// first root, the recitation — is the same either way. What is downloaded
-  /// is not, which is what `onTheWalk` says.
+  /// Reads what the screen shows: the walk's next set, the portion a footer
+  /// [step] hands over, or the aya at [target]. Everything after the set
+  /// itself — the reciter, the root panel's first root, the recitation — is
+  /// the same either way. What is downloaded is not, which is what
+  /// `onTheWalk` says.
   ///
-  /// [ayas] is how wide that portion is, and only a step of the footer passes
-  /// it. A reference — a kin, a row in the index — leaves it null and gets the
+  /// A step arrives as the whole span its arrow printed rather than as a place
+  /// and a count worked out again here: [_span] is the one rule for what a
+  /// step is. It carries no grain with it, so a step into a short sūra takes
+  /// the ayas that are there without narrowing the one after it.
+  ///
+  /// A reference — a kin, a row in the index — passes [target] and gets the
   /// one aya it named, which is ADR 0003 and has not moved.
-  Future<void> _load({int? target, int? ayas}) async {
+  Future<void> _load({int? target, AyaSpan? step}) async {
     final generation = ++_generation;
     final recitation = Wird.of(context).recitation;
     final order = _prefs.order;
-    final set = target == null
+    final at = step?.first ?? target;
+    final set = at == null
         ? await nextSet(widget.db, order)
-        : await ayaSet(widget.db, order, target, ayas: ayas ?? 1);
+        : await ayaSet(
+            widget.db,
+            order,
+            at,
+            ayas: step == null ? 1 : step.last - step.first + 1,
+          );
     final reciter = await reciterLabel(widget.db);
     // The width the reader reads in. On the walk the set already is it, the
     // width they pulled in settings and all. A step keeps the width it was
@@ -149,10 +160,11 @@ class _StudyScreenState extends State<StudyScreen> {
     // A visit's one aya is a reference and not a width, so it asks.
     final width = set == null
         ? 1
-        : ayas ??
-              (target == null
-                  ? set.ayas.length
-                  : await readingWidth(widget.db, order));
+        : step != null
+        ? _width
+        : target == null
+        ? set.ayas.length
+        : await readingWidth(widget.db, order);
     final before = set == null
         ? null
         : await _span(
@@ -179,7 +191,7 @@ class _StudyScreenState extends State<StudyScreen> {
         : await rootDetail(widget.db, first.root!);
     final keep = set == null
         ? const <String>[]
-        : await pathsToKeep(widget.db, order, set, onTheWalk: target == null);
+        : await pathsToKeep(widget.db, order, set, onTheWalk: at == null);
     if (set != null) {
       await recitation.carry(
         await tracksFor(widget.db, [for (final aya in set.ayas) aya.id]),
@@ -193,7 +205,7 @@ class _StudyScreenState extends State<StudyScreen> {
     if (!mounted || generation != _generation) return;
     setState(() {
       _order = order;
-      _target = target;
+      _target = at;
       _before = before;
       _after = after;
       _width = width;
@@ -356,7 +368,7 @@ class _StudyScreenState extends State<StudyScreen> {
           surahId: set.ayas.first.surahId,
           previous: _before,
           next: _after,
-          onStep: (to) => _load(target: to.first, ayas: _width),
+          onStep: (to) => _load(step: to),
           onIndex: () => _visit(Routes.index, const AStepFrom()),
         ),
       ],
