@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
@@ -30,6 +31,36 @@ void main() {
     await expectLater(
       find.byType(StudyScreen),
       matchesGoldenFile('goldens/study.png'),
+    );
+  });
+
+  testWidgets('the chrome the reader unfolds drifts away from the design: the '
+      'masthead over the set, or the root under it', (tester) async {
+    await pumpPhone(
+      tester,
+      await wirdAround(db, StudyScreen(db: db), cache: audio),
+    );
+    await tester.tap(find.byKey(const Key('toggle header')));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(StudyScreen),
+      matchesGoldenFile('goldens/study_unfolded.png'),
+    );
+  });
+
+  testWidgets('the folded root panel drifts: the root it still names, or the '
+      'act it still carries', (tester) async {
+    await pumpPhone(
+      tester,
+      await wirdAround(db, StudyScreen(db: db), cache: audio),
+    );
+    await tester.tap(find.byKey(const Key('toggle root panel')));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(StudyScreen),
+      matchesGoldenFile('goldens/study_folded.png'),
     );
   });
 }
