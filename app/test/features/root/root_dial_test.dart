@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
@@ -114,6 +116,44 @@ void main() {
     expect(index(), 0);
   });
 
+  testWidgets('the ring is drawn straight through the labels standing on '
+      'it, so a form at twelve o\'clock is struck out at the baseline', (
+    tester,
+  ) async {
+    await dial(tester);
+    final count = reading.derivatives.length;
+    final ring = tester.getRect(find.byType(TweenAnimationBuilder<double>));
+    final centre = ring.center;
+    final boxes = [for (var i = 0; i < count; i++) tester.getRect(label(i))];
+    final gaps = [
+      for (var i = 0; i < count; i++)
+        (i * 2 * pi / count, labelClearance(boxes[i].size, i, 0, count)),
+    ];
+
+    // Walk the ring a degree at a time. Wherever the line is drawn — outside
+    // every label's gap — it must fall outside every label.
+    final struck = <int>[];
+    for (var step = 0; step < 360; step++) {
+      final angle = step * pi / 180;
+      final covered = gaps.any((gap) {
+        final apart = (angle - gap.$1).abs() % (2 * pi);
+        return min(apart, 2 * pi - apart) <= gap.$2;
+      });
+      if (covered) continue;
+      final at = centre + Offset(sin(angle), -cos(angle)) * dialRadius;
+      for (var i = 0; i < count; i++) {
+        if (boxes[i].contains(at) && !struck.contains(i)) struck.add(i);
+      }
+    }
+
+    expect(
+      struck,
+      isEmpty,
+      reason:
+          'the ring crosses ${[for (final i in struck) reading.derivatives[i].text]}',
+    );
+  });
+
   testWidgets('tapping a derivative on the ring leaves the dial pointing '
       'somewhere else', (tester) async {
     final index = await dial(tester);
@@ -122,5 +162,3 @@ void main() {
     expect(index(), 3);
   });
 }
-
-double min(double a, double b) => a < b ? a : b;
