@@ -32,6 +32,14 @@ class ModelHost {
   /// never been given the model answers for it.
   int? refuse;
 
+  /// What this host calls the object it is serving. A store that swaps the
+  /// object changes it, which is the only way a resuming client can tell.
+  String etag = '"one"';
+
+  /// The If-Range of every request, so a test can prove a resume names the
+  /// object it started against rather than trusting the byte count.
+  final ifRanges = <String?>[];
+
   /// The range header of every request, so a test can prove the second attempt
   /// asked for the rest rather than for the whole file again.
   final ranges = <String?>[];
@@ -52,6 +60,11 @@ class ModelHost {
           .where((line) => line.toLowerCase().startsWith('range:'))
           .firstOrNull;
       ranges.add(range?.split(':').last.trim());
+      final ifRange = head
+          .split('\r\n')
+          .where((line) => line.toLowerCase().startsWith('if-range:'))
+          .firstOrNull;
+      ifRanges.add(ifRange?.split(':').sublist(1).join(':').trim());
       final refused = refuse;
       if (refused != null) {
         socket.write(
@@ -63,7 +76,12 @@ class ModelHost {
         socket.destroy();
         return;
       }
-      final from = range == null
+      // A store honours a range only while the object is the one the client
+      // started against. If-Range naming anything else means the whole file,
+      // which is what stops two halves being spliced together.
+      final stale =
+          ifRanges.last != null && ifRanges.last != etag;
+      final from = range == null || stale
           ? 0
           : int.parse(range.split('=')[1].split('-')[0]);
       final body = List<int>.filled(size - from, 7);
@@ -73,6 +91,7 @@ class ModelHost {
           : body.sublist(0, stop);
       socket.write(
         'HTTP/1.1 ${from > 0 ? '206 Partial Content' : '200 OK'}\r\n'
+        'ETag: $etag\r\n'
         'Content-Length: ${body.length}\r\n'
         'Connection: close\r\n\r\n',
       );
@@ -131,6 +150,50 @@ void main() {
       reason: 'the reader does not pay for the first thousand bytes twice',
     );
     expect(voice.fileFor(voiceModelParts[0]).lengthSync(), 4096);
+  });
+
+  // A resume sends a byte count, and a byte count cannot tell one object from
+  // another. If the model is re-exported while a reader's download is half
+  // done, continuing from byte 1000 of the NEW file splices two halves that
+  // do not belong together — and two int8 halves that disagree load without
+  // complaint and transcribe nothing, which is the same silent failure a
+  // dynamo-exported graph gives.
+  test('a model swapped under a half-finished download is spliced onto the '
+      'half already on the phone', () async {
+    host.cutAfter = 1000;
+    final voice = model();
+    expect(await voice.fetch(), VoiceModelTrouble.interrupted);
+    expect(voice.bytesOnDisk, 1000);
+
+    // The store now holds a different object under the same name.
+    host.etag = '"two"';
+    host.cutAfter = null;
+    host.ranges.clear();
+    host.ifRanges.clear();
+
+    expect(await voice.fetch(), isNull);
+    expect(
+      host.ifRanges.first,
+      '"one"',
+      reason: 'the resume did not name the object it started against',
+    );
+    expect(
+      voice.fileFor(voiceModelParts[0]).lengthSync(),
+      4096,
+      reason: 'a whole file, not 1000 bytes of one model and 3096 of another',
+    );
+  });
+
+  test('the etag of a finished part is left on the phone forever', () async {
+    final voice = model();
+    expect(await voice.fetch(), isNull);
+    for (final part in voiceModelParts) {
+      expect(
+        File('${voice.dir.path}/$part.etag').existsSync(),
+        isFalse,
+        reason: 'a scratch file outlives the download it was for',
+      );
+    }
   });
 
   test(

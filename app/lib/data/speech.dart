@@ -35,14 +35,25 @@ const voiceModelBytes = 160 * 1000 * 1000;
 /// Where the three files are published, which is a Hugging Face model repo and
 /// not wird.bnei.dev. ADR 0007 has the reasoning; the short of it is that
 /// nothing in the estate serves 160 MB to a signed-out phone, and the weights
-/// this was exported from already live here under a licence that grants the
-/// conversion being republished.
+/// Wird's own host, which answers a phone that has never signed in and hands
+/// it on to the store. `/models/` on wird-api mints a short-lived signed URL
+/// and answers 302; the bytes go phone-to-store and never cross the API.
+///
+/// **A path, never a URL.** A signed URL expires, and a reader may press
+/// Download, put the phone in a pocket for a week, and resume. Holding the
+/// path means every resume re-asks and is handed a fresh signature, so an
+/// expiry is not a thing this side has to think about.
+///
+/// The last path segment is a digest of the three files' own digests. A
+/// re-export with different weights cannot land on the key a half-finished
+/// download is resuming against — two int8 halves that disagree load without
+/// complaint and transcribe nothing, which is a thing to debug once.
 ///
 /// Moving it costs a release. There is no server override — saying there was
 /// one is how this stayed pointed for a fortnight at a host where the three
 /// files answered 401 and nothing had ever been uploaded.
 const defaultVoiceModelOrigin =
-    'https://huggingface.co/MohammadBnei/wird-voice-base-ar-quran/resolve/main/';
+    'https://wird.bnei.dev/models/base-ar-quran/38853d7df20b/';
 
 /// How much recitation the recogniser is asked about at once, and how often.
 ///
@@ -126,19 +137,32 @@ class VoiceModel {
       for (final part in voiceModelParts) {
         if (fileFor(part).existsSync()) continue;
         final partial = File('${dir.path}/$part.part');
+        final tagFile = File('${dir.path}/$part.etag');
         final from = partial.existsSync() ? partial.lengthSync() : 0;
+        final heldTag = tagFile.existsSync() ? tagFile.readAsStringSync() : '';
         final response = await _http.get<ResponseBody>(
           '$origin$part',
           cancelToken: cancel,
           options: Options(
             responseType: ResponseType.stream,
-            // A server that ignores the range answers 200 and the whole file,
-            // which would be appended to what is already there and corrupt it.
-            headers: from > 0 ? {'range': 'bytes=$from-'} : null,
+            headers: {
+              // A server that ignores the range answers 200 and the whole
+              // file, which would be appended to what is already there and
+              // corrupt it.
+              if (from > 0) 'range': 'bytes=$from-',
+              // And one that honours it will happily continue a DIFFERENT
+              // object under the same name. `If-Range` makes the store answer
+              // 200 with the whole file instead of 206, so a swapped part
+              // restarts rather than splicing two halves that do not belong
+              // together. Length alone cannot see that.
+              if (from > 0 && heldTag.isNotEmpty) 'if-range': heldTag,
+            },
             validateStatus: (code) => code == 200 || code == 206,
           ),
         );
         final append = response.statusCode == 206;
+        final tag = response.headers.value('etag') ?? '';
+        if (tag.isNotEmpty) tagFile.writeAsStringSync(tag);
         if (!append && from > 0) await partial.delete();
         done -= append ? 0 : from;
         final sink = partial.openSync(
@@ -154,6 +178,7 @@ class VoiceModel {
           sink.closeSync();
         }
         await partial.rename(fileFor(part).path);
+        if (tagFile.existsSync()) tagFile.deleteSync();
       }
       return ready ? null : VoiceModelTrouble.interrupted;
     } on DioException catch (failure) {

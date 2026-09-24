@@ -49,6 +49,23 @@ func (h *harness) get(t *testing.T, path, token string) *httptest.ResponseRecord
 	return w
 }
 
+// request and serve are get's two halves, for the few tests that have to set
+// a header of their own before the router sees it.
+func (h *harness) request(t *testing.T, method, path, token string) *http.Request {
+	t.Helper()
+	r := httptest.NewRequest(method, path, nil)
+	if token != "" {
+		r.Header.Set("Authorization", "Bearer "+token)
+	}
+	return r
+}
+
+func (h *harness) serve(r *http.Request) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	h.routes.ServeHTTP(w, r)
+	return w
+}
+
 func (h *harness) tokenFor(t *testing.T, subject string) string {
 	t.Helper()
 	return h.issuer.Token(t, subject, audience, time.Hour)

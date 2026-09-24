@@ -46,6 +46,15 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	// Android fetches this before it will treat /auth/callback as this app's
 	// link, and it is fetched by the platform rather than by a signed-in reader.
 	mux.HandleFunc(assetLinksPath, assetLinks)
+	// The recogniser, fetched by a phone that has never signed in and never
+	// needs to. It answers 302 to the store and the bytes never come through
+	// here; without a store configured it says so rather than pretending the
+	// file is missing.
+	if store := modelStoreFromEnv(log); store != nil {
+		mux.HandleFunc(modelsPath, store.serve)
+	} else {
+		mux.HandleFunc(modelsPath, modelsNotConfigured)
+	}
 	mux.Handle("/", a.Middleware(v1))
 	return mux
 }
