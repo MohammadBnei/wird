@@ -5,7 +5,17 @@
          silently had no network: prefetch swallows its errors by design, so
          nothing surfaced except audio that never arrived. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Off, and it is the reader's own record that decides it. wird.db holds
+         their refresh token, every aya they have understood, every note they
+         wrote and when they prayed. allowBackup defaults to true, so all of
+         that was eligible for Google's cloud backup and extractable with
+         `adb backup` — a devotional record leaving the phone, and a
+         long-lived credential with it, neither of which anybody was asked
+         about. dataExtractionRules says the same to Android 12 and later,
+         which stopped reading allowBackup for transfers. -->
     <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="Wird"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

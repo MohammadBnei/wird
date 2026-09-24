@@ -106,6 +106,14 @@ release_manifest_is_shippable() {
 		printf 'there is no adaptive icon, which is what Flutter ships by default and what the Flutter logo comes back as\n'
 		bad=1
 	fi
+	if ! grep -q 'android:allowBackup="false"' "$manifest"; then
+		printf 'the reader database is eligible for cloud backup, so their notes, what they have understood and their refresh token leave the phone\n'
+		bad=1
+	fi
+	if ! grep -q 'android:dataExtractionRules=' "$manifest"; then
+		printf 'Android 12 and later ignore allowBackup for transfers and read dataExtractionRules, which this manifest does not name\n'
+		bad=1
+	fi
 	return $bad
 }
 

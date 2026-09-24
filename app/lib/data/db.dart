@@ -24,13 +24,32 @@ Future<Database> openWird() async {
   final file = File(path);
   if (!file.existsSync()) {
     final asset = await rootBundle.load(_corpusAsset);
-    await file.parent.create(recursive: true);
-    await file.writeAsBytes(
+    await installCorpus(
+      file,
       asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes),
-      flush: true,
     );
   }
   return openWirdAt(path);
+}
+
+/// Puts the corpus at [target] in one step, or leaves nothing there.
+///
+/// Writing 24 MB straight to the destination takes long enough on a phone to
+/// be interrupted — the reader backgrounds the app, the system reclaims it,
+/// the battery goes. What that left behind was a truncated file at the
+/// destination, and `openWird` asks only whether the destination exists, so
+/// the half-written corpus was never replaced: every later launch opened it
+/// and got `database disk image is malformed`. Nothing short of clearing the
+/// app's data recovered it, and a reader has no reason to think of that.
+///
+/// A rename inside one directory is atomic, so the destination only ever
+/// holds a whole corpus. An interrupted copy leaves `wird.db.part`, which
+/// nothing looks at and the next launch overwrites.
+Future<void> installCorpus(File target, Uint8List bytes) async {
+  await target.parent.create(recursive: true);
+  final partial = File('${target.path}.part');
+  await partial.writeAsBytes(bytes, flush: true);
+  await partial.rename(target.path);
 }
 
 /// Opens a file that already holds the corpus, and makes sure the user tables
