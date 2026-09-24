@@ -162,6 +162,25 @@ void main() {
     );
   });
 
+  testWidgets('every row of the spine spends the same sentence on what two '
+      'words say, so the form and the count are buried in it', (tester) async {
+    await open(tester, RootScreen(db: db, letters: patience));
+    final spine = (await rootReading(db, patience))!.derivatives;
+
+    // Thirty of ṣ-b-r's thirty-eight forms are Form I, so the sentence that
+    // used to carry the form and the count was the same one thirty times over.
+    expect(find.textContaining('Occurs'), findsNothing);
+    expect(find.textContaining('in the Qur’an.'), findsNothing);
+
+    final first = spine.first;
+    expect(
+      derivativeWeight(first),
+      'Form ${first.form} · ${first.occurrences}×',
+      reason: 'the two facts that differ are the whole line',
+    );
+    expect(find.text(derivativeWeight(first)), findsWidgets);
+  });
+
   test('the panel under the aya and the drawing beside it are built by '
       'queries of their own, so one root reads three ways', () async {
     for (final letters in ['قرأ', onTheDial, 'عصر', patience]) {

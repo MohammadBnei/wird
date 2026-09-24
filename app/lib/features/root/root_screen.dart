@@ -227,13 +227,17 @@ class _RootScreenState extends State<RootScreen> {
                 color: n.accent,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(0, 6, 0, 11),
-              child: Text(
-                derivativeNote(selected),
-                style: TextStyle(fontSize: 13.5, height: 1.55, color: n.text),
+            // The kicker above already gives the form and the weight, so
+            // what is left to say here is the authored note or nothing.
+            if (selected.note != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  selected.note!,
+                  style: TextStyle(fontSize: 13.5, height: 1.55, color: n.text),
+                ),
               ),
-            ),
+            const SizedBox(height: 11),
             Row(
               spacing: 8,
               children: [

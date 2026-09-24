@@ -191,7 +191,10 @@ class KinSpine extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      derivativeNote(derivative),
+                      derivative.note == null
+                          ? derivativeWeight(derivative)
+                          : '${derivativeWeight(derivative)} · '
+                              '${derivative.note}',
                       style: TextStyle(
                         fontSize: 12,
                         height: 1.5,
@@ -234,18 +237,16 @@ class KinSpine extends StatelessWidget {
   );
 }
 
-/// What the corpus knows about one form, said in a line. The design puts
-/// authored prose here; until a root carries notes, its grammar and its weight
-/// in the text are what there is to say.
-String derivativeNote(Derivative derivative) {
-  if (derivative.note != null) return derivative.note!;
-  final occurrences = derivative.occurrences == 1
-      ? 'once in the Qur’an'
-      : '${derivative.occurrences} times in the Qur’an';
-  return derivative.form == null
-      ? 'Occurs $occurrences.'
-      : 'Form ${derivative.form}. Occurs $occurrences.';
-}
+/// One form's weight, in the fewest words that still say it: which shape it is
+/// and how often it is read.
+///
+/// This used to be a sentence — "Form I. Occurs 11 times in the Qur'an." —
+/// under every row of the spine. Thirty of ṣ-b-r's thirty-eight rows wrote the
+/// same one, and the two facts that differ were the two words buried inside
+/// it. A list where every row reads the same is a list nobody reads.
+String derivativeWeight(Derivative derivative) => derivative.form == null
+    ? '${derivative.occurrences}×'
+    : 'Form ${derivative.form} · ${derivative.occurrences}×';
 
 /// A root's family drawn for the space it is given: the design's
 /// constellation where that fits, and the ring with the spine under it where
