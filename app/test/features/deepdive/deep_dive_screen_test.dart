@@ -243,20 +243,19 @@ void main() {
     expect(spine.derivatives.length, reading.derivatives.length);
   });
 
-  testWidgets('an aya the reader added to their notes is not on the kept list '
-      'afterwards', (tester) async {
+  testWidgets('the button promises the reader a note and files a bookmark on '
+      'the aya, so the Notes list it sends them to is empty', (tester) async {
     await open(tester, size: tablet);
 
-    await tester.tap(find.text('Add to notes'));
+    await tester.tap(find.text('Keep this aya'));
     await tester.pumpAndSettle();
 
-    final kept = await db.query(
-      'kept_items',
-      where: 'kind = ? AND ayah_id = ? AND deleted_at IS NULL',
-      whereArgs: ['aya', ayaOfPatience],
-    );
-    expect(kept, hasLength(1));
-    expect(find.text('In your notes'), findsOneWidget);
+    // What the button says and what it writes are one fact: a bookmark on
+    // this aya, which is what the Ayas list holds.
+    final kept = await db.query('kept_items', where: 'deleted_at IS NULL');
+    expect(kept.single['kind'], 'aya');
+    expect(kept.single['ayah_id'], ayaOfPatience);
+    expect(find.text('Kept'), findsOneWidget);
   });
 
   testWidgets('the aya pane overflows on 2:282, the longest aya in the '

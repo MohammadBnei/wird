@@ -136,14 +136,14 @@ class _KeptScreenState extends State<KeptScreen> {
           ? 'Nothing kept matches “$_search”.'
           : switch (_kind) {
               KeptKind.aya =>
-                'No ayas kept yet. The bookmark on a set keeps '
-                    'one here.',
+                'No ayas kept yet. “Keep this aya”, on the '
+                    'constellation of a word’s root, keeps one here.',
               KeptKind.root =>
                 'No roots kept yet. The keep icon on a root '
                     'keeps one here.',
               KeptKind.note =>
-                'No notes yet. What you write on an aya is '
-                    'kept here.',
+                'No notes yet. Nothing in the app writes one '
+                    'yet; an aya and a root are kept without words.',
             },
       style: TextStyle(fontSize: 12.5, height: 1.55, color: n.textAt(0.5)),
     ),

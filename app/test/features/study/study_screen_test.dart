@@ -558,4 +558,11 @@ void main() {
       'prayed_at': anything,
     });
   });
+
+  testWidgets('the set draws a bookmark that keeps nothing, and the kept list '
+      'sends the reader to it', (tester) async {
+    await openStudy(tester);
+
+    expect(find.byIcon(Icons.bookmark_border), findsNothing);
+  });
 }

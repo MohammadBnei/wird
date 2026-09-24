@@ -58,6 +58,19 @@ void main() {
     expect(find.textContaining('No ayas kept yet'), findsOneWidget);
   });
 
+  testWidgets('the empty lists send the reader to a bookmark on the set and to '
+      'words of their own, neither of which the app draws', (tester) async {
+    await open(tester);
+
+    // The only control that keeps an aya is the constellation's, so the empty
+    // list names it in the words the reader will read on it.
+    expect(find.textContaining('Keep this aya'), findsOneWidget);
+    expect(find.textContaining('bookmark'), findsNothing);
+
+    await choose(tester, 'Notes');
+    expect(find.textContaining('What you write'), findsNothing);
+  });
+
   testWidgets('an aya is kept without the words the corpus writes it in, so '
       'the reader cannot tell which aya it is', (tester) async {
     await keep(

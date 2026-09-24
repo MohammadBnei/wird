@@ -336,10 +336,6 @@ class _StudyScreenState extends State<StudyScreen> {
               style: TextStyle(fontSize: 11),
             ),
           ),
-          NocturneButton(
-            variant: NocturneButtonVariant.icon,
-            child: const Icon(Icons.bookmark_border),
-          ),
         ],
       ),
     );

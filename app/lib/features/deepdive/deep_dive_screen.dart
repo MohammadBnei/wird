@@ -136,7 +136,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
               ),
             ),
             SizedBox(height: n.space('4')),
-            _notesButton(),
+            _keepButton(),
           ],
         ),
       ),
@@ -201,7 +201,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
           children: [
             _ayaPane(n, aya),
             SizedBox(height: n.space('4')),
-            _notesButton(),
+            _keepButton(),
             SizedBox(height: n.space('6')),
             _centrePane(
               n,
@@ -297,10 +297,14 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   // The design draws "Compare translations" beside this. The corpus ships one
   // rendering of the aya and no second translation to compare it with, so
   // that button is left out rather than drawn dead.
-  Widget _notesButton() => NocturneButton(
+  //
+  // It used to say "Add to notes" and write a bookmark, which sent the reader
+  // to a Notes list that stayed empty. Nothing in the app writes a note, and
+  // this keeps the aya, so it says so — in the root screen's own words.
+  Widget _keepButton() => NocturneButton(
     block: true,
     onPressed: _kept ? null : _keep,
-    child: Text(_kept ? 'In your notes' : 'Add to notes'),
+    child: Text(_kept ? 'Kept' : 'Keep this aya'),
   );
 
   /// [drawn] is whether this pane is wide enough for the design's
