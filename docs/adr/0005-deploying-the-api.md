@@ -125,7 +125,18 @@ device. Running a crippled `qa.sh` under its own name would be worse than not
 running it, so the workflow runs gate 1 (`go build`, `go vet`, `go test -p 1`
 against a real Postgres 18 from this repo's own `docker-compose.yml`) plus the
 two gate-7 checks that are pure shell — the marker/issue rule and the 60 MB
-corpus budget. Gates 2 and 3, the Flutter suite and the e2e journeys, stay
+corpus budget.
+
+Gate 1 turned out not to be purely Go, and the first CI run is what found it:
+`server/internal/api/zz_gate_e2e_test.go` shells out to `fvm flutter test`, so
+on a runner with no Flutter toolchain it does not skip, it fails with
+`exec: "fvm": executable file not found in $PATH`. The workflow skips that one
+test by name. The better fix is a `exec.LookPath("fvm")` guard in the test
+itself, which would make it skip loudly on any machine without the toolchain
+rather than only under this one workflow; that file belongs to the server, not
+to the pipeline, so it is not changed here.
+
+Gates 2 and 3, the Flutter suite and the e2e journeys, stay
 where they already are: `./scripts/qa.sh` on a developer's machine before the
 push. A macOS runner is what would change that, and the workflow says so in
 its own header rather than leaving it to be discovered.

@@ -106,7 +106,21 @@ jobs:
       - run: go build ./jidhr/... ./server/...
       - run: go vet ./jidhr/... ./server/...
       # -p 1: the tests share one Postgres instance.
-      - run: go test -p 1 ./jidhr/... ./server/...
+      #
+      # -skip: server/internal/api/zz_gate_e2e_test.go is a Go test that shells
+      # out to `fvm flutter test` — a real server, a real Postgres and the real
+      # Dart client against it. It is gate 1 by package and gate 2 by toolchain,
+      # so on a runner with no fvm it does not skip, it FAILS with
+      # `exec: "fvm": executable file not found in $PATH`, and takes the whole
+      # release with it. Named explicitly rather than pattern-matched so that
+      # adding a second Go test here cannot silently inherit the exemption.
+      #
+      # The better fix is a guard in that test — `if _, err :=
+      # exec.LookPath("fvm"); err != nil { t.Skip(...) }` — which would make it
+      # skip loudly on every machine without a Flutter toolchain instead of
+      # only in this one file. That file belongs to the server, not to the
+      # pipeline, so it is not changed here.
+      - run: go test -p 1 -skip TestGateEndToEndWithTheRealClient ./jidhr/... ./server/...
 
       # Lifted from scripts/qa.sh's todos_carry_an_issue. The marker is
       # assembled from two pieces for the same reason it is there: so this file
