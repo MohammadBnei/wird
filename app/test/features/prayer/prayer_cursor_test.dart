@@ -90,6 +90,18 @@ void main() {
     );
   });
 
+  test('a hand reaching backwards is taken for a voice and carries the '
+      'prayer on instead', () {
+    final cursor = PrayerCursor(5)..follow(3);
+    cursor
+      ..rewind(4)
+      ..rewind(3)
+      ..rewind(9);
+    expect(cursor.position, 3, reason: 'rewind moved the prayer on');
+    cursor.rewind(-8);
+    expect(cursor.position, 0, reason: 'rewind ran off the start');
+  });
+
   test('the reader who taps past a word cannot step back to it', () {
     final cursor = PrayerCursor(4)..follow(2);
     cursor.back();

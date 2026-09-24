@@ -23,8 +23,9 @@ import 'prayer_voice.dart';
 /// true — when the reader has allowed the microphone and downloaded the model,
 /// both of which happen in Settings. It stays off for everyone else, and it
 /// gives up silently for anyone it fails: the field is split into two tap
-/// zones, a large one that goes on and a smaller one that steps back, sized to
-/// be hit without being looked at. The deviation is recorded in the plan.
+/// zones, a large one that goes on an aya and a smaller one that steps back an
+/// aya, sized to be hit without being looked at. The deviation is recorded in
+/// the plan.
 class PrayerScreen extends StatefulWidget {
   const PrayerScreen({
     super.key,
@@ -67,6 +68,17 @@ class _PrayerScreenState extends State<PrayerScreen> {
   ];
   late final PrayerCursor _cursor = widget.cursor ?? PrayerCursor(_flat.length);
 
+  /// The word each aya of the set starts on, with one whole reading standing
+  /// in for the aya after the last one, so the aya after the end of the set is
+  /// the first aya of the next reading. A set with no words in it leaves the
+  /// two sentinels, and a tap on it moves by the one word the cursor claims.
+  late final List<int> _ayaStarts = [
+    0,
+    for (var i = 1; i < _flat.length; i++)
+      if (_flat[i].aya.id != _flat[i - 1].aya.id) i,
+    _cursor.words,
+  ];
+
   /// Null until the microphone is open, and null for good on a phone where it
   /// never will be. Nothing on this screen tells the reader which, because
   /// there is nothing they could do about it while praying.
@@ -104,6 +116,39 @@ class _PrayerScreenState extends State<PrayerScreen> {
   }
 
   void _redraw() => setState(() {});
+
+  /// A boundary of the reading being recited, as a position. The cursor counts
+  /// words straight through every repetition of the set, so an aya the reader
+  /// is on is a position and not an index: the second reading of it comes
+  /// later than the first rather than arriving again.
+  int _boundary(int aya) => _cursor.position - _cursor.word + _ayaStarts[aya];
+
+  /// A tap carries the reader to the start of an aya, not of a word. Most
+  /// readers have nothing following their voice — voice-follow wants a
+  /// permission and a 160 MB download — and a set runs to 25 words, so a word
+  /// per tap is 25 taps in the middle of a prayer. It is the same move while the
+  /// voice is being followed, where the tap is the reader saying the screen is
+  /// behind them: a screen one word out is not one anybody reaches for, and
+  /// two grains to learn is worse than the one that is right both times.
+  ///
+  /// The furthest this can jump is one whole reading, from the first aya of a
+  /// single-aya set, which is exactly what [PrayerCursor.follow] allows: no
+  /// tap of the reader's is ever ceilinged away.
+  void _onToTheNextAya() =>
+      _cursor.follow(_boundary(_ayaStarts.indexWhere((w) => w > _cursor.word)));
+
+  /// And back the same way, or the reader who brushed the two thirds of the
+  /// field that goes on would have to step a whole aya back one word at a
+  /// time. From inside an aya it is that aya's own start, because a reader
+  /// tapping back is saying the screen has run ahead of them; from an aya's
+  /// start it is the aya before, which on the first aya of a reading is the
+  /// last aya of the reading before it.
+  void _backAnAya() {
+    final at = _ayaStarts.lastIndexWhere((w) => w < _cursor.word);
+    _cursor.rewind(
+      at < 0 ? _boundary(_ayaStarts.length - 2) - _cursor.words : _boundary(at),
+    );
+  }
 
   Future<void> _keepAwake(bool awake) async {
     try {
@@ -288,18 +333,14 @@ class _PrayerScreenState extends State<PrayerScreen> {
           child: Row(
             children: [
               Expanded(
-                child: _zone(
-                  PrayerScreen.backZone,
-                  'Back a word',
-                  _cursor.back,
-                ),
+                child: _zone(PrayerScreen.backZone, 'Back an aya', _backAnAya),
               ),
               Expanded(
                 flex: 2,
                 child: _zone(
                   PrayerScreen.nextZone,
-                  'On to the next word',
-                  _cursor.next,
+                  'On to the next aya',
+                  _onToTheNextAya,
                 ),
               ),
             ],

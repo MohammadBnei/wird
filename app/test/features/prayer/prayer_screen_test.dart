@@ -4,6 +4,7 @@ import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/data/sets.dart';
+import 'package:wird/features/prayer/prayer_cursor.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/theme/nocturne.dart';
 
@@ -29,6 +30,7 @@ Future<void> pumpPrayer(
   required Database db,
   required StudySet set,
   required Future<void> Function({required bool enable}) wakelock,
+  PrayerCursor? cursor,
 }) async {
   tester.view.physicalSize = const Size(402, 874);
   tester.view.devicePixelRatio = 1;
@@ -41,8 +43,12 @@ Future<void> pumpPrayer(
           builder: (context) => TextButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) =>
-                    PrayerScreen(db: db, set: set, wakelock: wakelock),
+                builder: (_) => PrayerScreen(
+                  db: db,
+                  set: set,
+                  cursor: cursor,
+                  wakelock: wakelock,
+                ),
               ),
             ),
             child: const Text('the set'),
@@ -109,23 +115,41 @@ void main() {
     expect(find.text('the set'), findsOneWidget);
   });
 
-  testWidgets('a tap does not move the prayer on, so the reader recites '
-      'against a screen that has stopped', (tester) async {
+  testWidgets('a tap moves the prayer on by one word, so a reader with no '
+      'microphone taps their way through a set word by word', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
     expect(litWord(tester), 103001001);
+    // 103:2 runs four words and 103:3 runs nine, so a tap that lands on the
+    // first word of each of them is carrying an aya and not a word.
     await tapOn(tester, PrayerScreen.nextZone);
-    expect(
-      litWord(tester),
-      103002001,
-      reason: 'the tap did not carry the prayer into the next aya',
-    );
+    expect(litWord(tester), 103002001);
+    await tapOn(tester, PrayerScreen.nextZone);
+    expect(litWord(tester), 103003001);
   });
 
-  testWidgets('a reader who has got ahead of themselves cannot bring the '
-      'prayer back a word', (tester) async {
+  testWidgets('a reader who brushed the field and skipped an aya cannot get '
+      'back to it', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
     await tapOn(tester, PrayerScreen.nextZone, times: 2);
-    expect(litWord(tester), 103002002);
+    expect(litWord(tester), 103003001);
+    await tapOn(tester, PrayerScreen.backZone);
+    expect(litWord(tester), 103002001);
+  });
+
+  testWidgets('a reader whose screen ran ahead inside an aya is thrown back '
+      'past the start of it', (tester) async {
+    await pumpPrayer(
+      tester,
+      db: db,
+      set: set,
+      wakelock: Phone().keepAwake,
+      // Where a voice being followed leaves the cursor: three words into
+      // 103:3, which no tap of the reader's could have reached.
+      cursor: PrayerCursor(14, position: 7),
+    );
+    expect(litWord(tester), 103003003);
+    await tapOn(tester, PrayerScreen.backZone);
+    expect(litWord(tester), 103003001);
     await tapOn(tester, PrayerScreen.backZone);
     expect(litWord(tester), 103002001);
   });
@@ -133,7 +157,7 @@ void main() {
   testWidgets('the ayas around the one being recited are as loud as it is, '
       'so the reader cannot tell where they are', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
-    await tapOn(tester, PrayerScreen.nextZone, times: 2);
+    await tapOn(tester, PrayerScreen.nextZone);
     final recited = _opacityOf(tester, find.byKey(const ValueKey(103002001)));
     for (final neighbour in [103001, 103003]) {
       final aya = set.ayas.firstWhere((a) => a.id == neighbour);
@@ -147,8 +171,7 @@ void main() {
       'the end instead of starting again', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
     expect(find.text('1st reading'), findsOneWidget);
-    final words = set.ayas.fold(0, (sum, aya) => sum + aya.words.length);
-    await tapOn(tester, PrayerScreen.nextZone, times: words);
+    await tapOn(tester, PrayerScreen.nextZone, times: set.ayas.length);
     expect(litWord(tester), 103001001);
     expect(find.text('2nd reading'), findsOneWidget);
   });
@@ -161,7 +184,10 @@ void main() {
     await tester.tap(find.text('Exit'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.bySubtype<ProgressIndicator>(skipOffstage: false), findsNothing);
+    expect(
+      find.bySubtype<ProgressIndicator>(skipOffstage: false),
+      findsNothing,
+    );
     expect(find.byType(AlertDialog, skipOffstage: false), findsNothing);
     expect(find.byType(SnackBar, skipOffstage: false), findsNothing);
   });
@@ -178,6 +204,21 @@ void main() {
     );
     await tapOn(tester, PrayerScreen.nextZone, times: 3);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a set that is one long aya swallows the tap, because the jump '
+      'to the next reading is further than the prayer takes in one step', (
+    tester,
+  ) async {
+    await pumpPrayer(
+      tester,
+      db: db,
+      set: await setOf(db, [2282]),
+      wakelock: Phone().keepAwake,
+    );
+    expect(find.text('1st reading'), findsOneWidget);
+    await tapOn(tester, PrayerScreen.nextZone);
+    expect(find.text('2nd reading'), findsOneWidget);
   });
 
   testWidgets('the prayer opens the microphone on a reader who never allowed '

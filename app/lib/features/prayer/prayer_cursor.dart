@@ -41,11 +41,16 @@ class PrayerCursor extends ChangeNotifier {
 
   void next() => follow(_position + 1);
 
-  /// The one step back there is, and it is the reader's own hand rather than
-  /// a driver's opinion about where the voice went.
-  void back() {
-    if (_position == 0) return;
-    _position -= 1;
+  /// Back to somewhere the reader has already been. This is the reader's own
+  /// hand rather than a driver's opinion about where the voice went, which is
+  /// why it is the one way the prayer moves backwards at all. It still never
+  /// moves the prayer on — that is [follow]'s to give — and never off the
+  /// start of the first reading.
+  void rewind(int position) {
+    if (position >= _position) return;
+    _position = position < 0 ? 0 : position;
     notifyListeners();
   }
+
+  void back() => rewind(_position - 1);
 }
