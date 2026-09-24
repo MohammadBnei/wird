@@ -80,6 +80,30 @@ void main() {
       tester.getTopLeft(find.text('ROOT CONSTELLATION')).dx >
       tester.getBottomRight(find.text('AL-\'ASR · AYA 3')).dx;
 
+  testWidgets('the deep dive prints a sense as a bare assertion, so the one '
+      'screen that reads a root deepest is the one that says least about '
+      'whose reading it is', (tester) async {
+    final reading = (await rootReading(db, patience))!;
+    for (final size in [tablet, phone]) {
+      await open(tester, size: size);
+      expect(find.text(reading.coreSense!), findsOneWidget);
+      expect(find.textContaining("Wird's own reading"), findsOneWidget);
+
+      await tester.tap(find.textContaining("Wird's own reading"));
+      await tester.pumpAndSettle();
+      expect(find.text(reading.senseBasis!), findsOneWidget);
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('the deep dive says nothing when a root was refused a sense, '
+      'so the reader takes the machine’s restraint for a hole', (tester) async {
+    await open(tester, size: phone, ayahId: ayaOfTheClot, letters: clot);
+    expect(find.text('CORE SENSE'), findsOneWidget);
+    expect(find.textContaining('bear it out'), findsOneWidget);
+  });
+
   testWidgets('a phone opening a constellation is handed the design’s three '
       'rails side by side, leaving the aya 292 points of a 402 point screen', (
     tester,
@@ -156,7 +180,10 @@ void main() {
     await open(tester, size: tablet);
 
     final aya = (await ayaReading(db, ayaOfPatience, patience))!;
-    final lit = [for (final w in aya.words) if (w.lit) w.text];
+    final lit = [
+      for (final w in aya.words)
+        if (w.lit) w.text,
+    ];
     final words = await db.query(
       'words',
       columns: ['text_ar'],
@@ -164,7 +191,11 @@ void main() {
       whereArgs: [ayaOfPatience, patience],
     );
     expect(lit, [for (final w in words) w['text_ar']]);
-    expect(lit, isNotEmpty, reason: 'the aya carries the root it was opened on');
+    expect(
+      lit,
+      isNotEmpty,
+      reason: 'the aya carries the root it was opened on',
+    );
   });
 
   testWidgets('prose attributed to a scholar who never wrote it reaches a '
@@ -248,7 +279,10 @@ void main() {
     db = await testCorpus();
     final reading = (await rootReading(db, patience))!;
     final aya = (await ayaReading(db, ayaOfPatience, patience))!;
-    final lit = [for (final w in aya.words) if (w.lit) w.text].last;
+    final lit = [
+      for (final w in aya.words)
+        if (w.lit) w.text,
+    ].last;
 
     final stars = constellation(reading, lit);
     final marked = stars.where((s) => s.thisAya).toList();

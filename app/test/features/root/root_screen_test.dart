@@ -3,11 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/root/root_dial.dart';
+import 'package:wird/features/root/root_sections.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/features/root/root_spine_screen.dart';
 import 'package:wird/features/study/study_screen.dart';
-
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -19,8 +19,12 @@ const onTheDial = 'عقل';
 /// Nine derivatives: one more than the ring can hold.
 const pastTheRing = 'هزأ';
 
-/// ṣ-b-r, the root the mockup's deleted prose was written about.
+/// ṣ-b-r, the root the mockup's deleted prose was written about, and one of
+/// the 523 that ship a sense.
 const theDesignsRoot = 'صبر';
+
+/// j-m-ʿ, one of the 1,119 roots the bar refused a sense to.
+const refused = 'جمع';
 
 /// The summaries the mockup wrote and signed with two real lexicographers'
 /// names. Nothing in the build may print them again.
@@ -135,24 +139,84 @@ void main() {
     }
   });
 
-  testWidgets('the root screen renders an empty section heading with nothing '
-      'under it', (tester) async {
-    // No root carries a core sense yet, so the section is absent rather than
-    // standing empty over an apology for its own emptiness.
+  testWidgets('a root the bar refused shows no core sense and no reason, so '
+      'a deliberate refusal reads to a reader as a missing section', (
+    tester,
+  ) async {
     for (final screen in [
-      RootScreen(db: db, letters: onTheDial),
-      RootSpineScreen(db: db, letters: onTheDial),
+      RootScreen(db: db, letters: refused),
+      RootSpineScreen(db: db, letters: refused),
     ]) {
       await open(tester, screen);
-      expect(find.text('CORE SENSE'), findsNothing);
-      expect(find.textContaining('No one has written'), findsNothing);
-      // What is still drawn says something under its heading.
-      expect(find.text('LEXICON'), findsOneWidget);
+      expect(find.text('CORE SENSE'), findsOneWidget);
+      expect(find.textContaining('bear it out'), findsOneWidget);
+      // It says nothing is claimed, so it must not also claim something.
+      expect(find.textContaining("Wird's own reading"), findsNothing);
+    }
+  });
+
+  testWidgets('a root that does carry a sense is made to look like an '
+      'exception, because the refusal shouts louder than the sense', (
+    tester,
+  ) async {
+    await open(tester, RootScreen(db: db, letters: theDesignsRoot));
+    expect(find.textContaining('bear it out'), findsNothing);
+  });
+
+  testWidgets('a sense is printed as a bare assertion, with nothing telling '
+      'a reader it is Wird\'s own reading rather than a quotation', (
+    tester,
+  ) async {
+    final reading = (await rootReading(db, theDesignsRoot))!;
+    for (final screen in [
+      RootScreen(db: db, letters: theDesignsRoot),
+      RootSpineScreen(db: db, letters: theDesignsRoot),
+    ]) {
+      await open(tester, screen);
+      expect(find.text(reading.coreSense!), findsOneWidget);
+      expect(find.textContaining("Wird's own reading"), findsOneWidget);
+      // The line says how much stands behind it, so it reads as a claim
+      // rather than as a disclaimer.
       expect(
-        find.textContaining('fetched rather than bundled'),
-        findsOneWidget,
+        find.textContaining('${reading.senseEvidence.length}'),
+        findsWidgets,
       );
     }
+  });
+
+  testWidgets('the words a sense was read from cannot be reached from the '
+      'screen that claims it', (tester) async {
+    final reading = (await rootReading(db, theDesignsRoot))!;
+    await open(tester, RootScreen(db: db, letters: theDesignsRoot));
+
+    // Not printed in place: the sheet is shut until the reader asks.
+    expect(find.byType(SenseEvidence), findsNothing);
+
+    await tester.tap(find.textContaining("Wird's own reading"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SenseEvidence), findsOneWidget);
+    expect(find.text(reading.senseBasis!), findsOneWidget);
+    for (final word in reading.senseEvidence) {
+      expect(
+        find.descendant(
+          of: find.byType(SenseEvidence),
+          matching: find.text(word),
+        ),
+        findsOneWidget,
+        reason: word,
+      );
+    }
+    // A word on its own is not evidence. The gloss the corpus carries for it
+    // is what a reader checks the sense against.
+    final glossed = reading.spelled(reading.senseEvidence.first)!;
+    expect(
+      find.descendant(
+        of: find.byType(SenseEvidence),
+        matching: find.text(glossed.gloss!),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('keeping a root queues nothing, so it never reaches the kept '
@@ -181,7 +245,8 @@ void main() {
         builder: (context) => Scaffold(
           body: TextButton(
             onPressed: () =>
-                Navigator.of(context).pushNamed(Routes.root, arguments: onTheDial),
+                Navigator.of(context)
+                    .pushNamed(Routes.root, arguments: onTheDial),
             child: const Text('the set'),
           ),
         ),

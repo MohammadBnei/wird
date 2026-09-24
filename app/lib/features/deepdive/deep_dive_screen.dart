@@ -313,7 +313,6 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     required Widget view,
     required bool drawn,
   }) {
-    final core = reading.coreSense;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
@@ -343,13 +342,12 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
                   ),
               ],
             ),
-            if (core != null) ...[
-              const SizedBox(height: 14),
-              Text(
-                core,
-                style: TextStyle(fontSize: 14.5, height: 1.6, color: n.text),
-              ),
-            ],
+            const SizedBox(height: 14),
+            CoreSense(reading: reading, senseSize: 14.5),
+            // The ring draws its pointer hard against its own top edge, so
+            // the gap under the sense is the only thing keeping the arrow off
+            // the last line of it.
+            SizedBox(height: n.space('3')),
             view,
           ],
         ),

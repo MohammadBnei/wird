@@ -21,6 +21,13 @@ const _irabPending =
     'The parsing of this phrase is fetched per aya, and no aya has been '
     'downloaded yet.';
 
+/// Said where a root ships no sense, which is two roots in three. The absence
+/// is the machine declining to claim something its own evidence does not
+/// carry, and a reader who is not told that reads it as a missing section.
+const _senseRefused =
+    "Wird writes a root's sense only where that root's own words in the "
+    'Qur\'an bear it out. These do not, so nothing is claimed here.';
+
 /// Which commentaries the tafsir section will quote once the fetch exists.
 /// Naming them is not a claim about what they say.
 const tafsirSources = ['Al-Ṭabarī', 'Ibn Kathīr', 'Al-Rāzī'];
@@ -121,25 +128,214 @@ class PendingSection extends StatelessWidget {
 Widget lexiconSection(BuildContext context, RootReading reading) =>
     const PendingSection(heading: 'Lexicon', explanation: _lexiconPending);
 
-/// Core sense: the root's own meaning, which is authored prose rather than
-/// anything the morphology can derive. No root carries it yet, and a root
-/// without one shows no section at all — a heading over an apology is still a
-/// heading the reader has to read.
-Widget coreSenseSection(BuildContext context, RootReading reading) {
-  final sense = reading.coreSense;
-  if (sense == null) return const SizedBox.shrink();
-  final n = Nocturne.of(context);
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SectionHeading('Core sense'),
-      SizedBox(height: n.space('2')),
-      Text(
-        sense,
-        style: TextStyle(fontSize: 13.5, height: 1.5, color: n.text),
+/// Core sense: what the root means, and whose reading that is.
+///
+/// The sense is Wird's own — written from the root's own words in this corpus
+/// and kept only where their glosses bore it out. A reader cannot be left to
+/// guess whether it is that or a quotation from a lexicon, because a version
+/// of this feature was already reverted for shipping invented prose under two
+/// lexicographers' names. So the line saying whose reading it is sits under
+/// the sentence, and the words it rests on are one tap further.
+class CoreSense extends StatelessWidget {
+  const CoreSense({super.key, required this.reading, this.senseSize = 13.5});
+
+  final RootReading reading;
+
+  /// The deep dive reads the same sentence a point larger than the two root
+  /// screens do.
+  final double senseSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final sense = reading.coreSense;
+    if (sense == null) {
+      return const PendingSection(
+        heading: 'Core sense',
+        explanation: _senseRefused,
+      );
+    }
+    final n = Nocturne.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeading('Core sense'),
+        SizedBox(height: n.space('2')),
+        Text(
+          sense,
+          style: TextStyle(fontSize: senseSize, height: 1.5, color: n.text),
+        ),
+        SizedBox(height: n.space('2')),
+        _whose(context, n),
+      ],
+    );
+  }
+
+  Widget _whose(BuildContext context, Nocturne n) {
+    final source = reading.senseSource ?? 'Wird';
+    final words = reading.senseEvidence.length;
+    if (words == 0) {
+      return Text(
+        "$source's own reading of this root.",
+        style: TextStyle(fontSize: 12, height: 1.5, color: n.textAt(0.62)),
+      );
+    }
+    // Underlined rather than given a chevron. The line wraps at the width of
+    // the deep dive's centre pane, and a trailing icon lands alone on the
+    // second row; an underline follows the words however they break.
+    return InkWell(
+      onTap: () => showSenseEvidence(context, reading),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Text(
+          "$source's own reading, borne out by $words of the root's own words",
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.5,
+            color: n.accent,
+            decoration: TextDecoration.underline,
+            decorationColor: n.accent.withValues(alpha: 0.5),
+          ),
+        ),
       ),
-    ],
-  );
+    );
+  }
+}
+
+/// The words behind a sense, raised over the screen that claims it. They are
+/// not printed in place: eleven words and their glosses under every root
+/// would bury the one sentence they exist to support.
+Future<void> showSenseEvidence(BuildContext context, RootReading reading) =>
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Nocturne.of(context).surface,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.82,
+          ),
+          child: SenseEvidence(reading: reading),
+        ),
+      ),
+    );
+
+/// What makes the sense checkable rather than trusted: the root's own words,
+/// each with the gloss the corpus carries for it and the shape it is in.
+class SenseEvidence extends StatelessWidget {
+  const SenseEvidence({super.key, required this.reading});
+
+  final RootReading reading;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Nocturne.of(context);
+    return ListView(
+      shrinkWrap: true,
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          spacing: 10,
+          children: [
+            Text(
+              reading.display,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontFamily: Nocturne.arabicFamily,
+                fontSize: 24,
+                letterSpacing: 0.14 * 24,
+                color: n.color('accent-200'),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                reading.translit,
+                style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: n.space('3')),
+        Text(
+          reading.coreSense ?? '',
+          style: TextStyle(fontSize: 14, height: 1.5, color: n.text),
+        ),
+        const NocturneRule(),
+        const SectionHeading('Whose reading this is'),
+        SizedBox(height: n.space('2')),
+        Text(
+          reading.senseBasis ?? '',
+          style: TextStyle(fontSize: 12.5, height: 1.55, color: n.textAt(0.7)),
+        ),
+        const NocturneRule(),
+        SectionHeading(
+          'The words it was read from',
+          trailing: '${reading.senseEvidence.length} words',
+        ),
+        SizedBox(height: n.space('3')),
+        // The stored order is the bar's own, grouped by morphological shape,
+        // so it is kept rather than sorted: the grouping is the argument.
+        for (final word in reading.senseEvidence) _word(n, word),
+      ],
+    );
+  }
+
+  Widget _word(Nocturne n, String word) {
+    // ponytail: the word is matched back to its derivative by a linear scan
+    // over the family. Index it if a root ever carries evidence past a dozen
+    // words, which the shipped set does not.
+    final kin = reading.spelled(word);
+    final gloss = kin?.gloss;
+    final form = kin?.form;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        spacing: 12,
+        children: [
+          SizedBox(
+            width: 112,
+            child: Text(
+              word,
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontFamily: Nocturne.arabicFamily,
+                fontSize: 19,
+                height: 1.5,
+                color: n.text,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (gloss != null)
+                  Text(
+                    gloss,
+                    style: TextStyle(fontSize: 12.5, color: n.textAt(0.82)),
+                  ),
+                if (form != null)
+                  Text(
+                    'FORM $form',
+                    style: TextStyle(
+                      fontSize: 10,
+                      height: 1.6,
+                      letterSpacing: 0.1 * 10,
+                      color: n.accent,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 Widget tafsirSection(String? ref) => PendingSection(
@@ -164,7 +360,6 @@ class RootSpineView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
-    final core = reading.coreSense;
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 34),
       children: [
@@ -197,13 +392,8 @@ class RootSpineView extends StatelessWidget {
                   ),
                 ],
               ),
-              if (core != null) ...[
-                SizedBox(height: n.space('4')),
-                Text(
-                  core,
-                  style: TextStyle(fontSize: 13.5, height: 1.5, color: n.text),
-                ),
-              ],
+              SizedBox(height: n.space('4')),
+              CoreSense(reading: reading),
             ],
           ),
         ),

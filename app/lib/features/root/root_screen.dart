@@ -119,7 +119,7 @@ class _RootScreenState extends State<RootScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
-          child: coreSenseSection(context, reading),
+          child: CoreSense(reading: reading),
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 18),

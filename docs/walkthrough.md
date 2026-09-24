@@ -424,6 +424,24 @@ should be able to see the fifty-nine words that say so.
 `note_fr` is a separate, smaller gap: 523 French senses are in the bundle and
 there is no locale path to reach them.
 
+**Built 2026-09-24.** The sentence now carries a line under it reading
+"Wird's own reading, borne out by 11 of the root's own words", underlined and
+tappable, on 3a, 2b and the deep dive alike. It opens a sheet holding `basis`
+in full, then the words `evidence` names, each with the gloss the corpus
+carries for it and the shape it is in — which is the order the bar wrote them
+in, so the sheet reads as the argument it is. The words were being held with
+their recitation marks stripped and the evidence keeps them, so
+`RootReading.spelled` now strips a spelling before looking for it rather than
+only matching it as a prefix; without that, صَبْرًۭا and the other words
+carrying a mark between their letters arrived with no gloss at all.
+
+**`note_fr` is not built, and that is the decision.** The app has no locale
+handling of any kind: no `flutter_localizations`, no `Locale` anywhere in
+`app/lib`, no delegate list, and every string on every screen is an English
+literal in the widget that draws it. Reaching one French column would mean
+standing a localisation layer up for the whole app, which is a round of its
+own and was not this one. The column stays unread until that round happens.
+
 ### 17. Nothing says a root ships no sense, or why
 
 1,119 of 1,642 roots ship nothing — عود, جمع, كثر and طوي among them, each
@@ -433,3 +451,12 @@ those, so the section is simply absent.
 An absent section reads as an oversight. It is the opposite: it is the machine
 declining to tell a reader something it cannot stand behind, which is the most
 trustworthy thing this feature does, and the reader never learns it happened.
+
+**Built 2026-09-24.** The section is drawn either way. Where a root was
+refused, its heading stands over one muted sentence — "Wird writes a root's
+sense only where that root's own words in the Qur'an bear it out. These do
+not, so nothing is claimed here." — in the same weight as the lexicon and
+tafsir sections beside it, which say the same kind of thing about their own
+silence. It is deliberately no louder than that: a refusal announced in the
+body weight of the sense would make the 523 roots that carry one read as
+exceptions.

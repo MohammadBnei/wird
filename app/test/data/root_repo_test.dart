@@ -67,6 +67,45 @@ void main() {
     expect(await rootReading(db, 'زززز'), isNull);
   });
 
+  test('a sense arrives with nothing saying whose reading it is or what it '
+      'rests on, so the screen cannot tell a claim from a quotation', () async {
+    final reading = (await rootReading(db, 'صبر'))!;
+    expect(reading.coreSense, isNotNull);
+    expect(reading.senseSource, 'Wird');
+    expect(reading.senseBasis, contains('Not quoted from any lexicon'));
+    // The words are split apart, not handed over as the one joined string
+    // the column stores them as.
+    expect(reading.senseEvidence.length, greaterThan(4));
+    expect(reading.senseEvidence.any((w) => w.contains('·')), isFalse);
+    // Every word it rests on is one of the root's own, so the screen can put
+    // the gloss the corpus carries beside it.
+    for (final word in reading.senseEvidence) {
+      expect(reading.spelled(word), isNotNull, reason: word);
+    }
+  });
+
+  test(
+    'a word the sense was read from carries a recitation mark inside it '
+    'that the family was stripped of, so its gloss cannot be found again',
+    () async {
+      final reading = (await rootReading(db, 'صبر'))!;
+      // صَبْرًۭا carries a small low meem between its last two letters.
+      final marked = reading.senseEvidence.firstWhere(
+        (w) => w.contains('\u06ed') && !w.endsWith('\u06ed'),
+      );
+      expect(reading.spelled(marked)?.gloss, isNotNull);
+    },
+  );
+
+  test('a root the bar refused ships a sense anyway, or ships the columns '
+      'that would attribute one', () async {
+    final reading = (await rootReading(db, 'جمع'))!;
+    expect(reading.coreSense, isNull);
+    expect(reading.senseSource, isNull);
+    expect(reading.senseBasis, isNull);
+    expect(reading.senseEvidence, isEmpty);
+  });
+
   test('a root kept twice reaches the kept list as two entries', () async {
     await keepRoot(db, '\u0635\u0628\u0631');
     await keepRoot(db, '\u0635\u0628\u0631');

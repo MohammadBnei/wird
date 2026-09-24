@@ -50,6 +50,9 @@ class RootReading {
     required this.surahCount,
     required this.sources,
     required this.coreSense,
+    required this.senseSource,
+    required this.senseBasis,
+    required this.senseEvidence,
     required this.derivatives,
   });
 
@@ -64,9 +67,23 @@ class RootReading {
   final int surahCount;
   final List<String> sources;
 
-  /// Authored prose about the root itself. The corpus ships the column and no
-  /// rows yet, so this is usually absent.
+  /// Wird's own reading of what the root means, or null where the root's own
+  /// words did not bear one out. 523 of 1,642 roots carry it.
   final String? coreSense;
+
+  /// Whose reading [coreSense] is. It is the difference between a claim and a
+  /// quotation, so it travels with the sense rather than being assumed.
+  final String? senseSource;
+
+  /// Why the sense is kept: one paragraph saying it was written from this
+  /// root's own words and not quoted from any lexicon.
+  final String? senseBasis;
+
+  /// The words [coreSense] was read from, in the order the bar wrote them —
+  /// which is grouped by morphological shape, so the order is information
+  /// and not to be sorted away.
+  final List<String> senseEvidence;
+
   final List<Derivative> derivatives;
 
   bool get readsAsSpine => derivatives.length > dialCapacity;
@@ -76,18 +93,20 @@ class RootReading {
   /// the three views of the same family, not a different family.
   List<Derivative> get kin => derivatives.take(4).toList(growable: false);
 
-  /// The form [wordInAya] spells, or null when the aya carries none of them.
+  /// The form [spelling] writes, or null when the family carries none of them.
   ///
-  /// The corpus keeps a recitation mark on the word it follows while a
-  /// derivative is held without it, so the aya's word carries the form rather
-  /// than always equalling it.
-  Derivative? spelled(String? wordInAya) {
-    if (wordInAya == null) return null;
+  /// A derivative is held with the recitation marks taken off, while the aya
+  /// — and the evidence a sense was read from — keep them, and they fall
+  /// inside a word as well as after it. So the spelling is stripped the same
+  /// way before it is looked for, rather than only matched as a prefix.
+  Derivative? spelled(String? spelling) {
+    if (spelling == null) return null;
+    final bare = spelling.replaceAll(_pauseMarks, '').trim();
     for (final derivative in derivatives) {
-      if (derivative.text == wordInAya) return derivative;
+      if (derivative.text == bare) return derivative;
     }
     for (final derivative in derivatives) {
-      if (wordInAya.startsWith(derivative.text)) return derivative;
+      if (bare.startsWith(derivative.text)) return derivative;
     }
     return null;
   }
@@ -157,11 +176,12 @@ Future<RootReading?> rootReading(Database db, String letters) async {
 
   final core = await db.query(
     'root_notes',
-    columns: ['note'],
+    columns: ['note', 'source', 'basis', 'evidence'],
     where: 'root_letters = ? AND word_id IS NULL',
     whereArgs: [letters],
     limit: 1,
   );
+  final sense = core.isEmpty ? const <String, Object?>{} : core.first;
 
   return RootReading(
     letters: letters,
@@ -170,10 +190,21 @@ Future<RootReading?> rootReading(Database db, String letters) async {
     occurrences: root['quran_occurrences']! as int,
     surahCount: surahs.length,
     sources: (jsonDecode(root['sources']! as String) as List).cast<String>(),
-    coreSense: core.isEmpty ? null : core.first['note'] as String?,
+    coreSense: sense['note'] as String?,
+    senseSource: sense['source'] as String?,
+    senseBasis: sense['basis'] as String?,
+    senseEvidence: _evidenceWords(sense['evidence'] as String?),
     derivatives: derivatives,
   );
 }
+
+/// The evidence column is the words themselves, joined by the middle dot a
+/// lexicon separates headwords with.
+List<String> _evidenceWords(String? evidence) => [
+  if (evidence != null)
+    for (final word in evidence.split(' · '))
+      if (word.trim().isNotEmpty) word.trim(),
+];
 
 /// Whether this root is already on the kept list.
 Future<bool> rootKept(Database db, String letters) async {
