@@ -7,9 +7,11 @@ import '../../app.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
 import '../../data/sets.dart';
+import '../../nav.dart';
 import '../../shell/wird_shell.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
+import 'reading_nav.dart';
 import 'study_chrome.dart';
 import 'word_row.dart';
 
@@ -63,6 +65,10 @@ class _StudyScreenState extends State<StudyScreen> {
   int _generation = 0;
 
   bool _loaded = false;
+
+  /// How many ayas the sūra the set ends in has, so the step down is offered
+  /// only while there is an aya below to step to.
+  int _ayasInSurah = 0;
 
   /// Which words the phone can sound, worked out once rather than at render
   /// time — it used to be an `existsSync` per word per frame. Rebuilt at the
@@ -123,6 +129,9 @@ class _StudyScreenState extends State<StudyScreen> {
         ? await nextSet(widget.db, order)
         : await ayaSet(widget.db, order, target);
     final reciter = await reciterLabel(widget.db);
+    final ayas = set == null
+        ? 0
+        : await ayahCount(widget.db, set.ayas.last.surahId);
     final rooted =
         set?.ayas
             .expand((a) => a.words)
@@ -150,6 +159,7 @@ class _StudyScreenState extends State<StudyScreen> {
     setState(() {
       _order = order;
       _target = target;
+      _ayasInSurah = ayas;
       _set = set;
       _reciter = reciter;
       _word = first;
@@ -259,6 +269,16 @@ class _StudyScreenState extends State<StudyScreen> {
                       child: const SoundingNow(),
                     ),
                     Expanded(child: _reading(n, set)),
+                    ReadingNav(
+                      previous: set.ayas.first.number > 1
+                          ? set.ayas.first.id - 1
+                          : null,
+                      next: set.ayas.last.number < _ayasInSurah
+                          ? set.ayas.last.id + 1
+                          : null,
+                      onStep: (ayahId) => _load(target: ayahId),
+                      onIndex: () => _visit(Routes.index, const AStepFrom()),
+                    ),
                     RootPanel(
                       root: _root,
                       word: _word,

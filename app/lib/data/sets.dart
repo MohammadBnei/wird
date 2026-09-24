@@ -292,6 +292,18 @@ Future<StudySet?> ayaSet(Database db, ReadingOrder order, int ayahId) async {
   );
 }
 
+/// How many ayas the sūra has.
+///
+/// What a step through the text is bounded by: the aya after 2:286 is not
+/// 2:287, and offering it would hand the screen a set that does not exist.
+Future<int> ayahCount(Database db, int surahId) async =>
+    (await db.query(
+      'surahs',
+      columns: ['ayah_count'],
+      where: 'id = ?',
+      whereArgs: [surahId],
+    )).single['ayah_count']! as int;
+
 /// The words of these ayas, keyed by aya, in one query.
 ///
 /// An aya that was asked for and has no words comes back with an empty list
