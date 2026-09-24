@@ -16,23 +16,32 @@ import '../../widgets/nocturne_button.dart';
 /// It never folds. It is one row against the root panel's twelve, and a
 /// reader mid-recitation cannot be asked to unfold a thing before they can
 /// move with it.
+///
+/// The edge above it belongs to the footer it sits in rather than to this
+/// row, because what is sounding is drawn above it under the same edge.
 class ReadingNav extends StatelessWidget {
   const ReadingNav({
     super.key,
+    required this.surahId,
     required this.previous,
     required this.next,
     required this.onStep,
     required this.onIndex,
   });
 
-  /// The aya before the set, or null when it starts the sūra.
+  /// The sūra the reader is in, so that a step out of it prints the sūra it
+  /// lands in as well as the aya. Without it the step up from 2:1 says "7",
+  /// which reads as an aya of Al-Baqarah and is Al-Fātiḥa's last.
+  final int surahId;
+
+  /// The aya before the set, or null at the very start of the Qur'an.
   ///
-  /// ponytail: a step stays inside the sūra, so the reader at 2:1 steps back
-  /// to nothing rather than to 1:7. Reach across if reading past a sūra's end
-  /// turns out to be what a reader does.
+  /// It crosses the sūra's edge. A step that stopped there was dark on every
+  /// sūra opened from the index, which opens one at its first aya: the reader
+  /// pressed up on the first press of the walk and nothing moved.
   final int? previous;
 
-  /// The aya after the set, or null when it ends the sūra.
+  /// The aya after the set, or null at the very end of the Qur'an.
   final int? next;
 
   /// Opens that aya, which is the same move a kin in the root panel makes.
@@ -44,15 +53,12 @@ class ReadingNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
-    return Container(
+    return Padding(
       padding: EdgeInsets.fromLTRB(
         n.space('6'),
         n.space('2'),
         n.space('6'),
         n.space('2'),
-      ),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: n.divider)),
       ),
       child: Row(
         spacing: n.space('2'),
@@ -96,7 +102,7 @@ class ReadingNav extends StatelessWidget {
   /// words, because the number on its own is not one.
   Widget _step(String label, Key key, IconData icon, int? to) => MergeSemantics(
     child: Semantics(
-      label: to == null ? label : '$label ${to % 1000}',
+      label: to == null ? label : '$label ${_where(to)}',
       child: NocturneButton(
         key: key,
         onPressed: to == null ? null : () => onStep(to),
@@ -107,13 +113,18 @@ class ReadingNav extends StatelessWidget {
             children: [
               Icon(icon, size: 16),
               if (to != null)
-                Text('${to % 1000}', style: const TextStyle(fontSize: 12.5)),
+                Text(_where(to), style: const TextStyle(fontSize: 12.5)),
             ],
           ),
         ),
       ),
     ),
   );
+
+  /// The aya the step lands on: its number inside this sūra, and its sūra as
+  /// well when the step leaves this one.
+  String _where(int to) =>
+      to ~/ 1000 == surahId ? '${to % 1000}' : '${to ~/ 1000}:${to % 1000}';
 }
 
 /// A control tall enough to hit one-handed, mid-recitation, without looking.

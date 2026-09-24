@@ -66,9 +66,10 @@ class _StudyScreenState extends State<StudyScreen> {
 
   bool _loaded = false;
 
-  /// How many ayas the sūra the set ends in has, so the step down is offered
-  /// only while there is an aya below to step to.
-  int _ayasInSurah = 0;
+  /// The ayas either side of the set in the written order, or null at the two
+  /// ends of the Qur'an, which are the only places a step has nowhere to go.
+  int? _before;
+  int? _after;
 
   /// Which words the phone can sound, worked out once rather than at render
   /// time — it used to be an `existsSync` per word per frame. Rebuilt at the
@@ -129,9 +130,12 @@ class _StudyScreenState extends State<StudyScreen> {
         ? await nextSet(widget.db, order)
         : await ayaSet(widget.db, order, target);
     final reciter = await reciterLabel(widget.db);
-    final ayas = set == null
-        ? 0
-        : await ayahCount(widget.db, set.ayas.last.surahId);
+    final before = set == null
+        ? null
+        : await ayaBeside(widget.db, set.ayas.first.id, after: false);
+    final after = set == null
+        ? null
+        : await ayaBeside(widget.db, set.ayas.last.id, after: true);
     final rooted =
         set?.ayas
             .expand((a) => a.words)
@@ -159,7 +163,8 @@ class _StudyScreenState extends State<StudyScreen> {
     setState(() {
       _order = order;
       _target = target;
-      _ayasInSurah = ayas;
+      _before = before;
+      _after = after;
       _set = set;
       _reciter = reciter;
       _word = first;
@@ -245,57 +250,70 @@ class _StudyScreenState extends State<StudyScreen> {
       listenable: _prefs,
       builder: (context, _) => SafeArea(
         child: !_loaded
-              ? const SizedBox.shrink()
-              : set == null
-              ? _finished(n)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    StudyHeader(
-                      key: const Key('study header'),
-                      set: set,
-                      order: _order,
-                      visiting: _target != null,
-                      open: _prefs.headerOpen,
-                      onToggle: () => _prefs.setHeaderOpen(!_prefs.headerOpen),
-                      onBackToTheWalk: () => _load(),
-                    ),
-                    // The transport belongs to the shell's row everywhere
-                    // else. This screen carries that row, so it carries this
-                    // too — and it takes no height at all while nothing is
-                    // sounding.
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: n.space('6')),
-                      child: const SoundingNow(),
-                    ),
-                    Expanded(child: _reading(n, set)),
-                    ReadingNav(
-                      previous: set.ayas.first.number > 1
-                          ? set.ayas.first.id - 1
-                          : null,
-                      next: set.ayas.last.number < _ayasInSurah
-                          ? set.ayas.last.id + 1
-                          : null,
-                      onStep: (ayahId) => _load(target: ayahId),
-                      onIndex: () => _visit(Routes.index, const AStepFrom()),
-                    ),
-                    RootPanel(
-                      root: _root,
-                      word: _word,
-                      open: _prefs.rootOpen,
-                      onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
-                      onVisit: _visit,
-                      onKin: (ayahId) => _load(target: ayahId),
-                      allUnderstood: _allUnderstood(set),
-                      onMark: _allUnderstood(set)
-                          ? () => _load()
-                          : () => _markUnderstood(set),
-                    ),
-                  ],
-                ),
+            ? const SizedBox.shrink()
+            : set == null
+            ? _finished(n)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  StudyHeader(
+                    key: const Key('study header'),
+                    set: set,
+                    order: _order,
+                    visiting: _target != null,
+                    open: _prefs.headerOpen,
+                    onToggle: () => _prefs.setHeaderOpen(!_prefs.headerOpen),
+                    onBackToTheWalk: () => _load(),
+                  ),
+                  Expanded(child: _reading(n, set)),
+                  _footer(n, set),
+                  RootPanel(
+                    root: _root,
+                    word: _word,
+                    open: _prefs.rootOpen,
+                    onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
+                    onVisit: _visit,
+                    onKin: (ayahId) => _load(target: ayahId),
+                    allUnderstood: _allUnderstood(set),
+                    onMark: _allUnderstood(set)
+                        ? () => _load()
+                        : () => _markUnderstood(set),
+                  ),
+                ],
+              ),
       ),
     );
   }
+
+  /// What is sounding, and where the reader can go: one block at the foot of
+  /// the screen, under one edge.
+  ///
+  /// The transport used to sit under the top bar, a thumb's length from the
+  /// controls it belongs with. It is first in the block rather than last
+  /// because a [Column] hangs its tail off the bottom: everything below the
+  /// transport keeps its place when a recitation starts, and the reading gives
+  /// up the height instead. Nothing under the reader's thumb moves.
+  Widget _footer(Nocturne n, StudySet set) => Container(
+    decoration: BoxDecoration(
+      border: Border(top: BorderSide(color: n.divider)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: n.space('6')),
+          child: const SoundingNow(),
+        ),
+        ReadingNav(
+          surahId: set.ayas.first.surahId,
+          previous: _before,
+          next: _after,
+          onStep: (ayahId) => _load(target: ayahId),
+          onIndex: () => _visit(Routes.index, const AStepFrom()),
+        ),
+      ],
+    ),
+  );
 
   Widget _finished(Nocturne n) => Center(
     child: Padding(
@@ -307,7 +325,6 @@ class _StudyScreenState extends State<StudyScreen> {
       ),
     ),
   );
-
 
   /// The passage, hung from the aya the reader opened on.
   ///
@@ -506,5 +523,4 @@ class _StudyScreenState extends State<StudyScreen> {
       ],
     ),
   );
-
 }

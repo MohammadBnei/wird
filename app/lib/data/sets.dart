@@ -304,6 +304,21 @@ Future<int> ayahCount(Database db, int surahId) async =>
       whereArgs: [surahId],
     )).single['ayah_count']! as int;
 
+/// The aya on one side of [ayahId] in the written order, or null at the ends
+/// of the Qur'an.
+///
+/// An aya's id is its sūra's number and its own, so the written order is the
+/// order of the ids and the neighbour is the nearest id on that side. It
+/// crosses the sūra's edge on purpose: the aya before 2:1 is 1:7, and a sūra
+/// opened from the index opens at its first aya, where a step that stopped at
+/// the edge left the reader pressing a control that could not move.
+Future<int?> ayaBeside(Database db, int ayahId, {required bool after}) async =>
+    (await db.rawQuery(
+      'SELECT ${after ? 'MIN' : 'MAX'}(id) AS id FROM ayahs '
+      'WHERE id ${after ? '>' : '<'} ?',
+      [ayahId],
+    )).single['id'] as int?;
+
 /// The words of these ayas, keyed by aya, in one query.
 ///
 /// An aya that was asked for and has no words comes back with an empty list

@@ -143,58 +143,65 @@ class SoundingNow extends StatelessWidget {
       valueListenable: recitation.sounding,
       builder: (context, sounding, _) {
         if (sounding == null) return const SizedBox.shrink();
-        return Row(
-          spacing: n.space('2'),
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 3,
-                children: [
-                  Text(
-                    switch (sounding.what) {
-                      Sounded.word => 'SOUNDING ONE WORD',
-                      Sounded.set => 'RECITING THE SET',
-                    },
-                    style: TextStyle(
-                      fontSize: 10,
-                      height: 1.2,
-                      letterSpacing: 0.11 * 10,
-                      color: n.accent,
+        // The gap belongs to the transport and not to whoever draws it, so
+        // that a row which is not there costs nothing at all: the reading
+        // screen's footer would otherwise hold a band of empty space open
+        // under its edge for every reader who never plays anything.
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: n.space('2')),
+          child: Row(
+            spacing: n.space('2'),
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 3,
+                  children: [
+                    Text(
+                      switch (sounding.what) {
+                        Sounded.word => 'SOUNDING ONE WORD',
+                        Sounded.set => 'RECITING THE SET',
+                      },
+                      style: TextStyle(
+                        fontSize: 10,
+                        height: 1.2,
+                        letterSpacing: 0.11 * 10,
+                        color: n.accent,
+                      ),
                     ),
-                  ),
-                  Text(
-                    sounding.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    // A word is named in Arabic and the set in the reader's
-                    // own script, so the face follows what is sounding. A
-                    // vowelled word needs the size and the leading twice
-                    // over: at the set's 12px its marks are a smudge and
-                    // they climb into the kicker above.
-                    style: TextStyle(
-                      fontFamily: sounding.what == Sounded.word
-                          ? Nocturne.arabicFamily
-                          : Nocturne.bodyFamily,
-                      fontSize: sounding.what == Sounded.word ? 22 : 12,
-                      height: sounding.what == Sounded.word ? 1.7 : null,
-                      color: n.textAt(0.75),
+                    Text(
+                      sounding.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      // A word is named in Arabic and the set in the reader's
+                      // own script, so the face follows what is sounding. A
+                      // vowelled word needs the size and the leading twice
+                      // over: at the set's 12px its marks are a smudge and
+                      // they climb into the kicker above.
+                      style: TextStyle(
+                        fontFamily: sounding.what == Sounded.word
+                            ? Nocturne.arabicFamily
+                            : Nocturne.bodyFamily,
+                        fontSize: sounding.what == Sounded.word ? 22 : 12,
+                        height: sounding.what == Sounded.word ? 1.7 : null,
+                        color: n.textAt(0.75),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            // The bare glyph was a 12px lilac square at the edge of the bar,
-            // which is a stray mark rather than the only way to silence a
-            // recitation. The outline is how this system says "control", and
-            // the word says which one.
-            NocturneButton(
-              key: const Key('stop sounding'),
-              variant: NocturneButtonVariant.primary,
-              onPressed: recitation.stop,
-              child: const Text('Stop'),
-            ),
-          ],
+              // The bare glyph was a 12px lilac square at the edge of the bar,
+              // which is a stray mark rather than the only way to silence a
+              // recitation. The outline is how this system says "control", and
+              // the word says which one.
+              NocturneButton(
+                key: const Key('stop sounding'),
+                variant: NocturneButtonVariant.primary,
+                onPressed: recitation.stop,
+                child: const Text('Stop'),
+              ),
+            ],
+          ),
         );
       },
     );
