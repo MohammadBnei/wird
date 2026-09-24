@@ -140,6 +140,11 @@ func TestTheDashboardCountsEveryReadersPrayersAndEveryLostWrite(t *testing.T) {
 		t.Errorf("the corpus versions in the field came back %+v, so a report cannot be tied to a build", health.CorpusVersions)
 	}
 
+	// A report is kept to the day it was written, so two that landed in the
+	// same test second cannot say which came first. One is moved back a week,
+	// which is the distance an operator's list is actually ordered over.
+	exec(t, pool, `UPDATE reports SET written_on = current_date - 7 WHERE corpus_version = 1`)
+
 	reports, err := db.Reports(t.Context(), 0)
 	if err != nil {
 		t.Fatalf("reports: %v", err)
@@ -147,7 +152,7 @@ func TestTheDashboardCountsEveryReadersPrayersAndEveryLostWrite(t *testing.T) {
 	if len(reports) != 2 {
 		t.Fatalf("two readers reported and the list holds %d", len(reports))
 	}
-	if reports[0].CreatedAt.Before(reports[1].CreatedAt) {
+	if reports[0].WrittenOn.Before(reports[1].WrittenOn) {
 		t.Errorf("the list is oldest first, so the report that just came in is at the bottom")
 	}
 }

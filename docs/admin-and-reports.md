@@ -24,6 +24,17 @@ operator watch one named person's practice, it does not get written.
 That is a decision, not a default, and it should survive contact with the first
 time it would be convenient to break it.
 
+**And it is a decision about two different things, which have to be said
+apart.** One is the page: what an operator can ask for and see. The other is
+the database the page sits on: what someone with a SQL prompt and the same
+group membership can work out. The page was right from the start; the database
+was not, and three channels have been found in it that no column showed — the
+report stored under its op id, the report and its op_log row sharing a
+transaction id, and the report's clock sitting beside its author's flush. All
+three are closed and ADR-0004 says how, and what is still unchecked. Anything
+written here or anywhere else about reports not naming their author is about
+one layer or the other; say which.
+
 ## Reports
 
 **A report is a write like any other**, which means it goes through the outbox.
@@ -36,8 +47,11 @@ on. What it must NOT carry without the reader deciding: their notes, their
 progress, anything from the corpus they were reading.
 
 Server side: `reports` in the existing schema, the same `client_op_id`
-idempotency as every other op, reaching the change stream only if a reader is
-meant to see their own past reports.
+idempotency as every other op, and never reaching the change stream, because
+reports are one-way. The write is the one op whose effect does not commit in
+the op's own transaction: two rows written together carry one transaction id,
+and that id is readable. The day it was written is kept; the time of day is
+not.
 
 ## The admin web app
 

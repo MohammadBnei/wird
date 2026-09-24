@@ -9,11 +9,14 @@
 -- than a habit.
 --
 -- There is no user_id, and that is the point: a report is what somebody chose
--- to send, and an operator reading it has no reader to read next. The column
--- list is not the whole of that promise, though. id is minted by the server
--- rather than taken from the op, because op_log holds the op id against the
--- reader who sent it, and a value two tables share joins as well as a foreign
--- key does. Nothing is answered back, so nothing needs a reader to answer to.
+-- to send, and an operator has no reader to read next. That is a claim about
+-- this column list and nothing more. Three channels have since been found
+-- under it, none of them a column: the row's id was the op id, which op_log
+-- holds against its author (00006); the report and that op_log row were
+-- written in one transaction, so both carried the same xmin (00007); and the
+-- time of day was the device's clock, which sits beside the flush that
+-- carried it (00007). Read those two before trusting this paragraph.
+-- Nothing is answered back, so nothing needs a reader to answer to.
 --
 -- There is no seq either. Reports are one-way, so they never join the change
 -- stream and never take a number out of change_seq: a device that flushes a

@@ -81,9 +81,12 @@ func (s *Store) Health(ctx context.Context) (Health, error) {
 	return h, rows.Err()
 }
 
-// A Report is what somebody chose to send, and all of it. There is no reader on
-// it: the table has no column for one, and the id is the server's own rather
-// than the op id, which op_log holds against the reader who sent it.
+// A Report is what somebody chose to send, and all of it. There is no reader
+// on it, and applyReport is where the reasons for that are written down: the
+// table has no column for one, the id is the server's own rather than the op
+// id, the row does not share a transaction with op_log, and the day is all
+// that is kept of the clock. WrittenOn is a date, so there is no time of day
+// to hand back.
 type Report struct {
 	ID            string    `json:"id"`
 	Kind          string    `json:"kind"`
@@ -92,7 +95,7 @@ type Report struct {
 	Platform      string    `json:"platform"`
 	Screen        string    `json:"screen"`
 	CorpusVersion int       `json:"corpus_version"`
-	CreatedAt     time.Time `json:"created_at"`
+	WrittenOn     time.Time `json:"written_on"`
 }
 
 // ReportPage is how many reports one list carries.
@@ -105,8 +108,8 @@ func (s *Store) Reports(ctx context.Context, limit int) ([]Report, error) {
 		limit = ReportPage
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, kind, body, app_version, platform, screen, corpus_version, created_at
-		  FROM reports ORDER BY created_at DESC, id LIMIT $1`, limit)
+		SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
+		  FROM reports ORDER BY written_on DESC, id LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +119,7 @@ func (s *Store) Reports(ctx context.Context, limit int) ([]Report, error) {
 	for rows.Next() {
 		var r Report
 		if err := rows.Scan(&r.ID, &r.Kind, &r.Body, &r.AppVersion, &r.Platform,
-			&r.Screen, &r.CorpusVersion, &r.CreatedAt); err != nil {
+			&r.Screen, &r.CorpusVersion, &r.WrittenOn); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

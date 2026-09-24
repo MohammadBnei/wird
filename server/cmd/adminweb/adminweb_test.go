@@ -308,7 +308,7 @@ func preview(t *testing.T, body string) {
 func TestADeviceThatDidNotSayItsCorpusIsNotShownAsVersionZero(t *testing.T) {
 	var out strings.Builder
 	err := render(&out, dashboard{ReportsOK: true, Reports: []store.Report{{
-		Kind: "bug", Body: "the audio stops", CorpusVersion: 0, CreatedAt: time.Now(),
+		Kind: "bug", Body: "the audio stops", CorpusVersion: 0, WrittenOn: time.Now(),
 	}}})
 	if err != nil {
 		t.Fatalf("render: %v", err)
@@ -347,7 +347,7 @@ func TestAReportCannotWriteMarkupIntoTheOperatorsPage(t *testing.T) {
 		Body:      `<script>alert(1)</script>`,
 		Platform:  "android",
 		Screen:    "study",
-		CreatedAt: time.Now(),
+		WrittenOn: time.Now(),
 	}}})
 	if err != nil {
 		t.Fatalf("render: %v", err)

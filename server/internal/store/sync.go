@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // An Op is one write a device made, carrying the id it minted for it. The id
@@ -88,7 +89,7 @@ func (s *Store) attempt(ctx context.Context, userID string, op Op) (OpResult, er
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	result := applyInTx(ctx, tx, userID, op)
+	result := applyInTx(ctx, tx, s.pool, userID, op)
 	if result.Status != OpApplied {
 		return result, nil
 	}
@@ -101,7 +102,9 @@ func (s *Store) attempt(ctx context.Context, userID string, op Op) (OpResult, er
 // applyInTx is everything but the commit. It is a function of its own so a
 // test can hold the transaction open and choose the moment it commits, which
 // is the only way to stage two writes landing at once.
-func applyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) OpResult {
+//
+// outside is the pool, for the one op whose effect must not commit in tx.
+func applyInTx(ctx context.Context, tx pgx.Tx, outside *pgxpool.Pool, userID string, op Op) OpResult {
 	if err := lockReader(ctx, tx, userID); err != nil {
 		return classify(op, err)
 	}
@@ -112,7 +115,7 @@ func applyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) OpResult {
 	if !first {
 		return OpResult{ClientOpID: op.ClientOpID, Status: OpDuplicate}
 	}
-	if err := applyKind(ctx, tx, userID, op); err != nil {
+	if err := applyKind(ctx, tx, outside, userID, op); err != nil {
 		return classify(op, err)
 	}
 	return OpResult{ClientOpID: op.ClientOpID, Status: OpApplied}
@@ -174,7 +177,7 @@ func reason(err error) string {
 	return "refused"
 }
 
-func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
+func applyKind(ctx context.Context, tx pgx.Tx, outside *pgxpool.Pool, userID string, op Op) error {
 	switch op.Kind {
 	case "ayah_understood":
 		return applyAyahUnderstood(ctx, tx, userID, op.Body)
@@ -189,7 +192,7 @@ func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 	case "prefs_set":
 		return applyPrefsSet(ctx, tx, userID, op.Body)
 	case "report_written":
-		return applyReport(ctx, tx, op)
+		return applyReport(ctx, outside, op)
 	default:
 		return refuse("unknown kind %q", op.Kind)
 	}
@@ -464,18 +467,38 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 	return err
 }
 
-// The one apply that is not handed the reader, because a report has nowhere to
-// put one. It reaches the same table an operator reads, so the reader it came
-// from must not be recoverable from it.
+// The one apply that is not handed the reader, because a report has nowhere
+// to put one. It reaches the same table an operator reads, so the reader it
+// came from must not be recoverable from it — and the column list is the
+// smallest part of that. Three channels have been found under it so far, each
+// one proved against a real database:
 //
-// The row's id is minted here rather than taken from the op. op_log holds the
-// op id against the reader who sent it, so a report stored under that id would
-// be joinable to its author for the ninety days of OpLogWindow — a foreign key
-// to the reader in all but name, and from there every table keyed by user_id.
-// Replays are op_log's job and it catches one before this runs; what a minted
-// id costs is a flush replayed after that window filing a second report, which
-// is a duplicate in a list somebody reads rather than a name on a private one.
-func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
+// The row's id used to be the op id, and op_log holds that against the reader
+// who sent it for the ninety days of OpLogWindow. So the id is minted here.
+//
+// The report used to be written in the op's own transaction, and two row
+// versions written in one transaction carry the same xmin — a system column
+// any role that can SELECT can read. So it is written on the pool, in a
+// transaction of its own, while the op's transaction still holds this reader's
+// advisory lock and has not committed. If this fails, the op id rolls back
+// with it and the device's retry is clean; if that commit fails after this
+// one, the device files a duplicate rather than losing the report.
+//
+// Separate transactions are not enough by themselves, because transaction ids
+// are handed out in order and a report that commits between two of a reader's
+// ops still sits next to them. So the write also regroups: every report row is
+// deleted and written again in one transaction, which leaves them all carrying
+// that transaction's id and none of them nearer their author's op_log row than
+// the rest. Ordered by id, because a heap appends and the order rows sit in on
+// disk would otherwise be the order they arrived in.
+//
+// The device's clock is kept to the day, because the op_log row nearest a
+// microsecond-accurate time was its author's.
+//
+// ponytail: the whole table is rewritten on every report. Reports arrive a
+// handful a day and there is no second writer to contend with. Regroup on the
+// ticker alone, and wear the window it leaves, if that ever stops being true.
+func applyReport(ctx context.Context, pool *pgxpool.Pool, op Op) error {
 	var b struct {
 		Kind          string    `json:"kind"`
 		Body          string    `json:"body"`
@@ -491,10 +514,39 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	if b.CreatedAt.IsZero() {
 		b.CreatedAt = time.Now().UTC()
 	}
-	_, err := tx.Exec(ctx, `
-		INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, created_at)
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		uuid.NewString(), b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.CreatedAt)
+		uuid.NewString(), b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen,
+		b.CorpusVersion, b.CreatedAt.UTC()); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, regroupReportsSQL); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// regroupReportsSQL rewrites every report row in one statement, so that they
+// all carry one transaction id and sit on disk in the order of their ids
+// rather than the order they were written.
+const regroupReportsSQL = `
+WITH gone AS (DELETE FROM reports RETURNING *)
+INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
+SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
+  FROM gone ORDER BY id`
+
+// RegroupReports runs that rewrite on its own. Every report write already
+// does it, which leaves the shared transaction id sitting next to the op_log
+// row of whoever reported last. A pass on the ticker moves it to a moment
+// that belongs to nobody in particular.
+func (s *Store) RegroupReports(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, regroupReportsSQL)
 	return err
 }
 

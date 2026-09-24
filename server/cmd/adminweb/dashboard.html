@@ -91,8 +91,7 @@
           <tbody>
             {{range .Reports}}
               <tr>
-                <td class="when">{{.CreatedAt.UTC.Format "2 Jan 2006"}}<br>
-                  <span class="text-muted">{{.CreatedAt.UTC.Format "15:04 UTC"}}</span></td>
+                <td class="when">{{.WrittenOn.UTC.Format "2 Jan 2006"}}</td>
                 <td class="when"><span class="tag tag-accent">{{.Kind}}</span></td>
                 <td class="what">{{.Body}}</td>
                 <td class="when text-muted">{{.AppVersion}} · {{.Platform}}<br>
@@ -110,7 +109,11 @@
 
   <p class="footnote text-muted">This page shows totals and what readers chose to send.
     It cannot show one reader's notes, progress, or when they prayed — not as a setting,
-    but because nothing it can ask the store has a reader in it.</p>
+    but because nothing it can ask the store has a reader in it. That is a claim about
+    this page. The database under it is a separate claim, and it is kept by a test that
+    walks a real report for its author through values, system columns, transaction ids
+    and the clock. A report is kept to the day it was written because the minute it was
+    written named the reader who wrote it. ADR-0004 says what has been checked.</p>
 </main>
 
 </body>

@@ -50,11 +50,44 @@ thing the design is accountable to, so it is structural rather than a habit:
 
 - Every number on the page comes from `store.Health`, and every report from
   `store.Reports`. Neither takes a reader, and `reports` has no `user_id`
-  column. The column list is not the whole of it, though: the row's id is
-  minted by the server rather than taken from the op, because `op_log` holds
-  the op id against the reader who sent it, and a value two tables share joins
-  as well as a foreign key does. With that cut, an operator reading a report
-  has nothing on it that names a person.
+  column. **That is a statement about the page and about the column list, and
+  neither of them is the database.** Three separate channels have now been
+  found under that sentence, each one proved by running the join against a
+  real Postgres rather than argued:
+
+  1. The row's id was the op id, and `op_log` holds the op id against the
+     reader who sent it for the ninety days of the replay window. The id is
+     now minted by the server.
+  2. The report row and that `op_log` row were written in one transaction, so
+     both row versions carried the same `xmin`. `xmin` is a system column and
+     every role that can `SELECT` can read it, `platform-admins` included, so
+     `JOIN op_log o ON o.xmin = r.xmin` named three authors out of three with
+     nothing ambiguous. The report is now written in a transaction of its own,
+     and — because transaction ids are handed out in order, so a report that
+     commits beside a reader's ops is still theirs — every report write rewrites
+     the whole table under one transaction id, in id order rather than the
+     order the rows arrived in.
+  3. `created_at` was the device's clock to the microsecond, and a report
+     written online is flushed within two minutes, so the `op_log` row nearest
+     it in time was its author's: three of three again, and one of three for a
+     report written offline and flushed the next day. The column is now a
+     `date` named `written_on`. What is lost is the time of day, and the page
+     never showed a report by the hour.
+
+  What holds that shut is `TestNoReportCanBeJoinedToTheReaderWhoSentIt`, which
+  walks a real database outwards from a real report: over the values, over the
+  system columns, over the transaction ids and the clock as nearest-neighbours
+  rather than as equalities, and over the order the rows sit in on disk. Each
+  of those four is then staged by hand and the walk has to find it, so a walk
+  that has stopped working cannot read as a pass.
+
+  **What has not been checked**, so that the next person does not read the
+  above as more than it is: the database server's own statement log, which
+  would hold the report body and the `op_log` insert against one session; and
+  anything watched live while a write is happening, such as the advisory lock
+  in `pg_locks`, whose object id is a hash of the reader's id. Both are outside
+  this repository. The claim here is about what is stored and can be queried
+  afterwards.
 - `adminweb` holds no SQL of its own. A test parses this package's source, and
   fails if it calls any exported store method other than `Health`, `Reports`
   and `CorpusVersion`, or if a string literal in it looks like a query. The
@@ -100,3 +133,22 @@ report rather than landing on the first. Inside the window `op_log` still
 catches the replay before the report is written. A duplicate in a list somebody
 reads is a smaller harm than a private report that names its author, and the
 device that replays a ninety-day-old op is already broken.
+
+The report's transaction commits before the op id does, which buys the same
+kind of duplicate: if the server dies in the gap the device retries, finds no
+op id, and files the report twice. The other order would lose the report
+instead, and losing what somebody took the trouble to write is the worse of
+the two.
+
+Every report write rewrites every report row. Reports arrive a handful a day
+and there is no second writer to contend with, so this is cheap and it is
+marked as a ceiling in `applyReport` rather than left to be discovered. The
+daily ticker in `cmd/api` runs the same rewrite once more, which moves the one
+transaction id they all share away from the op_log row of whoever reported
+last.
+
+A report is kept to the day it was written and not to the minute. An operator
+reads reports by day — the list is ordered by day and the page prints a day —
+so nothing they were using is gone. What a bug report loses is the ability to
+be lined up against a log line by the second, and the app version, platform
+and screen it carries are what actually ties it to a build.

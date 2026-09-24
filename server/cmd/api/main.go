@@ -33,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	go prune(ctx, db, log)
+	go maintain(ctx, db, log)
 
 	addr := env("API_ADDR", ":8080")
 	log.Info("wird-api listening", "addr", addr, "issuer", issuer)
@@ -43,16 +43,25 @@ func main() {
 	}
 }
 
-// ponytail: a ticker in the process, because the op log is the one table that
-// grows with every write a reader ever makes and nothing else prunes it. Move
-// it to a cron job if the API ever runs as more than one replica.
-func prune(ctx context.Context, db *store.Store, log *slog.Logger) {
+// Two housekeeping jobs on one clock. The op log is the one table that grows
+// with every write a reader ever makes and nothing else prunes it. The
+// regroup rewrites every report under one transaction id: each report write
+// already does that, which leaves the shared id sitting beside the op_log row
+// of whoever reported last, and this pass moves it to a moment that is nobody
+// in particular's.
+//
+// ponytail: a ticker in the process. Move both to a cron job if the API ever
+// runs as more than one replica.
+func maintain(ctx context.Context, db *store.Store, log *slog.Logger) {
 	for {
 		dropped, err := db.PruneOpLog(ctx)
 		if err != nil {
 			log.Error("op log prune", "err", err)
 		} else if dropped > 0 {
 			log.Info("op log pruned", "rows", dropped)
+		}
+		if err := db.RegroupReports(ctx); err != nil {
+			log.Error("report regroup", "err", err)
 		}
 		time.Sleep(24 * time.Hour)
 	}
