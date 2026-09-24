@@ -259,10 +259,10 @@ Future<void> setReadingOrder(Database db, ReadingOrder order) =>
 const defaultDisplay = 0;
 const defaultArabicSize = 31.0;
 
-/// The header arrives collapsed and the root panel open. On a 402x874 phone
-/// the two ends of screen 1a used to take 55% of it between them; the header
-/// is orientation, which a reader wants once, and the panel is the study,
-/// which is what a word tap fills.
+/// The header arrives folded and the root panel open. On a 402x874 phone the
+/// two ends of screen 1a took 40% of it between them; the header is
+/// orientation, which a reader wants once, and the panel is the study, which
+/// is what a word tap fills.
 const defaultHeaderOpen = false;
 const defaultRootOpen = true;
 
@@ -273,8 +273,8 @@ typedef DisplayPrefs = ({
   bool rootOpen,
 });
 
-/// Adds the collapse columns to a `display_prefs` written before either end
-/// of screen 1a could be folded away.
+/// Adds the columns a `display_prefs` written before either end of screen 1a
+/// could be folded away does not have.
 Future<void> ensureChromeColumns(Database db) async {
   final columns = await db.rawQuery('PRAGMA table_info(display_prefs)');
   final have = {for (final c in columns) c['name'] as String};

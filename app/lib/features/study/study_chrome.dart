@@ -34,8 +34,7 @@ class StudyHeader extends StatelessWidget {
   final ReadingOrder order;
 
   /// The reader asked for this aya rather than being handed it by the walk.
-  /// Nothing else on the screen says so, so it survives the collapse — see
-  /// ADR-0003.
+  /// Nothing else on the screen says so, so it survives the fold — ADR-0003.
   final bool visiting;
 
   final bool open;
@@ -140,10 +139,10 @@ class StudyHeader extends StatelessWidget {
     ),
   );
 
-  /// The collapsed header. The title carries the whole answer to "where am
-  /// I"; the sūra's own name follows it in Arabic. They are two spans rather
-  /// than one string because a Latin title and an Arabic name in one [Text]
-  /// are reordered by the bidi algorithm.
+  /// The folded header. The title carries the whole answer to "where am I";
+  /// the sūra's own name follows it in Arabic. They are two spans rather than
+  /// one string because a Latin title and an Arabic name in one [Text] are
+  /// reordered by the bidi algorithm.
   Widget _oneLine(BuildContext context, Nocturne n) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
@@ -183,11 +182,10 @@ class StudyHeader extends StatelessWidget {
     ],
   );
 
-  /// One segment per aya, lit when it is understood. It stays in the
-  /// collapsed header: three pixels is what the reader's place in the set
-  /// costs, and losing it would leave the collapsed state unable to say how
-  /// far through they are. The sentence spelling out which ayas is what the
-  /// expansion adds.
+  /// One segment per aya, lit when it is understood. It stays in the folded
+  /// header: three pixels is what the reader's place in the set costs, and
+  /// without it a folded header could not say how far through they are. The
+  /// sentence spelling out which ayas is what unfolding adds.
   Widget _progress(Nocturne n) => Padding(
     padding: EdgeInsets.only(top: n.space(open ? '6' : '2')),
     child: Column(
@@ -230,12 +228,12 @@ class StudyHeader extends StatelessWidget {
 
 /// The root under the word the reader is looking at, below the set.
 ///
-/// Collapsed it is the root's letters, its transliteration and how often it
-/// occurs — enough to say which root is open without spending a third of the
-/// screen saying it. The gloss, the kin and the way to the constellation are
-/// what the expansion is for, and the word's own gloss is drawn on the word
-/// itself either way. "Mark set understood" is reachable in both, because it
-/// is the act that moves the reader through the Qur'an.
+/// Folded it is the root's letters, its transliteration and how often it
+/// occurs — enough to say which root is open, on 12% of the screen rather
+/// than 27%. The gloss, the kin and the way to the constellation are what
+/// unfolding is for, and the word's own gloss is drawn on the word itself
+/// either way. "Mark set understood" is reachable in both, because it is the
+/// act that moves the reader through the Qur'an.
 class RootPanel extends StatelessWidget {
   const RootPanel({
     super.key,
@@ -303,8 +301,9 @@ class RootPanel extends StatelessWidget {
               style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
             )
           else if (!open)
-            // Collapsed, the root line is the handle: there is nowhere else
-            // to press, so it opens the panel rather than the root screen.
+            // Folded, the root line is the handle: there is nowhere else to
+            // press, so it unfolds the panel rather than opening the root
+            // screen.
             GestureDetector(
               key: const Key('toggle root panel'),
               behavior: HitTestBehavior.opaque,
