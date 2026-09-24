@@ -109,6 +109,20 @@ env:
   # Trailing slash deliberate: go-oidc compares the discovery document's
   # `issuer` claim against this string verbatim, and authentik publishes it
   # with the slash. app/lib/data/auth.dart carries the same value.
+  # The certificates Android will accept as Wird's, so it verifies
+  # /auth/callback as this app's link and hands a finished sign-in straight
+  # back to it. Without this the browser keeps the link and the reader copies
+  # an authorization code out of a web page by hand.
+  #
+  # This is the DEBUG keystore's fingerprint, which is per-machine: an APK
+  # built anywhere else will not verify against it. It is here because it is
+  # what is installed on a phone today, and it is the first thing that has to
+  # change when a real release keystore exists — the list takes both, so a
+  # release key can be added before the debug one is removed.
+  #
+  # Not a secret: a certificate fingerprint is readable from any installed app.
+  - name: WIRD_ANDROID_SHA256
+    value: "45:85:EA:58:05:B0:DC:C7:86:E1:2C:12:A0:5A:59:80:7B:8C:0C:D2:CC:6D:7B:34:14:C2:CC:24:8C:22:F2:5E"
   - name: OIDC_ISSUER
     value: https://authentik.bnei.dev/application/o/wird/
   # The client id, NOT the string "wird". authentik puts the client id in the

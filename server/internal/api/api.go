@@ -43,6 +43,9 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	// identity server holds an authorization code and no bearer token, so
 	// behind the middleware this answered 401 and sign-in could never finish.
 	mux.HandleFunc(callbackPath, authCallback)
+	// Android fetches this before it will treat /auth/callback as this app's
+	// link, and it is fetched by the platform rather than by a signed-in reader.
+	mux.HandleFunc(assetLinksPath, assetLinks)
 	mux.Handle("/", a.Middleware(v1))
 	return mux
 }
