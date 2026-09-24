@@ -1,0 +1,272 @@
+# Push to main -> the Go half of the gate -> build and push wird-api -> bump
+# helm/values.yaml so ArgoCD reconciles. Same shape and the same hard-won
+# details as editable-blog's and ukubi-stt's workflows; where this one differs,
+# the comment says why.
+#
+# WHAT THE GATE IS, AND WHICH HALF RUNS HERE. `./scripts/qa.sh` is Wird's gate
+# and its exit code is the verdict — but it cannot run on a GitHub runner, and
+# running a crippled version of it under its own name would be worse than not
+# running it. Of its seven gates:
+#
+#   gate 1  Go build, vet and test against a real Postgres 18   -> RUNS HERE
+#   gate 7  the marker/issue check and the corpus size budget   -> RUNS HERE
+#   gate 2  flutter analyze + flutter test                      -> needs fvm
+#   gate 3  the e2e journeys                                    -> needs a simulator or a phone
+#   gate 4-6 the per-screen, test-meaning and comment audits    -> human judgment
+#
+# Gates 2 and 3 need an fvm-managed Flutter toolchain and a device, and the
+# only self-hosted runner in this estate is a build LXC with no cluster access
+# and no simulator. So the image gate is gate 1 plus the two gate-7 checks that
+# are pure shell, and the Flutter half stays what it already is: `./scripts/qa.sh`
+# on a developer's machine before the push. A macOS runner is what would change
+# that, and nothing here pretends otherwise.
+#
+# WHY THERE IS NO RELEASE JOB. editable-blog and ukubi-stt cut a semver with
+# release-it and tag the image with it. Wird has no version to cut: nothing
+# consumes a wird-api version number, the Flutter app is versioned in its own
+# pubspec, and adding a root package.json to a Go+Flutter repo to run a Node
+# release tool is a lot of machinery for a string. The image tag is the short
+# commit SHA, which is unique, ordered by history, and cannot disagree with the
+# code it was built from. Swap in release-it the day something outside this
+# repo needs to name a wird-api release.
+name: release
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      # The deploy job's own bump touches helm/. Pushes made with the built-in
+      # GITHUB_TOKEN do not trigger workflows either, so the loop is closed
+      # twice — the same belt and braces editable-blog uses.
+      - '**.md'
+      - 'helm/**'
+    tags-ignore:
+      - '*'
+
+# Two pushes racing would build two images and bump values.yaml twice, and the
+# loser's bump would point at the older of the two. Keep the newest.
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+env:
+  REGISTRY: registry.bnei.lan:5000
+  IMAGE: wird-api
+  # Plaintext on purpose. A username is not a secret, and holding it as one
+  # cost agent-fleet a release: the secret was never set, so buildah got
+  # `--username ""` and the build failed with "Must provide --username with
+  # --password-stdin".
+  REGISTRY_USER: ci
+  # The registry password comes from the shared platform-commons project over
+  # OIDC rather than a repo secret (infra-bootstrap ADR-0049): one place to
+  # rotate it for every build repo. The identity binds a repository allowlist
+  # plus event_name push/workflow_dispatch, so THIS REPO MUST BE ADDED TO THAT
+  # ALLOWLIST before the first build — until it is, the Infisical step fails
+  # with an authentication error that reads like a broken identity.
+  INFISICAL_DOMAIN: https://infisical.bnei.dev
+  INFISICAL_PROJECT_SLUG: platform-commons-76pb
+  INFISICAL_ENV: dev
+  INFISICAL_IDENTITY_ID: 19807471-d73a-48d4-9e58-1dc34255ef77
+
+jobs:
+  # Gate 1 and the shell-only half of gate 7, run the way scripts/qa.sh runs
+  # them rather than a second opinion about how to run them.
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # git grep across the whole tree is what the marker check does, and a
+          # shallow clone still gives it the working tree. fetch-depth 0 is for
+          # nothing here, so it is not set.
+          fetch-depth: 1
+
+      - uses: actions/setup-go@v5
+        with:
+          # go.work, not server/go.mod — the workspace is what pins the
+          # toolchain for both modules, and a drift between them is exactly the
+          # kind of thing that only shows up in CI.
+          go-version-file: go.work
+          cache-dependency-path: server/go.sum
+
+      # The store and handler tests run against a real Postgres 18, each in a
+      # database of its own: a mocked one cannot tell you a unique constraint
+      # is missing, which is the whole defence against a prayer counted twice.
+      # server/internal/testenv/postgres.go defaults to the DSN this compose
+      # file serves, so there is nothing to configure.
+      - name: Postgres
+        run: docker compose up -d --wait postgres
+
+      # ./... is not a valid pattern at a workspace root that is not itself a
+      # module (go1.27.1), so each module is named — the same two paths
+      # scripts/qa.sh names.
+      - run: go build ./jidhr/... ./server/...
+      - run: go vet ./jidhr/... ./server/...
+      # -p 1: the tests share one Postgres instance.
+      - run: go test -p 1 ./jidhr/... ./server/...
+
+      # Lifted from scripts/qa.sh's todos_carry_an_issue. The marker is
+      # assembled from two pieces for the same reason it is there: so this file
+      # is not its own first hit.
+      - name: Every marker carries an issue number
+        run: |
+          set -uo pipefail
+          marker='TO'"DO"
+          hits=$(git grep -I -n --untracked -F -e "$marker" -- . ':!CONTRIBUTING.md' | grep -vF "$marker(#") || true
+          [ -z "$hits" ] || { echo "::error::a marker with no issue number behind it never comes back"; echo "$hits"; exit 1; }
+
+      # The 60 MB budget decides whether the bundled-corpus split works at all,
+      # and it is the one gate-7 check that a runner can answer.
+      - name: corpus.db under budget
+        run: |
+          set -euo pipefail
+          bytes=$(wc -c <app/assets/corpus.db)
+          [ "$bytes" -le $((60 * 1024 * 1024)) ] || { echo "::error::corpus.db is $bytes bytes, over the 60 MB release budget"; exit 1; }
+
+  build-push:
+    needs: checks
+    # A PR builds nothing: this job is the only one that needs the LAN, and a
+    # PR has nothing to push.
+    if: github.event_name != 'pull_request'
+    # NOT `ukubi` — that label belongs to the runner holding a ServiceAccount
+    # token with cluster access. This one has none, which is exactly why builds
+    # belong on it (infra-bootstrap ADR-0034).
+    runs-on: [self-hosted, ukubi-build]
+    # id-token mints the OIDC token Infisical authenticates. Declaring any
+    # permissions block resets every other scope to none, so contents: read is
+    # restated — checkout needs it.
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      tag: ${{ steps.tag.outputs.value }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compute the image tag
+        id: tag
+        run: echo "value=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Not baked into the runner image: one apt-get was not worth its own
+      # chicken-and-egg. EPHEMERAL=false keeps the runner alive between jobs,
+      # so this is a no-op after the first run. `sudo apt-get` works only for
+      # this — the sudoers entry on that box grants buildah and nothing else.
+      - name: Ensure buildah
+        run: command -v buildah || (sudo apt-get update -qq && sudo apt-get install -y -qq buildah)
+
+      # Only REGISTRY_PASSWORD, not the whole environment.
+      - name: Read the registry password from Infisical
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: REGISTRY_PASSWORD
+          export-type: env
+
+      # GitHub only auto-masks `secrets.*`, and this action's README does not
+      # document masking. An unmasked Infisical value leaked a token in
+      # cleartext in this estate once.
+      - name: Mask the fetched password
+        run: echo "::add-mask::$REGISTRY_PASSWORD"
+
+      # --tls-verify=false: the registry is plain HTTP, because Let's Encrypt
+      # cannot issue for `.lan`. Anonymous reads are open — that is how the
+      # nodes pull — and pushing requires this login.
+      #
+      # Every buildah call goes through sudo, and they must all agree: rootless
+      # buildah in this unprivileged LXC gets a single UID mapping, and login
+      # writes its auth file under /run/containers/<uid>, so a rootless login
+      # is invisible to a rootful push.
+      - name: Registry login
+        run: |
+          set -euo pipefail
+          [ -n "${REGISTRY_PASSWORD:-}" ] || { echo "::error::Infisical returned no REGISTRY_PASSWORD"; exit 1; }
+          printf '%s' "$REGISTRY_PASSWORD" | sudo buildah login \
+            --tls-verify=false \
+            --username "$REGISTRY_USER" \
+            --password-stdin "$REGISTRY"
+
+      # No `:latest`. editable-blog and ukubi-stt both push one; nothing pulls
+      # it — helm/values.yaml pins the SHA — and ADR-0049 records that anything
+      # with push credentials can overwrite a live `:latest` that every node
+      # then runs anonymously and unverified. A tag nobody reads is not worth
+      # that.
+      - name: Build and push
+        env:
+          TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          set -euo pipefail
+          # chroot isolation only. The storage driver is deliberately NOT named
+          # here: it is pinned to overlay on the build box itself, so this
+          # build, the cleanup below and the weekly prune timer cannot end up
+          # on different stores.
+          sudo buildah bud \
+            --isolation chroot \
+            --format docker \
+            -t "$REGISTRY/$IMAGE:$TAG" \
+            .
+          sudo buildah push --tls-verify=false "$REGISTRY/$IMAGE:$TAG"
+
+      # Only this build's tag. NEVER `buildah rmi --all` — the box is shared
+      # with the other build repos and the base-image cache is the whole reason
+      # they live together.
+      - name: Clean up this build's image
+        if: always()
+        run: sudo buildah rmi "$REGISTRY/$IMAGE:${{ steps.tag.outputs.value }}" 2>/dev/null || true
+
+  # Only now does ArgoCD get told about the new tag. Bumping it before the push
+  # is the failure ukubi-stt recorded for real: ArgoCD syncs main within
+  # seconds of the merge, the image only exists minutes later, and the pod goes
+  # ImagePullBackOff against a tag still being pushed.
+  deploy:
+    needs: build-push
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # contents: write to push the values bump. This commit is what ArgoCD
+    # actually reads; the image existing in the registry is not a deployment.
+    permissions:
+      contents: write
+    env:
+      # The tag build-push actually pushed, not the ref name — so the manifest
+      # pins exactly the artifact that exists.
+      TAG: ${{ needs.build-push.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Bump the pinned image tag
+        run: |
+          set -euo pipefail
+          sed -i -E "s/^(  tag: \")[^\"]+(\")/\1${TAG}\2/" helm/values.yaml
+          # A no-op sed is the real failure mode: if the pattern stops matching,
+          # values.yaml keeps naming the previous build, ArgoCD redeploys
+          # nothing, and this workflow is green. Silence would read as success.
+          grep -q "^  tag: \"${TAG}\"$" helm/values.yaml || {
+            echo "::error::image.tag was not bumped — check the sed against the file's actual indentation"
+            exit 1
+          }
+
+      # Pushing with the default GITHUB_TOKEN credential deliberately does not
+      # trigger workflow runs, so this commit cannot re-enter the push-to-main
+      # trigger and start a loop.
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add helm/values.yaml
+          git diff --cached --quiet && { echo "image tag already at ${TAG}"; exit 0; }
+          git commit -m "chore(deploy): pin wird-api to ${TAG}"
+          # A content commit can land between the checkout and this push; rebase
+          # rather than fail after the image is already in the registry.
+          git pull --rebase --autostash origin main
+          git push

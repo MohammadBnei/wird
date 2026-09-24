@@ -1,0 +1,9 @@
+# The Dockerfile copies what it needs by name, so this is a second line of
+# defence rather than the only one — but it is the one that keeps `docker build`
+# from streaming 21 GB of Flutter build output to the daemon before the first
+# instruction runs.
+*
+!go.work
+!go.work.sum
+!server/
+!jidhr/

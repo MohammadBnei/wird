@@ -1,0 +1,123 @@
+# wird-api — deployed by infra-bootstrap's common-app-chart, driven from that
+# repo's gitops/apps/registry.yaml entry `wird`.
+#
+# ONE image and one workload: the API the phone talks to. `server/cmd/adminweb`
+# and `jidhr/cmd/rootd` are built by nothing and deployed by nothing — see
+# docs/adr/0005-deploying-the-api.md for why, and for what has to happen before
+# either of them gets an entry here.
+
+image:
+  # The in-cluster Zot registry over plain HTTP (infra-bootstrap ADR-0034);
+  # Let's Encrypt cannot issue for `.lan`, so there is no TLS and containerd is
+  # configured to trust this host. Nodes pull over gigabit LAN.
+  repository: registry.bnei.lan:5000/wird-api
+  # The commit the image was built from, not a semver. .github/workflows/
+  # release.yml writes this line after the push and never before — bumping it
+  # in a PR looks equivalent and is not: ArgoCD syncs main within seconds of a
+  # merge, while the image only exists minutes later.
+  #
+  # `unreleased` is a placeholder that fails loudly. It must NOT be deployed:
+  # the registry entry in infra-bootstrap belongs after this repo's first CI
+  # run has replaced this line, or the first sync is an ImagePullBackOff
+  # against a tag that was never built.
+  tag: "unreleased"
+
+# API_ADDR defaults to :8080 in server/cmd/api/main.go and nothing overrides it.
+service:
+  port: 8080
+
+ingress:
+  # The host the app already carries. app/lib/data/flush.dart's `syncOrigin`
+  # defaults to https://wird.bnei.dev and the registered OIDC redirect is
+  # https://wird.bnei.dev/auth/callback — so this name is not a choice, it is
+  # the one already compiled into the client.
+  #
+  # DNS needs nothing: *.bnei.dev is a proxied wildcard, which is why every
+  # path under this host already answers Traefik's bare `404 page not found`
+  # rather than failing to resolve.
+  #
+  # The baseline chain (origin lock, rate limit, security headers) is left at
+  # the chart's defaults on purpose. wird.bnei.dev is ORANGE like every other
+  # *.bnei.dev host except ente/fleet/stt, so the origin lock's Cloudflare
+  # ranges and the rate limiter's CF-Connecting-IP bucket are both correct
+  # here. Turning either off for "a mobile client" would be wrong: the phone
+  # reaches Cloudflare like any other client.
+  hostname: wird.bnei.dev
+
+# /healthz is the one route outside the authenticator (server/internal/api/api.go),
+# which is what makes it usable as a probe — a probe carries no bearer token.
+livenessProbe:
+  enabled: true
+  path: /healthz
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3
+readinessProbe:
+  enabled: true
+  path: /healthz
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+# Measured shape, not a guess: a Go HTTP server in front of pgx, idle most of
+# the day, with two 24h/10m tickers. The memory limit is the one that matters —
+# migrations at startup are the peak.
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# replicaCount stays at the chart's 1, and that is load-bearing rather than
+# lazy: server/cmd/api/main.go runs the op-log prune and the report sweep as
+# tickers inside the process, and its own `ponytail:` comments say two of them
+# racing can lose or double a report. A second replica needs those moved to a
+# cron job first.
+
+# The image is a static binary in an alpine image running as uid 10001, so it
+# can say so. readOnlyRootFilesystem is safe: nothing here writes to disk —
+# state is Postgres and the goose migrations are embedded.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# DATABASE_URL, and only DATABASE_URL. The secret is built by
+# infra-bootstrap's gitops/bootstrap/wird-secret.yaml, which assembles the DSN
+# from DBUSER_WIRD_PASSWORD in the root Infisical project — the same shape
+# authentik-secret.yaml uses, and for the same reason: the password exists in
+# exactly one place, so rotating it is one edit rather than a hunt.
+#
+# NOT `infisical.enabled: true` with projectSlug infra-bootstrap-1-ge1. That
+# would mount the whole root project — PVE tokens, the pigsty CA, every DB
+# password — into this pod as environment variables. common-app-chart's
+# templates/shared-infisicalsecret.yaml names that exact move as the thing an
+# app repo must never do.
+envFrom:
+  - secretRef:
+      name: wird-config
+
+env:
+  # Trailing slash deliberate: go-oidc compares the discovery document's
+  # `issuer` claim against this string verbatim, and authentik publishes it
+  # with the slash. app/lib/data/auth.dart carries the same value.
+  - name: OIDC_ISSUER
+    value: https://authentik.bnei.dev/application/o/wird/
+  # The client id, NOT the string "wird". authentik puts the client id in the
+  # ID token's `aud`, and server/internal/auth builds
+  # provider.Verifier(&oidc.Config{ClientID: audience}) — so the local default
+  # of "wird" rejects every real token with `expected audience "wird"`.
+  #
+  # Committed rather than stored: it ships inside the APK and the JS bundle,
+  # and infra-bootstrap's docs/secrets.md records deliberately having no
+  # WIRD_OIDC_CLIENT_ID row for exactly that reason.
+  - name: OIDC_AUDIENCE
+    value: Um9Je1MQghdZ4SqAjB7cWtGNubP64phIuGqzdzro
