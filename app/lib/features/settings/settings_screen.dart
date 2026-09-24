@@ -69,8 +69,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'Microphone refused. The prayer screen advances on a tap, as it always '
           'does.',
     MicPermission.unavailable =>
-      'This device has no microphone to offer. The prayer screen advances on '
-          'a tap.',
+      'The microphone could not be reached last time it was asked for. Try '
+          'again; the prayer screen advances on a tap either way.',
   };
 
   @override
@@ -155,10 +155,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // screen may not raise a dialog, so it can never be the screen
               // that asks.
               if (prefs.mic != MicPermission.granted)
+                // Asking is offered until a yes closes it, and the guard
+                // above is the whole condition. It used to be disabled on
+                // `unavailable` as well — but that is what askForMic writes
+                // when the request THREW, and a caught exception is not a fact
+                // about the hardware: a plugin not yet registered, a recorder
+                // busy elsewhere, a build that could not ask at all land
+                // there. Disabling on it made one bad moment permanent, and an
+                // upgrade carried the verdict forward, because the build
+                // before voice-follow answered `unavailable` by design and
+                // mic_consent outlives a reinstall.
                 NocturneButton(
-                  onPressed: prefs.mic == MicPermission.unavailable
-                      ? null
-                      : prefs.askForTheMic,
+                  onPressed: prefs.askForTheMic,
                   child: const Text('Allow microphone'),
                 ),
               SizedBox(height: n.space('1')),
