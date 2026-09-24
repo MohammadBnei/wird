@@ -10,6 +10,11 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  # A returned answer nobody binds is how Settings lost the reason a model
+  # download failed, and the panel went quiet. Where a function says its
+  # answer matters, dropping it stops the build rather than the reader.
+  errors:
+    unused_result: error
   exclude:
     - build/**
     - android/**
@@ -28,8 +33,6 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

@@ -173,7 +173,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _caption(n, _micCaption(prefs.mic)),
               // The recogniser is settled here too, and for the same reason:
               // a 160 MB download is not something to discover mid-prayer.
-              if (prefs.mic == MicPermission.granted) const _VoiceModel(),
+              if (prefs.mic == MicPermission.granted) const VoiceModelPanel(),
               // Writes the server would not take are named here and only
               // here. It draws its own heading and stays silent when there
               // are none, so a reader with a healthy outbox sees nothing.
@@ -273,20 +273,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
 /// the no. A reader who wants the microphone but not the model simply never
 /// presses Download, and the prayer screen advances on a tap the way it has
 /// since before any of this existed.
-class _VoiceModel extends StatefulWidget {
-  const _VoiceModel();
+class VoiceModelPanel extends StatefulWidget {
+  const VoiceModelPanel({super.key, this.model});
+
+  /// The one thing the phone supplies and a test stands in for: the model
+  /// beside the database, and the host it is fetched from.
+  final VoiceModel? model;
 
   static const download = Key('download recogniser');
   static const stop = Key('stop recogniser download');
   static const remove = Key('remove recogniser');
 
   @override
-  State<_VoiceModel> createState() => _VoiceModelState();
+  State<VoiceModelPanel> createState() => _VoiceModelState();
 }
 
-class _VoiceModelState extends State<_VoiceModel> {
+class _VoiceModelState extends State<VoiceModelPanel> {
   VoiceModel? _model;
   CancelToken? _fetching;
+  VoiceModelTrouble? _trouble;
   bool _ready = false;
   int _received = 0;
 
@@ -308,7 +313,10 @@ class _VoiceModelState extends State<_VoiceModel> {
   /// every phone that has never downloaded it.
   Future<VoiceModel?> _find() async {
     try {
-      final model = _model ?? await VoiceModel.beside(await getDatabasesPath());
+      final model =
+          _model ??
+          widget.model ??
+          await VoiceModel.beside(await getDatabasesPath());
       if (mounted) {
         setState(() {
           _model = model;
@@ -327,8 +335,11 @@ class _VoiceModelState extends State<_VoiceModel> {
     final model = await _find();
     if (model == null || !mounted) return;
     final cancel = CancelToken();
-    setState(() => _fetching = cancel);
-    await model.fetch(
+    setState(() {
+      _fetching = cancel;
+      _trouble = null;
+    });
+    final trouble = await model.fetch(
       cancel: cancel,
       onProgress: (received, _) {
         if (mounted) setState(() => _received = received);
@@ -337,6 +348,7 @@ class _VoiceModelState extends State<_VoiceModel> {
     if (mounted) {
       setState(() {
         _fetching = null;
+        _trouble = trouble;
         _ready = model.ready;
         _received = model.bytesOnDisk;
       });
@@ -365,21 +377,21 @@ class _VoiceModelState extends State<_VoiceModel> {
         SizedBox(height: n.space('3')),
         if (_fetching != null)
           NocturneButton(
-            key: _VoiceModel.stop,
+            key: VoiceModelPanel.stop,
             variant: NocturneButtonVariant.ghost,
             onPressed: () => _fetching?.cancel(),
             child: Text('Stop · $done%'),
           )
         else if (_ready)
           NocturneButton(
-            key: _VoiceModel.remove,
+            key: VoiceModelPanel.remove,
             variant: NocturneButtonVariant.ghost,
             onPressed: _remove,
             child: const Text('Remove recogniser'),
           )
         else
           NocturneButton(
-            key: _VoiceModel.download,
+            key: VoiceModelPanel.download,
             onPressed: _download,
             child: Text('Download recogniser · $_size'),
           ),
@@ -392,17 +404,31 @@ class _VoiceModelState extends State<_VoiceModel> {
     );
   }
 
-  String get _caption => _fetching != null
-      ? 'Downloading. Stopping keeps what has arrived, and pressing Download '
-            'again carries on from there.'
-      : _ready
-      ? 'The prayer screen follows your voice. Your recitation is recognised '
-            'on this phone and never leaves it.'
-      : _received > 0
-      ? 'A stopped download is still on the phone. Downloading again carries '
-            'on from where it stopped.'
-      : "A Qur'an recogniser that runs on the phone, so nothing you recite is "
+  String get _caption {
+    if (_fetching != null) {
+      return 'Downloading. Stopping keeps what has arrived, and pressing '
+          'Download again carries on from there.';
+    }
+    if (_ready) {
+      return 'The prayer screen follows your voice. Your recitation is '
+          'recognised on this phone and never leaves it.';
+    }
+    return switch (_trouble) {
+      VoiceModelTrouble.notServed =>
+        'Wird is not serving the recogniser from here. Nothing on this phone '
+            'changes that, so the button will not bring it either — voice-'
+            'follow waits until it is published again.',
+      VoiceModelTrouble.interrupted =>
+        'The download stopped before it finished. What arrived is still on '
+            'the phone, and pressing Download again carries on from there.',
+      null when _received > 0 =>
+        'A stopped download is still on the phone. Downloading again carries '
+            'on from where it stopped.',
+      null =>
+        "A Qur'an recogniser that runs on the phone, so nothing you recite is "
             'sent anywhere. Downloading it is what turns voice-follow on; the '
             'prayer screen advances on a tap until you do, and after you '
-            'remove it.';
+            'remove it.',
+    };
+  }
 }
