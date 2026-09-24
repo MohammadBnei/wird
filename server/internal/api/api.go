@@ -39,6 +39,10 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	// Beside /healthz and for the same reason: a reader arriving from the
+	// identity server holds an authorization code and no bearer token, so
+	// behind the middleware this answered 401 and sign-in could never finish.
+	mux.HandleFunc(callbackPath, authCallback)
 	mux.Handle("/", a.Middleware(v1))
 	return mux
 }
