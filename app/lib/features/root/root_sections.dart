@@ -170,12 +170,32 @@ class CoreSense extends StatelessWidget {
     );
   }
 
+  /// Who is speaking, in the one shape that cannot be misread.
+  ///
+  /// The source is a column, and it held "Wird" for every one of the 523
+  /// senses that ship. Interpolated, that drew "Wird's own reading" — which
+  /// has the shape of a cited authority, and Wird is itself an Arabic word,
+  /// so a reader who has not met the app's name reads it as the scholar this
+  /// round exists to distinguish the sense from. Naming a real authority the
+  /// same way as the app is the defect, not the wording of either.
+  ///
+  /// So the app says it is the app. A sense that ever does come from a named
+  /// work names that work, and the two no longer look alike.
+  String _whoseWords(String? source, int words) {
+    final borne = words == 0
+        ? ''
+        : ", borne out by $words of the root's own words";
+    return source == null || source == 'Wird'
+        ? "This app's own reading$borne"
+        : "$source's reading$borne";
+  }
+
   Widget _whose(BuildContext context, Nocturne n) {
-    final source = reading.senseSource ?? 'Wird';
+    final source = reading.senseSource;
     final words = reading.senseEvidence.length;
     if (words == 0) {
       return Text(
-        "$source's own reading of this root.",
+        '${_whoseWords(source, 0)}.',
         style: TextStyle(fontSize: 12, height: 1.5, color: n.textAt(0.62)),
       );
     }
@@ -187,7 +207,7 @@ class CoreSense extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Text(
-          "$source's own reading, borne out by $words of the root's own words",
+          _whoseWords(source, words),
           style: TextStyle(
             fontSize: 12,
             height: 1.5,

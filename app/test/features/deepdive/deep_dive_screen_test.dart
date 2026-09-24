@@ -87,9 +87,9 @@ void main() {
     for (final size in [tablet, phone]) {
       await open(tester, size: size);
       expect(find.text(reading.coreSense!), findsOneWidget);
-      expect(find.textContaining("Wird's own reading"), findsOneWidget);
+      expect(find.textContaining("This app's own reading"), findsOneWidget);
 
-      await tester.tap(find.textContaining("Wird's own reading"));
+      await tester.tap(find.textContaining("This app's own reading"));
       await tester.pumpAndSettle();
       expect(find.text(reading.senseBasis!), findsOneWidget);
       await tester.tapAt(const Offset(4, 4));

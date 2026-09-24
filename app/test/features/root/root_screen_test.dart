@@ -151,7 +151,7 @@ void main() {
       expect(find.text('CORE SENSE'), findsOneWidget);
       expect(find.textContaining('bear it out'), findsOneWidget);
       // It says nothing is claimed, so it must not also claim something.
-      expect(find.textContaining("Wird's own reading"), findsNothing);
+      expect(find.textContaining("This app's own reading"), findsNothing);
     }
   });
 
@@ -164,7 +164,7 @@ void main() {
   });
 
   testWidgets('a sense is printed as a bare assertion, with nothing telling '
-      'a reader it is Wird\'s own reading rather than a quotation', (
+      'a reader it is this app\'s own reading rather than a quotation', (
     tester,
   ) async {
     final reading = (await rootReading(db, theDesignsRoot))!;
@@ -174,7 +174,7 @@ void main() {
     ]) {
       await open(tester, screen);
       expect(find.text(reading.coreSense!), findsOneWidget);
-      expect(find.textContaining("Wird's own reading"), findsOneWidget);
+      expect(find.textContaining("This app's own reading"), findsOneWidget);
       // The line says how much stands behind it, so it reads as a claim
       // rather than as a disclaimer.
       expect(
@@ -192,7 +192,7 @@ void main() {
     // Not printed in place: the sheet is shut until the reader asks.
     expect(find.byType(SenseEvidence), findsNothing);
 
-    await tester.tap(find.textContaining("Wird's own reading"));
+    await tester.tap(find.textContaining("This app's own reading"));
     await tester.pumpAndSettle();
 
     expect(find.byType(SenseEvidence), findsOneWidget);
