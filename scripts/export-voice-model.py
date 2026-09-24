@@ -16,6 +16,7 @@ an error.
 import argparse
 import hashlib
 import pathlib
+import re
 import subprocess
 import sys
 import urllib.request
@@ -69,6 +70,25 @@ EXPORTER = (
     'https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/master/'
     'scripts/whisper/export-onnx.py'
 )
+
+# The Garage store wird-api mints presigned GETs against. A phone asks
+# wird.bnei.dev/models/<key> and is handed on; the bytes never cross the API.
+STORE = 'https://s3.bnei.dev'
+BUCKET = 'wird-models'
+SPEECH = pathlib.Path(__file__).resolve().parent.parent / 'app/lib/data/speech.dart'
+
+
+def published_key() -> str:
+    """The bucket key the app is already asking for, read off the app.
+
+    Typing it again here is how the last publish went to a host the app had
+    stopped naming: the files landed somewhere real and every Download button
+    still failed.
+    """
+    found = re.search(r"defaultVoiceModelOrigin\s*=\s*'([^']+)'", SPEECH.read_text())
+    if not found or '/models/' not in found.group(1):
+        sys.exit(f'{SPEECH} names no /models/ origin, so there is nowhere to publish')
+    return found.group(1).split('/models/', 1)[1]
 
 # HuggingFace on the left, openai-whisper on the right. Applied in order, as
 # substring replacements, which is enough because the prefixes do not overlap.
@@ -149,7 +169,6 @@ def main() -> None:
     parser.add_argument('--repo', default='tarteel-ai/whisper-base-ar-quran')
     parser.add_argument('--name', default='base-ar-quran')
     parser.add_argument('--out', default='build/voice-model', type=pathlib.Path)
-    parser.add_argument('--publish', default='MohammadBnei/wird-voice-base-ar-quran')
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -181,10 +200,16 @@ def main() -> None:
     # whole of what went wrong before: the app asked an origin that had never
     # been given anything. The last line of this script is the command that
     # makes the download real.
+    key = published_key()
     print(
-        f'\nexported, not published. To publish:\n'
-        f'  hf upload {args.publish} {args.out} . --repo-type=model\n'
-        f'then check speech.dart\'s defaultVoiceModelOrigin names {args.publish}'
+        f'\nexported, not published: a phone asking for these is answered '
+        f'nothing until they are in the store wird-api signs against.\n'
+        f'  aws --endpoint-url {STORE} s3 cp {args.out}/ s3://{BUCKET}/{key} '
+        f"--recursive --exclude '*' --include 'quran-*' --include 'README.md'\n"
+        f'\nRe-exported weights are a different model. Change the digest '
+        f'segment of defaultVoiceModelOrigin in {SPEECH} and publish under the '
+        f'new key, or a phone resumes a half-finished download onto weights it '
+        f'never started against.'
     )
 
 
