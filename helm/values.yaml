@@ -90,15 +90,21 @@ securityContext:
   capabilities:
     drop: [ALL]
 
-# Three values, and only these three: DATABASE_URL, and the Garage key pair
-# WIRD_MODELS_S3_ACCESS_KEY / WIRD_MODELS_S3_SECRET that /models/ signs with.
-# The secret is built by infra-bootstrap's gitops/bootstrap/wird-secret.yaml,
-# which assembles the DSN from DBUSER_WIRD_PASSWORD in the root Infisical
+# DATABASE_URL, and the five WIRD_MODELS_S3_* values /models/ signs with:
+# ACCESS_KEY, SECRET, BUCKET, ENDPOINT, REGION. The secret is rendered by
+# infra-bootstrap's gitops/bootstrap/wird-secret.yaml from the root Infisical
 # project — the same shape authentik-secret.yaml uses, and for the same
-# reason: a credential exists in exactly one place, so rotating it is one edit
-# rather than a hunt. The Garage pair belongs to a key granted read on the
-# wird-models bucket and nothing else; a key that can write is a key that can
-# replace the weights a phone is about to trust.
+# reason: a value exists in exactly one place, so changing it is one edit
+# rather than a hunt. That is also why the bucket and the endpoint are not
+# repeated as `env` below: a container's `env` overrides `envFrom`, so a chart
+# that named them would go on serving the old endpoint after infra moved it,
+# quietly and only for this pod.
+#
+# The key is granted read AND write on wird-models — one key per bucket is
+# what garage-configure.yml grants, unconditionally. So this pod holds a
+# credential that can overwrite the weights it hands out. Narrowing it to read
+# is a playbook change rather than one command, because the grant re-applies
+# on every run and a new export has to be uploaded by something.
 #
 # NOT `infisical.enabled: true` with projectSlug infra-bootstrap-1-ge1. That
 # would mount the whole root project — PVE tokens, the pigsty CA, every DB
@@ -139,28 +145,12 @@ env:
   # WIRD_OIDC_CLIENT_ID row for exactly that reason.
   - name: OIDC_AUDIENCE
     value: Um9Je1MQghdZ4SqAjB7cWtGNubP64phIuGqzdzro
-  # Where /models/ signs for. The route mints a 15-minute presigned GET and
-  # answers 302; the 160 MB then goes phone-to-store and never crosses this
-  # pod, which is sized for JSON (docs/adr/0008-the-recogniser-is-served-from-wirds-own-host.md).
+  # /models/ needs four values together — WIRD_MODELS_S3_BUCKET, _ENDPOINT,
+  # _ACCESS_KEY and _SECRET — and they all arrive through wird-config above.
+  # With any of them missing server/internal/api/models.go builds no store and
+  # every /models/ request answers 503: the rest of the API is healthy, both
+  # probes pass, and the only thing broken is a reader's Download button.
   #
-  # Four variables are required together — these two, plus the key pair in the
-  # secret above. With any of them missing server/internal/api/models.go builds
-  # no store and every /models/ request answers 503: the rest of the API is
-  # healthy, the probes pass, and the only thing broken is a reader's Download
-  # button. There is no fifth: WIRD_MODELS_S3_REGION defaults to `garage` in
-  # the same file and the store is in that region, so setting it here would be
-  # a second place to drift. It is not cosmetic if it ever moves — the
-  # signature is computed over the region, so a wrong one is a 403 carrying a
-  # signature that looks perfectly well-formed.
-  #
-  # The bucket is NOT world-readable: an unsigned GET against it answers 403.
-  # Anonymous reach is this route's job, not the store's, which is what keeps
-  # the download behind Traefik's rate limiter.
-  - name: WIRD_MODELS_S3_BUCKET
-    value: wird-models
-  # Path-style and grey: https://s3.bnei.dev/<bucket>/<key>. The certificate is
-  # issued for this one name, so a bucket-vhost URL lands on a name nothing has
-  # a cert for. Grey rather than orange is the point — the bytes leave
-  # Cloudflare's free plan alone, and only the JSON-sized 302 is orange.
-  - name: WIRD_MODELS_S3_ENDPOINT
-    value: https://s3.bnei.dev
+  # _REGION is there too. It is not cosmetic if it ever moves — the signature
+  # is computed over the region, so a wrong one is a 403 carrying a signature
+  # that looks perfectly well-formed.

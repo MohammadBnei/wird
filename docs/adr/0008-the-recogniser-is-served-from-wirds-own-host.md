@@ -131,8 +131,12 @@ key in `wird-config`.
   four missing the route answers `503` and nothing else is wrong — the probes
   pass, the API is healthy, and the only broken thing is a reader's Download
   button. That is the failure the chart's comment is written against.
-- **The key pair is read-only on `wird-models` and nothing else.** A key that
-  can write is a key that can replace the weights a phone is about to trust.
+- **The key pair reaches `wird-models` and nothing else, but it can write
+  there.** infra-bootstrap's `garage-configure.yml` grants `--read --write` to
+  every bucket's key unconditionally, so wird-api holds a credential that can
+  replace the weights a phone is about to trust. Read-only is what this wants
+  and it is not one command: the grant re-applies on every run, and a new
+  export still has to be uploaded by something. Open against infra-bootstrap.
 - **Voice-follow now depends on the cluster.** If wird-api is down the
   recogniser cannot be fetched; the feature degrades to the tap the prayer
   screen has always answered, which is the same degradation 0007 accepted for
