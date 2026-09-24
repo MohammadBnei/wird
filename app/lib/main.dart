@@ -3,18 +3,20 @@ import 'package:sqflite/sqflite.dart';
 
 import 'app.dart';
 import 'data/db.dart';
+import 'data/flush.dart';
 import 'nav.dart';
 import 'theme/nocturne.dart';
 
 void main() => runApp(const WirdApp());
 
-/// What the app needs before it can route anywhere: the corpus, and what the
-/// reader has already chosen.
-typedef Bootstrap = ({Database db, Prefs prefs});
+/// What the app needs before it can route anywhere: the corpus, what the
+/// reader has already chosen, and the thing that carries their queue to the
+/// server when the app comes back to the foreground.
+typedef Bootstrap = ({Database db, Prefs prefs, Flusher flusher});
 
 Future<Bootstrap> _open(Future<Database> corpus) async {
   final db = await corpus;
-  return (db: db, prefs: await Prefs.read(db));
+  return (db: db, prefs: await Prefs.read(db), flusher: flusherFor(db));
 }
 
 class WirdApp extends StatefulWidget {
@@ -41,6 +43,7 @@ class _WirdAppState extends State<WirdApp> {
       AsyncSnapshot(hasData: true, :final data?) => wirdApp(
         data.db,
         prefs: data.prefs,
+        flusher: data.flusher,
       ),
       AsyncSnapshot(hasError: true, :final error?) => _beforeTheCorpus(
         Text('The corpus would not open.\n\n$error'),

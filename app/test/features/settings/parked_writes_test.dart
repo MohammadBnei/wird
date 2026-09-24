@@ -5,6 +5,7 @@ import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/outbox.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
+import 'package:wird/features/report/report.dart';
 import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/theme/nocturne.dart';
 
@@ -97,6 +98,28 @@ void main() {
     expect(find.text('Discard'), findsNothing);
     expect(await deadLettered(db), isEmpty);
     expect(await pending(db), isEmpty);
+  });
+
+  // The failure: a report is the one op kind the panel could not name, so the
+  // reader who took the trouble to write a bug is told "A change you made"
+  // about it and has no way to tell which of their writes is stuck.
+  testWidgets('a parked report is named as something the reader cannot place',
+      (tester) async {
+    await sendReport(
+      db,
+      kind: ReportKind.bug,
+      body: 'the audio stops at the end of the set',
+      context: await reportContext(db, screen: 'study'),
+    );
+    final report = (await pending(db)).single;
+    await settle(db, [
+      OpVerdict(report.id, 'refused', reason: 'it is longer than the column'),
+    ]);
+
+    await openSettings(tester);
+
+    expect(find.text('Something you reported'), findsOneWidget);
+    expect(find.text('A change you made'), findsNothing);
   });
 
   // 1b may not block, spin, or show anything. A parked write is settings'

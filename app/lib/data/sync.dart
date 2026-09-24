@@ -55,7 +55,7 @@ class SyncApi {
   final Dio dio;
 
   Future<List<OpVerdict>> push(List<PendingOp> ops) async {
-    final answer = await dio.post<Map<String, dynamic>>(
+    final answer = await dio.post<dynamic>(
       '/v1/sync',
       data: {
         'ops': [
@@ -64,19 +64,42 @@ class SyncApi {
         ],
       },
     );
+    final results = _contract(answer)['results'];
+    if (results is! List) _notTheContract(answer);
     return [
-      for (final r in answer.data!['results'] as List)
+      for (final r in results)
         OpVerdict.fromJson((r as Map).cast<String, dynamic>()),
     ];
   }
 
   Future<ChangePage> pull(String cursor) async {
-    final answer = await dio.get<Map<String, dynamic>>(
+    final answer = await dio.get<dynamic>(
       '/v1/changes',
       queryParameters: {'since': cursor},
     );
-    return ChangePage.fromJson(answer.data!);
+    final page = _contract(answer);
+    if (page['changes'] is! List) _notTheContract(answer);
+    return ChangePage.fromJson(page);
   }
+}
+
+/// A 200 carrying something that is not this contract's JSON. The common one
+/// is a captive portal, which answers every request with its own sign-in page
+/// and a 200 — so the device is not talking to Wird at all.
+///
+/// It is raised as a [DioException] because that is what it is: the flush did
+/// not reach the server. The alternative is what this used to do — read the
+/// body anyway and throw a [TypeError] straight out of [syncNow], past the
+/// one catch that knows the queue is intact and past every caller.
+Never _notTheContract(Response<dynamic> answer) => throw DioException(
+  requestOptions: answer.requestOptions,
+  response: answer,
+  message: 'the answer was not the JSON the sync contract promises',
+);
+
+Map<String, dynamic> _contract(Response<dynamic> answer) {
+  final body = answer.data;
+  return body is Map ? body.cast<String, dynamic>() : _notTheContract(answer);
 }
 
 class SyncReport {

@@ -32,6 +32,10 @@ class ReportScreen extends StatefulWidget {
   State<ReportScreen> createState() => _ReportScreenState();
 }
 
+/// How close to [reportMaxChars] the reader has to be before the screen
+/// mentions it: a paragraph or so.
+const _nearTheEnd = 200;
+
 class _ReportScreenState extends State<ReportScreen> {
   final _text = TextEditingController();
   ReportKind _kind = ReportKind.bug;
@@ -112,9 +116,21 @@ class _ReportScreenState extends State<ReportScreen> {
     NocturneInput(
       controller: _text,
       multiline: true,
+      maxLength: reportMaxChars,
       hint: 'What happened, or what is missing.',
       onChanged: (_) => setState(() {}),
     ),
+    // The limit is said when it is near, and not before. A reader with three
+    // lines to write has no use for a count, and the one who is about to
+    // reach it finds out here rather than by having the report parked.
+    if (_text.text.length > reportMaxChars - _nearTheEnd) ...[
+      SizedBox(height: n.space('1')),
+      _caption(
+        n,
+        '${reportMaxChars - _text.text.length} characters left of '
+        '$reportMaxChars. The server takes no more than that.',
+      ),
+    ],
     _section(n, 'SENT WITH IT'),
     _gathered(n),
     SizedBox(height: n.space('3')),

@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
@@ -12,87 +10,7 @@ import 'package:wird/data/sets.dart';
 import 'package:wird/data/sync.dart';
 
 import '../corpus.dart';
-
-/// A real socket answering the two endpoints, scripted per test.
-///
-/// The server's own behaviour — idempotency, per-op verdicts, tombstones — is
-/// proven in Go against a real Postgres. What is under test here is what the
-/// device does with the answers, so the answers are dictated rather than
-/// computed: a fake that re-implements the contract only tests itself.
-class FakeWird {
-  FakeWird._(this._server) : port = _server.port {
-    unawaited(_serve());
-  }
-
-  static Future<FakeWird> start() async =>
-      FakeWird._(await HttpServer.bind(InternetAddress.loopbackIPv4, 0));
-
-  final HttpServer _server;
-
-  /// Held past the close, so a test can point the device at a port nothing is
-  /// listening on — which is what airplane mode looks like from here.
-  final int port;
-
-  /// Every batch that arrived, in order, as the ops the device sent.
-  final List<List<Map<String, dynamic>>> batches = [];
-
-  /// Every cursor the device asked from.
-  final List<String> cursorsAsked = [];
-
-  /// The verdict for one op id; applied unless a test says otherwise.
-  String Function(String opId) verdict = (_) => 'applied';
-
-  /// Change pages, handed over in turn. When they run out the server says
-  /// nothing has changed.
-  List<Map<String, dynamic>> pages = [];
-
-  Dio get dio => Dio(BaseOptions(baseUrl: 'http://127.0.0.1:$port'));
-
-  List<Map<String, dynamic>> get opsReceived => [
-    for (final batch in batches) ...batch,
-  ];
-
-  Future<void> stop() => _server.close(force: true);
-
-  Future<void> _serve() async {
-    await for (final request in _server) {
-      if (request.uri.path == '/v1/sync') {
-        final body =
-            jsonDecode(await utf8.decoder.bind(request).join())
-                as Map<String, dynamic>;
-        final ops = [
-          for (final op in body['ops'] as List) (op as Map).cast<String, dynamic>(),
-        ];
-        batches.add(ops);
-        _answer(request, {
-          'results': [
-            for (final op in ops)
-              {
-                'client_op_id': op['client_op_id'],
-                'status': verdict(op['client_op_id'] as String),
-                'reason': 'refused in this test',
-              },
-          ],
-        });
-      } else {
-        cursorsAsked.add(request.uri.queryParameters['since'] ?? '');
-        _answer(
-          request,
-          pages.isEmpty
-              ? {'changes': [], 'cursor': '', 'more': false}
-              : pages.removeAt(0),
-        );
-      }
-    }
-  }
-
-  void _answer(HttpRequest request, Map<String, dynamic> body) {
-    request.response
-      ..headers.contentType = ContentType.json
-      ..write(jsonEncode(body));
-    unawaited(request.response.close());
-  }
-}
+import 'fake_wird.dart';
 
 Map<String, dynamic> keptRow(
   String id, {
@@ -442,6 +360,31 @@ void main() {
     expect(report.applied, 2);
     expect(server.cursorsAsked, ['', 'cursor-1']);
     expect(await keptItems(db), hasLength(2));
+  });
+
+  // The failure: hotel wifi answers every request with its own sign-in page
+  // and a 200 on it. The device read that as the contract's JSON, and the
+  // TypeError went straight out of the flush — past the one catch that knows
+  // the queue is intact, and into whatever asked for the flush.
+  test('a captive portal answering 200 throws out of the flush instead of '
+      'being read as a server that was never reached', () async {
+    await markSetUnderstood(db, newOpId(), [96001, 96002, 96003]);
+    server.insteadAPortal = '<html><body>Sign in to Hotel Wifi</body></html>';
+
+    final report = await syncNow(db, SyncApi(server.dio));
+
+    expect(report.reachedServer, isFalse);
+    expect(report.deadLettered, 0);
+    expect(
+      await queued(db),
+      1,
+      reason: 'the portal is not the server, so the write is still waiting',
+    );
+
+    // And the flush after it, on a network with a real server behind it,
+    // carries the same write.
+    server.insteadAPortal = null;
+    expect((await syncNow(db, SyncApi(server.dio))).landed, 1);
   });
 
   // The in-prayer rule, as code rather than as a promise: the write path is

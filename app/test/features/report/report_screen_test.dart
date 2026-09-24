@@ -121,6 +121,36 @@ void main() {
     expect(await queued(db), isNull);
   });
 
+  // The failure: the server's column takes 4000 characters and refuses
+  // anything longer, and a refusal is permanent. So the reader who writes the
+  // long report — the one with the detail in it — has it parked and never
+  // read, and nothing on the screen ever said there was a limit.
+  testWidgets('a report longer than the server accepts is queued and refused '
+      'forever', (tester) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await reportFrom(tester, 'Sūra index');
+
+    await tester.enterText(
+      find.byType(TextField),
+      'the audio stops. ' * (reportMaxChars ~/ 4),
+    );
+    await tester.pump();
+
+    expect(
+      find.textContaining(RegExp('4,?000')),
+      findsOneWidget,
+      reason: 'the limit is met while the reader writes, where they see it',
+    );
+
+    // Four thousand characters is a field taller than the phone.
+    await tester.ensureVisible(find.byKey(const Key('send report')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('send report')));
+    await tester.pumpAndSettle();
+
+    expect(((await queued(db))!['body']! as String).length, reportMaxChars);
+  });
+
   // The failure: the app builds for a target the server's column constraint
   // has never heard of. That report is refused, and a refusal is permanent —
   // it is parked and never arrives.

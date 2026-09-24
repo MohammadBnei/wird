@@ -108,6 +108,7 @@ String describeOp(PendingOp op) {
     'set_recorded' => 'A set you read',
     'set_prayed' => 'A prayer you counted',
     'prefs_set' => 'Your reading order',
+    'report_written' => 'Something you reported',
     _ => 'A change you made',
   };
 }

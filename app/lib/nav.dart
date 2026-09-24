@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'app.dart';
+import 'data/flush.dart';
 import 'data/sets.dart';
 import 'features/about/about_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
@@ -164,15 +165,26 @@ Route<void> screenRoute(RouteSettings settings, Database db) {
 
 /// The app, with the application layer above the navigator: the recitation and
 /// the preferences are held here, so they survive every screen that shows them.
-Widget wirdApp(Database db, {required Prefs prefs, Recitation? recitation}) =>
-    Wird(
-      db: db,
-      prefs: prefs,
-      recitation: recitation ?? Recitation(),
-      child: MaterialApp(
-        title: 'Wird',
-        theme: nocturneTheme(),
-        initialRoute: Routes.dashboard,
-        onGenerateRoute: (settings) => screenRoute(settings, db),
-      ),
-    );
+///
+/// The flusher is held the same way and for the same reason — it is the app
+/// that comes back to the foreground, not a screen — and a build without one
+/// is a test or the gallery, which have no server to reach.
+Widget wirdApp(
+  Database db, {
+  required Prefs prefs,
+  Recitation? recitation,
+  Flusher? flusher,
+}) => Wird(
+  db: db,
+  prefs: prefs,
+  recitation: recitation ?? Recitation(),
+  child: Flushing(
+    flusher: flusher,
+    child: MaterialApp(
+      title: 'Wird',
+      theme: nocturneTheme(),
+      initialRoute: Routes.dashboard,
+      onGenerateRoute: (settings) => screenRoute(settings, db),
+    ),
+  ),
+);

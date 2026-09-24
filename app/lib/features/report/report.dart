@@ -24,6 +24,17 @@ const appVersion = '1.0.0';
 /// refuses until its constraint learns the word.
 String get platformName => defaultTargetPlatform.name.toLowerCase();
 
+/// The longest report the server will take: `reports.body` is
+/// `CHECK (length(body) <= 4000)`, and a CHECK violation is a refusal, which
+/// is permanent — the op parks and the reader's longest report is the one
+/// that never arrives. So the limit is met on the screen, where a reader can
+/// see it, rather than in an answer nobody reads.
+///
+/// ponytail: Dart counts UTF-16 units and Postgres counts characters, so a
+/// report written in emoji is cut shorter here than the server would cut it.
+/// Count runes if anybody ever reports in them.
+const reportMaxChars = 4000;
+
 /// What a reader does not have to type, read once so the screen can show the
 /// reader exactly the values that will be sent.
 Future<Map<String, Object?>> reportContext(
