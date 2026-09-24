@@ -17,8 +17,13 @@ buildable() {
 		sed -n '/Ineligible destinations/q;p' | grep -q "id:$1"
 }
 
+# Cabled only. A wirelessly paired iPhone is listed, is available, and builds —
+# and then every journey dies at load with "Cannot start app on wirelessly
+# tethered iOS device", which reads as six dropped journeys rather than as
+# somebody's phone being on the same wifi.
 iphone=$(xcrun xcdevice list 2>/dev/null |
-	jq -r 'map(select(.simulator == false and .platform == "com.apple.platform.iphoneos" and .available == true))
+	jq -r 'map(select(.simulator == false and .platform == "com.apple.platform.iphoneos"
+	              and .available == true and .interface == "usb"))
 	       | .[0].identifier // empty')
 if [ -n "$iphone" ] && buildable "$iphone"; then
 	echo "$iphone"
