@@ -74,6 +74,13 @@ const defaultVoiceModelOrigin =
 /// a realtime factor of 0.07 — so a phone several times slower still spends a
 /// fraction of the prayer decoding it.
 const heardChunk = Duration(milliseconds: 300);
+
+/// How long the reader's own tap holds the prayer against the voice.
+///
+/// Long enough that the words they tapped past fall out of the matching
+/// window, so the next answer describes where they now are rather than where
+/// they were when they reached for the screen.
+const heardHeldByHand = Duration(seconds: 4);
 const heardSampleRate = 16000;
 
 /// Why a download stopped, in the two shapes that mean different things to the

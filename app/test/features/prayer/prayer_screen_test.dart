@@ -146,7 +146,7 @@ void main() {
       wakelock: Phone().keepAwake,
       // Where a voice being followed leaves the cursor: three words into
       // 103:3, which no tap of the reader's could have reached.
-      cursor: PrayerCursor(14, position: 7),
+      cursor: PrayerCursor(14, at: 7),
     );
     expect(litWord(tester), 103003003);
     await tapOn(tester, PrayerScreen.backZone);
@@ -171,10 +171,14 @@ void main() {
   testWidgets('the set recited a second time inside the same prayer runs off '
       'the end instead of starting again', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
-    expect(find.text('1st reading'), findsOneWidget);
+    expect(find.text("Al-'Asr · 1"), findsOneWidget);
     await tapOn(tester, PrayerScreen.nextZone, times: set.ayas.length);
     expect(litWord(tester), 103001001);
-    expect(find.text('2nd reading'), findsOneWidget);
+    // The footer says where in the sūra the reciter is, and on the second
+    // reading of the set that is the same sentence as on the first. A count of
+    // readings could only be derived from a cursor that never moved backward,
+    // and a reciter repeating an aya would have made it tick down.
+    expect(find.text("Al-'Asr · 1"), findsOneWidget);
   });
 
   testWidgets('the prayer stops to show a dialog, an error or a spinner, in '
@@ -217,9 +221,10 @@ void main() {
       set: await setOf(db, [2282]),
       wakelock: Phone().keepAwake,
     );
-    expect(find.text('1st reading'), findsOneWidget);
+    expect(find.text('Al-Baqarah · 282'), findsOneWidget);
     await tapOn(tester, PrayerScreen.nextZone);
-    expect(find.text('2nd reading'), findsOneWidget);
+    // One aya, so the only aya to go on to is itself.
+    expect(find.text('Al-Baqarah · 282'), findsOneWidget);
   });
 
   testWidgets('the prayer opens the microphone on a reader who never allowed '

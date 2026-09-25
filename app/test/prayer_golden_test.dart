@@ -36,7 +36,7 @@ void main() {
           // The design's own frame: the third word of 103:2 being recited,
           // the second time through the set. Nothing on this screen animates,
           // and the cursor is pinned, so the frame is the same every run.
-          cursor: PrayerCursor(14, position: 17),
+          cursor: PrayerCursor(14, at: 3),
           wakelock: _heldOpen,
         ),
       ),

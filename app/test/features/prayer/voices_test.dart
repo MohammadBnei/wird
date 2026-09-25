@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
+import 'package:wird/features/prayer/alignment.dart';
 import 'package:wird/features/prayer/voice_follow.dart';
 
 /// Voice-follow graded against five recitations of two sūras rather than one.
@@ -32,6 +33,63 @@ Map<String, dynamic> _fixture(String name) =>
         as Map<String, dynamic>;
 
 void main() {
+  // The two things a reciter does that the app could not follow until
+  // 2026-09-25, and which nothing covered because the cursor refused them by
+  // construction. Both are ordinary prayer, and during ṣalāh there is no hand
+  // coming to correct the screen if it will not go with them.
+  group('what a reciter does and the screen would not', () {
+    final words = _fatiha.split(' ').take(17).toList();
+    final set = Recitation(words);
+    // 0 بسم 1 الله 2 الرحمن 3 الرحيم | 4 الحمد 5 لله 6 رب 7 العالمين
+    // 8 الرحمن 9 الرحيم | 10 مالك 11 يوم 12 الدين | 13 اياك 14 نعبد
+    // 15 واياك 16 نستعين
+
+    test('the reciter goes back an aya and is dragged onward instead', () {
+      final cursor = PrayerCursor(set.words.length);
+      cursor.moveTo(locate(set, 'مَالِكِ يَوْمِ الدِّينِ')!.word);
+      expect(cursor.at, 12);
+
+      // They go back to the second aya and say it again.
+      final back = locate(set, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ');
+      expect(back, isNotNull, reason: 'the reciter said a whole aya of the '
+          'set and the screen had nothing to say about it');
+      cursor.moveTo(back!.word);
+      expect(cursor.at, 7, reason: 'the screen stayed at 12 while the reciter '
+          'was four words behind it, for the rest of the prayer');
+    });
+
+    test('the recogniser warming up carries the prayer off word one', () {
+      // A streaming transducer starts with no left context — this one wants
+      // 128 frames of it — and a multilingual one must also settle on a
+      // language, so the opening of a prayer comes back wrong. The owner's own
+      // بِسْمِ ٱللَّهِ arrives as هي. Measured and rejected: a silent lead-in makes
+      // it worse (500 ms of silence decodes as "OR", a second as "A EMOTION"),
+      // and modified_beam_search worse still ("Э") and 29% slower.
+      //
+      // It costs nothing, and this is why: the screen starts on word 0, which
+      // is where the reciter starts, so there is nowhere to be carried from.
+      // What matters is that the nonsense is refused rather than acted on.
+      expect(locate(set, 'هي'), isNull);
+      expect(locate(set, 'OR'), isNull);
+      expect(locate(set, 'A EMOTION'), isNull);
+      expect(locate(set, 'Э'), isNull);
+    });
+
+    test('the set begun again for the next rakʿa runs off the end', () {
+      final cursor = PrayerCursor(set.words.length)..moveTo(16);
+
+      // The transcript never resets — one stream lives for the whole prayer —
+      // so the next rakʿa arrives as more words on the end of the same
+      // recitation, and the only thing that says "they have started again" is
+      // that what they are saying now is the opening of the set.
+      final again = locate(set, 'بِسْمِ اللَّهِ');
+      expect(again, isNotNull);
+      cursor.moveTo(again!.word);
+      expect(cursor.at, 1, reason: 'the second rakʿa was prayed against a '
+          'screen frozen on the last aya of the first');
+    });
+  });
+
   // The set the owner was actually praying when voice-follow was found dead:
   // al-Fātiḥa 1-5, which says ٱلرَّحْمَٰنِ ٱلرَّحِيمِ twice — once in the
   // basmala and once as its own aya. A set that repeats a phrase inside
@@ -41,17 +99,22 @@ void main() {
   // was asked to be, so a window that matched the muṣḥaf exactly was refused.
   // Every window of his prayer was refused and the screen never moved.
   test('a phrase the set says twice stops the prayer following at all', () {
-    final keys = recitationKeys(_fatiha.split(' ').take(17));
-    expect(keys[2], keys[8], reason: 'this set has to repeat, or it tests nothing');
+    final words = _fatiha.split(' ').take(17).toList();
+    final set = Recitation(words);
+    expect(
+      recitationKey(words[2]),
+      recitationKey(words[8]),
+      reason: 'this set has to repeat, or it tests nothing',
+    );
 
-    final exact = locate(keys, 0, 'بِسْمِ اللَّهِ');
+    final exact = locate(set, 'بِسْمِ اللَّهِ');
     expect(
       exact,
       isNotNull,
       reason: 'the recogniser heard the opening of the set exactly and the '
           'prayer stayed where it was',
     );
-    expect(exact!.position, 1);
+    expect(exact!.word, 1);
     expect(exact.score, 1.0);
   });
 
@@ -61,7 +124,7 @@ void main() {
   for (final reciter in ['Alafasy', 'Abdul', 'Minshawy']) {
     test('$reciter recites al-Fātiḥa and the prayer does not follow', () {
       final fixture = _fixture('fatiha_${reciter}_heard');
-      final keys = recitationKeys(_fatiha.split(' '));
+      final set = Recitation(_fatiha.split(' '));
       final bounds = (fixture['ayas'] as List).cast<Map<String, dynamic>>();
 
       int couldHaveReached(int ms) {
@@ -73,34 +136,30 @@ void main() {
         return words - 1;
       }
 
-      final cursor = PrayerCursor(keys.length);
-      var advances = 0, lost = 0;
+      final cursor = PrayerCursor(set.words.length);
+      var advances = 0;
       final ahead = <String>[];
       for (final window in (fixture['windows'] as List)) {
-        final moved = followHeard(
-          cursor,
-          keys,
-          window['heard'] as String,
-          reach: lost >= followLostAfter ? keys.length : followReach,
-        );
-        lost = moved ? 0 : lost + 1;
-        if (!moved) continue;
+        final was = cursor.at;
+        final at = locate(set, window['heard'] as String);
+        if (at != null) cursor.moveTo(at.word);
+        if (cursor.at == was) continue;
         advances++;
         final could = couldHaveReached(window['atMs'] as int);
-        if (cursor.position > could) {
+        if (cursor.at > could) {
           ahead.add(
             '${window['atMs']}ms "${window['heard']}" landed on '
-            '${cursor.position}, the reciter was no further than $could',
+            '${cursor.at}, the reciter was no further than $could',
           );
         }
       }
 
       expect(ahead, isEmpty, reason: ahead.join('\n'));
       expect(
-        cursor.position,
-        greaterThanOrEqualTo(keys.length - 3),
+        cursor.at,
+        greaterThanOrEqualTo(set.words.length - 3),
         reason: 'the prayer was left $advances advances in, on word '
-            '${cursor.position} of ${keys.length}',
+            '${cursor.at} of ${set.words.length}',
       );
     });
   }
@@ -118,26 +177,24 @@ void main() {
   test('the owner recites into Wird itself and the prayer stops following', () {
     final fixture = _fixture('fatiha_reader_heard');
     // al-Fātiḥa 1-5, which is the set the prayer screen was showing him.
-    final keys = recitationKeys(_fatiha.split(' ').take(fixture['words'] as int));
-    final cursor = PrayerCursor(keys.length);
-    var advances = 0, lost = 0;
+    final set = Recitation(
+      _fatiha.split(' ').take(fixture['words'] as int).toList(),
+    );
+    final cursor = PrayerCursor(set.words.length);
+    var advances = 0;
     for (final window in (fixture['windows'] as List)) {
-      final moved = followHeard(
-        cursor,
-        keys,
-        window['heard'] as String,
-        reach: lost >= followLostAfter ? keys.length : followReach,
-      );
-      lost = moved ? 0 : lost + 1;
-      if (moved) advances++;
+      final was = cursor.at;
+      final at = locate(set, window['heard'] as String);
+      if (at != null) cursor.moveTo(at.word);
+      if (cursor.at != was) advances++;
     }
 
     expect(
-      cursor.position,
-      greaterThanOrEqualTo(keys.length - 3),
+      cursor.at,
+      greaterThanOrEqualTo(set.words.length - 3),
       reason: 'the reader recited the whole set and the prayer reached word '
-          '${cursor.position} of ${keys.length} in $advances advances',
+          '${cursor.at} of ${set.words.length} in $advances advances',
     );
-    expect(cursor.position, lessThan(keys.length));
+    expect(cursor.at, lessThan(set.words.length));
   });
 }

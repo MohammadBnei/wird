@@ -6,8 +6,8 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../data/mic.dart';
 import '../../data/speech.dart';
+import 'alignment.dart';
 import 'prayer_cursor.dart';
-import 'voice_follow.dart';
 
 /// The microphone, wired to the cursor.
 ///
@@ -21,10 +21,10 @@ import 'voice_follow.dart';
 /// it has no error to show, and the only thing it can do to the prayer is call
 /// [PrayerCursor.follow], which refuses to rewind and ceilings a jump.
 class PrayerVoice {
-  PrayerVoice._(this._cursor, this._keys, this._recogniser, this._mic);
+  PrayerVoice._(this._cursor, this._set, this._recogniser, this._mic);
 
   final PrayerCursor _cursor;
-  final List<String> _keys;
+  final Recitation _set;
   final Recogniser _recogniser;
   final AudioRecorder _mic;
 
@@ -36,10 +36,14 @@ class PrayerVoice {
   final _waiting = <double>[];
   var _handing = false;
 
-  /// How many answers in a row have found nothing. Past [followLostAfter] the
-  /// search widens to the whole set, because a reach measured from the cursor
-  /// cannot find a reciter who walked past it while the screen stood still.
-  var _lost = 0;
+  /// Until when the reader's own hand has the prayer.
+  ///
+  /// A tap and a voice disagree for a moment by construction: the reader taps
+  /// because the screen is in the wrong place, and the seconds already heard
+  /// still describe where it was. Without this the next answer — computed from
+  /// the same unchanged recitation — puts the screen straight back, and the
+  /// one correction the reader has stops working.
+  DateTime _theirs = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Starts listening, or answers null and leaves the prayer to the thumb.
   ///
@@ -72,12 +76,7 @@ class PrayerVoice {
       if (!await mic.hasPermission(request: false)) {
         throw StateError('the microphone was taken away since Settings');
       }
-      final voice = PrayerVoice._(
-        cursor,
-        recitationKeys(words),
-        recogniser,
-        mic,
-      );
+      final voice = PrayerVoice._(cursor, Recitation(words), recogniser, mic);
       await voice._listen();
       return voice;
     } on Object {
@@ -122,14 +121,11 @@ class PrayerVoice {
         final samples = Float32List.fromList(_waiting);
         _waiting.clear();
         final heard = await _recogniser.hear(samples);
-        if (heard.isEmpty) continue;
-        final moved = followHeard(
-          _cursor,
-          _keys,
-          heard,
-          reach: _lost >= followLostAfter ? _keys.length : followReach,
-        );
-        _lost = moved ? 0 : _lost + 1;
+        if (heard.isEmpty || DateTime.now().isBefore(_theirs)) continue;
+        final at = locate(_set, heard);
+        // Above the bar the word is named; at the bar the aya is as much as
+        // the recitation actually said.
+        if (at != null) _cursor.moveTo(at.word, sure: at.score >= followSure);
       }
     } on Object {
       // Silence. The reader taps, as they always could.
@@ -137,6 +133,10 @@ class PrayerVoice {
       _handing = false;
     }
   }
+
+  /// The reader moved the prayer themselves. Their hand wins for a moment,
+  /// long enough for what they were reciting to leave the window.
+  void hold() => _theirs = DateTime.now().add(heardHeldByHand);
 
   Future<void> stop() async {
     await _stream?.cancel();

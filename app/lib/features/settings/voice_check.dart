@@ -6,8 +6,8 @@ import 'package:record/record.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/speech.dart';
+import '../../features/prayer/alignment.dart';
 import '../../features/prayer/prayer_cursor.dart';
-import '../../features/prayer/voice_follow.dart';
 import '../../theme/nocturne.dart';
 
 /// Whether voice-follow works on this phone, answered without praying.
@@ -53,12 +53,11 @@ class _VoiceCheckState extends State<VoiceCheck> {
   int _samples = 0;
   Duration _slowest = Duration.zero;
 
-  late final List<String> _keys = recitationKeys(widget.words);
+  late final Recitation _set = Recitation(widget.words);
   late final PrayerCursor _cursor = PrayerCursor(
-    _keys.isEmpty ? 1 : _keys.length,
+    widget.words.isEmpty ? 1 : widget.words.length,
   );
-  var _lost = 0;
-  var _advances = 0;
+  var _moves = 0;
 
   @override
   void initState() {
@@ -122,15 +121,11 @@ class _VoiceCheckState extends State<VoiceCheck> {
         final heard = await recogniser.hear(samples);
         final took = DateTime.now().difference(began);
         if (!mounted) return;
-        if (heard.isNotEmpty && _keys.isNotEmpty) {
-          final moved = followHeard(
-            _cursor,
-            _keys,
-            heard,
-            reach: _lost >= followLostAfter ? _keys.length : followReach,
-          );
-          _lost = moved ? 0 : _lost + 1;
-          if (moved) _advances++;
+        if (heard.isNotEmpty && !_set.isEmpty) {
+          final was = _cursor.at;
+          final at = locate(_set, heard);
+          if (at != null) _cursor.moveTo(at.word);
+          if (_cursor.at != was) _moves++;
         }
         setState(() {
           if (took > _slowest) _slowest = took;
@@ -194,10 +189,10 @@ class _VoiceCheckState extends State<VoiceCheck> {
               // Not decoration: a reader who sees no words needs to know
               // whether the microphone is delivering nothing or the recogniser
               // is making nothing of it, and those look identical above.
-              if (_keys.isNotEmpty)
+              if (!_set.isEmpty)
                 Text(
-                  'the prayer would be on word ${_cursor.word + 1} of '
-                  '${_keys.length}, after $_advances advances',
+                  'the prayer would be on word ${_cursor.at + 1} of '
+                  '${widget.words.length}, after $_moves moves',
                   style: TextStyle(color: n.color('accent-400')),
                 ),
               Text(

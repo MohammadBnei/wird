@@ -218,6 +218,106 @@ guard that stops a repeated phrase pulling the prayer forward, which is why it
 is what happens when tracking has already failed rather than how tracking
 works.
 
+## The two assumptions that were false about prayer
+
+Everything above was written on the belief that **the tap is the fallback** —
+the phrase appears in this ADR, in `prayer_voice.dart` and in `PrayerCursor`.
+It is not. During ṣalāh the phone lies on the floor and the reader cannot move
+until the prayer ends. There is no hand coming.
+
+So *"a wrong advance is worse than no advance"* is false as stated: both are
+unrecoverable, and the reader lives with whichever they got for the rest of
+the prayer. What is true is narrower — **a wrong place is worse than a late
+one** — because lateness fixes itself as the reciter carries on.
+
+And **a reciter goes backward on purpose.** Repeating an aya, or a phrase, or
+beginning the set again for the next rakʿa, is ordinary prayer. `PrayerCursor`
+was *"advance or freeze, never rewind"*, so the app was structurally unable to
+follow any of it. `locate` enforced the same thing a second time by never
+proposing a place behind the cursor, which is why changing one of them alone
+did nothing.
+
+The owner found this by using it: eight builds, and the best of them advanced
+twice and stopped on word 4 of 17.
+
+### What replaced them
+
+`alignment.dart`. The search covers **the whole set** — no band measured from
+a cursor that may already be stranded — and the cursor takes any place it is
+given. What stops a wrong move is no longer a bound on distance but a bound on
+**evidence**: one place must fit the last two dozen letters better than every
+other place by [`followMargin`], or nothing moves. Refusing costs a window of
+lag; the next window is unambiguous and the screen catches up.
+
+Two constants earned their keep unchanged through the rewrite, and one guard
+turned out to be doing all the work:
+
+- `heardTailLetters = 24` — and it must stay short, see below.
+- `followThreshold = 0.44` — the floor under a voice.
+- `followMargin = 0.32` — **the whole of the safety.** It is what tells the two
+  copies of a repeated phrase apart, by refusing both. It also catches phrases
+  that merely resemble each other: Al-ʿAlaq says ٱلَّذِى خَلَقَ and ٱلَّذِى عَلَّمَ,
+  seven letters differing in two, scoring 0.71 against one another, and a
+  window holding one of them cannot honestly say which.
+
+### The design this rejected, so it is not proposed again
+
+Aligning a **long** window of the transcript against the set — a Sellers DP,
+on the reasoning that more context distinguishes two copies of a phrase. It
+does. It cannot be had, and a doubt-driven pass established that by building
+it and running it on this repo's own fixtures:
+
+- **A linear alignment cannot represent a repeat.** The set's letters are spent
+  once, so a repeated phrase aligns *forward* through the text just repeated.
+  Measured: repeating al-Fātiḥa's third aya moved the reader 9 → 11 → 13, into
+  the two ayas after it — the exact failure this feature exists to avoid.
+- **The transcript never resets** (one stream per screen, `enableEndpoint:
+  false`). A window longer than the set is minimised by matching the longest
+  span, which pins the answer to the last word — measured at word 16 of 17 for
+  the whole of a second rakʿa.
+
+Long context and following a repeat are in direct tension. The repeat wins.
+
+### The opening of a prayer comes back wrong, and it costs nothing
+
+A streaming transducer starts with no left context — this one is built for 128
+frames of it — and a multilingual one has also to settle on a language. So the
+first second or two of a prayer decodes badly: the owner's own بِسْمِ ٱللَّهِ
+arrives as `هي`.
+
+Three fixes were tried against his recorded prayer and all three are worse:
+
+| | first words | at 26 s |
+| --- | --- | --- |
+| greedy, as shipped | `هي` | tracks correctly |
+| 500 ms of silence first | `OR` | never recovers |
+| 1 s of silence first | `A` | `A EMOTION الحمد لله…` |
+| `modified_beam_search` | `Э` | tracks, 29% slower |
+| beam + the set as hotwords, score 5 | `Э` | emits ٱلرَّحْمَٰنِ ٱلرَّحِيمِ **three times** |
+
+The last is the worst of them: contextual biasing on a set we know exactly
+sounds like the obvious win, and what it actually does is invent a repetition
+the reciter never made — which is precisely the input this matcher is least
+able to survive.
+
+**It costs nothing, and the reason is worth stating.** The screen starts on
+word 0, which is where the reciter starts, so there is nowhere to be carried
+from; and the margin refuses the nonsense rather than acting on it. Traced on
+his prayer: the cursor sits on word 0 for 6.3 s while he recites the basmala,
+then moves to word 5 and tracks. Late, never wrong.
+
+### Why not an Arabic model, or a Qur'an one
+
+There is no Arabic-only **streaming** model in sherpa-onnx's ecosystem;
+searched four ways, the multilingual zipformer is the only one. The
+Qur'an-specific models that exist — `wav2vec2-base-word-by-word-quran-asr`,
+`whisper-small-quran-asr` and others — are all **non-streaming**, which is the
+architecture measured at 1576 ms median on the owner's phone and rejected
+above. A Qur'an-tuned streaming model would have to be fine-tuned from this
+zipformer on Qur'an audio: a project, not a configuration, and worth doing
+only if the general-Arabic spelling turns out to cost a reader something the
+margin cannot absorb.
+
 ## Battery and heat
 
 A prayer runs for many minutes and continuous inference is real. Two bounds are
