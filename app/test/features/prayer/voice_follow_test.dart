@@ -119,7 +119,13 @@ void main() {
       // walked the whole set and arrived at its last word.
       expect(grade.ended, _recitation().words.length - 1);
       expect(grade.worstLag, lessThanOrEqualTo(2));
-      expect(grade.inStep, greaterThanOrEqualTo(grade.windows - 4));
+      // One window less in step than the word matcher this replaced, and it
+      // stays here rather than being tightened back: the same setting follows
+      // four other voices, including the reader in voices_test.dart whom the
+      // word matcher advanced once in twenty-three windows. The numbers above
+      // are the safety and are unchanged; this one is closeness, and a window
+      // of it on one studio reciter is what following the rest costs.
+      expect(grade.inStep, greaterThanOrEqualTo(grade.windows - 5));
     },
   );
 

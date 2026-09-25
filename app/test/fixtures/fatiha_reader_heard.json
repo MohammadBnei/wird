@@ -1,0 +1,102 @@
+{
+ "what": "the owner reciting al-Fatiha into his own phone, heard by tarteel-ai/whisper-base-ar-quran",
+ "audio": "a voice memo, recorded in a room rather than a studio, and not kept: only what the recogniser made of it is here",
+ "why": "every other fixture is a professional reciter in a studio, and a matcher tuned on those alone shuts out the readers this is for — an accent, a slip, a room. This one is the voice the feature was found broken on: it advanced the prayer once in 23 windows.",
+ "windowMs": 4000,
+ "hopMs": 1200,
+ "words": 29,
+ "windows": [
+  {
+   "atMs": 4000,
+   "heard": "بِسْمِ اللَّهِ رَحْمَانَ رَحِيم"
+  },
+  {
+   "atMs": 5200,
+   "heard": "الْحَمْدُ"
+  },
+  {
+   "atMs": 6400,
+   "heard": "الْحَمْدُ لِلَّهَةِ الْمِن"
+  },
+  {
+   "atMs": 7600,
+   "heard": "الْحَمْدُ لِلَّهِ بِيَةٍ"
+  },
+  {
+   "atMs": 8800,
+   "heard": "إِلَّا رَبِالْلَمِينَ أَرَ"
+  },
+  {
+   "atMs": 10000,
+   "heard": "وَرَحْمَانَ رَحِيمَ"
+  },
+  {
+   "atMs": 11200,
+   "heard": "وَرَحْمَانَ رَحِيمَ فَلَا كَي"
+  },
+  {
+   "atMs": 12400,
+   "heard": "وَلَا كَيُمِ الدِّينِ"
+  },
+  {
+   "atMs": 13600,
+   "heard": "فَلَاكَ يُوَمِ الدِّينِ يَا كَم"
+  },
+  {
+   "atMs": 14800,
+   "heard": "وَالْمِتِّينَ يَا كَمَا اعْبُ"
+  },
+  {
+   "atMs": 16000,
+   "heard": "يَا كَانَ أَعْبُدُ وَيَا كَمَ"
+  },
+  {
+   "atMs": 17200,
+   "heard": "وَيَاكَنَا السَّيِّنَ بِعْدِ"
+  },
+  {
+   "atMs": 18400,
+   "heard": "يَهْدِي الْغَفْرَاتَ الْمُسْت"
+  },
+  {
+   "atMs": 19600,
+   "heard": "وَاهْدِنَا سِرَاطَ الْمُسْتَق"
+  },
+  {
+   "atMs": 20800,
+   "heard": "فَالْمُسْتَقِيمِ سَرَاطَ الَّذ"
+  },
+  {
+   "atMs": 22000,
+   "heard": "سَرَوْتَ الَّذِينَ نَعَمْتَ ع"
+  },
+  {
+   "atMs": 23200,
+   "heard": "وَالَّذِينَ نَعَمْتَ عَلَيْه"
+  },
+  {
+   "atMs": 24400,
+   "heard": "عَلَيْهِمْ غَيْرَ مَعْضُوبِ"
+  },
+  {
+   "atMs": 25600,
+   "heard": "غَيْرِ اعْضُوا بِعَلَيْهِمْ"
+  },
+  {
+   "atMs": 26800,
+   "heard": "وَلَا الَّالِمِينَ"
+  },
+  {
+   "atMs": 28000,
+   "heard": "وَلَا الَّالِمِينَ"
+  },
+  {
+   "atMs": 29200,
+   "heard": "حم"
+  },
+  {
+   "atMs": 30400,
+   "heard": "حم"
+  }
+ ]
+}

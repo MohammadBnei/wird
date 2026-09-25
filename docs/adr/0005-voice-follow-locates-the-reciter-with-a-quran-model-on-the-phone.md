@@ -46,17 +46,44 @@ anyway, and stores the answer. The prayer screen reads the stored answer and
 asks the recorder `hasPermission(request: false)` — it can decline to listen,
 never prompt.
 
-**The matcher refuses rather than guesses.** It normalises both the muṣḥaf's
-Uthmani and the recogniser's plain Arabic to the letters they agree on, scores
-the last four heard words against every position from the cursor forward to a
-handful of words on, weights the most recent word heaviest, and moves only above
-a threshold. Ties go to the nearer position, because a reciter is more likely at
+**The matcher refuses rather than guesses, and it matches letters, not words.**
+It normalises both the muṣḥaf's Uthmani and the recogniser's plain Arabic to the
+letters they agree on, and compares the last two dozen letters heard against the
+set read as one run of letters, at every word end from the cursor forward to a
+handful of words on.
+
+It compared word against word until the owner recited al-Fātiḥa into it and the
+prayer advanced once in twenty-three windows. Two things were wrong and both
+were assumptions rather than constants. A window ends where the clock says, not
+where the reciter draws breath, so its last word is usually a stump — and the
+old scoring put its heaviest weight there, which made a window that ended
+mid-word arithmetically incapable of clearing the threshold: 0.5047 at best
+against a bar of 0.62, however well every other word agreed. And word
+boundaries are not a coordinate system the two sides share. Tajwīd reshapes
+words and the recogniser cuts them where it hears them, so مَالِكِ comes back as
+`فلا ك` and إِيَّاكَ as `يا ك`; one re-cut word misaligned everything after it,
+and a window whose last word matched the muṣḥaf exactly still scored 0.54.
+Letters are what both sides do share, and an accent, a slip or a reshaped word
+arrive as a few letters out of two dozen — a percentage rather than a verdict.
+
+**What a window must clear is how much better it fits here than anywhere else,
+not an absolute score.** A fine reciter agrees with the muṣḥaf more closely
+everywhere, so a bar set on one shuts out a reader with an accent — whose best
+match may score 0.55 where a studio reciter's scores 0.85. What does not depend
+on the voice is whether one place fits better than the rest, so the best
+agreement must beat the best agreement elsewhere by a margin proportional to
+itself. A short window is asked for more besides: a handful of letters finds
+agreement almost anywhere in a run of them, so what a window lacks of the full
+tail it adds to the bar it must clear. Ties go to the nearer position, because a reciter is more likely at
 the first of two places that sound alike. The forward reach is a distance and
 not the end of the reading: the count runs straight through repetitions, so a
 reciter carrying on into the next reading is one position away and still
 followed, while a cursor standing ahead of the reciter — which is where a tap on
 the go-on zone leaves it — cannot be dragged a whole reading on by the word
-just recited coming round again. The constants are bounds rather than fits —
+just recited coming round again. A reciter who does run on into the next reading
+arrives at its first word, never its seventh: anything further in is the same
+phrase found again a reading on, since every word of the set repeats there, and
+taking it costs the reader the whole reading they were in. The constants are bounds rather than fits —
 see what the measurement below does not establish.
 
 ## Measured
@@ -94,6 +121,28 @@ advances, and the threshold sweeps from 0.10 to 0.80 with no wrong advance at
 any setting. One clean recording of one reciter is not enough to tune against;
 the constants are conservative bounds, and the honest next measurement is a
 phone in a room with a reader who hesitates.
+
+**That measurement was taken, and this section was right to warn.** The owner
+recited al-Fātiḥa into his own phone and the prayer advanced once in
+twenty-three windows — he read the whole sūra to a screen sitting on word 4 of
+29. The table above was perfect at the same moment, on the same code: a matcher
+can follow Ḥuṣarī through Al-ʿAlaq without a single error and be useless to the
+reader it was built for, and nothing in a studio recording says so. What the
+grade measures is a matcher against a reciter, not a matcher.
+
+The fixtures are now five recitations of two sūras — Ḥuṣarī, Alafasy, Abdul
+Basit, Minshawy, and the owner in a room — built by `scripts/voice-fixture.py`,
+graded in `voice_follow_test.dart` and `voices_test.dart`. The three studio
+reciters all pass against the *old* word matcher; only the owner's recording
+fails it. A fixture set of professionals would not have caught this and would
+not catch the next one of its kind.
+
+Still not established, and the reason the constants stay conservative: one
+non-studio voice is one voice. The plateau where all five are followed with no
+wrong advance is about one step wide in the margin, which is what thin evidence
+looks like. The next measurement is other people's voices — the friends and
+family this is being handed to, who are the population the feature is for and
+who are, unlike a reciter with an ijāza, the ones it keeps failing.
 
 **Cost per window**, base int8, twenty 4-second windows on an M4 at
 `num_threads=2`: median 346 ms, worst 456 ms. At one thread, 504 ms median.

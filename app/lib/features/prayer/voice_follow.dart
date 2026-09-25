@@ -13,10 +13,18 @@ import 'prayer_cursor.dart';
 /// advance. Where the answer is not clear nothing moves, and the reader's
 /// thumb still works, as it always did.
 
-/// How many of the most recently heard words are matched. A recogniser is
-/// asked about the last few seconds, so its tail is the part that describes
-/// where the reciter is now; anything earlier only has to agree.
-const heardTail = 4;
+/// How many letters of the tail are matched. A recogniser and a muṣḥaf do not
+/// break words in the same places, so the comparison runs over letters; this
+/// is roughly the last four words of recitation.
+const heardTailLetters = 24;
+
+/// What a window short of [heardTailLetters] adds to the bar it must clear.
+/// A handful of letters finds agreement almost anywhere in a run of them, so
+/// a teaching pace that puts two words in a window is asked for more
+/// certainty than a reader at speed who puts five in.
+const followPerLetterShort = 0.01;
+
+const followMargin = 0.55;
 
 /// The score below which nothing moves.
 ///
@@ -30,10 +38,8 @@ const heardTail = 4;
 /// studio recording, which would only be over-fitting to it.
 ///
 /// The guards below and this one carry the safety together rather than
-/// severally: dropping any one of them alone leaves the measurement at zero
-/// wrong advances, and dropping this, [_similar]'s floor and [heardTail]
-/// together puts four wrong advances into 52 windows.
-const followThreshold = 0.62;
+/// severally: no one of them holds the measurement on its own.
+const followThreshold = 0.44;
 
 /// Two candidates this close together are one answer told twice, and the
 /// earlier is taken: the reciter is likelier to be at the first of two places
@@ -99,51 +105,116 @@ List<String> recitationKeys(Iterable<String> words) => [
   String heard,
 ) {
   if (keys.isEmpty) return null;
-  final tail = <String>[];
-  for (final word in heard.split(RegExp(r'\s+'))) {
-    final key = recitationKey(word);
-    if (key.isNotEmpty) tail.add(key);
+
+  // The set as one run of letters, and which word each letter belongs to. A
+  // recogniser and a muṣḥaf do not agree on where a word ends — مَالِكِ comes
+  // back as `فلا ك`, إِيَّاكَ as `يا ك` — so matching token against token
+  // misaligns everything after the first split, however well the letters
+  // agree. Letters are the coordinate system both sides share.
+  final letters = StringBuffer();
+  final wordOf = <int>[];
+  for (var word = 0; word < keys.length; word++) {
+    for (var i = 0; i < keys[word].length; i++) {
+      wordOf.add(word);
+    }
+    letters.write(keys[word]);
   }
-  if (tail.isEmpty) return null;
-  final recent = tail.length <= heardTail
-      ? tail
-      : tail.sublist(tail.length - heardTail);
+  final stream = letters.toString();
+  if (stream.isEmpty) return null;
+
+  final spoken = StringBuffer();
+  for (final word in heard.split(RegExp(r'\s+'))) {
+    spoken.write(recitationKey(word));
+  }
+  var tail = spoken.toString();
+  // Fewer letters than a word is not a position, it is a noise.
+  if (tail.length < 4) return null;
+  if (tail.length > heardTailLetters) {
+    tail = tail.substring(tail.length - heardTailLetters);
+  }
+
+  // Where the cursor stands, as a letter offset into the endlessly repeated
+  // stream: the prayer counts straight through every reading of the set.
+  var at = (from ~/ keys.length) * stream.length;
+  for (var word = 0; word < from % keys.length; word++) {
+    at += keys[word].length;
+  }
+  at += keys[from % keys.length].length;
+
+  var reach = 0;
+  for (var step = 0; step <= followReach; step++) {
+    reach += keys[(from + 1 + step) % keys.length].length;
+  }
+
+  // Only where a word ends. The reciter is asked which word they have just
+  // finished, and an alignment that stops halfway through one answers a
+  // question nobody asked — while letting a four-letter tail find agreement
+  // almost anywhere in a run of letters.
+  final ends = <int>[];
+  for (var end = at + 1; end <= at + reach; end++) {
+    final next = end % stream.length;
+    if (next == 0 || wordOf[next] != wordOf[next - 1]) ends.add(end);
+  }
 
   var best = (position: from, score: 0.0);
-  for (var at = from; at <= from + followReach; at++) {
-    final score = _agreement(keys, at, recent);
-    if (score > best.score + _tie) best = (position: at, score: score);
+  // The best agreement somewhere else entirely. A reciter with an accent, or
+  // one who slips, agrees with the muṣḥaf less well everywhere — so how high
+  // the best score is says as much about the voice as about the place, and a
+  // bar set by a studio reciter shuts that reader out. What does not depend
+  // on the voice is whether one place fits better than the rest.
+  var rival = 0.0;
+  for (final end in ends) {
+    final expected = StringBuffer();
+    for (var i = end - tail.length; i < end; i++) {
+      expected.writeCharCode(stream.codeUnitAt(i % stream.length));
+    }
+    final position =
+        (end - 1) ~/ stream.length * keys.length +
+        wordOf[(end - 1) % stream.length];
+    // The letters run past the word the reach allows, so the bound is held
+    // here rather than by where the search stopped.
+    if (position > from + followReach) continue;
+    // A reciter who runs straight on into the next reading arrives at its
+    // first word, not at its seventh. Anything further in is the same phrase
+    // found again a reading on — every word of the set repeats there — and
+    // taking it costs the reader the whole reading they were in.
+    if (position ~/ keys.length > from ~/ keys.length &&
+        position % keys.length > 1) {
+      continue;
+    }
+    final score = _alike(tail, expected.toString());
+    if (score <= best.score + _tie) {
+      if (score > rival && (position - best.position).abs() >= 2) rival = score;
+      continue;
+    }
+    if (best.score > rival && (position - best.position).abs() >= 2) {
+      rival = best.score;
+    }
+    best = (position: position, score: score);
   }
-  if (best.position <= from || best.score < followThreshold) return null;
+  // A short tail is weak evidence wherever it agrees, because a handful of
+  // letters finds agreement almost anywhere in a run of them. It clears a
+  // higher bar rather than being thrown away: Ḥuṣarī at a teaching pace puts
+  // two words in a window and is followed correctly, a reader at speed puts
+  // five in and is followed on the same rule.
+  final needed =
+      followThreshold + (heardTailLetters - tail.length) * followPerLetterShort;
+  if (best.position <= from || best.score < needed) return null;
+  // One place has to fit better than anywhere else by a clear margin, or the
+  // window is describing a phrase the set says more than once and moving on
+  // it is a guess.
+  if (best.score - rival < best.score * followMargin) return null;
   return best;
 }
 
-/// How well the words just heard sit against the set read as ending at [at].
-/// The last word heard carries the most weight: it is the one that says where
-/// the reciter is now, the ones before it only corroborate.
-double _agreement(List<String> keys, int at, List<String> recent) {
-  var weight = 1.0, total = 0.0, sum = 0.0;
-  for (var back = 0; back < recent.length; back++) {
-    final index = at - back;
-    if (index < 0) break;
-    final heard = recent[recent.length - 1 - back];
-    sum += weight * _similar(heard, keys[index % keys.length]);
-    total += weight;
-    weight *= 0.55;
-  }
-  return total == 0 ? 0 : sum / total;
-}
-
-/// ponytail: full edit distance over words of at most a dozen letters. Band it
-/// if a set ever runs long enough for this to show on a frame.
-double _similar(String heard, String expected) {
-  if (heard == expected) return 1;
+/// How alike two runs of letters are, with no floor under it. A reciter with
+/// an accent, a reader who slips, and tajwīd reshaping a word all arrive here
+/// as a few letters out of a great many, which is a percentage rather than a
+/// verdict — and a run this long disagreeing in a few letters is one
+/// recitation spelled two ways.
+double _alike(String heard, String expected) {
   if (heard.isEmpty || expected.isEmpty) return 0;
-  final ratio =
-      1 - _edits(heard, expected) / max(heard.length, expected.length);
-  // A third of the letters wrong is not a near miss, it is another word, and
-  // giving it partial credit is how a wrong advance gets through.
-  return ratio < 0.67 ? 0 : ratio;
+  return 1 - _edits(heard, expected) / max(heard.length, expected.length);
 }
 
 int _edits(String a, String b) {
