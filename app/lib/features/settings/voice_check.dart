@@ -6,6 +6,8 @@ import 'package:record/record.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/speech.dart';
+import '../../features/prayer/prayer_cursor.dart';
+import '../../features/prayer/voice_follow.dart';
 import '../../theme/nocturne.dart';
 
 /// Whether voice-follow works on this phone, answered without praying.
@@ -21,9 +23,14 @@ import '../../theme/nocturne.dart';
 /// what it needs, and anything still wrong is in the matching rather than in
 /// the model, the microphone or the download.
 class VoiceCheck extends StatefulWidget {
-  const VoiceCheck({super.key, this.model});
+  const VoiceCheck({super.key, this.model, this.words = const []});
 
   final VoiceModel? model;
+
+  /// The set the prayer would be following, so this screen answers the
+  /// question the prayer screen cannot: not only what was heard, but where the
+  /// matcher put the reciter in it.
+  final List<String> words;
 
   static const heard = Key('what the recogniser heard');
 
@@ -45,6 +52,13 @@ class _VoiceCheckState extends State<VoiceCheck> {
   String _heard = '';
   int _samples = 0;
   Duration _slowest = Duration.zero;
+
+  late final List<String> _keys = recitationKeys(widget.words);
+  late final PrayerCursor _cursor = PrayerCursor(
+    _keys.isEmpty ? 1 : _keys.length,
+  );
+  var _lost = 0;
+  var _advances = 0;
 
   @override
   void initState() {
@@ -108,6 +122,16 @@ class _VoiceCheckState extends State<VoiceCheck> {
         final heard = await recogniser.hear(samples);
         final took = DateTime.now().difference(began);
         if (!mounted) return;
+        if (heard.isNotEmpty && _keys.isNotEmpty) {
+          final moved = followHeard(
+            _cursor,
+            _keys,
+            heard,
+            reach: _lost >= followLostAfter ? _keys.length : followReach,
+          );
+          _lost = moved ? 0 : _lost + 1;
+          if (moved) _advances++;
+        }
         setState(() {
           if (took > _slowest) _slowest = took;
           if (heard.isNotEmpty) _heard = heard;
@@ -143,6 +167,17 @@ class _VoiceCheckState extends State<VoiceCheck> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(_whatIsHappening(), style: TextStyle(color: n.color('neutral-500'))),
+            if (widget.words.isNotEmpty) ...[
+              SizedBox(height: n.space('2')),
+              // Which set the prayer would be following. A reader reciting one
+              // passage while the walk proposes another would see a screen
+              // that never moves, and nothing else here would say why.
+              Text(
+                'the set: ${widget.words.take(5).join(' ')}…',
+                textDirection: TextDirection.rtl,
+                style: TextStyle(color: n.color('accent-400')),
+              ),
+            ],
             SizedBox(height: n.space('4')),
             if (_stage == _Stage.listening) ...[
               Expanded(
@@ -159,6 +194,12 @@ class _VoiceCheckState extends State<VoiceCheck> {
               // Not decoration: a reader who sees no words needs to know
               // whether the microphone is delivering nothing or the recogniser
               // is making nothing of it, and those look identical above.
+              if (_keys.isNotEmpty)
+                Text(
+                  'the prayer would be on word ${_cursor.word + 1} of '
+                  '${_keys.length}, after $_advances advances',
+                  style: TextStyle(color: n.color('accent-400')),
+                ),
               Text(
                 '${(_samples / heardSampleRate).toStringAsFixed(1)}s of voice, '
                 'slowest answer ${_slowest.inMilliseconds}ms',

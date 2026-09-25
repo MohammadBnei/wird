@@ -174,7 +174,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _caption(n, _micCaption(prefs.mic)),
               // The recogniser is settled here too, and for the same reason:
               // a 160 MB download is not something to discover mid-prayer.
-              if (prefs.mic == MicPermission.granted) const VoiceModelPanel(),
+              if (prefs.mic == MicPermission.granted)
+                VoiceModelPanel(
+                  // The set the walk would hand the prayer, so the check can
+                  // say where the matcher puts the reciter in it rather than
+                  // only what was heard.
+                  words: [
+                    for (final aya in _next?.ayas ?? const <StudyAya>[])
+                      for (final word in aya.words) word.text,
+                  ],
+                ),
               // Writes the server would not take are named here and only
               // here. It draws its own heading and stays silent when there
               // are none, so a reader with a healthy outbox sees nothing.
@@ -275,11 +284,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 /// presses Download, and the prayer screen advances on a tap the way it has
 /// since before any of this existed.
 class VoiceModelPanel extends StatefulWidget {
-  const VoiceModelPanel({super.key, this.model});
+  const VoiceModelPanel({super.key, this.model, this.words = const []});
 
   /// The one thing the phone supplies and a test stands in for: the model
   /// beside the database, and the host it is fetched from.
   final VoiceModel? model;
+
+  /// The set the reader's prayer would follow, passed through to the check.
+  final List<String> words;
 
   static const download = Key('download recogniser');
   static const stop = Key('stop recogniser download');
@@ -390,7 +402,10 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             variant: NocturneButtonVariant.ghost,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => VoiceCheck(model: _model),
+                builder: (_) => VoiceCheck(
+                model: _model,
+                words: widget.words,
+              ),
               ),
             ),
             child: const Text('Check the recogniser'),
