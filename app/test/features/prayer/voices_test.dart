@@ -75,6 +75,25 @@ void main() {
       expect(locate(set, 'Э'), isNull);
     });
 
+    test('an answer in a language nobody is speaking is taken as recitation', () {
+      // The recogniser is multilingual and chooses a language from the first
+      // sounds it hears, then keeps that choice for the length of the stream.
+      // بِسْمِ ٱللَّهِ opens most prayers and sounds enough like a Latin word to
+      // send it into English: the owner's screen showed `BIS` and never moved
+      // again. Nothing in sherpa-onnx can pin the language on a streaming
+      // model, and no Arabic-only streaming model exists to use instead, so
+      // the stream is thrown away and replaced.
+      expect(inAnotherTongue('BIS'), isTrue);
+      expect(inAnotherTongue('お前あらもうねらいよめ'), isTrue);
+      expect(inAnotherTongue('A EMOTION'), isTrue);
+      expect(inAnotherTongue('Эرحم'), isTrue);
+      // A recitation is Arabic letters and the spaces between them, and
+      // nothing else — including when the recogniser spells it badly.
+      expect(inAnotherTongue('بسم الله الرحمن الرحيم'), isFalse);
+      expect(inAnotherTongue('هي الرحمن الرحيم الحمد لله'), isFalse);
+      expect(inAnotherTongue('مَالِكِ يَوْمِ الدِّينِ'), isFalse);
+    });
+
     test('the set begun again for the next rakʿa runs off the end', () {
       final cursor = PrayerCursor(set.words.length)..moveTo(16);
 

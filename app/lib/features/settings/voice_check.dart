@@ -58,6 +58,9 @@ class _VoiceCheckState extends State<VoiceCheck> {
     widget.words.isEmpty ? 1 : widget.words.length,
   );
   var _moves = 0;
+  DateTime _startedOver = DateTime.fromMillisecondsSinceEpoch(0);
+  var _tongues = 0;
+  String _why = '';
 
   @override
   void initState() {
@@ -121,11 +124,35 @@ class _VoiceCheckState extends State<VoiceCheck> {
         final heard = await recogniser.hear(samples);
         final took = DateTime.now().difference(began);
         if (!mounted) return;
+        if (inAnotherTongue(heard) &&
+            DateTime.now().difference(_startedOver) > heardStartOver) {
+          _startedOver = DateTime.now();
+          _tongues++;
+          await recogniser.forget();
+          if (mounted) setState(() => _heard = '');
+          continue;
+        }
         if (heard.isNotEmpty && !_set.isEmpty) {
           final was = _cursor.at;
           final at = locate(_set, heard);
           if (at != null) _cursor.moveTo(at.word);
           if (_cursor.at != was) _moves++;
+          // Why it did or did not move, which is the whole reason this screen
+          // exists: a stuck prayer looks the same whether the recogniser
+          // stopped, the best place was not good enough, or two places fitted
+          // equally well.
+          final said = explain(_set, heard);
+          _why = said == null
+              ? 'heard too little to place'
+              : said.score < said.needed
+              ? 'best word ${said.word + 1} fits '
+                    '${(said.score * 100).round()}%, needs '
+                    '${(said.needed * 100).round()}%'
+              : said.score - said.rival < followMargin
+              ? 'word ${said.word + 1} at ${(said.score * 100).round()}% but '
+                    'somewhere else fits ${(said.rival * 100).round()}% — the '
+                    'set says this twice'
+              : 'word ${said.word + 1} at ${(said.score * 100).round()}%';
         }
         setState(() {
           if (took > _slowest) _slowest = took;
@@ -189,15 +216,18 @@ class _VoiceCheckState extends State<VoiceCheck> {
               // Not decoration: a reader who sees no words needs to know
               // whether the microphone is delivering nothing or the recogniser
               // is making nothing of it, and those look identical above.
-              if (!_set.isEmpty)
+              if (!_set.isEmpty) ...[
                 Text(
                   'the prayer would be on word ${_cursor.at + 1} of '
                   '${widget.words.length}, after $_moves moves',
                   style: TextStyle(color: n.color('accent-400')),
                 ),
+                Text(_why, style: TextStyle(color: n.color('neutral-500'))),
+              ],
               Text(
                 '${(_samples / heardSampleRate).toStringAsFixed(1)}s of voice, '
-                'slowest answer ${_slowest.inMilliseconds}ms',
+                'slowest answer ${_slowest.inMilliseconds}ms'
+                '${_tongues > 0 ? ', started over $_tongues×' : ''}',
                 style: TextStyle(color: n.color('neutral-500')),
               ),
             ],

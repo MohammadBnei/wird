@@ -67,6 +67,20 @@ const followSure = 0.8;
 /// Two candidates this close together are one answer told twice.
 const _tie = 0.05;
 
+/// Anything the muṣḥaf could not have been written in.
+final _foreign = RegExp(r'[^\u0600-\u06FF\s]');
+
+/// Whether the recogniser has answered in a language the reciter is not
+/// speaking, which it does by choosing one from the first sounds it hears and
+/// then keeping that choice for the length of the stream.
+///
+/// بِسْمِ ٱللَّهِ opens most prayers and sounds enough like a Latin word to send a
+/// multilingual model into English; the owner's screen showed `BIS` and never
+/// moved again. Arabic letters and spaces are the whole of what a recitation
+/// can come back as, so anything else is the model answering a question
+/// nobody asked.
+bool inAnotherTongue(String heard) => _foreign.hasMatch(heard);
+
 /// A set, in the form [locate] reads: every word's letters run together, and
 /// for each letter the word it came from.
 ///
@@ -122,6 +136,24 @@ class Recitation {
 /// unambiguous, and the screen catches up — and lateness is the error this is
 /// allowed to make.
 ({int word, double score})? locate(Recitation set, String heard) {
+  final said = explain(set, heard);
+  if (said == null) return null;
+  if (said.score < said.needed) return null;
+  if (said.score - said.rival < followMargin) return null;
+  return (word: said.word, score: said.score);
+}
+
+/// The same search, with its workings, for the screen in Settings that exists
+/// to say why the prayer is not moving. [locate] is this plus the two gates.
+///
+/// Kept as one implementation rather than two: a diagnosis that does not run
+/// the code being diagnosed is worth nothing, and this screen was written
+/// because four builds went to a reader with nobody able to see what their
+/// phone was doing.
+({int word, double score, double rival, double needed})? explain(
+  Recitation set,
+  String heard,
+) {
   if (set.isEmpty) return null;
 
   final spoken = StringBuffer();
@@ -168,14 +200,7 @@ class Recitation {
   // five in and is followed on the same rule.
   final needed =
       followThreshold + (heardTailLetters - tail.length) * followPerLetterShort;
-  if (best.score < needed) return null;
-  // One place must fit better than anywhere else by a clear margin, or the
-  // window is describing a phrase the set says more than once and moving on it
-  // is a guess. This is the guard that replaced the old bound on how far ahead
-  // a window could reach, and unlike that bound it does not care which
-  // direction the reciter went.
-  if (best.score - rival < followMargin) return null;
-  return best;
+  return (word: best.word, score: best.score, rival: rival, needed: needed);
 }
 
 /// How alike two runs of letters are, with no floor under it. A reciter with

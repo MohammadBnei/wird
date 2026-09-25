@@ -81,6 +81,17 @@ const heardChunk = Duration(milliseconds: 300);
 /// window, so the next answer describes where they now are rather than where
 /// they were when they reached for the screen.
 const heardHeldByHand = Duration(seconds: 4);
+
+/// The least time between starting the recogniser over. Long enough that a
+/// room full of the wrong noise cannot keep it permanently empty-handed,
+/// short enough that a reader whose opening sent it into the wrong language
+/// is not praying to a dead screen.
+const heardStartOver = Duration(seconds: 3);
+
+/// How much of what was said is carried past the end of an utterance. The
+/// matcher reads the last couple of dozen letters, so this is generous; it is
+/// bounded at all because a prayer runs for many minutes.
+const heardKeptLetters = 400;
 const heardSampleRate = 16000;
 
 /// Why a download stopped, in the two shapes that mean different things to the
@@ -323,6 +334,16 @@ class Recogniser {
     );
   }
 
+  /// Throws away everything heard so far and listens afresh.
+  ///
+  /// The recogniser is multilingual and picks a language from the opening of
+  /// what it hears. بِسْمِ ٱللَّهِ opens most prayers and sounds enough like a Latin
+  /// word to send it into English — after which every answer is English, for
+  /// the length of the prayer, because the choice lives in the stream's state.
+  /// sherpa-onnx offers no way to pin the language on a streaming model, and
+  /// there is no Arabic-only streaming model to use instead.
+  Future<String> forget() => hear(Float32List(0));
+
   /// Ends the listening and gives the model back.
   ///
   /// The isolate is asked to stop and waited for rather than killed where it
@@ -358,13 +379,28 @@ Future<void> _serve((SendPort, String, String, String, String) args) async {
         tokens: tokens,
         numThreads: 2,
       ),
-      // An endpoint would clear the answer at every pause, and a reciter
-      // pauses at the end of every aya. What the matcher reads is the tail of
-      // everything said, so the answer has to keep standing across a breath.
-      enableEndpoint: false,
+      // Let the recogniser end an utterance at a pause, and keep the words
+      // here rather than in its stream.
+      //
+      // A transducer's prediction network conditions on every token it has
+      // already emitted, so a stream that is never reset carries the whole
+      // prayer as context and grows unwilling to say anything else: the owner
+      // recited al-Fātiḥa, moved to az-Zalzalah, and had to repeat himself
+      // before the words appeared. Two minutes of the previous sūra were
+      // arguing against him.
+      //
+      // Endpointing was off because the matcher reads the tail of everything
+      // said and that has to survive a breath between ayas. It still does —
+      // what changed is that the surviving is done below, in a string this
+      // side owns, instead of in a decoder state that also holds the bias.
+      enableEndpoint: true,
     ),
   );
-  final stream = recogniser.createStream();
+  var stream = recogniser.createStream();
+  // Everything said before the utterance now being decoded. Trimmed, because
+  // a prayer runs for many minutes and the matcher never reads more than the
+  // last couple of dozen letters.
+  var kept = '';
 
   final inbox = ReceivePort();
   home.send(inbox.sendPort);
@@ -376,13 +412,35 @@ Future<void> _serve((SendPort, String, String, String, String) args) async {
       continue;
     }
     if (message is! Float32List) break;
+    // Nothing to take in means start again: the stream is to be thrown away
+    // and a new one put in its place. A multilingual transducer chooses a
+    // language from the first thing it hears and carries that choice in its
+    // state for good, so a stream that guessed wrong cannot be argued out of
+    // it — only replaced.
+    if (message.isEmpty) {
+      stream.free();
+      stream = recogniser.createStream();
+      kept = '';
+      replies?.send('');
+      continue;
+    }
     var text = '';
     try {
       stream.acceptWaveform(samples: message, sampleRate: heardSampleRate);
       while (recogniser.isReady(stream)) {
         recogniser.decode(stream);
       }
-      text = recogniser.getResult(stream).text;
+      final said = recogniser.getResult(stream).text;
+      if (recogniser.isEndpoint(stream)) {
+        if (said.trim().isNotEmpty) kept = '$kept $said'.trim();
+        if (kept.length > heardKeptLetters) {
+          kept = kept.substring(kept.length - heardKeptLetters);
+        }
+        recogniser.reset(stream);
+        text = kept;
+      } else {
+        text = '$kept $said'.trim();
+      }
     } on Object {
       text = '';
     }

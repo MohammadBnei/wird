@@ -45,6 +45,10 @@ class PrayerVoice {
   /// one correction the reader has stops working.
   DateTime _theirs = DateTime.fromMillisecondsSinceEpoch(0);
 
+  /// When the recogniser was last started over, so noise cannot make a habit
+  /// of it.
+  DateTime _startedOver = DateTime.fromMillisecondsSinceEpoch(0);
+
   /// Starts listening, or answers null and leaves the prayer to the thumb.
   ///
   /// Null is the ordinary outcome and not a fault: no permission, no model, no
@@ -121,7 +125,17 @@ class PrayerVoice {
         final samples = Float32List.fromList(_waiting);
         _waiting.clear();
         final heard = await _recogniser.hear(samples);
-        if (heard.isEmpty || DateTime.now().isBefore(_theirs)) continue;
+        if (heard.isEmpty) continue;
+        // A stream that settled on the wrong language cannot be argued out of
+        // it; it is replaced, and the reciter's next seconds fill the new one.
+        // Bounded, because noise could otherwise restart it forever.
+        if (inAnotherTongue(heard) &&
+            DateTime.now().difference(_startedOver) > heardStartOver) {
+          _startedOver = DateTime.now();
+          await _recogniser.forget();
+          continue;
+        }
+        if (DateTime.now().isBefore(_theirs)) continue;
         final at = locate(_set, heard);
         // Above the bar the word is named; at the bar the aya is as much as
         // the recitation actually said.
