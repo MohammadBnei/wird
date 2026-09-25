@@ -142,7 +142,7 @@ class _VoiceCheckState extends State<VoiceCheck> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_whatIsHappening(), style: TextStyle(color: n.color('muted'))),
+            Text(_whatIsHappening(), style: TextStyle(color: n.color('neutral-500'))),
             SizedBox(height: n.space('4')),
             if (_stage == _Stage.listening) ...[
               Expanded(
@@ -152,7 +152,7 @@ class _VoiceCheckState extends State<VoiceCheck> {
                     key: VoiceCheck.heard,
                     _heard.isEmpty ? '…' : _heard,
                     textDirection: TextDirection.rtl,
-                    style: TextStyle(color: n.color('fg'), fontSize: 24),
+                    style: TextStyle(color: n.color('text'), fontSize: 24),
                   ),
                 ),
               ),
@@ -162,7 +162,7 @@ class _VoiceCheckState extends State<VoiceCheck> {
               Text(
                 '${(_samples / heardSampleRate).toStringAsFixed(1)}s of voice, '
                 'slowest answer ${_slowest.inMilliseconds}ms',
-                style: TextStyle(color: n.color('muted')),
+                style: TextStyle(color: n.color('neutral-500')),
               ),
             ],
           ],
