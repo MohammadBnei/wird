@@ -143,7 +143,7 @@ key in `wird-config`.
   a third party's outage.
 - **The Apache-2.0 obligation travels with the bytes, not with the host.**
   Hugging Face would have rendered the model card; a bucket renders nothing.
-  The card `scripts/export-voice-model.py` writes belongs uploaded into the
+  The card `scripts/voice-model.py` writes belongs uploaded into the
   same prefix as the weights, and the licence is no less binding for the store
   being ours.
 - **Nothing prunes old exports.** Each export is a new digest, so the bucket

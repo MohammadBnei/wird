@@ -24,7 +24,7 @@ const heardTailLetters = 24;
 /// certainty than a reader at speed who puts five in.
 const followPerLetterShort = 0.01;
 
-const followMargin = 0.55;
+const followMargin = 0.32;
 
 /// The score below which nothing moves.
 ///
@@ -102,8 +102,9 @@ List<String> recitationKeys(Iterable<String> words) => [
 ({int position, double score})? locate(
   List<String> keys,
   int from,
-  String heard,
-) {
+  String heard, {
+  int reach = followReach,
+}) {
   if (keys.isEmpty) return null;
 
   // The set as one run of letters, and which word each letter belongs to. A
@@ -141,17 +142,23 @@ List<String> recitationKeys(Iterable<String> words) => [
   }
   at += keys[from % keys.length].length;
 
-  var reach = 0;
-  for (var step = 0; step <= followReach; step++) {
-    reach += keys[(from + 1 + step) % keys.length].length;
+  var span = 0;
+  for (var step = 0; step <= reach; step++) {
+    span += keys[(from + 1 + step) % keys.length].length;
   }
 
   // Only where a word ends. The reciter is asked which word they have just
   // finished, and an alignment that stops halfway through one answers a
   // question nobody asked — while letting a four-letter tail find agreement
   // almost anywhere in a run of letters.
+  // The search starts where the cursor already stands rather than one word
+  // past it. Every word of a sūra can repeat inside the set — al-Fātiḥa says
+  // ٱلرَّحْمَٰنِ ٱلرَّحِيمِ in the basmala and again as its own aya — so if the
+  // window is only describing the word the reader is still on, that has to be
+  // allowed to win. Excluding it left the same phrase further on as the best
+  // thing on offer, and the prayer jumped an aya the reciter had not reached.
   final ends = <int>[];
-  for (var end = at + 1; end <= at + reach; end++) {
+  for (var end = at; end <= at + span; end++) {
     final next = end % stream.length;
     if (next == 0 || wordOf[next] != wordOf[next - 1]) ends.add(end);
   }
@@ -173,7 +180,7 @@ List<String> recitationKeys(Iterable<String> words) => [
         wordOf[(end - 1) % stream.length];
     // The letters run past the word the reach allows, so the bound is held
     // here rather than by where the search stopped.
-    if (position > from + followReach) continue;
+    if (position > from + reach) continue;
     // A reciter who runs straight on into the next reading arrives at its
     // first word, not at its seventh. Anything further in is the same phrase
     // found again a reading on — every word of the set repeats there — and
@@ -203,7 +210,7 @@ List<String> recitationKeys(Iterable<String> words) => [
   // One place has to fit better than anywhere else by a clear margin, or the
   // window is describing a phrase the set says more than once and moving on
   // it is a guess.
-  if (best.score - rival < best.score * followMargin) return null;
+  if (best.score - rival < followMargin) return null;
   return best;
 }
 
@@ -236,7 +243,29 @@ int _edits(String a, String b) {
 /// Hands the cursor what the recogniser just said, and nothing when it is not
 /// sure. Every guard that keeps the prayer safe belongs to one of these two
 /// calls: [locate] never proposes a rewind, and the cursor refuses one anyway.
-void followHeard(PrayerCursor cursor, List<String> keys, String heard) {
-  final at = locate(keys, cursor.position, heard);
-  if (at != null) cursor.follow(at.position);
+/// Hands the cursor what the recogniser just said, and answers whether it
+/// found the reciter. A miss is ordinary — most windows of a prayer are the
+/// reader still on the word the screen is showing.
+bool followHeard(
+  PrayerCursor cursor,
+  List<String> keys,
+  String heard, {
+  int reach = followReach,
+}) {
+  final at = locate(keys, cursor.position, heard, reach: reach);
+  if (at == null) return false;
+  cursor.follow(at.position);
+  return true;
 }
+
+/// How many answers in a row may find nothing before the search widens to the
+/// whole set.
+///
+/// [followReach] assumes the screen is roughly where the reciter is, which is
+/// true once the prayer is being followed and false before it ever starts. A
+/// reader whose first words the recogniser garbles is never found at all: the
+/// reciter walks past the reach while the cursor sits on the first word, and
+/// no later window can reach back. Widening costs the guard that keeps a
+/// repeated phrase from pulling the prayer forward, so it is what happens when
+/// tracking has already failed rather than how tracking works.
+const followLostAfter = 8;

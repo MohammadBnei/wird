@@ -22,52 +22,58 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 /// model on disk is that the alternative is streaming somebody's prayer to a
 /// server.
 
-/// whisper-base fine-tuned on tarteel-ai/everyayah — the same corpus the app's
-/// own reference recitation comes from — exported to ONNX and quantised to
-/// int8, which is what these three files are. See ADR 0005 for the export and
-/// the numbers behind choosing base over tiny.
+/// A streaming zipformer transducer, Arabic among eight languages, int8.
+///
+/// It replaced whisper-base fine-tuned on the Qur'an, which was better at
+/// spelling recitation and could not do this job. Whisper answers once per
+/// window: the longer the window the better it hears and the longer the reader
+/// waits, and on the owner's phone a six-second window cost a median of 1576
+/// ms and as much as 6491 ms, so the screen followed him by three seconds and
+/// sometimes seven. A transducer keeps its context in hidden state instead of
+/// in the window, so it has heard everything and still answers every chunk.
+/// See ADR 0005 for the measurement that ended the argument.
 const voiceModelParts = [
-  'quran-encoder.int8.onnx',
-  'quran-decoder.int8.onnx',
-  'quran-tokens.txt',
+  'encoder.int8.onnx',
+  'decoder.onnx',
+  'joiner.int8.onnx',
+  'tokens.txt',
 ];
 
-/// What the reader is told before they agree to it. Read off the exported
-/// files: 29.1 MB of encoder, 130.7 MB of decoder, 0.8 MB of tokens.
-const voiceModelBytes = 160 * 1000 * 1000;
+/// What the reader is told before they agree to it. Read off the published
+/// files: 296.6 MB of encoder, 33.8 MB of decoder, 8.3 MB of joiner, 0.2 MB of
+/// tokens.
+const voiceModelBytes = 339 * 1000 * 1000;
 
-/// Where the three files are published: Wird's own host, which answers a phone
-/// that has never signed in and hands it on to the store. `/models/` on
-/// wird-api mints a short-lived signed URL and answers 302, so the bytes go
-/// phone-to-store and never cross the API. ADR 0007 has the reasoning.
+/// Where the files are published: Wird's own host, which answers a phone that
+/// has never signed in and hands it on to the store. `/models/` on wird-api
+/// mints a short-lived signed URL and answers 302, so the bytes go
+/// phone-to-store and never cross the API. ADR 0008 has the reasoning.
 ///
 /// **A path, never a URL.** A signed URL expires, and a reader may press
 /// Download, put the phone in a pocket for a week, and resume. Holding the
 /// path means every resume re-asks and is handed a fresh signature, so an
 /// expiry is not a thing this side has to think about.
 ///
-/// The last path segment is a digest of the three files' own digests. A
-/// re-export with different weights cannot land on the key a half-finished
-/// download is resuming against — two int8 halves that disagree load without
+/// The last path segment is a digest of the files' own digests. A re-export
+/// with different weights cannot land on the key a half-finished download is
+/// resuming against — an encoder and a joiner that disagree load without
 /// complaint and transcribe nothing, which is a thing to debug once.
 ///
 /// Moving it costs a release. There is no server override — saying there was
-/// one is how this stayed pointed for a fortnight at a host where the three
-/// files answered 401 and nothing had ever been uploaded.
+/// one is how this stayed pointed for a fortnight at a host where the files
+/// answered 401 and nothing had ever been uploaded.
 const defaultVoiceModelOrigin =
-    'https://wird.bnei.dev/models/base-ar-quran/38853d7df20b/';
+    'https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/';
 
-/// How much recitation the recogniser is asked about at once, and how often.
+/// How much recitation is handed over at a time.
 ///
-/// A four-second window costs a median of 346 ms on an M-series laptop at two
-/// threads, 456 ms at its worst over twenty windows of Ḥuṣarī. A phone is the
-/// same order and slower, and a prayer runs for many minutes, so the hop is
-/// not a fixed number: [heardHop] is the floor, and the driver waits at least
-/// as long again as the last window took. That holds the recogniser under half
-/// the time whatever the phone turns out to be, which is the ceiling on the
-/// heat rather than a guess about it.
-const heardWindow = Duration(seconds: 4);
-const heardHop = Duration(milliseconds: 1200);
+/// There is no window any more and nothing is re-heard: audio goes in once, in
+/// the order it arrived, and the answer grows. This is only how often the
+/// microphone's bytes are passed along, and it is the floor on how late the
+/// screen can be. A chunk costs 21 ms on an M-series laptop at two threads —
+/// a realtime factor of 0.07 — so a phone several times slower still spends a
+/// fraction of the prayer decoding it.
+const heardChunk = Duration(milliseconds: 300);
 const heardSampleRate = 16000;
 
 /// Why a download stopped, in the two shapes that mean different things to the
@@ -202,10 +208,16 @@ class VoiceModel {
 
 /// The recogniser, on an isolate of its own.
 ///
-/// A window of recitation costs a fraction of a second of CPU. Spending that
-/// on the isolate that draws the prayer would freeze the screen, and the
-/// screen has to keep answering a thumb — the tap is the fallback for every
-/// window this refuses to be sure about.
+/// Decoding costs a fraction of a second of CPU per chunk. Spending that on
+/// the isolate that draws the prayer would freeze the screen, and the screen
+/// has to keep answering a thumb — the tap is the fallback for every chunk
+/// this refuses to be sure about, and for every phone that cannot load this
+/// at all.
+///
+/// One stream lives for the length of the prayer. Audio is handed over once,
+/// in the order it arrived, and what comes back is everything heard so far
+/// rather than an opinion about the last few seconds. Nothing is re-heard, so
+/// nothing can be heard differently the second time.
 class Recogniser {
   Recogniser._(this._isolate, this._to, this._from);
 
@@ -218,9 +230,9 @@ class Recogniser {
   /// caller treats that as "the reader taps", which is what they did before,
   /// and the prayer screen says IN PRAYER rather than claiming to listen.
   ///
-  /// Three files of the right names and the wrong bytes — a download the
-  /// phone truncated — are enough to pass [VoiceModel.ready], so whether the
-  /// model loads is only knowable from inside the isolate. The isolate
+  /// Files of the right names and the wrong bytes — a download the phone
+  /// truncated — are enough to pass [VoiceModel.ready], so whether the model
+  /// loads is only knowable from inside the isolate. The isolate
   /// therefore says nothing until its recogniser is built, and a build that
   /// throws arrives here as the isolate's death instead: `onExit`/`onError`
   /// put that on the same port, and anything that is not the inbox is a
@@ -228,9 +240,9 @@ class Recogniser {
   static Future<Recogniser?> open(VoiceModel model) async {
     if (!model.ready) return null;
     final from = ReceivePort();
-    // Held outside the try because the isolate now answers only once a 160 MB
-    // model is loaded, so the timeout below is reachable on a slow phone and
-    // would otherwise abandon a live isolate holding the model.
+    // Held outside the try because the isolate answers only once the model is
+    // loaded, so the timeout below is reachable on a slow phone and would
+    // otherwise abandon a live isolate holding it.
     Isolate? isolate;
     try {
       isolate = await Isolate.spawn(
@@ -240,6 +252,7 @@ class Recogniser {
           model.fileFor(voiceModelParts[0]).path,
           model.fileFor(voiceModelParts[1]).path,
           model.fileFor(voiceModelParts[2]).path,
+          model.fileFor(voiceModelParts[3]).path,
         ),
         onExit: from.sendPort,
         onError: from.sendPort,
@@ -276,8 +289,15 @@ class Recogniser {
   /// rather than queueing behind this one.
   bool get busy => _pending != null;
 
-  /// What the recogniser made of one window, or the empty string when it could
-  /// not be asked. It never throws: this is called from inside a prayer.
+  /// Everything heard so far, once these samples have been taken in, or the
+  /// empty string when it could not be asked. It never throws: this is called
+  /// from inside a prayer.
+  ///
+  /// Audio handed over while a previous chunk is still being decoded would be
+  /// lost, and a transducer that misses a second of speech misses the words in
+  /// it for good — unlike the window this replaced, where a dropped ask cost
+  /// nothing because the next one asked about the same seconds again. The
+  /// caller holds what it cannot hand over yet.
   Future<String> hear(Float32List samples) {
     if (_pending != null) return Future.value('');
     final answer = _pending = Completer<String>();
@@ -316,27 +336,28 @@ class Recogniser {
 /// first would mean a model that cannot load still answers every window with
 /// the empty string, and [Recogniser.open] would hand the prayer screen a
 /// recogniser to print FOLLOWING YOUR VOICE about.
-Future<void> _serve((SendPort, String, String, String) args) async {
-  final (home, encoder, decoder, tokens) = args;
+Future<void> _serve((SendPort, String, String, String, String) args) async {
+  final (home, encoder, decoder, joiner, tokens) = args;
 
   sherpa.initBindings();
-  final recogniser = sherpa.OfflineRecognizer(
-    sherpa.OfflineRecognizerConfig(
-      model: sherpa.OfflineModelConfig(
-        whisper: sherpa.OfflineWhisperModelConfig(
+  final recogniser = sherpa.OnlineRecognizer(
+    sherpa.OnlineRecognizerConfig(
+      model: sherpa.OnlineModelConfig(
+        transducer: sherpa.OnlineTransducerModelConfig(
           encoder: encoder,
           decoder: decoder,
-          // The reciter is reading classical Arabic aloud, and never asking
-          // for a translation.
-          language: 'ar',
-          task: 'transcribe',
+          joiner: joiner,
         ),
         tokens: tokens,
-        modelType: 'whisper',
         numThreads: 2,
       ),
+      // An endpoint would clear the answer at every pause, and a reciter
+      // pauses at the end of every aya. What the matcher reads is the tail of
+      // everything said, so the answer has to keep standing across a breath.
+      enableEndpoint: false,
     ),
   );
+  final stream = recogniser.createStream();
 
   final inbox = ReceivePort();
   home.send(inbox.sendPort);
@@ -350,16 +371,17 @@ Future<void> _serve((SendPort, String, String, String) args) async {
     if (message is! Float32List) break;
     var text = '';
     try {
-      final stream = recogniser.createStream();
       stream.acceptWaveform(samples: message, sampleRate: heardSampleRate);
-      recogniser.decode(stream);
+      while (recogniser.isReady(stream)) {
+        recogniser.decode(stream);
+      }
       text = recogniser.getResult(stream).text;
-      stream.free();
     } on Object {
       text = '';
     }
     replies?.send(text);
   }
+  stream.free();
   recogniser.free();
   inbox.close();
 }

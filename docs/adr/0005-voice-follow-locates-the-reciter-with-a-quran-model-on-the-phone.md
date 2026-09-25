@@ -1,6 +1,12 @@
 # 5. Voice-follow locates the reciter with a Qur'an model on the phone
 
-Date: 2026-09-24. Status: accepted.
+Date: 2026-09-24. Status: accepted. **Amended 2026-09-25: the model is a
+streaming transducer, not whisper.** The reasoning below stands — the job is
+locating rather than transcribing, the model stays on the phone, the tap
+remains the fallback — but the engine chosen to do it could not, and the
+reason is at [The engine changed](#the-engine-changed-and-why). Read that
+first; the whisper numbers in *Measured* are kept because they are what the
+decision was made on, and they were not wrong, they were the wrong question.
 
 ## Context
 
@@ -146,6 +152,71 @@ who are, unlike a reciter with an ijāza, the ones it keeps failing.
 
 **Cost per window**, base int8, twenty 4-second windows on an M4 at
 `num_threads=2`: median 346 ms, worst 456 ms. At one thread, 504 ms median.
+
+## The engine changed, and why
+
+Whisper answers once per window. That is the whole of it: the longer the
+window the better it hears, and the longer the reader waits. Those are not two
+knobs, they are one knob turned in opposite directions, and no amount of work
+on the matcher moves either.
+
+What that cost, measured on the owner's own phone over 282 windows of a real
+prayer: a median of **1576 ms** to decode a six-second window and as much as
+**6491 ms**. With the 1.2 s floor between asks, the screen could follow him no
+closer than **2.8 s on average and 7.7 s at worst** — and only when a window
+also matched. He read two ayas to a screen sitting on word 4.
+
+The accuracy side of the same knob, on his own recitation: a four-second
+window tracked 8 of 16 words, six seconds tracked 16 of 16. He needed the long
+window to be heard and the short window to be followed, and could have neither.
+
+Two other things about whisper that only show up in a room. It pads every input
+to thirty seconds, so a window of speech and twenty-odd seconds of silence is
+what it is asked about, and its known failure on that is to repeat itself —
+`وما يغيظ`, `والمؤمنين`, over and over, words that are not in al-Fātiḥa at all.
+And it re-decodes overlapping audio every hop, so the same seconds are heard
+again and can be heard differently.
+
+**A streaming transducer has no window.** Context lives in hidden state, so it
+has heard everything and still answers every chunk. Audio goes in once, in the
+order it arrived, and the answer grows. Nothing is re-heard, silence adds
+nothing, and the cost is a flat **21 ms per 300 ms chunk** on an M-series
+laptop at two threads — a realtime factor of **0.07**.
+
+`sherpa-onnx-streaming-zipformer-ar_en_id_ja_ru_th_vi_zh-2025-02-10`, int8,
+339 MB against whisper's 160 MB. It is general Arabic rather than Qur'an-tuned
+and it spells recitation worse than the fine-tuned whisper did — and it does
+not matter, because the matcher was already built to survive bad spelling, and
+being told late is the one thing it cannot survive.
+
+### What it measures, on five recitations of two sūras
+
+| | whisper, 6 s windows | streaming transducer |
+| --- | --- | --- |
+| The owner, his own phone's microphone | 2 advances, stuck on word 4 of 17 | 7 advances, **16 of 16** |
+| Ḥuṣarī, Al-ʿAlaq 1-5 | 14 advances, 0 wrong | 19 advances, **0 wrong**, ends 19/19 |
+| Alafasy, al-Fātiḥa | — | 16 advances, 0 wrong, 28/28 |
+| Abdul Basit, al-Fātiḥa | — | 22 advances, 0 wrong, 28/28 |
+| Minshawy, al-Fātiḥa | — | 25 advances, 0 wrong, 28/28 |
+| Answer arrives after | 1576 ms median, 6491 ms worst | ~300 ms |
+
+**No wrong advance in any of the five.** The rule that a wrong advance is worse
+than no advance is unchanged and still met.
+
+### Tracking, and a search when tracking is lost
+
+Alafasy exposed a hole that the whisper fixtures never could. His opening came
+back as `سم`, so the cursor never took its first step — and `followReach`
+measures from the cursor, so a reciter who walks past it while the screen
+stands on word 0 can never be found again. Sixteen advances became zero.
+
+The reach assumes the screen is roughly where the reciter is. That is true once
+following has started and false before it ever does. So after
+[`followLostAfter`](../../app/lib/features/prayer/voice_follow.dart) answers
+that find nothing, the search widens to the whole set. Widening gives up the
+guard that stops a repeated phrase pulling the prayer forward, which is why it
+is what happens when tracking has already failed rather than how tracking
+works.
 
 ## Battery and heat
 

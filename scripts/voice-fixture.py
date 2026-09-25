@@ -37,6 +37,64 @@ def fetch(reciter, sura, aya):
     return resample(data, rate), url
 
 
+def streaming(args, model, first, last):
+    """What the recogniser had said by each moment, fed as the phone feeds it.
+
+    A streaming transducer keeps its context in hidden state, so there is no
+    window: audio goes in as it arrives and the answer grows. What a fixture
+    window holds is therefore everything heard so far, and the matcher reads
+    its tail — the same thing it read from a whisper window, arriving twenty
+    times as often.
+    """
+    import numpy as np
+
+    recogniser = sherpa_onnx.OnlineRecognizer.from_transducer(
+        encoder=str(next(model.glob("encoder-*.onnx"))),
+        decoder=str(next(model.glob("decoder-*.onnx"))),
+        joiner=str(next(model.glob("joiner-*.onnx"))),
+        tokens=str(model / "tokens.txt"),
+        num_threads=2,
+        decoding_method="greedy_search",
+        enable_endpoint_detection=False,
+    )
+
+    audio, bounds, urls = np.zeros(0, "float32"), [], []
+    for aya in range(first, last + 1):
+        one, url = fetch(args.reciter, args.sura, aya)
+        urls.append(url)
+        audio = np.concatenate([audio, one])
+        bounds.append({"aya": aya, "endMs": int(len(audio) * 1000 / RATE)})
+
+    stream = recogniser.create_stream()
+    chunk = int(args.chunk_ms * RATE / 1000)
+    windows, fed = [], 0
+    while fed < len(audio):
+        piece = audio[fed : fed + chunk]
+        fed += len(piece)
+        stream.accept_waveform(RATE, piece)
+        while recogniser.is_ready(stream):
+            recogniser.decode_stream(stream)
+        windows.append(
+            {"atMs": int(fed * 1000 / RATE), "heard": recogniser.get_result(stream)}
+        )
+
+    json.dump(
+        {
+            "what": f"{args.reciter} reciting {args.sura}:{first}-{last}, heard by "
+            f"{model.name}",
+            "audio": f"{urls[0]} .. {urls[-1]}, played back to back",
+            "streaming": True,
+            "chunkMs": args.chunk_ms,
+            "ayas": bounds,
+            "windows": windows,
+        },
+        open(args.out, "w"),
+        ensure_ascii=False,
+        indent=1,
+    )
+    print(f"{args.out}: {len(windows)} chunks over {len(bounds)} ayas")
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--reciter", required=True)
@@ -46,10 +104,15 @@ def main():
     p.add_argument("--window-ms", type=int, default=4000)
     p.add_argument("--hop-ms", type=int, default=750)
     p.add_argument("--out", required=True)
+    p.add_argument("--streaming", action="store_true",
+                   help="an online transducer, fed as a phone feeds it")
+    p.add_argument("--chunk-ms", type=int, default=300)
     args = p.parse_args()
 
     first, last = (int(n) for n in args.ayas.split("-"))
     model = pathlib.Path(args.model)
+    if args.streaming:
+        return streaming(args, model, first, last)
     recogniser = sherpa_onnx.OfflineRecognizer.from_whisper(
         encoder=str(model / "quran-encoder.int8.onnx"),
         decoder=str(model / "quran-decoder.int8.onnx"),

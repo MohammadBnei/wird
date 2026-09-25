@@ -32,6 +32,29 @@ Map<String, dynamic> _fixture(String name) =>
         as Map<String, dynamic>;
 
 void main() {
+  // The set the owner was actually praying when voice-follow was found dead:
+  // al-Fātiḥa 1-5, which says ٱلرَّحْمَٰنِ ٱلرَّحِيمِ twice — once in the
+  // basmala and once as its own aya. A set that repeats a phrase inside
+  // itself is ordinary, and it is the case that broke a rule requiring the
+  // best agreement to beat the runner-up by a margin proportional to its own
+  // score: the better a window matched, the further ahead of the repeat it
+  // was asked to be, so a window that matched the muṣḥaf exactly was refused.
+  // Every window of his prayer was refused and the screen never moved.
+  test('a phrase the set says twice stops the prayer following at all', () {
+    final keys = recitationKeys(_fatiha.split(' ').take(17));
+    expect(keys[2], keys[8], reason: 'this set has to repeat, or it tests nothing');
+
+    final exact = locate(keys, 0, 'بِسْمِ اللَّهِ');
+    expect(
+      exact,
+      isNotNull,
+      reason: 'the recogniser heard the opening of the set exactly and the '
+          'prayer stayed where it was',
+    );
+    expect(exact!.position, 1);
+    expect(exact.score, 1.0);
+  });
+
   // Four reciters, two of them nothing like the studio Ḥuṣarī the matcher was
   // first written against. A voice the matcher cannot follow is a reader who
   // must tap through their whole prayer.
@@ -51,12 +74,17 @@ void main() {
       }
 
       final cursor = PrayerCursor(keys.length);
-      var advances = 0;
+      var advances = 0, lost = 0;
       final ahead = <String>[];
       for (final window in (fixture['windows'] as List)) {
-        final was = cursor.position;
-        followHeard(cursor, keys, window['heard'] as String);
-        if (cursor.position == was) continue;
+        final moved = followHeard(
+          cursor,
+          keys,
+          window['heard'] as String,
+          reach: lost >= followLostAfter ? keys.length : followReach,
+        );
+        lost = moved ? 0 : lost + 1;
+        if (!moved) continue;
         advances++;
         final could = couldHaveReached(window['atMs'] as int);
         if (cursor.position > could) {
@@ -77,29 +105,39 @@ void main() {
     });
   }
 
-  // The voice the feature was found broken on, and the only one here that is
-  // not a professional in a studio. It is the regression guard for the whole
-  // of this: before the matcher ran over letters it advanced once, to word 4,
-  // and the reader recited the entire sūra to a screen that did not move.
-  test('the owner recites al-Fātiḥa in a room and the prayer does not follow', () {
+  // The voice the feature was found broken on, and the only fixture here that
+  // is not a professional in a studio — and the only one built from the audio
+  // the app itself captured rather than from a recording made beside it.
+  //
+  // Both of those mattered. Every studio reciter passed while voice-follow
+  // advanced twice and stopped on this reader's phone, and a fixture built
+  // from his own voice memo passed too: the memo and the app's microphone are
+  // the same phone and the same voice, and the recogniser makes noticeably
+  // different work of them. Only the app's own audio reproduced the prayer he
+  // was actually praying.
+  test('the owner recites into Wird itself and the prayer stops following', () {
     final fixture = _fixture('fatiha_reader_heard');
-    final keys = recitationKeys(_fatiha.split(' '));
+    // al-Fātiḥa 1-5, which is the set the prayer screen was showing him.
+    final keys = recitationKeys(_fatiha.split(' ').take(fixture['words'] as int));
     final cursor = PrayerCursor(keys.length);
-    var advances = 0;
+    var advances = 0, lost = 0;
     for (final window in (fixture['windows'] as List)) {
-      final was = cursor.position;
-      followHeard(cursor, keys, window['heard'] as String);
-      if (cursor.position != was) advances++;
+      final moved = followHeard(
+        cursor,
+        keys,
+        window['heard'] as String,
+        reach: lost >= followLostAfter ? keys.length : followReach,
+      );
+      lost = moved ? 0 : lost + 1;
+      if (moved) advances++;
     }
 
     expect(
       cursor.position,
       greaterThanOrEqualTo(keys.length - 3),
-      reason: 'the reader recited the whole sūra and the prayer reached word '
+      reason: 'the reader recited the whole set and the prayer reached word '
           '${cursor.position} of ${keys.length} in $advances advances',
     );
-    // Reaching the end early and wrapping would read as a second reading the
-    // reader never began.
     expect(cursor.position, lessThan(keys.length));
   });
 }

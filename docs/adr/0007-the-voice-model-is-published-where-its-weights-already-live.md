@@ -1,7 +1,11 @@
 # 7. The voice model is published where its weights already live
 
 Date: 2026-09-24. Status: superseded by ADR 0008, the day after it was written.
-Amends ADR 0005 (voice-follow).
+Amends ADR 0005 (voice-follow). **The model it publishes is also gone**: the
+whisper export below was replaced by a streaming transducer on 2026-09-25, for
+reasons in ADR 0005. The procedure here is kept as the record of how the
+whisper files were made and published, and `scripts/voice-model.py` is not it —
+that one fetches a published model rather than exporting one.
 
 > What this decided is not what runs. The recogniser is served from
 > `wird.bnei.dev/models/`, which is the option rejected below under *Not
@@ -24,8 +28,8 @@ failure `/auth/callback` had until `9078f09`, three hours earlier, in the same
 file, for the same reason.
 
 Underneath that, the deeper one: **nothing was ever published there.**
-`scripts/export-voice-model.py` ran on somebody's machine and wrote three files
-into `build/`. They were never uploaded anywhere, so fixing the route would
+`scripts/export-voice-model.py` ran on somebody's machine and wrote three
+files into `build/`. They were never uploaded anywhere, so fixing the route would
 have served 404 instead of 401.
 
 In Settings this is silent. `_download()` awaits `fetch()` and drops what it
@@ -141,8 +145,8 @@ the next reader does not re-derive it.
   about it.
 - **The licence grants it.** Upstream is Apache-2.0, which permits the
   conversion and its republication provided the licence travels with it and the
-  changes are stated. `scripts/export-voice-model.py` now writes the model card
-  that does both, so publishing is one command with nothing to remember.
+  changes are stated. `scripts/export-voice-model.py` wrote the model card
+  that did both, so publishing was one command with nothing to remember.
 
 ### What the code does now
 
@@ -156,10 +160,10 @@ the next reader does not re-derive it.
   a host with no route, a 404 from one serving nothing — and **no phone can fix
   it**. `interrupted` is bytes that stopped arriving. The distinction exists
   because the reader must never be shown a failure that reads as theirs.
-- `scripts/export-voice-model.py` prints a SHA-256 per file, writes the
-  Apache-2.0 model card, and ends by printing the `hf upload` command. Its last
-  line says `exported, not published`, because that gap is the whole of this
-  ADR.
+- `scripts/export-voice-model.py` printed a SHA-256 per file, wrote the
+  Apache-2.0 model card, and ended by printing the `hf upload` command. Its
+  last line said `exported, not published`, because that gap is the whole of
+  this ADR.
 
 ## What would have caught it
 

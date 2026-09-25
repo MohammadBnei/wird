@@ -29,14 +29,17 @@ class PrayerVoice {
   final AudioRecorder _mic;
 
   StreamSubscription<Uint8List>? _stream;
-  Timer? _hop;
-  var _lastWindow = heardHop;
 
-  /// The last [heardWindow] of recitation, oldest first.
-  final _recent = <double>[];
+  /// Recitation the recogniser has not been handed yet, because it is still
+  /// working on what came before. Nothing here may be dropped: a transducer
+  /// that misses a second of speech misses the words in it for good.
+  final _waiting = <double>[];
+  var _handing = false;
 
-  /// Whether the cursor is moving because this class just moved it.
-  var _ourOwn = false;
+  /// How many answers in a row have found nothing. Past [followLostAfter] the
+  /// search widens to the whole set, because a reach measured from the cursor
+  /// cannot find a reciter who walked past it while the screen stood still.
+  var _lost = 0;
 
   /// Starts listening, or answers null and leaves the prayer to the thumb.
   ///
@@ -98,66 +101,47 @@ class PrayerVoice {
       ),
     );
     _stream = audio.listen(_keep, onError: (_) {});
-    _cursor.addListener(_forgetWhatCameBefore);
-    _schedule(heardHop);
-  }
-
-  /// The next window is asked for no sooner than [heardHop], and never sooner
-  /// than the last one took to answer. A phone slow enough to spend a second
-  /// on a window is a phone that gets asked half as often, rather than one
-  /// that runs its recogniser flat out for the length of a prayer.
-  void _schedule(Duration wait) {
-    _hop = Timer(wait, () async {
-      await _askWhereWeAre();
-      if (_hop != null) {
-        _schedule(_lastWindow > heardHop ? _lastWindow : heardHop);
-      }
-    });
-  }
-
-  /// The thumb moved the prayer, so the seconds held here describe words the
-  /// reader has left behind. Kept, they would argue with the tap for as long
-  /// as the window is wide. The follower's own advances are exempt: they came
-  /// out of this window and throwing it away would blind the next one.
-  void _forgetWhatCameBefore() {
-    if (!_ourOwn) _recent.clear();
   }
 
   void _keep(Uint8List chunk) {
-    _recent.addAll(pcm16ToFloat(chunk));
-    final keep = heardWindow.inMilliseconds * heardSampleRate ~/ 1000;
-    if (_recent.length > keep) {
-      _recent.removeRange(0, _recent.length - keep);
-    }
+    _waiting.addAll(pcm16ToFloat(chunk));
+    unawaited(_handOver());
   }
 
-  /// One window, asked about only when the last answer is in. A window that
-  /// arrives while the recogniser is still working is dropped: an answer about
-  /// audio from several seconds ago would move the prayer to where the reciter
-  /// used to be.
-  Future<void> _askWhereWeAre() async {
-    if (_recogniser.busy) return;
-    // Under a second of voice is a breath between ayas, not a word.
-    if (_recent.length < heardSampleRate) return;
-    final started = DateTime.now();
+  /// Hands over everything waiting, and asks where the reciter is.
+  ///
+  /// One hand-over at a time, and what arrives meanwhile waits rather than
+  /// being dropped. Under load the batches grow instead of the audio thinning,
+  /// so the answer is late rather than wrong — and a phone that cannot keep up
+  /// leaves the reader the tap, which is what they had before any of this.
+  Future<void> _handOver() async {
+    if (_handing || _waiting.isEmpty) return;
+    _handing = true;
     try {
-      final heard = await _recogniser.hear(Float32List.fromList(_recent));
-      _lastWindow = DateTime.now().difference(started);
-      if (heard.isNotEmpty) {
-        _ourOwn = true;
-        followHeard(_cursor, _keys, heard);
-        _ourOwn = false;
+      while (_waiting.isNotEmpty) {
+        final samples = Float32List.fromList(_waiting);
+        _waiting.clear();
+        final heard = await _recogniser.hear(samples);
+        if (heard.isEmpty) continue;
+        final moved = followHeard(
+          _cursor,
+          _keys,
+          heard,
+          reach: _lost >= followLostAfter ? _keys.length : followReach,
+        );
+        _lost = moved ? 0 : _lost + 1;
       }
     } on Object {
       // Silence. The reader taps, as they always could.
+    } finally {
+      _handing = false;
     }
   }
 
   Future<void> stop() async {
-    _cursor.removeListener(_forgetWhatCameBefore);
-    _hop?.cancel();
-    _hop = null;
     await _stream?.cancel();
+    _stream = null;
+    _waiting.clear();
     _recogniser.close();
     try {
       await _mic.stop();
