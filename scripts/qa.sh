@@ -236,7 +236,6 @@ url_rows() {
 		https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/|206|decoder.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
 		https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/|206|joiner.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
 		https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/|206|tokens.txt|voice-follow can never be turned on: Settings offers a download that cannot arrive
-		https://wird.bnei.dev/models/base-ar-quran/38853d7df20b/|206|quran-encoder.int8.onnx|a phone still on the release before this one loses voice-follow: it asks for the whisper model, which stays published until nobody is asking
 		-|200|https://wird.bnei.dev/.well-known/assetlinks.json|Android stops verifying the sign-in link as Wird's, so the browser keeps the finished sign-in and the reader copies a code out of a web page by hand
 		https://wird.bnei.dev/set|-||the namespace a set id is derived under, hashed and never requested
 		https://corpus.quran.com|-||a credit on the About screen, handed to the reader's browser

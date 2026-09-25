@@ -137,6 +137,14 @@ key in `wird-config`.
   replace the weights a phone is about to trust. Read-only is what this wants
   and it is not one command: the grant re-applies on every run, and a new
   export still has to be uploaded by something. Open against infra-bootstrap.
+- **A prefix outlives the release that asked for it.** `base-ar-quran/38853d7df20b/`
+  stays published after the app stopped asking for it, because a phone on the
+  previous release still resolves it and deleting it would take voice-follow
+  away from a reader who has not updated. It is not in the gate's URL rows:
+  that check fails closed on any address the gate watches which nothing in
+  `app/lib` requests, and it is right to — what keeps the old prefix alive is
+  an infra decision about readers, recorded here, not a URL this app ships.
+  It costs 160 MB of a 2.0 GB bucket. Remove it when no phone asks.
 - **Voice-follow now depends on the cluster.** If wird-api is down the
   recogniser cannot be fetched; the feature degrades to the tap the prayer
   screen has always answered, which is the same degradation 0007 accepted for
