@@ -9,6 +9,7 @@ import '../../data/mic.dart';
 import '../../data/sets.dart';
 import '../../data/speech.dart';
 import '../../theme/nocturne.dart';
+import 'voice_check.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
 import '../../widgets/nocturne_segmented.dart';
@@ -283,6 +284,7 @@ class VoiceModelPanel extends StatefulWidget {
   static const download = Key('download recogniser');
   static const stop = Key('stop recogniser download');
   static const remove = Key('remove recogniser');
+  static const check = Key('check recogniser');
 
   @override
   State<VoiceModelPanel> createState() => _VoiceModelState();
@@ -382,13 +384,25 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             onPressed: () => _fetching?.cancel(),
             child: Text('Stop · $done%'),
           )
-        else if (_ready)
+        else if (_ready) ...[
+          NocturneButton(
+            key: VoiceModelPanel.check,
+            variant: NocturneButtonVariant.ghost,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => VoiceCheck(model: _model),
+              ),
+            ),
+            child: const Text('Check the recogniser'),
+          ),
+          SizedBox(height: n.space('1')),
           NocturneButton(
             key: VoiceModelPanel.remove,
             variant: NocturneButtonVariant.ghost,
             onPressed: _remove,
             child: const Text('Remove recogniser'),
-          )
+          ),
+        ]
         else
           NocturneButton(
             key: VoiceModelPanel.download,
