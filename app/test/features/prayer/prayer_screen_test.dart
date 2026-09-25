@@ -63,6 +63,15 @@ Future<void> pumpPrayer(
 }
 
 /// The word the screen says is being recited: the one carrying the glow.
+/// Whether the screen is pointing at no word at all, which is how a prayer
+/// opens: the aya stands lit and the word inside it waits to be earned.
+bool noWordIsLit(WidgetTester tester) {
+  for (final text in tester.widgetList<Text>(find.byType(Text))) {
+    if (text.key is WordKey && text.style?.shadows != null) return false;
+  }
+  return true;
+}
+
 int litWord(WidgetTester tester) {
   for (final text in tester.widgetList<Text>(find.byType(Text))) {
     if (text.key is ValueKey<int> && text.style?.shadows != null) {
@@ -126,7 +135,15 @@ void main() {
   testWidgets('a tap moves the prayer on by one word, so a reader with no '
       'microphone taps their way through a set word by word', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
-    expect(litWord(tester), 103001001);
+    // Nothing is singled out yet: a prayer opens on the first word of the set
+    // without anybody having said it, and pointing at a word nobody has
+    // recited is the screen claiming to know something.
+    expect(
+      noWordIsLit(tester),
+      isTrue,
+      reason: 'the screen pointed at a word before the reader had opened '
+          'their mouth',
+    );
     // 103:2 runs four words and 103:3 runs nine, so a tap that lands on the
     // first word of each of them is carrying an aya and not a word.
     await tapOn(tester, PrayerScreen.nextZone);

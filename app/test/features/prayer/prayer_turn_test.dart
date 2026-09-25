@@ -8,7 +8,7 @@ import 'package:wird/features/study/word_row.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
-import 'prayer_screen_test.dart' show pumpPrayer;
+import 'prayer_screen_test.dart' show noWordIsLit, pumpPrayer;
 import 'sets.dart';
 
 /// The word the screen is pointing at, whatever else is on it. During a turn
@@ -53,7 +53,8 @@ void main() {
   testWidgets('the aya the reciter just finished is gone before they have '
       'stopped saying it', (tester) async {
     final cursor = await pump(tester);
-    expect(litWord(tester), 103001001);
+    // Nothing said yet, so nothing is singled out.
+    expect(noWordIsLit(tester), isTrue);
 
     // The voice crosses into 103:2 — al-ʿAsr is one word, then four, then
     // nine, so word 3 is the third word of the second aya. The aya just

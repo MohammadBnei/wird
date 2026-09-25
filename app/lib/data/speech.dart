@@ -82,11 +82,26 @@ const heardChunk = Duration(milliseconds: 300);
 /// they were when they reached for the screen.
 const heardHeldByHand = Duration(seconds: 4);
 
-/// The least time between starting the recogniser over. Long enough that a
-/// room full of the wrong noise cannot keep it permanently empty-handed,
-/// short enough that a reader whose opening sent it into the wrong language
-/// is not praying to a dead screen.
-const heardStartOver = Duration(seconds: 3);
+/// The least time between starting the recogniser over.
+///
+/// It was three seconds, and a reader's prayer trail showed why that is far
+/// too long: the stream was replaced once, the replacement chose a Latin
+/// language too, and the wait then held him in front of a dead screen while
+/// the recogniser answered `MAUNA`. A wrong language yields nothing at all —
+/// there is no partial credit to protect — so retrying is nearly free and
+/// waiting is not.
+const heardStartOver = Duration(milliseconds: 900);
+
+/// How loud a batch must be before the recogniser is asked about it.
+///
+/// A recogniser handed silence still answers, and this one answers by
+/// guessing a language it will then keep for the length of the stream. The
+/// prayer screen opens before the reader begins, so without this the language
+/// is chosen from the sound of a room.
+///
+/// Low enough to pass a quiet voice a metre away: the owner's own recitation
+/// peaks around 0.4, and the room between his words sits near 0.004.
+const heardQuiet = 0.02;
 
 /// How much of what was said is carried past the end of an utterance. The
 /// matcher reads the last couple of dozen letters, so this is generous; it is
@@ -432,10 +447,12 @@ Future<void> _serve((SendPort, String, String, String, String) args) async {
       }
       final said = recogniser.getResult(stream).text;
       if (recogniser.isEndpoint(stream)) {
-        if (said.trim().isNotEmpty) kept = '$kept $said'.trim();
-        if (kept.length > heardKeptLetters) {
-          kept = kept.substring(kept.length - heardKeptLetters);
-        }
+        // The utterance just ended replaces what was kept rather than being
+        // added to it. What survives a breath is the phrase before this one,
+        // which is what the matcher needs to read across a pause; everything
+        // older is an aya the reciter has left, and leaving it in the tail is
+        // how a window comes to describe somewhere they no longer are.
+        if (said.trim().isNotEmpty) kept = said.trim();
         recogniser.reset(stream);
         text = kept;
       } else {

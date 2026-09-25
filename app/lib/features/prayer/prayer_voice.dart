@@ -61,6 +61,15 @@ class PrayerVoice {
   /// of it.
   DateTime _startedOver = DateTime.fromMillisecondsSinceEpoch(0);
 
+  /// Whether the reader has said anything yet. Until they have, the quiet is
+  /// kept away from the recogniser; afterwards it is fed everything, because
+  /// a pause between ayas is part of the recitation and cutting it out would
+  /// hand the recogniser a reader who never breathes.
+  var _speaking = false;
+
+  /// What the recogniser last said, so an unchanged answer is not re-judged.
+  String _lastHeard = '';
+
   /// Starts listening, or answers null and leaves the prayer to the thumb.
   ///
   /// Null is the ordinary outcome and not a fault: no permission, no model, no
@@ -143,8 +152,28 @@ class PrayerVoice {
       while (_waiting.isNotEmpty) {
         final samples = Float32List.fromList(_waiting);
         _waiting.clear();
+        // A recogniser handed silence answers anyway, and this one answers by
+        // choosing a language it then keeps. The prayer screen opens before
+        // the reader begins, so the quiet before the first word is exactly
+        // what must not reach it.
+        var peak = 0.0;
+        for (final sample in samples) {
+          final loud = sample < 0 ? -sample : sample;
+          if (loud > peak) peak = loud;
+        }
+        if (peak < heardQuiet && !_speaking) continue;
+        if (!_speaking) {
+          trail.note('voice', 'the reader began, at ${peak.toStringAsFixed(2)}');
+        }
+        _speaking = true;
         final heard = await _recogniser.hear(samples);
         if (heard.isEmpty) continue;
+        // The same words as last time are the same question as last time, and
+        // it has already been answered. A reader who stops reciting leaves the
+        // answer standing, and re-judging it forty times a second neither
+        // changes it nor stops being work.
+        if (heard == _lastHeard) continue;
+        _lastHeard = heard;
         // A stream that settled on the wrong language cannot be argued out of
         // it; it is replaced, and the reciter's next seconds fill the new one.
         // Bounded, because noise could otherwise restart it forever.
@@ -153,6 +182,7 @@ class PrayerVoice {
           _startedOver = DateTime.now();
           trail.note('started over', 'answered in another tongue: $heard');
           await _recogniser.forget();
+          _speaking = false;
           continue;
         }
         if (DateTime.now().isBefore(_theirs)) {
@@ -163,7 +193,8 @@ class PrayerVoice {
         final at = locate(_set, heard);
         trail.note(
           'heard',
-          '${_tail(heard)} | ${_verdict(said, at)} | on ${_cursor.at}',
+          '${_tail(heard)} | ${_verdict(said, at)} | on ${_cursor.at} '
+          '| peak ${peak.toStringAsFixed(2)}',
         );
         // Above the bar the word is named; at the bar the aya is as much as
         // the recitation actually said.

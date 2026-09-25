@@ -17,15 +17,24 @@ import 'package:flutter/foundation.dart';
 ///
 /// Never throws: nothing on this screen may fail in front of someone praying.
 class PrayerCursor extends ChangeNotifier {
+  /// A cursor built anywhere but the first word is a prayer already under
+  /// way — something put it there — so the word it names is worth pointing
+  /// at. One built at the first word is a prayer nobody has begun.
   PrayerCursor(int words, {int at = 0})
     : words = words < 1 ? 1 : words,
-      _at = at.clamp(0, (words < 1 ? 1 : words) - 1);
+      _at = at.clamp(0, (words < 1 ? 1 : words) - 1),
+      _sure = at != 0;
 
   /// How many words the set has.
   final int words;
 
   int _at;
-  var _sure = true;
+
+  /// Whether the word — rather than the aya it sits in — is worth pointing
+  /// at. A prayer opens on the first word without anybody having said it, so
+  /// nothing is singled out until something is heard or tapped: the aya
+  /// stands lit and the word inside it waits to be earned.
+  bool _sure;
 
   /// The word being recited, 0 to [words] - 1.
   int get at => _at;
