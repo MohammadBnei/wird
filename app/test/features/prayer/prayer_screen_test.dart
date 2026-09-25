@@ -75,10 +75,17 @@ int litWord(WidgetTester tester) {
 double _opacityOf(WidgetTester tester, Finder finder) =>
     tester.widget<Text>(finder).style!.color!.a;
 
+/// A tap, and the turn it starts.
+///
+/// The aya arriving is animated now, and an AnimatedSwitcher holds both the
+/// one leaving and the one arriving while it runs — so a single pump finds
+/// the aya the reader has just left and reads it as the one they are on.
+/// Settling is not politeness here, it is the difference between asking what
+/// is on screen and asking what was.
 Future<void> tapOn(WidgetTester tester, Key zone, {int times = 1}) async {
   for (var i = 0; i < times; i++) {
     await tester.tap(find.byKey(zone));
-    await tester.pump();
+    await tester.pumpAndSettle();
   }
 }
 

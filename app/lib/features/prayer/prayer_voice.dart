@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -8,6 +8,7 @@ import '../../data/mic.dart';
 import '../../data/speech.dart';
 import 'alignment.dart';
 import 'prayer_cursor.dart';
+import 'prayer_trail.dart';
 
 /// The microphone, wired to the cursor.
 ///
@@ -21,10 +22,21 @@ import 'prayer_cursor.dart';
 /// it has no error to show, and the only thing it can do to the prayer is call
 /// [PrayerCursor.follow], which refuses to rewind and ceilings a jump.
 class PrayerVoice {
-  PrayerVoice._(this._cursor, this._set, this._recogniser, this._mic);
+  PrayerVoice._(this._cursor, this._set, this._recogniser, this._mic, this.trail);
+
+  /// The last words the recogniser was sure enough about to move the prayer
+  /// on, and nothing else.
+  ///
+  /// The screen shows these while the reader recites. Only what matched: a
+  /// window the matcher refused is a window it could not read, and showing
+  /// that to somebody praying would be the screen talking about itself.
+  final matched = ValueNotifier<String>('');
 
   final PrayerCursor _cursor;
   final Recitation _set;
+
+  /// What happened, for reading afterwards. A prayer cannot be watched.
+  final PrayerTrail trail;
   final Recogniser _recogniser;
   final AudioRecorder _mic;
 
@@ -58,8 +70,9 @@ class PrayerVoice {
   static Future<PrayerVoice?> start(
     Database db,
     PrayerCursor cursor,
-    List<String> words,
-  ) async {
+    List<String> words, {
+    PrayerTrail? trail,
+  }) async {
     Recogniser? recogniser;
     AudioRecorder? mic;
     // Nothing is allocated before the recogniser, and nothing past it returns:
@@ -80,7 +93,13 @@ class PrayerVoice {
       if (!await mic.hasPermission(request: false)) {
         throw StateError('the microphone was taken away since Settings');
       }
-      final voice = PrayerVoice._(cursor, Recitation(words), recogniser, mic);
+      final voice = PrayerVoice._(
+        cursor,
+        Recitation(words),
+        recogniser,
+        mic,
+        trail ?? PrayerTrail.none(),
+      );
       await voice._listen();
       return voice;
     } on Object {
@@ -132,14 +151,26 @@ class PrayerVoice {
         if (inAnotherTongue(heard) &&
             DateTime.now().difference(_startedOver) > heardStartOver) {
           _startedOver = DateTime.now();
+          trail.note('started over', 'answered in another tongue: $heard');
           await _recogniser.forget();
           continue;
         }
-        if (DateTime.now().isBefore(_theirs)) continue;
+        if (DateTime.now().isBefore(_theirs)) {
+          trail.note('held', 'the reader moved the prayer themselves');
+          continue;
+        }
+        final said = explain(_set, heard);
         final at = locate(_set, heard);
+        trail.note(
+          'heard',
+          '${_tail(heard)} | ${_verdict(said, at)} | on ${_cursor.at}',
+        );
         // Above the bar the word is named; at the bar the aya is as much as
         // the recitation actually said.
-        if (at != null) _cursor.moveTo(at.word, sure: at.score >= followSure);
+        if (at != null) {
+          _cursor.moveTo(at.word, sure: at.score >= followSure);
+          matched.value = _tail(heard);
+        }
       }
     } on Object {
       // Silence. The reader taps, as they always could.
@@ -152,7 +183,25 @@ class PrayerVoice {
   /// long enough for what they were reciting to leave the window.
   void hold() => _theirs = DateTime.now().add(heardHeldByHand);
 
+  static String _tail(String heard) =>
+      heard.length > 40 ? heard.substring(heard.length - 40) : heard;
+
+  static String _verdict(
+    ({int word, double score, double rival, double needed})? said,
+    ({int word, double score})? at,
+  ) {
+    if (said == null) return 'too little heard';
+    final where = 'word ${said.word} at ${said.score.toStringAsFixed(2)}';
+    if (at != null) return 'MOVE to $where';
+    if (said.score < said.needed) {
+      return 'stay: $where under ${said.needed.toStringAsFixed(2)}';
+    }
+    return 'stay: $where but elsewhere ${said.rival.toStringAsFixed(2)} '
+        '— said twice';
+  }
+
   Future<void> stop() async {
+    matched.dispose();
     await _stream?.cancel();
     _stream = null;
     _waiting.clear();

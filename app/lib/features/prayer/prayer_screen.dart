@@ -9,6 +9,7 @@ import '../study/word_row.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import 'prayer_cursor.dart';
+import 'prayer_trail.dart';
 import 'prayer_voice.dart';
 
 /// Screen 1b — the set recited inside the prayer.
@@ -59,6 +60,16 @@ class PrayerScreen extends StatefulWidget {
 const _side = 26.0;
 const _foot = 46.0;
 const _previewSize = 25.0;
+
+/// How long the aya just finished stands before the next one arrives.
+///
+/// Not a flourish. The reciter's last syllable and the screen's next aya
+/// landing together reads as the screen hurrying them; a breath between the
+/// two reads as the screen having listened.
+const _dwell = Duration(seconds: 1);
+
+/// How long the next aya takes to arrive once it starts arriving.
+const _turn = Duration(milliseconds: 420);
 const _previewHeight = 1.9;
 const _reciting = 52.0;
 
@@ -84,27 +95,83 @@ class _PrayerScreenState extends State<PrayerScreen> {
   /// there is nothing they could do about it while praying.
   PrayerVoice? _voice;
 
+  /// Which aya is on screen. It lags the cursor by [_dwell] when the reciter
+  /// crosses into the next one, so the aya they have just finished stands for
+  /// a moment before the next arrives. A prayer is not a race, and a screen
+  /// that changes the instant the last syllable lands reads as impatience.
+  late int _shown = _ayaOf(_cursor.at);
+  Timer? _turning;
+
+  /// Whether the move now arriving is the reader's own hand.
+  var _theirHand = false;
+
   @override
   void initState() {
     super.initState();
-    _cursor.addListener(_redraw);
+    _cursor.addListener(_onTheMove);
     unawaited(_keepAwake(true));
     unawaited(_followTheReciter());
   }
 
   @override
   void dispose() {
-    _cursor.removeListener(_redraw);
+    _turning?.cancel();
+    _cursor.removeListener(_onTheMove);
     unawaited(_keepAwake(false));
     unawaited(_voice?.stop());
     if (widget.cursor == null) _cursor.dispose();
     super.dispose();
   }
 
+  /// The aya the cursor is in, which is not always the one on screen.
+  int _ayaOf(int word) {
+    var at = 0;
+    for (var i = 0; i < _ayaStarts.length; i++) {
+      if (_ayaStarts[i] <= word) at = i;
+    }
+    return at;
+  }
+
+  /// The word moved. Redraw at once — the word being recited is inside the
+  /// aya already shown — and if it has crossed into another aya, decide
+  /// whether the next one arrives now or after a breath.
+  ///
+  /// **A hand turns the page at once.** The reader tapping is the reader
+  /// saying where they are, and making them wait a second for an answer reads
+  /// as the screen ignoring them.
+  ///
+  /// **A voice gets the breath, unless it is still going.** The dwell is for
+  /// the moment a reciter finishes an aya and pauses: the one they have just
+  /// said stands while it settles. A reciter running straight on says so by
+  /// moving again, and a second move cancels the wait and turns immediately —
+  /// nobody reciting without pauses should be watching the screen catch up.
+  void _onTheMove() {
+    setState(() {});
+    final wants = _ayaOf(_cursor.at);
+    if (wants == _shown) {
+      _turning?.cancel();
+      _turning = null;
+      return;
+    }
+    if (_theirHand || _turning != null) {
+      _theirHand = false;
+      _turning?.cancel();
+      _turning = null;
+      setState(() => _shown = wants);
+      return;
+    }
+    _turning = Timer(_dwell, () {
+      _turning = null;
+      if (mounted) setState(() => _shown = _ayaOf(_cursor.at));
+    });
+  }
+
   Future<void> _followTheReciter() async {
+    final trail = await PrayerTrail.beside(await getDatabasesPath());
+    trail.note('set', '${_flat.length} words, ${widget.set.ayas.length} ayas');
     final voice = await PrayerVoice.start(widget.db, _cursor, [
       for (final here in _flat) here.word.text,
-    ]);
+    ], trail: trail);
     // The prayer can be over before the model is loaded, and a microphone left
     // open behind a screen nobody is looking at is the worst of the failures
     // available here.
@@ -112,10 +179,51 @@ class _PrayerScreenState extends State<PrayerScreen> {
       await voice?.stop();
       return;
     }
-    if (voice != null) setState(() => _voice = voice);
+    if (voice == null) {
+      trail.note('voice', 'did not start; the prayer answers taps only');
+      await trail.close();
+      return;
+    }
+    setState(() => _voice = voice);
   }
 
-  void _redraw() => setState(() {});
+  /// The words that last moved the prayer, under the aya, fading as they age.
+  ///
+  /// Only what matched. A window the matcher refused is a window it could not
+  /// read, and putting that in front of somebody praying would be the screen
+  /// talking about itself — contract 2 bends this far and no further: what is
+  /// shown is the reader's own recitation, arriving because it was understood.
+  Widget _echo(Nocturne n) => ValueListenableBuilder<String>(
+    valueListenable: _voice!.matched,
+    builder: (context, heard, _) => AnimatedSwitcher(
+      duration: const Duration(milliseconds: 260),
+      transitionBuilder: (child, fade) => FadeTransition(
+        opacity: fade,
+        child: SlideTransition(
+          position: Tween(
+            begin: const Offset(0, 0.4),
+            end: Offset.zero,
+          ).animate(fade),
+          child: child,
+        ),
+      ),
+      child: heard.isEmpty
+          ? const SizedBox.shrink()
+          : Text(
+              heard,
+              key: ValueKey(heard),
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: Nocturne.arabicFamily,
+                fontSize: 15,
+                color: n.accent.withValues(alpha: 0.5),
+              ),
+            ),
+    ),
+  );
 
   /// A tap carries the reader to the start of an aya, not of a word. Most
   /// readers have nothing following their voice — voice-follow wants a
@@ -132,6 +240,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
   /// They also name their own direction: the cursor takes any move it is
   /// given now, so nothing downstream will quietly correct a wrong one.
   void _onToTheNextAya() {
+    _theirHand = true;
     final next = _ayaStarts.indexWhere((w) => w > _cursor.at);
     _cursor.moveTo(next < 0 ? 0 : _ayaStarts[next] % _cursor.words);
     _voice?.hold();
@@ -141,6 +250,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
   /// back is saying the screen has run ahead of them; from an aya's start it
   /// is the aya before, and from the first it is the last.
   void _backAnAya() {
+    _theirHand = true;
     final at = _ayaStarts.lastIndexWhere((w) => w < _cursor.at);
     _cursor.moveTo(at < 0 ? _ayaStarts.last : _ayaStarts[at]);
     _voice?.hold();
@@ -158,9 +268,14 @@ class _PrayerScreenState extends State<PrayerScreen> {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
-    final here = _flat.isEmpty ? null : _flat[_cursor.at];
     final ayas = widget.set.ayas;
-    final at = here == null ? -1 : ayas.indexOf(here.aya);
+    // The aya on screen lags the cursor by [_dwell] when the reciter crosses
+    // into the next one, so `here` is drawn from what is shown rather than
+    // from where the reciter is. Inside one aya the two agree and the word
+    // moves as it is recited.
+    final at = _flat.isEmpty ? -1 : _shown.clamp(0, ayas.length - 1);
+    final word = _ayaOf(_cursor.at) == at ? _cursor.at : _ayaStarts[at];
+    final here = _flat.isEmpty ? null : _flat[word.clamp(0, _flat.length - 1)];
     return Scaffold(
       backgroundColor: n.bg,
       body: DecoratedBox(
@@ -191,6 +306,11 @@ class _PrayerScreenState extends State<PrayerScreen> {
                   at >= 0 && at < ayas.length - 1 ? ayas[at + 1] : null,
                 ),
               ),
+              if (_voice != null)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: _side),
+                  child: SizedBox(height: 22, child: _echo(n)),
+                ),
               _strip(n),
             ],
           ),
@@ -274,7 +394,30 @@ class _PrayerScreenState extends State<PrayerScreen> {
                     children: [
                       _preview(n, before, 0.24),
                       const SizedBox(height: 18),
-                      if (here != null) _recited(n, here),
+                      if (here != null)
+                        // Keyed by the aya, so the switcher has something to
+                        // switch on: it compares runtimeType and key, and an
+                        // unkeyed Wrap would be updated in place and never
+                        // animate. The new aya rises as the old one leaves.
+                        AnimatedSwitcher(
+                          duration: _turn,
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeIn,
+                          transitionBuilder: (child, fade) => FadeTransition(
+                            opacity: fade,
+                            child: SlideTransition(
+                              position: Tween(
+                                begin: const Offset(0, 0.16),
+                                end: Offset.zero,
+                              ).animate(fade),
+                              child: child,
+                            ),
+                          ),
+                          child: KeyedSubtree(
+                            key: ValueKey(here.aya.id),
+                            child: _recited(n, here),
+                          ),
+                        ),
                       const SizedBox(height: 24),
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 34),
