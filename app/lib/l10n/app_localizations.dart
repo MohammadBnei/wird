@@ -118,6 +118,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not downloaded'**
   String get notDownloaded;
+
+  /// The kicker over the title of the passage screen (1d), saying what the screen counts.
+  ///
+  /// In en, this message translates to:
+  /// **'UNDERSTOOD, NOT MERELY READ'**
+  String get progress_kicker;
+
+  /// The title of the passage screen (1d): how far through the Qur'an the reader has come.
+  ///
+  /// In en, this message translates to:
+  /// **'Your passage'**
+  String get progress_title;
+
+  /// The caption inside the juz ring on the passage screen (1d), under the percentage. Both counts arrive already grouped with thousands separators.
+  ///
+  /// In en, this message translates to:
+  /// **'{understood} of {total} ayas'**
+  String progress_ayas(String understood, String total);
+
+  /// The screen-reader label for the juz ring on the passage screen (1d). The ring's own figures are painted, so this is the only way they are ever spoken.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} of the Qur\'an understood, {ayas}. Juz {juz}, set {set}.'**
+  String progress_ringSemantics(String percent, String ayas, int juz, int set);
+
+  /// The line inside the juz ring on the passage screen (1d) naming where the reader stands.
+  ///
+  /// In en, this message translates to:
+  /// **'JUZ {juz} · SET {set}'**
+  String progress_here(int juz, int set);
+
+  /// The label under the first count tile on the passage screen (1d).
+  ///
+  /// In en, this message translates to:
+  /// **'sets understood'**
+  String get progress_setsUnderstood;
+
+  /// The label under the second count tile on the passage screen (1d).
+  ///
+  /// In en, this message translates to:
+  /// **'prayers recorded'**
+  String get progress_prayersRecorded;
+
+  /// The heading over the sūra rows on the passage screen (1d).
+  ///
+  /// In en, this message translates to:
+  /// **'WHERE YOU ARE'**
+  String get progress_whereYouAre;
+
+  /// The button beside that heading on the passage screen (1d); it opens the index of all 114 sūras.
+  ///
+  /// In en, this message translates to:
+  /// **'All 114'**
+  String get progress_allSuras;
+
+  /// The heading on the roots card at the foot of the passage screen (1d).
+  ///
+  /// In en, this message translates to:
+  /// **'ROOTS YOU NOW KNOW'**
+  String get progress_rootsKnown;
+
+  /// What the roots card on the passage screen (1d) says while the reader has understood nothing yet.
+  ///
+  /// In en, this message translates to:
+  /// **'The roots of every set you understand are collected here.'**
+  String get progress_rootsEmpty;
+
+  /// What the roots card on the passage screen (1d) says once there are roots: what they are worth against the text still to come. The count arrives already grouped.
+  ///
+  /// In en, this message translates to:
+  /// **'{roots} roots cover {percent}% of the words ahead of you.'**
+  String progress_rootsCoverage(String roots, int percent);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

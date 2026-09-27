@@ -19,4 +19,48 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get notDownloaded => 'Non téléchargé';
+
+  @override
+  String get progress_kicker => 'COMPRIS, ET PAS SEULEMENT LU';
+
+  @override
+  String get progress_title => 'Votre parcours';
+
+  @override
+  String progress_ayas(String understood, String total) {
+    return '$understood versets sur $total';
+  }
+
+  @override
+  String progress_ringSemantics(String percent, String ayas, int juz, int set) {
+    return '$percent du Coran compris, $ayas. Juz $juz, passage $set.';
+  }
+
+  @override
+  String progress_here(int juz, int set) {
+    return 'JUZ $juz · PASSAGE $set';
+  }
+
+  @override
+  String get progress_setsUnderstood => 'passages compris';
+
+  @override
+  String get progress_prayersRecorded => 'prières enregistrées';
+
+  @override
+  String get progress_whereYouAre => 'OÙ VOUS EN ÊTES';
+
+  @override
+  String get progress_allSuras => 'Les 114';
+
+  @override
+  String get progress_rootsKnown => 'LES RACINES QUE VOUS CONNAISSEZ';
+
+  @override
+  String get progress_rootsEmpty => 'Les racines de chaque passage que vous comprenez sont rassemblées ici.';
+
+  @override
+  String progress_rootsCoverage(String roots, int percent) {
+    return '$roots racines couvrent $percent % des mots qui vous restent à lire.';
+  }
 }
