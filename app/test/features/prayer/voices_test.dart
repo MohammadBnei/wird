@@ -59,39 +59,42 @@ void main() {
     });
 
     test('the recogniser warming up carries the prayer off word one', () {
-      // A streaming transducer starts with no left context — this one wants
-      // 128 frames of it — and a multilingual one must also settle on a
-      // language, so the opening of a prayer comes back wrong. The owner's own
-      // بِسْمِ ٱللَّهِ arrives as هي. Measured and rejected: a silent lead-in makes
-      // it worse (500 ms of silence decodes as "OR", a second as "A EMOTION"),
-      // and modified_beam_search worse still ("Э") and 29% slower.
-      //
-      // It costs nothing, and this is why: the screen starts on word 0, which
-      // is where the reciter starts, so there is nowhere to be carried from.
-      // What matters is that the nonsense is refused rather than acted on.
+      // A streaming model starts with no left context — this one wants 128
+      // frames of it — so the opening of a prayer comes back short. It costs
+      // nothing, and this is why: the screen starts on word 0, which is where
+      // the reciter starts, so there is nowhere to be carried from. What
+      // matters is that the fragment is refused rather than acted on.
       expect(locate(set, 'هي'), isNull);
-      expect(locate(set, 'OR'), isNull);
-      expect(locate(set, 'A EMOTION'), isNull);
-      expect(locate(set, 'Э'), isNull);
+      expect(locate(set, 'ااهِ'), isNull);
     });
 
-    test('an answer in a language nobody is speaking is taken as recitation', () {
-      // The recogniser is multilingual and chooses a language from the first
-      // sounds it hears, then keeps that choice for the length of the stream.
-      // بِسْمِ ٱللَّهِ opens most prayers and sounds enough like a Latin word to
-      // send it into English: the owner's screen showed `BIS` and never moved
-      // again. Nothing in sherpa-onnx can pin the language on a streaming
-      // model, and no Arabic-only streaming model exists to use instead, so
-      // the stream is thrown away and replaced.
-      expect(inAnotherTongue('BIS'), isTrue);
-      expect(inAnotherTongue('お前あらもうねらいよめ'), isTrue);
-      expect(inAnotherTongue('A EMOTION'), isTrue);
-      expect(inAnotherTongue('Эرحم'), isTrue);
-      // A recitation is Arabic letters and the spaces between them, and
-      // nothing else — including when the recogniser spells it badly.
-      expect(inAnotherTongue('بسم الله الرحمن الرحيم'), isFalse);
-      expect(inAnotherTongue('هي الرحمن الرحيم الحمد لله'), isFalse);
-      expect(inAnotherTongue('مَالِكِ يَوْمِ الدِّينِ'), isFalse);
+    test('what the recogniser writes and what the muṣḥaf writes are two '
+        'different alphabets', () {
+      // The recogniser writes Qur'anic phonemes, and until 2026-09-27 the fold
+      // both sides pass through knew only the muṣḥaf's letters: a madd came
+      // back as ۦۦۦۦ and was dropped entirely, gemination came back as the
+      // letter twice and stayed doubled. Neither is a different word, and a
+      // fold that cannot say so puts the whole recitation out of reach.
+      //
+      // These are the recogniser's own output on the owner's prayer, beside
+      // the muṣḥaf's spelling of the same words.
+      expect(recitationKey('رَحِۦۦۦۦم'), recitationKey('ٱلرَّحِيمِ').substring(1));
+      expect(recitationKey('ءِييَااكَ'), recitationKey('إِيَّاكَ'));
+      expect(recitationKey('رَببِ'), recitationKey('رَبِّ'));
+      expect(recitationKey('صِرَااطَ'), recitationKey('ٱلصِّرَٰطَ').substring(1));
+      // Not everything closes, and the one that does not is worth naming: the
+      // muṣḥaf writes no alif in لِلَّهِ and the reciter holds the ā anyway, so
+      // the two spellings stand a letter apart whatever the fold does. That is
+      // a percentage of a window rather than a verdict on it, which is the
+      // whole reason the matching is over letters — and the real opening of
+      // al-Fātiḥa, as this recogniser wrote it, still lands where it should.
+      expect(recitationKey('لِللَااهِ'), isNot(recitationKey('لِلَّهِ')));
+      // And the repeat guard reads the new alphabet as it read the old one:
+      // بِسْمِ ٱللَّهِ names one place in this set and moves, while the same window
+      // grown as far as ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ names the basmala and the third aya
+      // equally well, and is refused rather than guessed at.
+      expect(locate(set, 'بِسمِللَااهِررَ')?.word, 1);
+      expect(locate(set, 'بِسمِللَااهِررَحمَاانِررَحِۦۦم'), isNull);
     });
 
     test('the set begun again for the next rakʿa runs off the end', () {
@@ -126,15 +129,16 @@ void main() {
       reason: 'this set has to repeat, or it tests nothing',
     );
 
-    final exact = locate(set, 'بِسْمِ اللَّهِ');
+    // The opening of the set as this recogniser actually wrote it, reciter
+    // by reciter — not an invented spelling.
+    final exact = locate(set, 'بِسمِللَااهِررَ');
     expect(
       exact,
       isNotNull,
-      reason: 'the recogniser heard the opening of the set exactly and the '
-          'prayer stayed where it was',
+      reason: 'the recogniser heard the opening of the set and the prayer '
+          'stayed where it was',
     );
     expect(exact!.word, 1);
-    expect(exact.score, 1.0);
   });
 
   // Four reciters, two of them nothing like the studio Ḥuṣarī the matcher was

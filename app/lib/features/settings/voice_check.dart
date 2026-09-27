@@ -58,9 +58,8 @@ class _VoiceCheckState extends State<VoiceCheck> {
     widget.words.isEmpty ? 1 : widget.words.length,
   );
   var _moves = 0;
-  DateTime _startedOver = DateTime.fromMillisecondsSinceEpoch(0);
-  var _tongues = 0;
   String _why = '';
+  String _carried = '';
 
   @override
   void initState() {
@@ -121,17 +120,13 @@ class _VoiceCheckState extends State<VoiceCheck> {
         final samples = Float32List.fromList(_waiting);
         _waiting.clear();
         final began = DateTime.now();
-        final heard = await recogniser.hear(samples);
+        final said = await recogniser.hear(samples);
+        final heard = '$_carried ${said.text}'.trim();
+        if (said.ended && said.text.trim().isNotEmpty) {
+          _carried = said.text.trim();
+        }
         final took = DateTime.now().difference(began);
         if (!mounted) return;
-        if (inAnotherTongue(heard) &&
-            DateTime.now().difference(_startedOver) > heardStartOver) {
-          _startedOver = DateTime.now();
-          _tongues++;
-          await recogniser.forget();
-          if (mounted) setState(() => _heard = '');
-          continue;
-        }
         if (heard.isNotEmpty && !_set.isEmpty) {
           final was = _cursor.at;
           final at = locate(_set, heard);
@@ -226,8 +221,7 @@ class _VoiceCheckState extends State<VoiceCheck> {
               ],
               Text(
                 '${(_samples / heardSampleRate).toStringAsFixed(1)}s of voice, '
-                'slowest answer ${_slowest.inMilliseconds}ms'
-                '${_tongues > 0 ? ', started over $_tongues×' : ''}',
+                'slowest answer ${_slowest.inMilliseconds}ms',
                 style: TextStyle(color: n.color('neutral-500')),
               ),
             ],

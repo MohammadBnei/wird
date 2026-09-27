@@ -67,20 +67,6 @@ const followSure = 0.8;
 /// Two candidates this close together are one answer told twice.
 const _tie = 0.05;
 
-/// Anything the muṣḥaf could not have been written in.
-final _foreign = RegExp(r'[^\u0600-\u06FF\s]');
-
-/// Whether the recogniser has answered in a language the reciter is not
-/// speaking, which it does by choosing one from the first sounds it hears and
-/// then keeping that choice for the length of the stream.
-///
-/// بِسْمِ ٱللَّهِ opens most prayers and sounds enough like a Latin word to send a
-/// multilingual model into English; the owner's screen showed `BIS` and never
-/// moved again. Arabic letters and spaces are the whole of what a recitation
-/// can come back as, so anything else is the model answering a question
-/// nobody asked.
-bool inAnotherTongue(String heard) => _foreign.hasMatch(heard);
-
 /// A set, in the form [locate] reads: every word's letters run together, and
 /// for each letter the word it came from.
 ///

@@ -227,7 +227,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
 
   /// A tap carries the reader to the start of an aya, not of a word. Most
   /// readers have nothing following their voice — voice-follow wants a
-  /// permission and a 339 MB download — and a set runs to 25 words, so a word
+  /// permission and a 73 MB download — and a set runs to 25 words, so a word
   /// per tap is 25 taps in the middle of a prayer. It is the same move while
   /// the voice is being followed, where the tap is the reader saying the
   /// screen is behind them: a screen one word out is not one anybody reaches

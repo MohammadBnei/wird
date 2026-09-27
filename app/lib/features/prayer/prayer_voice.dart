@@ -57,10 +57,6 @@ class PrayerVoice {
   /// one correction the reader has stops working.
   DateTime _theirs = DateTime.fromMillisecondsSinceEpoch(0);
 
-  /// When the recogniser was last started over, so noise cannot make a habit
-  /// of it.
-  DateTime _startedOver = DateTime.fromMillisecondsSinceEpoch(0);
-
   /// Whether the reader has said anything yet. Until they have, the quiet is
   /// kept away from the recogniser; afterwards it is fed everything, because
   /// a pause between ayas is part of the recitation and cutting it out would
@@ -69,6 +65,11 @@ class PrayerVoice {
 
   /// What the recogniser last said, so an unchanged answer is not re-judged.
   String _lastHeard = '';
+  DateTime _lastSaid = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// The utterance before the one now being said, when it was Arabic. This is
+  /// what lets the matcher read across the breath between two ayas.
+  String _carried = '';
 
   /// Starts listening, or answers null and leaves the prayer to the thumb.
   ///
@@ -152,10 +153,10 @@ class PrayerVoice {
       while (_waiting.isNotEmpty) {
         final samples = Float32List.fromList(_waiting);
         _waiting.clear();
-        // A recogniser handed silence answers anyway, and this one answers by
-        // choosing a language it then keeps. The prayer screen opens before
-        // the reader begins, so the quiet before the first word is exactly
-        // what must not reach it.
+        // A recogniser handed silence answers anyway, with a phrase the
+        // matcher then has to refuse. The prayer screen opens before the
+        // reader begins, so the quiet before the first word is exactly what
+        // must not reach it.
         var peak = 0.0;
         for (final sample in samples) {
           final loud = sample < 0 ? -sample : sample;
@@ -166,7 +167,28 @@ class PrayerVoice {
           trail.note('voice', 'the reader began, at ${peak.toStringAsFixed(2)}');
         }
         _speaking = true;
-        final heard = await _recogniser.hear(samples);
+        final said = await _recogniser.hear(samples);
+        // What the reciter has said, as far as this side is concerned: the
+        // phrase before this one and the one now being spoken.
+        final heard = '$_carried ${said.text}'.trim();
+        if (said.ended) {
+          if (said.text.trim().isNotEmpty) _carried = said.text.trim();
+          trail.note(
+            'utterance ended',
+            said.text.isEmpty ? '(nothing)' : said.text,
+          );
+        }
+        // A heartbeat even when nothing changes, because the last trail had a
+        // sixty-second hole in it: the answer stopped changing, every window
+        // was skipped, and the record went quiet at exactly the moment it was
+        // needed. Silence in a diary reads the same as silence in the room.
+        if (DateTime.now().difference(_lastSaid) > heardHeartbeat) {
+          _lastSaid = DateTime.now();
+          trail.note(
+            'still here',
+            'peak ${peak.toStringAsFixed(2)} | ${_tail(heard)}',
+          );
+        }
         if (heard.isEmpty) continue;
         // The same words as last time are the same question as last time, and
         // it has already been answered. A reader who stops reciting leaves the
@@ -174,26 +196,16 @@ class PrayerVoice {
         // changes it nor stops being work.
         if (heard == _lastHeard) continue;
         _lastHeard = heard;
-        // A stream that settled on the wrong language cannot be argued out of
-        // it; it is replaced, and the reciter's next seconds fill the new one.
-        // Bounded, because noise could otherwise restart it forever.
-        if (inAnotherTongue(heard) &&
-            DateTime.now().difference(_startedOver) > heardStartOver) {
-          _startedOver = DateTime.now();
-          trail.note('started over', 'answered in another tongue: $heard');
-          await _recogniser.forget();
-          _speaking = false;
-          continue;
-        }
+        _lastSaid = DateTime.now();
         if (DateTime.now().isBefore(_theirs)) {
           trail.note('held', 'the reader moved the prayer themselves');
           continue;
         }
-        final said = explain(_set, heard);
+        final why = explain(_set, heard);
         final at = locate(_set, heard);
         trail.note(
           'heard',
-          '${_tail(heard)} | ${_verdict(said, at)} | on ${_cursor.at} '
+          '${_tail(heard)} | ${_verdict(why, at)} | on ${_cursor.at} '
           '| peak ${peak.toStringAsFixed(2)}',
         );
         // Above the bar the word is named; at the bar the aya is as much as

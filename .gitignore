@@ -50,3 +50,4 @@ app/test/failures/
 
 # Rendered screens a gate agent left behind while looking at its own work.
 app/gate-shots/
+__pycache__/

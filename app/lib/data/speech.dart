@@ -13,7 +13,7 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 /// The recogniser voice-follow listens with, and the download that fetches it.
 ///
 /// RUNTIME FETCH, AND ONLY ON A READER'S WORD. The app is 27 MB and the model
-/// is a hundred and sixty. A reader who never turns voice-follow on pays
+/// is seventy-three. A reader who never turns voice-follow on pays
 /// nothing for it: no bundle weight, no background download, no request the
 /// first launch makes on its own. The download is offered in Settings, with
 /// its size printed, and it can be stopped and picked up again.
@@ -22,27 +22,26 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 /// model on disk is that the alternative is streaming somebody's prayer to a
 /// server.
 
-/// A streaming zipformer transducer, Arabic among eight languages, int8.
+/// A streaming zipformer CTC model over a Qur'anic phoneme alphabet, int8.
 ///
-/// It replaced whisper-base fine-tuned on the Qur'an, which was better at
-/// spelling recitation and could not do this job. Whisper answers once per
-/// window: the longer the window the better it hears and the longer the reader
-/// waits, and on the owner's phone a six-second window cost a median of 1576
-/// ms and as much as 6491 ms, so the screen followed him by three seconds and
-/// sometimes seven. A transducer keeps its context in hidden state instead of
-/// in the window, so it has heard everything and still answers every chunk.
-/// See ADR 0005 for the measurement that ended the argument.
-const voiceModelParts = [
-  'encoder.int8.onnx',
-  'decoder.onnx',
-  'joiner.int8.onnx',
-  'tokens.txt',
-];
+/// It writes what it hears in 251 symbols: Arabic letters, the three short
+/// vowels, and the marks that carry gemination, madd and tajwīd. There is no
+/// Latin letter in that alphabet and no second language behind it, which is
+/// the whole reason it is here. The multilingual transducer it replaced chose
+/// a language from the first sounds it was given, بِسْمِ ٱللَّهِ sounded Latin
+/// enough to send it into English, and the choice lived in the stream's state
+/// where nothing could argue it out again — the owner's screen showed `BIS`,
+/// then `然后`, and did not move for the rest of the prayer.
+///
+/// Measured against that transducer on the owner's own recorded prayer, fed
+/// in 300 ms chunks the way the app feeds it: this one follows al-Fātiḥa to
+/// its last word, the transducer stalls three words short and stays there.
+/// 14 ms per chunk against 24 ms, and a fifth of the bytes. ADR 0009.
+const voiceModelParts = ['model.int8.onnx', 'tokens.txt'];
 
 /// What the reader is told before they agree to it. Read off the published
-/// files: 296.6 MB of encoder, 33.8 MB of decoder, 8.3 MB of joiner, 0.2 MB of
-/// tokens.
-const voiceModelBytes = 339 * 1000 * 1000;
+/// files: 72.7 MB of weights and 2.3 kB of tokens.
+const voiceModelBytes = 72707738;
 
 /// Where the files are published: Wird's own host, which answers a phone that
 /// has never signed in and hands it on to the store. `/models/` on wird-api
@@ -56,14 +55,14 @@ const voiceModelBytes = 339 * 1000 * 1000;
 ///
 /// The last path segment is a digest of the files' own digests. A re-export
 /// with different weights cannot land on the key a half-finished download is
-/// resuming against — an encoder and a joiner that disagree load without
+/// resuming against — weights and a token table that disagree load without
 /// complaint and transcribe nothing, which is a thing to debug once.
 ///
 /// Moving it costs a release. There is no server override — saying there was
 /// one is how this stayed pointed for a fortnight at a host where the files
 /// answered 401 and nothing had ever been uploaded.
 const defaultVoiceModelOrigin =
-    'https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/';
+    'https://wird.bnei.dev/models/ar-phoneme/54f7db6bdcff/';
 
 /// How much recitation is handed over at a time.
 ///
@@ -82,26 +81,21 @@ const heardChunk = Duration(milliseconds: 300);
 /// they were when they reached for the screen.
 const heardHeldByHand = Duration(seconds: 4);
 
-/// The least time between starting the recogniser over.
-///
-/// It was three seconds, and a reader's prayer trail showed why that is far
-/// too long: the stream was replaced once, the replacement chose a Latin
-/// language too, and the wait then held him in front of a dead screen while
-/// the recogniser answered `MAUNA`. A wrong language yields nothing at all —
-/// there is no partial credit to protect — so retrying is nearly free and
-/// waiting is not.
-const heardStartOver = Duration(milliseconds: 900);
-
 /// How loud a batch must be before the recogniser is asked about it.
 ///
-/// A recogniser handed silence still answers, and this one answers by
-/// guessing a language it will then keep for the length of the stream. The
-/// prayer screen opens before the reader begins, so without this the language
-/// is chosen from the sound of a room.
+/// A recogniser handed silence still answers, and what it invents out of a
+/// quiet room is a phrase the matcher then has to refuse. The prayer screen
+/// opens before the reader begins, so the quiet before the first word is
+/// exactly what should not reach it.
 ///
 /// Low enough to pass a quiet voice a metre away: the owner's own recitation
 /// peaks around 0.4, and the room between his words sits near 0.004.
 const heardQuiet = 0.02;
+
+/// How often the trail says something even when nothing has changed. A record
+/// that goes quiet exactly when the thing it records goes quiet cannot be
+/// read back.
+const heardHeartbeat = Duration(seconds: 3);
 
 /// How much of what was said is carried past the end of an utterance. The
 /// matcher reads the last couple of dozen letters, so this is generous; it is
@@ -257,7 +251,7 @@ class Recogniser {
   final Isolate _isolate;
   final SendPort _to;
   final ReceivePort _from;
-  Completer<String>? _pending;
+  Completer<({String text, bool ended})>? _pending;
 
   /// Null when the model is missing or the platform will not load it. Every
   /// caller treats that as "the reader taps", which is what they did before,
@@ -284,8 +278,6 @@ class Recogniser {
           from.sendPort,
           model.fileFor(voiceModelParts[0]).path,
           model.fileFor(voiceModelParts[1]).path,
-          model.fileFor(voiceModelParts[2]).path,
-          model.fileFor(voiceModelParts[3]).path,
         ),
         onExit: from.sendPort,
         onError: from.sendPort,
@@ -312,9 +304,12 @@ class Recogniser {
     _from.listen((message) {
       final waiting = _pending;
       _pending = null;
-      if (waiting != null && !waiting.isCompleted) {
-        waiting.complete(message is String ? message : '');
-      }
+      if (waiting == null || waiting.isCompleted) return;
+      waiting.complete(
+        message is List && message.length == 2
+            ? (text: message[0] as String, ended: message[1] as bool)
+            : (text: '', ended: false),
+      );
     });
   }
 
@@ -331,39 +326,30 @@ class Recogniser {
   /// it for good — unlike the window this replaced, where a dropped ask cost
   /// nothing because the next one asked about the same seconds again. The
   /// caller holds what it cannot hand over yet.
-  Future<String> hear(Float32List samples) {
-    if (_pending != null) return Future.value('');
-    final answer = _pending = Completer<String>();
+  Future<({String text, bool ended})> hear(Float32List samples) {
+    const nothing = (text: '', ended: false);
+    if (_pending != null) return Future.value(nothing);
+    final answer = _pending = Completer<({String text, bool ended})>();
     try {
       _to.send(samples);
     } on Object {
       _pending = null;
-      return Future.value('');
+      return Future.value(nothing);
     }
     return answer.future.timeout(
       const Duration(seconds: 10),
       onTimeout: () {
         _pending = null;
-        return '';
+        return nothing;
       },
     );
   }
 
-  /// Throws away everything heard so far and listens afresh.
-  ///
-  /// The recogniser is multilingual and picks a language from the opening of
-  /// what it hears. بِسْمِ ٱللَّهِ opens most prayers and sounds enough like a Latin
-  /// word to send it into English — after which every answer is English, for
-  /// the length of the prayer, because the choice lives in the stream's state.
-  /// sherpa-onnx offers no way to pin the language on a streaming model, and
-  /// there is no Arabic-only streaming model to use instead.
-  Future<String> forget() => hear(Float32List(0));
-
   /// Ends the listening and gives the model back.
   ///
   /// The isolate is asked to stop and waited for rather than killed where it
-  /// stands, because killing reclaims only its Dart heap and the model is 160
-  /// MB that onnxruntime malloc'd. A prayer is left five times a day.
+  /// stands, because killing reclaims only its Dart heap and the weights are
+  /// what onnxruntime malloc'd. A prayer is left five times a day.
   Future<void> close() {
     _pending = null;
     _from.close();
@@ -379,43 +365,31 @@ class Recogniser {
 /// first would mean a model that cannot load still answers every window with
 /// the empty string, and [Recogniser.open] would hand the prayer screen a
 /// recogniser to print FOLLOWING YOUR VOICE about.
-Future<void> _serve((SendPort, String, String, String, String) args) async {
-  final (home, encoder, decoder, joiner, tokens) = args;
+Future<void> _serve((SendPort, String, String) args) async {
+  final (home, model, tokens) = args;
 
   sherpa.initBindings();
   final recogniser = sherpa.OnlineRecognizer(
     sherpa.OnlineRecognizerConfig(
       model: sherpa.OnlineModelConfig(
-        transducer: sherpa.OnlineTransducerModelConfig(
-          encoder: encoder,
-          decoder: decoder,
-          joiner: joiner,
-        ),
+        zipformer2Ctc: sherpa.OnlineZipformer2CtcModelConfig(model: model),
         tokens: tokens,
         numThreads: 2,
       ),
       // Let the recogniser end an utterance at a pause, and keep the words
       // here rather than in its stream.
       //
-      // A transducer's prediction network conditions on every token it has
-      // already emitted, so a stream that is never reset carries the whole
-      // prayer as context and grows unwilling to say anything else: the owner
-      // recited al-Fātiḥa, moved to az-Zalzalah, and had to repeat himself
-      // before the words appeared. Two minutes of the previous sūra were
-      // arguing against him.
-      //
-      // Endpointing was off because the matcher reads the tail of everything
-      // said and that has to survive a breath between ayas. It still does —
-      // what changed is that the surviving is done below, in a string this
-      // side owns, instead of in a decoder state that also holds the bias.
+      // CTC has no prediction network, so a long stream does not bias itself
+      // the way the transducer here before it did — the owner recited
+      // al-Fātiḥa, moved to az-Zalzalah, and had to repeat himself while two
+      // minutes of the previous sūra argued against him. Endpointing stays on
+      // regardless: the matcher reads the tail of everything said and that has
+      // to survive a breath between ayas, which is done below in a string this
+      // side owns rather than in decoder state.
       enableEndpoint: true,
     ),
   );
-  var stream = recogniser.createStream();
-  // Everything said before the utterance now being decoded. Trimmed, because
-  // a prayer runs for many minutes and the matcher never reads more than the
-  // last couple of dozen letters.
-  var kept = '';
+  final stream = recogniser.createStream();
 
   final inbox = ReceivePort();
   home.send(inbox.sendPort);
@@ -427,41 +401,23 @@ Future<void> _serve((SendPort, String, String, String, String) args) async {
       continue;
     }
     if (message is! Float32List) break;
-    // Nothing to take in means start again: the stream is to be thrown away
-    // and a new one put in its place. A multilingual transducer chooses a
-    // language from the first thing it hears and carries that choice in its
-    // state for good, so a stream that guessed wrong cannot be argued out of
-    // it — only replaced.
-    if (message.isEmpty) {
-      stream.free();
-      stream = recogniser.createStream();
-      kept = '';
-      replies?.send('');
-      continue;
-    }
     var text = '';
+    var ended = false;
     try {
       stream.acceptWaveform(samples: message, sampleRate: heardSampleRate);
       while (recogniser.isReady(stream)) {
         recogniser.decode(stream);
       }
-      final said = recogniser.getResult(stream).text;
-      if (recogniser.isEndpoint(stream)) {
-        // The utterance just ended replaces what was kept rather than being
-        // added to it. What survives a breath is the phrase before this one,
-        // which is what the matcher needs to read across a pause; everything
-        // older is an aya the reciter has left, and leaving it in the tail is
-        // how a window comes to describe somewhere they no longer are.
-        if (said.trim().isNotEmpty) kept = said.trim();
-        recogniser.reset(stream);
-        text = kept;
-      } else {
-        text = '$kept $said'.trim();
-      }
+      text = recogniser.getResult(stream).text;
+      ended = recogniser.isEndpoint(stream);
+      // Only the utterance now being said. What is worth carrying past the
+      // end of one is the caller's business, which is where the matcher's
+      // window lives.
+      if (ended) recogniser.reset(stream);
     } on Object {
       text = '';
     }
-    replies?.send(text);
+    replies?.send([text, ended]);
   }
   stream.free();
   recogniser.free();

@@ -232,12 +232,11 @@ url_rows() {
 		https://wird.bnei.dev/auth/callback|200|?code=gate&state=gate|a reader who signs in is handed an error instead of the address they paste back into the app
 		https://wird.bnei.dev|200|/healthz|the API every queued write drains into is not there
 		https://wird.bnei.dev|401|/v1/changes|a second device never catches up, and a 404 reads to the app exactly like a day with nothing in it
-		https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/|206|encoder.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
-		https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/|206|decoder.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
-		https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/|206|joiner.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
-		https://wird.bnei.dev/models/ar-stream/2f361dc0c2c2/|206|tokens.txt|voice-follow can never be turned on: Settings offers a download that cannot arrive
+		https://wird.bnei.dev/models/ar-phoneme/54f7db6bdcff/|206|model.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
+		https://wird.bnei.dev/models/ar-phoneme/54f7db6bdcff/|206|tokens.txt|voice-follow can never be turned on: Settings offers a download that cannot arrive
 		-|200|https://wird.bnei.dev/.well-known/assetlinks.json|Android stops verifying the sign-in link as Wird's, so the browser keeps the finished sign-in and the reader copies a code out of a web page by hand
 		https://wird.bnei.dev/set|-||the namespace a set id is derived under, hashed and never requested
+		https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3|-||the recogniser's licence and model card, a credit on the About screen; gated, so it is never fetched here
 		https://corpus.quran.com|-||a credit on the About screen, handed to the reader's browser
 		https://tanzil.net|-||a credit on the About screen, handed to the reader's browser
 		https://quran.foundation|-||a credit on the About screen, handed to the reader's browser

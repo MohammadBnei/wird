@@ -1,7 +1,9 @@
 # 5. Voice-follow locates the reciter with a Qur'an model on the phone
 
 Date: 2026-09-24. Status: accepted. **Amended 2026-09-25: the model is a
-streaming transducer, not whisper.** The reasoning below stands — the job is
+streaming transducer, not whisper. Amended again 2026-09-27 by ADR 0009: the
+model is an Arabic-only phoneme CTC model, not a multilingual transducer.**
+The reasoning below stands — the job is
 locating rather than transcribing, the model stays on the phone, the tap
 remains the fallback — but the engine chosen to do it could not, and the
 reason is at [The engine changed](#the-engine-changed-and-why). Read that
