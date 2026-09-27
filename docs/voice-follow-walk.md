@@ -415,3 +415,58 @@ per aya and nothing has been fetched. But the reader read it as something broken
 which means the wording fails at the one job it has. The notice exists to make a
 refusal visible; if it reads as an absence, it is not doing that. Worth rewording
 rather than rebuilding.
+
+## What happened to the eight, as of the merge
+
+Part 1 of the plan is merged (`voice-follow-walk`, four lanes, all gates green:
+`flutter analyze` clean, 386 Dart tests, `go build`/`vet`/`test` clean,
+`scripts/qa.sh` 21 passed / 0 failed / 3 skipped). Per finding:
+
+1. **Closed, and not the way this doc proposed.** The fix is one line — `_carried`
+   clears when an utterance ends with nothing decoded. The second half this doc
+   asked for, re-arming the level gate at each endpoint, was **rejected with
+   reasons**: a gated batch never reaches `acceptWaveform`, so re-arming removes
+   the only thing that makes an empty endpoint fire and cancels the fix; and
+   sherpa's rule 3 ends an utterance at 20 s of speech, so re-arming discards
+   genuine recitation mid-aya. Walk two's trail confirms both halves of that — a
+   `MOVE` lands at peak 0.01, half the floor.
+2. **Closed.** The microphone opens before the model: 250 ms rather than 4.5 s.
+   `Recogniser.open`'s `return null` became a throw, or a truncated model left a
+   live microphone and an unbounded `List<double>` for the whole prayer. The
+   catch-up is drained in `heardChunk` slices from a single snapshot, so the
+   backlog stays self-limiting; `stop()` is total and idempotent; and a
+   `listening` callback closes the window where a reader leaves the screen while
+   the model is still loading.
+3. **Closed by being the thing that measured 1 and 2.** The two trail lines are
+   committed and are what the numbers above are read off.
+4. **Closed, and this doc's own proposal was wrong.** 2001 is not an outside
+   number: `--split-per-abi` makes Flutter's plugin mint `abi * 1000 + build
+   number`. No `versionCode` is set anywhere; the fix is
+   `-P force-version-code-ignoring-abi=true` on a walk build, plus the comment
+   that says so. A Gradle override would have been clobbered in `afterEvaluate`.
+   The pre-existing claim that the split "keeps a 32-bit phone buildable" was also
+   false and is corrected.
+5. **Half built, half deliberately not.** Iʿrāb is real, from
+   `words.morphology` which was already in the bundle: an `irab` table plus a
+   142-row `irab_roles` lookup, English and French, with the provenance line drawn
+   inside `IrabSection` so all three mounts carry it. The lexicon section is
+   deleted — `CoreSense` answers what it stood in for, and `docs/lane-lexicon.md`
+   had already ruled Lane out. **Tafsir keeps its notice**, and walk two's finding
+   11 says that notice's wording is failing.
+6. **Closed, and there were three Keep controls rather than two.** The third was
+   `RootChrome`'s bookmark, which would have stayed latched beside a working
+   toggle. All three now toggle, `_busy` restores the in-flight guard that
+   `_kept ? null : _keep` was silently providing, and `keepAya`/`forgetAya` match
+   the root path's dedupe. Chrome for the Kept screen's swipe stays out of scope
+   by the owner's call.
+7. **Closed.** Play/pause is in the pinned footer. `Not downloaded` stayed with
+   the button it disables — moving it to Settings with the reciter's name would
+   have left a dead control with nothing saying why. `lastBeforeBar` was kept: it
+   is the only mark of where the recited span ends, which matters more once the
+   button no longer sits at that boundary.
+8. **Closed.** `CoreSense` is in the word panel, unguarded, so the refusal notice
+   appears there as it does in the other three views. It needed
+   `import '../root/root_sections.dart' show CoreSense` — `DashedRule` is declared
+   in both files and a plain import does not compile. The panel's body scrolls
+   with `Mark set understood` pinned outside it, because the first attempt at the
+   landscape problem put the screen's only way forward inside the scroll.
