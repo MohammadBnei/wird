@@ -18,6 +18,7 @@ import (
 
 func main() {
 	db := flag.String("db", "./app/assets/corpus.db", "corpus.db to read")
+	lane := flag.String("lane", "./data/raw/lane", "the  clone of Lane's TEI; gitignored, consulted, never shipped")
 	threshold := flag.Float64("threshold", 0, "score pass mark; 0 means the calibrated bar. Overriding it drops every term but the score and the clause order")
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, `rootcheck <command> [flags]
@@ -31,6 +32,7 @@ func main() {
   evidence [root...]    the glosses a sense must be written from, heaviest first
   build <tsv> <json>    check every proposed sense and write out the ones that hold
   reliability           which wazn-to-English rules the corpus supports
+  lane <root>           Lane's article for a root, to write its sense from
 
 `)
 		flag.PrintDefaults()
@@ -50,6 +52,18 @@ func main() {
 	}
 
 	switch args[0] {
+	case "lane":
+		// Before the corpus is even opened: this reads no corpus, and a missing
+		// clone should say so rather than failing on a root.
+		if len(args) < 2 {
+			flag.Usage()
+			os.Exit(2)
+		}
+		if err := laneRoot(os.Stdout, *lane, args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			os.Exit(1)
+		}
+		return
 	case "check":
 		if len(args) < 3 {
 			flag.Usage()
