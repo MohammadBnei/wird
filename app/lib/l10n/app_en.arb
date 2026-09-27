@@ -396,5 +396,77 @@
   "dashboard_doorKeptWhy": "The ayas and roots you saved",
   "@dashboard_doorKeptWhy": {
     "description": "The subtitle under the kept row on home."
+  },
+  "report_title": "Report something",
+  "@report_title": {
+    "description": "The heading of the report screen, where a reader says what went wrong, what is missing, or what could be better."
+  },
+  "report_one_way": "This goes one way. It reaches whoever keeps Wird running, and nothing comes back — there is no inbox here to check.",
+  "@report_one_way": {
+    "description": "Caption under the report screen's heading, saying that no answer comes back."
+  },
+  "report_kind_heading": "WHAT KIND",
+  "@report_kind_heading": {
+    "description": "Section heading on the report screen, over the bug / request / improvement chooser."
+  },
+  "report_kind_bug": "Bug",
+  "@report_kind_bug": {
+    "description": "First option of the kind chooser on the report screen: something is broken."
+  },
+  "report_kind_request": "Request",
+  "@report_kind_request": {
+    "description": "Second option of the kind chooser on the report screen: something is missing."
+  },
+  "report_kind_improvement": "Improvement",
+  "@report_kind_improvement": {
+    "description": "Third option of the kind chooser on the report screen: something could be better."
+  },
+  "report_words_heading": "IN YOUR OWN WORDS",
+  "@report_words_heading": {
+    "description": "Section heading on the report screen, over the field the reader writes the report in."
+  },
+  "report_words_hint": "What happened, or what is missing.",
+  "@report_words_hint": {
+    "description": "Placeholder shown inside the empty report field on the report screen."
+  },
+  "report_chars_left": "{remaining} characters left of {max}. The server takes no more than that.",
+  "@report_chars_left": {
+    "description": "Caption under the report field, shown only once the reader is within a paragraph of the length the server accepts.",
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "report_context_heading": "SENT WITH IT",
+  "@report_context_heading": {
+    "description": "Section heading on the report screen, over the gathered build, platform, screen and corpus version printed as they will be sent."
+  },
+  "report_context_only": "Gathered so you do not have to type it. Nothing else travels: not what you were reading, not what you have kept, not your progress.",
+  "@report_context_only": {
+    "description": "Caption under the gathered context on the report screen, saying what does not leave the phone."
+  },
+  "report_context_loading": "Reading this build…",
+  "@report_context_loading": {
+    "description": "Stands in for the gathered context on the report screen while the corpus is still being asked for its version."
+  },
+  "report_send": "Send it",
+  "@report_send": {
+    "description": "The report screen's one button: it queues the report and returns."
+  },
+  "report_queued_heading": "QUEUED",
+  "@report_queued_heading": {
+    "description": "Section heading the report screen shows in place of the form once a report has been queued."
+  },
+  "report_queued_body": "It is written down on this phone and goes out with the next sync, even if you are offline now.",
+  "@report_queued_body": {
+    "description": "What the report screen says after a send: the report is written locally and flushes with the next sync."
+  },
+  "report_write_another": "Write another",
+  "@report_write_another": {
+    "description": "Button on the report screen after a send, which empties the form for a second report."
   }
 }

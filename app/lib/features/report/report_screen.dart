@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_input.dart';
@@ -70,6 +71,11 @@ class _ReportScreenState extends State<ReportScreen> {
     if (mounted) setState(() => _sent = true);
   }
 
+  /// The strings, read off the locale the device is in. A getter rather than a
+  /// field because `State.context` is what carries the locale, and it changes
+  /// under the screen when the device does.
+  AppLocalizations get _l10n => AppLocalizations.of(context)!;
+
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
@@ -86,18 +92,14 @@ class _ReportScreenState extends State<ReportScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Report something',
+              _l10n.report_title,
               style: Theme.of(context).textTheme.displaySmall,
             ),
             SizedBox(height: n.space('2')),
             // The one-way decision, said once and in the reader's words. An
             // app that took a report and stayed silent would be promising a
             // correspondence nobody has committed to answering.
-            _caption(
-              n,
-              'This goes one way. It reaches whoever keeps Wird running, and '
-              'nothing comes back — there is no inbox here to check.',
-            ),
+            _caption(n, _l10n.report_one_way),
             if (_sent) ..._queued(n) else ..._form(n),
           ],
         ),
@@ -106,18 +108,24 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   List<Widget> _form(Nocturne n) => [
-    _section(n, 'WHAT KIND'),
+    _section(n, _l10n.report_kind_heading),
     NocturneSegmented(
-      options: const ['Bug', 'Request', 'Improvement'],
+      // In [ReportKind] order: the index the chooser hands back is the enum's,
+      // and the enum's names are what the server's constraint accepts.
+      options: [
+        _l10n.report_kind_bug,
+        _l10n.report_kind_request,
+        _l10n.report_kind_improvement,
+      ],
       selected: _kind.index,
       onChanged: (i) => setState(() => _kind = ReportKind.values[i]),
     ),
-    _section(n, 'IN YOUR OWN WORDS'),
+    _section(n, _l10n.report_words_heading),
     NocturneInput(
       controller: _text,
       multiline: true,
       maxLength: reportMaxChars,
-      hint: 'What happened, or what is missing.',
+      hint: _l10n.report_words_hint,
       onChanged: (_) => setState(() {}),
     ),
     // The limit is said when it is near, and not before. A reader with three
@@ -127,33 +135,30 @@ class _ReportScreenState extends State<ReportScreen> {
       SizedBox(height: n.space('1')),
       _caption(
         n,
-        '${reportMaxChars - _text.text.length} characters left of '
-        '$reportMaxChars. The server takes no more than that.',
+        _l10n.report_chars_left(
+          reportMaxChars - _text.text.length,
+          reportMaxChars,
+        ),
       ),
     ],
-    _section(n, 'SENT WITH IT'),
+    _section(n, _l10n.report_context_heading),
     _gathered(n),
     SizedBox(height: n.space('3')),
-    _caption(
-      n,
-      'Gathered so you do not have to type it. Nothing else travels: not what '
-      'you were reading, not what you have kept, not your progress.',
-    ),
+    _caption(n, _l10n.report_context_only),
     SizedBox(height: n.space('6')),
     NocturneButton(
       key: const Key('send report'),
       variant: NocturneButtonVariant.primary,
       block: true,
       onPressed: _context == null || _text.text.trim().isEmpty ? null : _send,
-      child: const Text('Send it'),
+      child: Text(_l10n.report_send),
     ),
   ];
 
   List<Widget> _queued(Nocturne n) => [
-    _section(n, 'QUEUED'),
+    _section(n, _l10n.report_queued_heading),
     Text(
-      'It is written down on this phone and goes out with the next sync, even '
-      'if you are offline now.',
+      _l10n.report_queued_body,
       style: TextStyle(fontSize: 12, height: 1.45, color: n.textAt(0.75)),
     ),
     SizedBox(height: n.space('6')),
@@ -162,16 +167,21 @@ class _ReportScreenState extends State<ReportScreen> {
         _text.clear();
         _sent = false;
       }),
-      child: const Text('Write another'),
+      child: Text(_l10n.report_write_another),
     ),
   ];
 
   /// The context, printed as it will be sent. The values are read out of the
   /// same map the op body is built from, so a reader cannot be shown one
   /// build and have another transmitted.
+  ///
+  /// Neither the names nor the values are localised, and that is the point:
+  /// they are the op body's own field names and the protocol words the server
+  /// accepts. A translated label here would be a label, not the thing being
+  /// sent, and the guarantee above is that the reader sees the thing.
   Widget _gathered(Nocturne n) {
     final gathered = _context;
-    if (gathered == null) return _caption(n, 'Reading this build…');
+    if (gathered == null) return _caption(n, _l10n.report_context_loading);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
