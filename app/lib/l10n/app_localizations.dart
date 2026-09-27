@@ -62,7 +62,8 @@ import 'app_localizations_fr.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,17 +84,18 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('fr')
+    Locale('fr'),
   ];
 
   /// The kicker over the index screen's title, naming what the index covers.
@@ -130,6 +133,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'IN THIS AYA'**
   String get inThisAya;
+
+  /// Shown on the kept list in place of the cards when the reader has kept no aya; it names the control on the constellation screen that keeps one.
+  ///
+  /// In en, this message translates to:
+  /// **'No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.'**
+  String get kept_empty_ayas;
+
+  /// Shown on the kept list in place of the cards when the reader has no note.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes yet. Nothing in the app writes one yet; an aya and a root are kept without words.'**
+  String get kept_empty_notes;
+
+  /// Shown on the kept list in place of the cards when the reader has kept no root.
+  ///
+  /// In en, this message translates to:
+  /// **'No roots kept yet. The keep icon on a root keeps one here.'**
+  String get kept_empty_roots;
+
+  /// First option of the segmented filter above the kept list's cards.
+  ///
+  /// In en, this message translates to:
+  /// **'Ayas'**
+  String get kept_filter_ayas;
+
+  /// Third option of the segmented filter above the kept list's cards.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get kept_filter_notes;
+
+  /// Second option of the segmented filter above the kept list's cards.
+  ///
+  /// In en, this message translates to:
+  /// **'Roots'**
+  String get kept_filter_roots;
+
+  /// Kicker line at the top of a kept card the reader flagged to come back to; the screen draws it uppercased.
+  ///
+  /// In en, this message translates to:
+  /// **'{at} · revisit'**
+  String kept_kicker_revisit(String at);
+
+  /// Kicker line at the top of a kept root's card; the screen draws it uppercased.
+  ///
+  /// In en, this message translates to:
+  /// **'Root · {letters}'**
+  String kept_kicker_root(String letters);
+
+  /// Kicker line of a kept card whose aya reference is missing, where the kind stands in for it.
+  ///
+  /// In en, this message translates to:
+  /// **'Aya'**
+  String get kept_kind_aya;
+
+  /// Kicker line of a kept note's card, which never carries an aya reference.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get kept_kind_note;
+
+  /// Kicker line of a kept root's card that carries neither letters nor an aya reference.
+  ///
+  /// In en, this message translates to:
+  /// **'Root'**
+  String get kept_kind_root;
+
+  /// Right of a kept card's kicker: how long ago the item was kept, always two days or more.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days ago'**
+  String kept_meta_days_ago(int days);
+
+  /// Right of a kept card's kicker: the root whose constellation surfaced the aya the reader flagged.
+  ///
+  /// In en, this message translates to:
+  /// **'flagged for {letters}'**
+  String kept_meta_flagged(String letters);
+
+  /// Right of a kept root card's kicker: the aya the root was kept from, written surah:aya.
+  ///
+  /// In en, this message translates to:
+  /// **'kept from {reference}'**
+  String kept_meta_kept_from(String reference);
+
+  /// Right of a kept card's kicker: the item was kept today.
+  ///
+  /// In en, this message translates to:
+  /// **'today'**
+  String get kept_meta_today;
+
+  /// Right of a kept card's kicker: the item was kept yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'yesterday'**
+  String get kept_meta_yesterday;
+
+  /// Shown on the kept list in place of the cards when the reader's search matches nothing they kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing kept matches “{search}”.'**
+  String kept_no_match(String search);
+
+  /// Placeholder inside the kept list's search field, naming what the field searches.
+  ///
+  /// In en, this message translates to:
+  /// **'Search ayas, roots, your words'**
+  String get kept_search_hint;
+
+  /// The kept list's own title, above its search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept'**
+  String get kept_title;
 
   /// The reading screen's one action: it advances the reader through the Qur'an.
   ///
@@ -192,7 +309,8 @@ abstract class AppLocalizations {
   String get prayer_foot_following;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -201,25 +319,26 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'fr'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'fr'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
-
-
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en': return AppLocalizationsEn();
-    case 'fr': return AppLocalizationsFr();
+    case 'en':
+      return AppLocalizationsEn();
+    case 'fr':
+      return AppLocalizationsFr();
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.'
+    'that was used.',
   );
 }

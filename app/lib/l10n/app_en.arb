@@ -34,6 +34,112 @@
   "@inThisAya": {
     "description": "Heading over the gloss of the selected word in the aya it was tapped in."
   },
+  "kept_empty_ayas": "No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.",
+  "@kept_empty_ayas": {
+    "description": "Shown on the kept list in place of the cards when the reader has kept no aya; it names the control on the constellation screen that keeps one."
+  },
+  "kept_empty_notes": "No notes yet. Nothing in the app writes one yet; an aya and a root are kept without words.",
+  "@kept_empty_notes": {
+    "description": "Shown on the kept list in place of the cards when the reader has no note."
+  },
+  "kept_empty_roots": "No roots kept yet. The keep icon on a root keeps one here.",
+  "@kept_empty_roots": {
+    "description": "Shown on the kept list in place of the cards when the reader has kept no root."
+  },
+  "kept_filter_ayas": "Ayas",
+  "@kept_filter_ayas": {
+    "description": "First option of the segmented filter above the kept list's cards."
+  },
+  "kept_filter_notes": "Notes",
+  "@kept_filter_notes": {
+    "description": "Third option of the segmented filter above the kept list's cards."
+  },
+  "kept_filter_roots": "Roots",
+  "@kept_filter_roots": {
+    "description": "Second option of the segmented filter above the kept list's cards."
+  },
+  "kept_kicker_revisit": "{at} · revisit",
+  "@kept_kicker_revisit": {
+    "description": "Kicker line at the top of a kept card the reader flagged to come back to; the screen draws it uppercased.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_kicker_root": "Root · {letters}",
+  "@kept_kicker_root": {
+    "description": "Kicker line at the top of a kept root's card; the screen draws it uppercased.",
+    "placeholders": {
+      "letters": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_kind_aya": "Aya",
+  "@kept_kind_aya": {
+    "description": "Kicker line of a kept card whose aya reference is missing, where the kind stands in for it."
+  },
+  "kept_kind_note": "Note",
+  "@kept_kind_note": {
+    "description": "Kicker line of a kept note's card, which never carries an aya reference."
+  },
+  "kept_kind_root": "Root",
+  "@kept_kind_root": {
+    "description": "Kicker line of a kept root's card that carries neither letters nor an aya reference."
+  },
+  "kept_meta_days_ago": "{days} days ago",
+  "@kept_meta_days_ago": {
+    "description": "Right of a kept card's kicker: how long ago the item was kept, always two days or more.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "kept_meta_flagged": "flagged for {letters}",
+  "@kept_meta_flagged": {
+    "description": "Right of a kept card's kicker: the root whose constellation surfaced the aya the reader flagged.",
+    "placeholders": {
+      "letters": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_meta_kept_from": "kept from {reference}",
+  "@kept_meta_kept_from": {
+    "description": "Right of a kept root card's kicker: the aya the root was kept from, written surah:aya.",
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_meta_today": "today",
+  "@kept_meta_today": {
+    "description": "Right of a kept card's kicker: the item was kept today."
+  },
+  "kept_meta_yesterday": "yesterday",
+  "@kept_meta_yesterday": {
+    "description": "Right of a kept card's kicker: the item was kept yesterday."
+  },
+  "kept_no_match": "Nothing kept matches “{search}”.",
+  "@kept_no_match": {
+    "description": "Shown on the kept list in place of the cards when the reader's search matches nothing they kept.",
+    "placeholders": {
+      "search": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_search_hint": "Search ayas, roots, your words",
+  "@kept_search_hint": {
+    "description": "Placeholder inside the kept list's search field, naming what the field searches."
+  },
+  "kept_title": "Kept",
+  "@kept_title": {
+    "description": "The kept list's own title, above its search field."
+  },
   "markSetUnderstood": "Mark set understood",
   "@markSetUnderstood": {
     "description": "The reading screen's one action: it advances the reader through the Qur'an."

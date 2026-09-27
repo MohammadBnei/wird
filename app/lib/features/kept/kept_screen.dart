@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../data/db.dart';
 import '../../data/kept_repo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_input.dart';
 import '../../widgets/nocturne_segmented.dart';
@@ -30,6 +31,11 @@ class _KeptScreenState extends State<KeptScreen> {
   /// The kin a root card shows, read once per root on screen. A kept list is
   /// short, so this stays a handful of queries rather than a join.
   final _kin = <String, RootDetail>{};
+
+  /// The strings this screen draws. A card's kicker and its meta line are
+  /// built outside `build`, so they read them from here rather than each
+  /// reaching for the context again.
+  AppLocalizations get _l => AppLocalizations.of(context)!;
 
   @override
   void initState() {
@@ -100,10 +106,10 @@ class _KeptScreenState extends State<KeptScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Kept', style: Theme.of(context).textTheme.displaySmall),
+        Text(_l.kept_title, style: Theme.of(context).textTheme.displaySmall),
         const SizedBox(height: 12),
         NocturneInput(
-          hint: 'Search ayas, roots, your words',
+          hint: _l.kept_search_hint,
           onChanged: (value) {
             _search = value;
             _load();
@@ -117,7 +123,13 @@ class _KeptScreenState extends State<KeptScreen> {
         Align(
           alignment: Alignment.centerLeft,
           child: NocturneSegmented(
-            options: const ['Ayas', 'Roots', 'Notes'],
+            // In the order of KeptKind, because the index the control reports
+            // is read straight back as one.
+            options: [
+              _l.kept_filter_ayas,
+              _l.kept_filter_roots,
+              _l.kept_filter_notes,
+            ],
             selected: _kind.index,
             onChanged: (i) {
               setState(() => _kind = KeptKind.values[i]);
@@ -133,17 +145,11 @@ class _KeptScreenState extends State<KeptScreen> {
     padding: const EdgeInsets.fromLTRB(_gutter, 16, _gutter, 0),
     child: Text(
       _search.isNotEmpty
-          ? 'Nothing kept matches “$_search”.'
+          ? _l.kept_no_match(_search)
           : switch (_kind) {
-              KeptKind.aya =>
-                'No ayas kept yet. “Keep this aya”, on the '
-                    'constellation of a word’s root, keeps one here.',
-              KeptKind.root =>
-                'No roots kept yet. The keep icon on a root '
-                    'keeps one here.',
-              KeptKind.note =>
-                'No notes yet. Nothing in the app writes one '
-                    'yet; an aya and a root are kept without words.',
+              KeptKind.aya => _l.kept_empty_ayas,
+              KeptKind.root => _l.kept_empty_roots,
+              KeptKind.note => _l.kept_empty_notes,
             },
       style: TextStyle(fontSize: 12.5, height: 1.55, color: n.textAt(0.5)),
     ),
@@ -239,28 +245,34 @@ class _KeptScreenState extends State<KeptScreen> {
 
   String _kicker(KeptItem item) {
     if (item.kind == KeptKind.root) {
-      return 'Root · ${item.rootLetters ?? ''}'.toUpperCase();
+      return _l.kept_kicker_root(item.rootLetters ?? '').toUpperCase();
     }
+    // With no aya behind it the kicker has nothing to name but the kind, which
+    // is a word a reader reads rather than the enum's own name.
     final at = item.ayahId == null
-        ? item.kind.name
+        ? switch (item.kind) {
+            KeptKind.aya => _l.kept_kind_aya,
+            KeptKind.root => _l.kept_kind_root,
+            KeptKind.note => _l.kept_kind_note,
+          }
         : '${item.surahId} : ${item.ayahNumber}';
-    return (item.flagged ? '$at · revisit' : at).toUpperCase();
+    return (item.flagged ? _l.kept_kicker_revisit(at) : at).toUpperCase();
   }
 
   String _meta(KeptItem item) {
     if (item.flagged && item.rootLetters != null) {
-      return 'flagged for ${item.rootLetters}';
+      return _l.kept_meta_flagged(item.rootLetters!);
     }
     if (item.kind == KeptKind.root && item.ayahId != null) {
-      return 'kept from ${item.surahId}:${item.ayahNumber}';
+      return _l.kept_meta_kept_from('${item.surahId}:${item.ayahNumber}');
     }
     // The design counts a kept item's age in prayers. Prayers are not
     // recorded on the device yet, so it is counted in days until they are.
     final days = DateTime.now().difference(item.createdAt).inDays;
     return switch (days) {
-      0 => 'today',
-      1 => 'yesterday',
-      _ => '$days days ago',
+      0 => _l.kept_meta_today,
+      1 => _l.kept_meta_yesterday,
+      _ => _l.kept_meta_days_ago(days),
     };
   }
 
