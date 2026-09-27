@@ -9,6 +9,25 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get index_kicker => 'TOUT LE CORAN';
+
+  @override
+  String get index_title => 'Les 114';
+
+  @override
+  String get index_hint => 'Une sourate s’ouvre à son premier verset. La flèche en choisit un à l’intérieur.';
+
+  @override
+  String index_revealed_nth(String order) {
+    return '$order sourate révélée';
+  }
+
+  @override
+  String index_pick_aya(String sura) {
+    return 'Choisir un verset de $sura';
+  }
+
+  @override
   String get inThisAya => 'DANS CE VERSET';
 
   @override

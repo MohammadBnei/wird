@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/features/index/index_screen.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
@@ -21,13 +22,20 @@ void main() {
     chosen = null;
   });
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(WidgetTester tester, {Locale? locale}) async {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // This screen pushes and pops a value, so it builds its own app rather
+        // than the `wird.dart` harness — and has to carry the harness's
+        // delegates itself, or `AppLocalizations.of(context)` is null here and
+        // only here.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: locale,
         home: Builder(
           builder: (context) => TextButton(
             onPressed: () async {
@@ -103,5 +111,39 @@ void main() {
       find.text('A sūra opens at its first aya. The arrow picks one inside it.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('a French reader is shown the index in English, and the '
+      'revelation order with an English ordinal glued to a French sentence',
+      (tester) async {
+    await open(tester, locale: const Locale('fr'));
+
+    expect(find.text('TOUT LE CORAN'), findsOneWidget);
+    expect(
+      find.text(
+        'Une sourate s’ouvre à son premier verset. La flèche en choisit un à '
+        'l’intérieur.',
+      ),
+      findsOneWidget,
+    );
+    // The ordinal is spelled in Dart, not in the ARB, because gen-l10n rejects
+    // `selectordinal`. So it is the one part of this sentence that could stay
+    // English while the rest turned over — hence both halves asserted together.
+    // Al-Fatihah is the 5th revealed, Al-Baqarah the 87th.
+    expect(find.text('5e sourate révélée'), findsOneWidget);
+    expect(find.text('87e sourate révélée'), findsOneWidget);
+    expect(find.text('87th to be revealed'), findsNothing);
+
+    // Only the first revealed takes "re" — French writes "1re", then "2e".
+    // Al-'Alaq is that one, and it is far enough down the list that the row has
+    // to be scrolled to before it is built at all.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('sura-96')),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1re sourate révélée'), findsOneWidget);
+    expect(find.text('1e sourate révélée'), findsNothing);
   });
 }
