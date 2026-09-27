@@ -25,9 +25,17 @@ android {
         // that arrive from a dependency rather than being built here.
         //
         // Build with `--split-per-abi`, which writes one APK per ABI and is
-        // what should be handed to a phone. An ndk.abiFilters here would do
-        // the same for a single APK, but it cannot coexist with the split and
-        // the split is the one that also keeps a 32-bit phone buildable.
+        // what should be handed to a phone. An ndk.abiFilters here is a real
+        // alternative and would win over the plugin's own, which is set in
+        // apply() before this block is read (FlutterPlugin.configureAbis ->
+        // configureAbiWithoutSplits). It is not additive to the split, though:
+        // AGP fails with "in ndk abiFilters cannot be present when splits abi
+        // filters are set". And a single APK listing arm64-v8a and
+        // armeabi-v7a keeps a 32-bit phone buildable while still putting the
+        // 32-bit libonnxruntime.so on every 64-bit phone, i.e. most of the
+        // weight above; listing arm64-v8a alone drops that but leaves a
+        // 32-bit phone unbuildable without editing this file. The split is
+        // the option that gives each phone its own ABI only and keeps both.
         //
         // The split also decides the version code, which is not obvious and
         // costs a walk when it bites. Flutter's own Gradle plugin mints

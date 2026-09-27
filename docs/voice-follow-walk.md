@@ -23,7 +23,9 @@ cd app && fvm flutter build apk --release --split-per-abi \
 aapt2 dump badging build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
   | grep versionCode        # expect 1, not 2001
 
-adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+# -d once: the phone still carries the 2001 of an earlier split build, so
+# even a versionCode-1 APK goes on as a downgrade the first time.
+adb install -r -d build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 fvm flutter run -d qse6wk6h7pmza6kr          # nothing should be uninstalled
 adb shell run-as dev.bnei.wird cat \
   /data/data/dev.bnei.wird/databases/prayer-trail.log > trail.log
