@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:record/record.dart';
+import 'package:wird/data/speech.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
 import 'package:wird/features/prayer/alignment.dart';
 import 'package:wird/features/prayer/prayer_voice.dart';
 import 'package:wird/features/prayer/voice_follow.dart';
+
+import '../../microphone.dart';
 
 /// Voice-follow graded against five recitations of two sūras rather than one.
 ///
@@ -255,5 +260,95 @@ void main() {
     expect(carried, isEmpty, reason: 'a window that has not ended changes '
         'nothing about what came before it');
     expect('$carried $bystander'.trim(), bystander);
+  });
+
+  // The drain, which is the part of `PrayerVoice` with a loop, a level gate and
+  // a ceiling in it, and the part nothing else can reach: `FakeMic` cannot
+  // carry a stream, so every test that goes in through `start` stops at the
+  // microphone. `PrayerVoice.drain` is the seam, and this is the one check
+  // behind the four things the catch-up buffer made load-bearing.
+  test('the catch-up drain is handed over a batch at a time and moves the '
+      'prayer once', () async {
+    // `record` asks the platform for a recorder the moment one is built.
+    RecordPlatform.instance = FakeMic();
+    final slice = heardChunk.inMilliseconds * heardSampleRate ~/ 1000;
+    final words = _fatiha.split(' ').take(17).toList();
+    final cursor = PrayerCursor(words.length);
+    var moves = 0;
+    cursor.addListener(() => moves++);
+
+    // 19.8 s of room and then 4.8 s of the reader, which is the shape of the
+    // start of a prayer now that the microphone opens before the model: 66
+    // batches the level gate has to refuse and 16 it has to pass. What is being
+    // tested is the batching and not the constant, so the reader is well clear
+    // of it and the room is silent.
+    final audio = Float32List(82 * slice);
+    for (var i = 66 * slice; i < audio.length; i++) {
+      audio[i] = i.isEven ? 0.1 : -0.1;
+    }
+
+    // What the recogniser wrote for this reader, off `fatiha_reader_heard`: the
+    // answer accumulating through al-Fātiḥa's first two ayas, which names word
+    // 7, then 8, then 9. Only the last answer of a drain says where he is by
+    // the time it has caught up.
+    final said = [
+      for (final window in (_fixture('fatiha_reader_heard')['windows'] as List)
+          .skip(29)
+          .take(15))
+        (window as Map<String, dynamic>)['heard'] as String,
+    ];
+    // The breath after the second aya ends the utterance, and the word after it
+    // ends on the last piece of the drain — which is the one place the ordering
+    // asserted below can be seen at all, because it is the only piece whose
+    // window reaches the screen. Endpoints do land inside recitation: sherpa's
+    // rule 3 ends an utterance at 20 s of speech, and a catch-up drain can hold
+    // all twenty of them.
+    const mmalik = 'مَاالِكِ';
+    final handed = <int>[];
+    final voice = await PrayerVoice.drain(cursor, words, audio, hear: (
+      samples,
+    ) async {
+      handed.add(samples.length);
+      return switch (handed.length) {
+        final n when n < said.length => (text: said[n - 1], ended: false),
+        final n when n == said.length => (text: said.last, ended: true),
+        _ => (text: mmalik, ended: true),
+      };
+    });
+
+    // One piece per [heardChunk], and the room refused one piece at a time
+    // rather than on one peak over twenty seconds.
+    expect(handed, everyElement(slice));
+    expect(
+      handed.length,
+      16,
+      reason: 'the 66 batches of room are refused and every one of the 16 after '
+          "the first loud sample is handed over: nothing between the reader's "
+          'first word and the end may be dropped',
+    );
+    // The prayer is moved ONCE for the whole drain, not once per piece. The
+    // answers above name three different words, and three moves inside a few
+    // hundred milliseconds is what `PrayerScreen._onTheMove` reads as a reciter
+    // running on — it would turn the page under somebody praying, twice, faster
+    // than anything was ever said.
+    expect(moves, 1);
+    expect(
+      cursor.at,
+      10,
+      reason: 'and to where the LAST answer says the reader is, which is the '
+          'word the drain caught up to',
+    );
+    // The window the matcher was given was the carried utterance plus what is
+    // being said now, in that order, and built BEFORE the carry was replaced.
+    // Move that one line up in `_handOver` and every window that ends an
+    // utterance becomes that utterance twice over, which the matcher refuses:
+    // the prayer then stops moving across the breath between two ayas, with
+    // analyze clean and every other test in this file green.
+    expect(voice.matched.value, endsWith(mmalik));
+    expect(
+      voice.matched.value.length,
+      greaterThan(mmalik.length),
+      reason: 'the aya carried across the breath has to still be in front of it',
+    );
   });
 }

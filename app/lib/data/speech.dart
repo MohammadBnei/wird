@@ -154,7 +154,10 @@ const heardHeldByHand = Duration(seconds: 4);
 ///
 /// The trail now prints the count and range of EVERY batch's peak once a
 /// heartbeat, at three decimals, so the next argument about this number is had
-/// against numbers from this path.
+/// against numbers from this path. It is printed from above the gate — a
+/// microphone handing back zeros says so instead of going silent — and says
+/// whether the reader has begun, because a range over a window holding both is
+/// the defect all three sets above share.
 const heardQuiet = 0.02;
 
 /// How often the trail says something even when nothing has changed. A record

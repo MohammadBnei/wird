@@ -64,10 +64,19 @@ class PrayerVoice {
   final PrayerTrail trail;
   final AudioRecorder _mic;
 
-  /// Null until the model has finished loading, because the microphone is opened
-  /// first — see [start]. Nullable and mutable, so Dart will not promote it: bind
-  /// a local before using it.
+  /// Null until the model has finished loading, because the microphone is
+  /// opened first — see [start]. Held only so [stop] can give it back; the
+  /// drain asks through [_hear].
   Recogniser? _recogniser;
+
+  /// How the drain asks where the reciter is. [Recogniser.hear] in a prayer,
+  /// and the one seam the drain can be tested through: `FakeMic` cannot carry a
+  /// stream, so a test that went in through [start] never reaches a batch at
+  /// all, and the drain is the part of this class with a loop, a level gate and
+  /// a ceiling in it.
+  ///
+  /// Nullable and mutable, so Dart will not promote it: bind a local first.
+  Future<({String text, bool ended})> Function(Float32List)? _hear;
 
   StreamSubscription<Uint8List>? _stream;
 
@@ -75,6 +84,9 @@ class PrayerVoice {
   /// working on what came before — or because it does not exist yet, which is the
   /// whole of what [start]'s reorder buys. Nothing here may be dropped: a
   /// transducer that misses a second of speech misses the words in it for good.
+  ///
+  /// It holds no more than the microphone delivered during one hand-over, and
+  /// [_handOver] keeps it that way on purpose rather than by a size limit.
   final _waiting = <double>[];
   var _handing = false;
 
@@ -89,6 +101,9 @@ class PrayerVoice {
   /// Derived, not a new number to tune. ADR 0009 and [heardChunk]'s own doc both
   /// say 300 ms, "the way the app feeds it", and all five graded fixtures are
   /// 300 ms batches. Nothing in the suite covers a twenty-second one.
+  ///
+  /// A ceiling on one piece and never a floor: an ordinary hand-over is
+  /// whatever the microphone delivered since the last one, which is less.
   static final _slice = heardChunk.inMilliseconds * heardSampleRate ~/ 1000;
 
   /// Until when the reader's own hand has the prayer.
@@ -118,9 +133,24 @@ class PrayerVoice {
   /// re-arming it at an endpoint drops recitation.
   var _speaking = false;
 
-  /// What the recogniser last said, so an unchanged answer is not re-judged.
+  /// What the recogniser last said AND was acted on, so an unchanged answer is
+  /// not re-judged.
+  ///
+  /// An answer computed while the drain was still behind is not recorded here:
+  /// it never reached the screen, so the piece that catches up must not be
+  /// deduplicated against it.
   String _lastHeard = '';
-  DateTime _lastSaid = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// When the trail last spoke of its own accord. The heartbeat's clock, and
+  /// nothing else reads it.
+  ///
+  /// It used to be reset by every changed answer as well, which meant the
+  /// `still here` line — the only place the batch levels are written down —
+  /// fired only after three seconds of UNCHANGED answer, and the range it then
+  /// printed spanned a long mixed window of room and recitation. A single
+  /// minimum over such a window cannot answer the one question asked of it:
+  /// whether the reader's own batches reach [heardQuiet] or only the room does.
+  DateTime _lastNoted = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// The utterance before the one now being said. This is what lets the matcher
   /// read across the breath between two ayas, and [carry] is the whole of the
@@ -154,11 +184,22 @@ class PrayerVoice {
   /// isolate and loads 72.7 MB of int8 with a twenty-second timeout of its own,
   /// and `_waiting`'s promise that nothing is dropped can only begin when the
   /// stream does.
+  ///
+  /// [listening] IS HANDED THE VOICE THE MOMENT THE STREAM IS LIVE, which is
+  /// before this answers. That ordering means the microphone runs for as long
+  /// as the model takes to load, and a reader who mis-taps into a prayer and
+  /// backs out two seconds later would otherwise leave it streaming — OS
+  /// indicator and all, over whatever screen they went to next — until
+  /// [Recogniser.open] resolves or times out twenty seconds later, because the
+  /// prayer screen's own `_voice` is null for that whole window and its way out
+  /// has nothing to stop. Whoever takes this owns [stop] from then on; it is
+  /// total and idempotent, so this class and that caller may both call it.
   static Future<PrayerVoice?> start(
     Database db,
     PrayerCursor cursor,
     List<String> words, {
     PrayerTrail? trail,
+    void Function(PrayerVoice)? listening,
   }) async {
     PrayerVoice? voice;
     AudioRecorder? mic;
@@ -192,6 +233,7 @@ class PrayerVoice {
       voice = PrayerVoice._(cursor, Recitation(words), mic, log);
       await voice._listen();
       log.note('microphone', 'listening, ${since()}');
+      listening?.call(voice);
       final recogniser = await Recogniser.open(model);
       if (recogniser == null) {
         // Files of the right names and the wrong bytes — a download the phone
@@ -200,10 +242,11 @@ class PrayerVoice {
         throw StateError('the model is on the phone and would not load');
       }
       log.note('recogniser', 'loaded, ${since()}');
-      voice._recogniser = recogniser;
       // Explicitly, or the catch-up buffer sits there until the microphone's
-      // next chunk happens to call `_handOver` for us.
-      unawaited(voice._handOver());
+      // next chunk happens to call `_handOver` for us. Not awaited: the drain
+      // decodes everything the reader has already said, and the screen is
+      // waiting on this call to stop saying IN PRAYER.
+      unawaited(voice._use(recogniser));
       return voice;
     } on Object {
       // Once the voice exists it owns the stream, and only [stop] knows how to
@@ -215,6 +258,19 @@ class PrayerVoice {
       }
       return null;
     }
+  }
+
+  /// Takes the loaded model, or gives it straight back.
+  ///
+  /// The prayer can be over before the model is up — [start] hands the voice
+  /// out as soon as the stream is live, so [stop] may already have run — and a
+  /// recogniser nobody will ask anything of is an isolate holding 72.7 MB that
+  /// the Dart heap cannot account for.
+  Future<void> _use(Recogniser recogniser) async {
+    if (_stopped) return recogniser.close();
+    _recogniser = recogniser;
+    _hear = recogniser.hear;
+    await _handOver();
   }
 
   Future<void> _listen() async {
@@ -241,100 +297,147 @@ class PrayerVoice {
   /// Hands over everything waiting, and asks where the reciter is.
   ///
   /// One hand-over at a time, and what arrives meanwhile waits rather than
-  /// being dropped. Under load the batches grow instead of the audio thinning,
-  /// so the answer is late rather than wrong — and a phone that cannot keep up
-  /// leaves the reader the tap, which is what they had before any of this.
+  /// being dropped.
   ///
-  /// IN [_slice]-SIZED BATCHES, never in one. At the start of a prayer this is
-  /// draining up to twenty seconds of catch-up audio, and handing that over as a
-  /// single batch would be wrong four ways: it can exceed `hear`'s own ten-second
-  /// timeout, which nulls `_pending` while the isolate is still working and leaves
-  /// every answer after it — `ended` included — permanently one batch out of step;
-  /// an endpoint is then certain on the first answer, so the carried utterance is
-  /// set from a window that is mostly empty room; one peak over twenty seconds
-  /// walks the room through the level gate on a single loud sample; and it
-  /// abandons the 300 ms regime every fixture and every measurement is in.
+  /// THE BACKLOG COMES OUT IN ONE MOVE AND GOES IN IN [_slice]-SIZED PIECES.
+  /// Both halves are load-bearing, and they answer different questions.
+  ///
+  /// Out in one move, because that is the whole of what bounds `_waiting`: it
+  /// can hold no more than the microphone delivered while the previous batch
+  /// was being decoded. Taking one slice at a time and leaving the rest queued
+  /// would make the BACKLOG the thing that grows when decode falls behind —
+  /// boxed doubles at 16 kHz, and lateness growing for the length of the
+  /// prayer, which on a phone on the floor is a wrong position rather than a
+  /// late one. It also keeps the queue off the front: `removeRange(0, _slice)`
+  /// on a `List<double>` shifts every element behind it, so slicing twenty
+  /// seconds off the head is twenty-one million element moves, on the isolate
+  /// that also draws the prayer, and it gets more expensive the further behind
+  /// it falls. `clear` is free.
+  ///
+  /// In in pieces, because one twenty-second window would be wrong four ways:
+  /// it can exceed `hear`'s own ten-second timeout, which nulls its `_pending`
+  /// while the isolate is still working and leaves every answer after it —
+  /// `ended` included — permanently one batch out of step; an endpoint is then
+  /// certain on the first answer, so the carried utterance is set from a window
+  /// that is mostly empty room; one peak over twenty seconds walks the room
+  /// through the level gate on a single loud sample; and it abandons the 300 ms
+  /// regime every fixture and every measurement is in.
+  ///
+  /// A phone that cannot keep up gets a late screen, and at the point where
+  /// decoding is slower than speaking no arrangement of this is both complete
+  /// and on time. Measured, a 300 ms piece costs 21 ms at two threads, a
+  /// realtime factor of 0.07; the reader still has the tap, which is what they
+  /// had before any of this.
   Future<void> _handOver() async {
-    // Dart will not promote a nullable mutable field, and the recogniser may not
-    // exist yet: until it does, the audio waits. `start` calls this itself once
+    // Dart will not promote a nullable mutable field, and the model may not be
+    // loaded yet: until it is, the audio waits. `start` calls this itself once
     // the model is up.
-    final recogniser = _recogniser;
-    if (_handing || recogniser == null || _waiting.isEmpty) return;
+    final hear = _hear;
+    if (_handing || hear == null || _waiting.isEmpty) return;
     _handing = true;
     try {
       while (_waiting.isNotEmpty) {
-        final take = _waiting.length < _slice ? _waiting.length : _slice;
-        final samples = Float32List.fromList(_waiting.sublist(0, take));
-        _waiting.removeRange(0, take);
-        // A recogniser handed silence answers anyway, with a phrase the
-        // matcher then has to refuse. The prayer screen opens before the
-        // reader begins, so the quiet before the first word is exactly what
-        // must not reach it.
-        var peak = 0.0;
-        for (final sample in samples) {
-          final loud = sample < 0 ? -sample : sample;
-          if (loud > peak) peak = loud;
-        }
-        _peaks++;
-        if (peak < _quietest) _quietest = peak;
-        if (peak > _loudest) _loudest = peak;
-        if (peak < heardQuiet && !_speaking) continue;
-        if (!_speaking) {
-          trail.note('voice', 'the reader began, at ${peak.toStringAsFixed(2)}');
-        }
-        _speaking = true;
-        final said = await recogniser.hear(samples);
-        // What the reciter has said, as far as this side is concerned: the
-        // phrase before this one and the one now being spoken.
-        final heard = '$_carried ${said.text}'.trim();
-        // Read before it is replaced: this window is the old carry plus what is
-        // being said now, and only the NEXT one is affected by an endpoint here.
-        _carried = carry(_carried, said);
-        if (said.ended) {
+        final batch = Float32List.fromList(_waiting);
+        _waiting.clear();
+        // `_stopped` as well as the queue, because the queue is no longer what
+        // this loop reads: the prayer can be left in the middle of a drain, and
+        // a recogniser that has been closed answers every remaining piece with
+        // `hear`'s ten-second timeout instead of an answer.
+        for (var from = 0; from < batch.length && !_stopped; from += _slice) {
+          final to = from + _slice < batch.length ? from + _slice : batch.length;
+          final samples = batch.sublist(from, to);
+          var peak = 0.0;
+          for (final sample in samples) {
+            final loud = sample < 0 ? -sample : sample;
+            if (loud > peak) peak = loud;
+          }
+          _peaks++;
+          if (peak < _quietest) _quietest = peak;
+          if (peak > _loudest) _loudest = peak;
+          // ABOVE the level gate, so the trail speaks even while nothing passes
+          // it. A microphone handing back zeros — another app holding it, a
+          // hardware mute: ordinary Android — otherwise prints `microphone
+          // listening`, `recogniser loaded` and then nothing at all for the
+          // whole prayer, which is the unreadable trail the heartbeat was added
+          // to prevent, in the one case where silence in the record is most
+          // ambiguous. Whether the reader has begun is printed with the range,
+          // because an unlabelled range over a mixed window is the defect all
+          // three rejected datasets for [heardQuiet] have.
+          if (DateTime.now().difference(_lastNoted) > heardHeartbeat) {
+            _lastNoted = DateTime.now();
+            trail.note(
+              'still here',
+              '$_peaks batches '
+              '${_speaking ? 'since the reader began' : 'of room'}, peak '
+              '${_quietest.toStringAsFixed(3)} to '
+              '${_loudest.toStringAsFixed(3)} | ${_tail(_lastHeard)}',
+            );
+            _peaks = 0;
+            _quietest = 1.0;
+            _loudest = 0.0;
+          }
+          // A recogniser handed silence answers anyway, with a phrase the
+          // matcher then has to refuse. The prayer screen opens before the
+          // reader begins, so the quiet before the first word is exactly what
+          // must not reach it.
+          if (peak < heardQuiet && !_speaking) continue;
+          if (!_speaking) {
+            trail.note('voice', 'the reader began, at ${peak.toStringAsFixed(2)}');
+          }
+          _speaking = true;
+          final said = await hear(samples);
+          // What the reciter has said, as far as this side is concerned: the
+          // phrase before this one and the one now being spoken.
+          final heard = '$_carried ${said.text}'.trim();
+          // Read before it is replaced: this window is the old carry plus what
+          // is being said now, and only the NEXT one is affected by an endpoint
+          // here.
+          _carried = carry(_carried, said);
+          if (said.ended) {
+            trail.note(
+              'utterance ended',
+              said.text.isEmpty ? '(nothing)' : said.text,
+            );
+          }
+          if (heard.isEmpty) continue;
+          // WHERE THE READER WAS. Another piece of recitation is already
+          // waiting, so this answer is superseded before it could be drawn, and
+          // only the last piece of a drain says where anybody is now.
+          //
+          // The catch-up drain at the start of a prayer is what this is for: up
+          // to twenty seconds of audio, decoded in two or three, would
+          // otherwise walk the cursor through the whole recitation faster than
+          // it was ever said — and `PrayerScreen._onTheMove` reads a second
+          // move arriving inside the dwell as a reciter running on, so the page
+          // would flip through three ayas in under a second in front of
+          // somebody praying. Nothing is dropped: every sample still reaches
+          // the recogniser and its answers accumulate. Only the intermediate
+          // cursor positions are discarded, which is what `moveTo` does with
+          // them anyway when the next one arrives in the same frame.
+          if (batch.length - to + _waiting.length >= _slice) continue;
+          // The same words as last time are the same question as last time, and
+          // it has already been answered. A reader who stops reciting leaves the
+          // answer standing, and re-judging it forty times a second neither
+          // changes it nor stops being work.
+          if (heard == _lastHeard) continue;
+          _lastHeard = heard;
+          if (DateTime.now().isBefore(_theirs)) {
+            trail.note('held', 'the reader moved the prayer themselves');
+            continue;
+          }
+          final why = explain(_set, heard);
+          final at = locate(_set, heard);
           trail.note(
-            'utterance ended',
-            said.text.isEmpty ? '(nothing)' : said.text,
+            'heard',
+            '${_tail(heard)} | ${_verdict(why, at)} | on ${_cursor.at} '
+            '| peak ${peak.toStringAsFixed(2)}',
           );
-        }
-        // A heartbeat even when nothing changes, because the last trail had a
-        // sixty-second hole in it: the answer stopped changing, every window
-        // was skipped, and the record went quiet at exactly the moment it was
-        // needed. Silence in a diary reads the same as silence in the room.
-        if (DateTime.now().difference(_lastSaid) > heardHeartbeat) {
-          _lastSaid = DateTime.now();
-          trail.note(
-            'still here',
-            '$_peaks batches, peak ${_quietest.toStringAsFixed(3)} to '
-            '${_loudest.toStringAsFixed(3)} | ${_tail(heard)}',
-          );
-          _peaks = 0;
-          _quietest = 1.0;
-          _loudest = 0.0;
-        }
-        if (heard.isEmpty) continue;
-        // The same words as last time are the same question as last time, and
-        // it has already been answered. A reader who stops reciting leaves the
-        // answer standing, and re-judging it forty times a second neither
-        // changes it nor stops being work.
-        if (heard == _lastHeard) continue;
-        _lastHeard = heard;
-        _lastSaid = DateTime.now();
-        if (DateTime.now().isBefore(_theirs)) {
-          trail.note('held', 'the reader moved the prayer themselves');
-          continue;
-        }
-        final why = explain(_set, heard);
-        final at = locate(_set, heard);
-        trail.note(
-          'heard',
-          '${_tail(heard)} | ${_verdict(why, at)} | on ${_cursor.at} '
-          '| peak ${peak.toStringAsFixed(2)}',
-        );
-        // Above the bar the word is named; at the bar the aya is as much as
-        // the recitation actually said.
-        if (at != null) {
-          _cursor.moveTo(at.word, sure: at.score >= followSure);
-          matched.value = _tail(heard);
+          // Above the bar the word is named; at the bar the aya is as much as
+          // the recitation actually said.
+          if (at != null) {
+            _cursor.moveTo(at.word, sure: at.score >= followSure);
+            matched.value = _tail(heard);
+          }
         }
       }
     } on Object {
@@ -342,6 +445,33 @@ class PrayerVoice {
     } finally {
       _handing = false;
     }
+  }
+
+  /// Drives the drain from a test: audio in, this class's own loop over it, and
+  /// the voice back to read [matched] and the cursor off.
+  ///
+  /// The only way in. `FakeMic` cannot carry a stream, so a test that went
+  /// through [start] would never produce a single batch — and what wants a test
+  /// is in here: the slicing, the level gate that has to refuse a lead-in batch
+  /// by batch, the promise that nothing between the reader's first word and the
+  /// end is dropped, and the order of the two lines that build a window out of
+  /// the carry.
+  @visibleForTesting
+  static Future<PrayerVoice> drain(
+    PrayerCursor cursor,
+    List<String> words,
+    Float32List audio, {
+    required Future<({String text, bool ended})> Function(Float32List) hear,
+  }) async {
+    final voice = PrayerVoice._(
+      cursor,
+      Recitation(words),
+      AudioRecorder(),
+      PrayerTrail.none(),
+    ).._hear = hear;
+    voice._waiting.addAll(audio);
+    await voice._handOver();
+    return voice;
   }
 
   /// The reader moved the prayer themselves. Their hand wins for a moment,
@@ -384,6 +514,7 @@ class PrayerVoice {
     _stream = null;
     final recogniser = _recogniser;
     _recogniser = null;
+    _hear = null;
     _waiting.clear();
     Future<void> attempt(Future<void> Function() step) async {
       try {

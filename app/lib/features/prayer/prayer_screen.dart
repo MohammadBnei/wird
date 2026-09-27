@@ -95,6 +95,16 @@ class _PrayerScreenState extends State<PrayerScreen> {
   /// there is nothing they could do about it while praying.
   PrayerVoice? _voice;
 
+  /// The same voice, from the moment the microphone is live rather than from
+  /// the moment there is anything to follow with.
+  ///
+  /// The two are up to twenty seconds apart — the model loads after the stream
+  /// opens — and [_voice] is what the screen draws with, so it stays null until
+  /// voice-follow is really running. This is the one the way out has to stop: a
+  /// reader who mis-taps into a prayer and backs out after two seconds must not
+  /// leave a microphone streaming behind a screen nobody is looking at.
+  PrayerVoice? _opening;
+
   /// Which aya is on screen. It lags the cursor by [_dwell] when the reciter
   /// crosses into the next one, so the aya they have just finished stands for
   /// a moment before the next arrives. A prayer is not a race, and a screen
@@ -118,7 +128,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
     _turning?.cancel();
     _cursor.removeListener(_onTheMove);
     unawaited(_keepAwake(false));
-    unawaited(_voice?.stop());
+    unawaited((_voice ?? _opening)?.stop());
     if (widget.cursor == null) _cursor.dispose();
     super.dispose();
   }
@@ -169,12 +179,20 @@ class _PrayerScreenState extends State<PrayerScreen> {
   Future<void> _followTheReciter() async {
     final trail = await PrayerTrail.beside(await getDatabasesPath());
     trail.note('set', '${_flat.length} words, ${widget.set.ayas.length} ayas');
-    final voice = await PrayerVoice.start(widget.db, _cursor, [
-      for (final here in _flat) here.word.text,
-    ], trail: trail);
+    final voice = await PrayerVoice.start(
+      widget.db,
+      _cursor,
+      [for (final here in _flat) here.word.text],
+      trail: trail,
+      // Before this answers, and it is what `dispose` above stops. The
+      // microphone is open from here on.
+      listening: (live) => _opening = live,
+    );
     // The prayer can be over before the model is loaded, and a microphone left
     // open behind a screen nobody is looking at is the worst of the failures
-    // available here.
+    // available here. `dispose` has already stopped the microphone through
+    // `_opening` by the time this is reached; what this refuses is a loaded
+    // recogniser held open by a screen that has gone.
     if (!mounted) {
       await voice?.stop();
       return;
