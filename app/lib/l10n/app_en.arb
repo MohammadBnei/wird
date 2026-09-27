@@ -169,5 +169,62 @@
         "example": "63"
       }
     }
+  },
+  "aboutBuiltOn": "BUILT ON",
+  "@aboutBuiltOn": {
+    "description": "The eyebrow over the heading of the sources screen, reached from the drawer's Sources row."
+  },
+  "aboutTitle": "Sources and licences",
+  "@aboutTitle": {
+    "description": "The heading of the sources screen, under the BUILT ON eyebrow."
+  },
+  "aboutThisApp": "This app",
+  "@aboutThisApp": {
+    "description": "The kicker on the first card of the sources screen, the one carrying Wird's own terms."
+  },
+  "aboutCopied": "Copied {url}",
+  "@aboutCopied": {
+    "description": "The snack bar shown on the sources screen once a source's address has been tapped and copied to the clipboard.",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "aboutProvidesMorphology": "Roots, word forms and morphology",
+  "@aboutProvidesMorphology": {
+    "description": "The kicker on the Quranic Arabic Corpus card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesText": "The Qurʼanic text",
+  "@aboutProvidesText": {
+    "description": "The kicker on the Tanzil Project card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesGloss": "Word-by-word gloss and transliteration",
+  "@aboutProvidesGloss": {
+    "description": "The kicker on the Quran Foundation card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesDesign": "Colour, space and type",
+  "@aboutProvidesDesign": {
+    "description": "The kicker on the Nocturne card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesArabicFace": "The Arabic face",
+  "@aboutProvidesArabicFace": {
+    "description": "The kicker on the Scheherazade New card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesLatinFace": "The Latin face",
+  "@aboutProvidesLatinFace": {
+    "description": "The kicker on the Inter card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesTimings": "Per-word recitation timings",
+  "@aboutProvidesTimings": {
+    "description": "The kicker on the quran-align card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesRecitation": "Recitation",
+  "@aboutProvidesRecitation": {
+    "description": "The kicker on the al-Ḥuṣarī recitation card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesVoice": "Following your voice in prayer",
+  "@aboutProvidesVoice": {
+    "description": "The kicker on the Quran-Lab recogniser card of the sources screen: what of the app would be missing without it."
   }
 }

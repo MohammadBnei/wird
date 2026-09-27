@@ -27,5 +27,18 @@
   "progress_allSuras": "Les 114",
   "progress_rootsKnown": "LES RACINES QUE VOUS CONNAISSEZ",
   "progress_rootsEmpty": "Les racines de chaque passage que vous comprenez sont rassemblées ici.",
-  "progress_rootsCoverage": "{roots} racines couvrent {percent} % des mots qui vous restent à lire."
+  "progress_rootsCoverage": "{roots} racines couvrent {percent} % des mots qui vous restent à lire.",
+  "aboutBuiltOn": "CONSTRUIT SUR",
+  "aboutTitle": "Sources et licences",
+  "aboutThisApp": "Cette application",
+  "aboutCopied": "Adresse copiée : {url}",
+  "aboutProvidesMorphology": "Racines, formes des mots et morphologie",
+  "aboutProvidesText": "Le texte coranique",
+  "aboutProvidesGloss": "Glose mot à mot et translittération",
+  "aboutProvidesDesign": "Couleur, espace et typographie",
+  "aboutProvidesArabicFace": "La police arabe",
+  "aboutProvidesLatinFace": "La police latine",
+  "aboutProvidesTimings": "Minutage de la récitation, mot par mot",
+  "aboutProvidesRecitation": "Récitation",
+  "aboutProvidesVoice": "Le suivi de votre voix pendant la prière"
 }

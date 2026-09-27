@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_card.dart';
 import '../../widgets/nocturne_rule.dart';
@@ -18,8 +19,12 @@ class Source {
     this.url,
   });
 
-  /// What of the app would be missing without it.
-  final String provides;
+  /// What of the app would be missing without it, read from the ARB rather
+  /// than carried: it is the kicker over the card, and the only field here a
+  /// French reader can be shown in French. The name is a proper noun, and the
+  /// licence and its notice are the licensor's own words, which several of
+  /// these grants require reproduced rather than rendered.
+  final String Function(AppLocalizations) provides;
   final String name;
   final String licence;
   final String terms;
@@ -37,9 +42,9 @@ class Source {
 /// rather than to whoever reads the repository: its source must be clearly
 /// indicated, a link must reach corpus.quran.com, and its copyright notice
 /// must travel with the annotation. This list is where that happens.
-const sources = [
+final sources = [
   Source(
-    provides: 'Roots, word forms and morphology',
+    provides: (l) => l.aboutProvidesMorphology,
     name: 'Quranic Arabic Corpus',
     licence: 'GNU General Public License',
     notice: 'Version 0.4 · Copyright (C) 2011 Kais Dukes',
@@ -52,7 +57,7 @@ const sources = [
         'this build.',
   ),
   Source(
-    provides: 'The Qurʼanic text',
+    provides: (l) => l.aboutProvidesText,
     name: 'Tanzil Project',
     licence: 'Verbatim copies, attributed',
     url: 'https://tanzil.net',
@@ -62,7 +67,7 @@ const sources = [
         'text is not allowed. Linked so you can keep track of changes.',
   ),
   Source(
-    provides: 'Word-by-word gloss and transliteration',
+    provides: (l) => l.aboutProvidesGloss,
     name: 'Quran Foundation',
     licence: 'Developer Terms',
     url: 'https://quran.foundation',
@@ -73,7 +78,7 @@ const sources = [
         'not do. Unsettled, and recorded as unsettled.',
   ),
   Source(
-    provides: 'Colour, space and type',
+    provides: (l) => l.aboutProvidesDesign,
     name: 'Nocturne',
     licence: 'Authored for Wird',
     terms:
@@ -81,7 +86,7 @@ const sources = [
         'light mode.',
   ),
   Source(
-    provides: 'The Arabic face',
+    provides: (l) => l.aboutProvidesArabicFace,
     name: 'Scheherazade New',
     licence: 'SIL Open Font License 1.1',
     url: 'https://openfontlicense.org',
@@ -90,14 +95,14 @@ const sources = [
         'diacritics.',
   ),
   Source(
-    provides: 'The Latin face',
+    provides: (l) => l.aboutProvidesLatinFace,
     name: 'Inter',
     licence: 'SIL Open Font License 1.1',
     url: 'https://openfontlicense.org',
     terms: 'Bundled unmodified.',
   ),
   Source(
-    provides: 'Per-word recitation timings',
+    provides: (l) => l.aboutProvidesTimings,
     name: 'quran-align',
     licence: 'Creative Commons Attribution 4.0 International',
     notice: 'Copyright (c) 2016 Collin Fair',
@@ -111,7 +116,7 @@ const sources = [
         'warranties.',
   ),
   Source(
-    provides: 'Recitation',
+    provides: (l) => l.aboutProvidesRecitation,
     name: 'Maḥmūd Khalīl al-Ḥuṣarī',
     licence: 'Fetched at playback, never redistributed',
     url: 'https://everyayah.com',
@@ -123,7 +128,7 @@ const sources = [
         'permission to redistribute it — and that is why this app never does.',
   ),
   Source(
-    provides: 'Following your voice in prayer',
+    provides: (l) => l.aboutProvidesVoice,
     name: 'Quran-Lab zipformer_p-arabic-v3',
     licence: 'Quran-Lab No-Profit License 1.2',
     url: 'https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3',
@@ -154,6 +159,7 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: n.bg,
       body: SafeArea(
@@ -165,10 +171,12 @@ class AboutScreen extends StatelessWidget {
             n.space('8'),
           ),
           children: [
-            _header(context, n),
+            _header(context, n, l),
             const NocturneRule(),
             NocturneCard(
-              kicker: 'This app',
+              // 'Wird' is the app's own name and stays as it is in every
+              // locale; the kicker over it does not.
+              kicker: l.aboutThisApp,
               title: 'Wird',
               body: _selfTerms,
               meta: const [
@@ -186,7 +194,7 @@ class AboutScreen extends StatelessWidget {
             const NocturneRule(),
             for (final source in sources) ...[
               NocturneCard(
-                kicker: source.provides,
+                kicker: source.provides(l),
                 title: source.name,
                 body: source.terms,
                 meta: [
@@ -211,25 +219,23 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context, Nocturne n) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'BUILT ON',
-        style: TextStyle(
-          fontSize: 10,
-          height: 1.2,
-          letterSpacing: 0.11 * 10,
-          color: n.accent,
-        ),
-      ),
-      SizedBox(height: n.space('1')),
-      Text(
-        'Sources and licences',
-        style: Theme.of(context).textTheme.displaySmall,
-      ),
-    ],
-  );
+  Widget _header(BuildContext context, Nocturne n, AppLocalizations l) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l.aboutBuiltOn,
+            style: TextStyle(
+              fontSize: 10,
+              height: 1.2,
+              letterSpacing: 0.11 * 10,
+              color: n.accent,
+            ),
+          ),
+          SizedBox(height: n.space('1')),
+          Text(l.aboutTitle, style: Theme.of(context).textTheme.displaySmall),
+        ],
+      );
 }
 
 /// A source's address, shown in full and copied on a tap.
@@ -250,8 +256,11 @@ class SourceLink extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         Clipboard.setData(ClipboardData(text: url));
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Copied $url')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.aboutCopied(url)),
+          ),
+        );
       },
       child: Semantics(
         link: true,
