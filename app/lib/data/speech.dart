@@ -90,6 +90,30 @@ const heardHeldByHand = Duration(seconds: 4);
 ///
 /// Low enough to pass a quiet voice a metre away: the owner's own recitation
 /// peaks around 0.4, and the room between his words sits near 0.004.
+///
+/// ponytail: one fixed absolute floor, and it only guards the quiet *before*
+/// the first word — the caller latches `_speaking` on and never turns it off,
+/// so from the reader's first syllable every batch reaches the recogniser
+/// whatever its level. Reported from the phone in a room where English was
+/// being spoken a metre away: the recitation is followed, and then words keep
+/// arriving after the reader has stopped. A phoneme alphabet cannot write
+/// English, so a bystander is not refused — it is transcribed as whatever
+/// Arabic it sounds closest to, and the matcher is handed that. It is not
+/// harmless: that trail has the cursor moved to word 8 on a phrase nobody
+/// praying had said.
+///
+/// The levels are the whole of the case, from that same trail. The reader's
+/// own words peak 0.10 to 0.17; the room talking a metre away peaks 0.03 to
+/// 0.05; this floor is 0.02. One constant cannot separate them and a ratio
+/// against the reader's own loudness separates them with room to spare.
+///
+/// Upgrade path, when it matters: track the reciter's own level and gate on
+/// that rather than on a constant — keep a running estimate of the loudest
+/// speaker (a decaying peak over the last several seconds), pass a batch only
+/// within some ratio of it, and let the floor rise in a loud room and fall in
+/// a quiet one. Quietest acceptable version first: re-arm this gate at the end
+/// of every utterance, so `said.ended` puts the batch level back in charge
+/// instead of latching open for the rest of the prayer.
 const heardQuiet = 0.02;
 
 /// How often the trail says something even when nothing has changed. A record

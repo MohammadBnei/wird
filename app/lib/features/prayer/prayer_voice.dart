@@ -85,6 +85,14 @@ class PrayerVoice {
   }) async {
     Recogniser? recogniser;
     AudioRecorder? mic;
+    // How long the reader waited before the microphone was even open. Nothing
+    // said in here is recorded — the mic is started below, after the model has
+    // loaded — so this is exactly the opening of the recitation that is lost,
+    // and the trail could not say how long it was.
+    final log = trail ?? PrayerTrail.none();
+    final asked = DateTime.now();
+    String since() =>
+        '${DateTime.now().difference(asked).inMilliseconds}ms after the prayer opened';
     // Nothing is allocated before the recogniser, and nothing past it returns:
     // an exit from there on throws, so the one handler that knows what is open
     // is the one that closes it.
@@ -94,6 +102,7 @@ class PrayerVoice {
       if (!model.ready) return null;
       recogniser = await Recogniser.open(model);
       if (recogniser == null) return null;
+      log.note('recogniser', 'loaded, ${since()}');
       mic = AudioRecorder();
       // Asked without a prompt. The reader already answered in Settings, and
       // a device that has since had the permission taken away answers false
@@ -103,14 +112,9 @@ class PrayerVoice {
       if (!await mic.hasPermission(request: false)) {
         throw StateError('the microphone was taken away since Settings');
       }
-      final voice = PrayerVoice._(
-        cursor,
-        Recitation(words),
-        recogniser,
-        mic,
-        trail ?? PrayerTrail.none(),
-      );
+      final voice = PrayerVoice._(cursor, Recitation(words), recogniser, mic, log);
       await voice._listen();
+      log.note('microphone', 'listening, ${since()}');
       return voice;
     } on Object {
       recogniser?.close();
