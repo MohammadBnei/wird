@@ -324,7 +324,11 @@ class _StudyScreenState extends State<StudyScreen> {
                   ),
                   Expanded(child: _reading(n, set)),
                   _footer(n, set),
-                  // ponytail: half the window, and the panel scrolls past it.
+                  // ponytail: half the window, and the panel's body scrolls
+                  // past it. The Mark button does not scroll — RootPanel pins
+                  // it under the scrolled body, because it is the only way
+                  // through the Qur'an and a clipped one is worse than the
+                  // overflow this cap removes.
                   //
                   // The panel is the last child of this Column and the reading
                   // above it is the Expanded, so the panel takes whatever
@@ -336,30 +340,32 @@ class _StudyScreenState extends State<StudyScreen> {
                   // Column overflowed. The cap is the only thing standing
                   // between that and a red screen over someone's prayer.
                   //
-                  // In portrait the cap is never reached, so the panel is
-                  // unchanged there. The ceiling: in landscape the reading is
-                  // squeezed to a sliver, because this buys a layout that does
-                  // not break rather than one that reads well sideways. The
-                  // fraction is the knob. If landscape is ever a shape the app
-                  // is meant to be read in, that is a layout of its own and a
-                  // golden the harness does not take yet.
+                  // The cap binds whenever the open panel wants more than two
+                  // fifths of the window, which is not landscape alone: it
+                  // binds on a 320pt-wide phone in portrait, and from roughly
+                  // 1.4x system text on a 402x874 one. Two fifths rather than
+                  // a half because a half left the reading 45px sideways —
+                  // less than one aya tile, so a reading screen with no
+                  // reading on it. The ceiling: where the cap binds the panel
+                  // gives up its body, and sideways the reading is still a
+                  // strip rather than a page. This buys a layout that does not
+                  // break, not one that reads well sideways. The fraction is
+                  // the knob, and study_screen_test holds the floor it buys.
                   ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                      maxHeight: MediaQuery.sizeOf(context).height * 0.4,
                     ),
-                    child: SingleChildScrollView(
-                      child: RootPanel(
-                        root: _root,
-                        word: _word,
-                        open: _prefs.rootOpen,
-                        onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
-                        onVisit: _visit,
-                        onKin: (ayahId) => _load(target: ayahId),
-                        allUnderstood: _allUnderstood(set),
-                        onMark: _allUnderstood(set)
-                            ? () => _load()
-                            : () => _markUnderstood(set),
-                      ),
+                    child: RootPanel(
+                      root: _root,
+                      word: _word,
+                      open: _prefs.rootOpen,
+                      onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
+                      onVisit: _visit,
+                      onKin: (ayahId) => _load(target: ayahId),
+                      allUnderstood: _allUnderstood(set),
+                      onMark: _allUnderstood(set)
+                          ? () => _load()
+                          : () => _markUnderstood(set),
                     ),
                   ),
                 ],
@@ -623,9 +629,18 @@ class _StudyScreenState extends State<StudyScreen> {
         // button. It is said once, in Settings. What stays here is the one
         // thing that explains why the play button beside it is dark: a screen
         // may not draw a dead control with nothing saying why.
-        if (!(_audio?.ready ?? false))
+        //
+        // Two reasons, and they are not the same reason. `ready` is false both
+        // when the corpus ships no recitation for this set — `tracks` comes
+        // from ayah_audio, so no rows means nothing to fetch, ever — and when
+        // the files simply are not cached yet. Saying "Not downloaded" for the
+        // first offers a download that does not exist. Before `_audio` is
+        // loaded nothing is known, so nothing is said.
+        if (_audio case final audio? when !audio.ready)
           Text(
-            'Not downloaded',
+            audio.tracks.isEmpty
+                ? 'No recitation for this set'
+                : 'Not downloaded',
             style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
           ),
       ],

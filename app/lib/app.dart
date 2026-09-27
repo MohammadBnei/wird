@@ -110,6 +110,12 @@ class Recitation {
   ValueListenable<bool> get playing => _set?.playing ?? _silent;
 
   bool get ready => _set?.ready ?? false;
+
+  /// The recitation the corpus carries for the set being read, which is empty
+  /// when it carries none. [ready] is false either way, and the reading screen
+  /// says which: an empty list is nothing to download rather than something
+  /// not downloaded yet.
+  List<AyaTrack> get tracks => _set?.tracks ?? const [];
   Set<int> get speakable => _set?.speakable ?? const {};
 
   /// Hands the application the set the reader is on: its recitation, what to

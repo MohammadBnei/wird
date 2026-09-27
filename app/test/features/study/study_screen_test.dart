@@ -438,6 +438,18 @@ void main() {
     expect(play.onPressed, isNull);
   });
 
+  testWidgets('the dark play button offers a download of a recitation the '
+      'corpus does not carry', (tester) async {
+    // A corpus with no ayah_audio rows: nothing to fetch, ever. The button is
+    // dark for a different reason than an empty cache, and the footer is the
+    // only place that reason is said.
+    await db.delete('ayah_audio');
+    await openStudy(tester);
+
+    expect(find.text('No recitation for this set'), findsOneWidget);
+    expect(find.text('Not downloaded'), findsNothing);
+  });
+
   testWidgets('the word panel names the root and keeps its sense to itself, so '
       'the one screen the reader studies from is the one screen that will not '
       'say what the root means', (tester) async {
@@ -482,30 +494,70 @@ void main() {
     );
   });
 
-  testWidgets('the set turned sideways is a red overflow over the reading, '
-      'because the chrome asks for more height than the phone has',
-      (tester) async {
-    // Nothing in app/lib sets a preferred orientation and the manifest handles
-    // the configuration change itself, so the app rotates. The transport and
-    // the root's sense each added a band to the fixed chrome, and sideways the
-    // sum passed the window.
-    tester.view.physicalSize = const Size(874, 402);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      await wirdAround(
-        db,
-        StudyScreen(db: db),
-        route: Routes.study,
-        cache: audio,
-      ),
-    );
-    await tester.pumpAndSettle();
+  // Nothing in app/lib sets a preferred orientation and the manifest handles
+  // the configuration change itself, so the app rotates; the system text size
+  // is the reader's and goes to 2x. The transport and the root's sense each
+  // added a band to the fixed chrome, and at every one of these shapes the sum
+  // passed the window: sideways as a red overflow, and — once the panel was
+  // capped and scrolled — as a Mark button quietly off the bottom of the
+  // screen, which is worse, because the overflow at least says so.
+  //
+  // 874x402 is the same phone sideways, 320x568 the smallest phone still sold,
+  // and 2.0 the top of the system text slider.
+  for (final window in const [Size(402, 874), Size(320, 568), Size(874, 402)]) {
+    for (final scale in const [1.0, 2.0]) {
+      testWidgets(
+        'the reader cannot advance the walk at ${window.width.toInt()}x'
+        '${window.height.toInt()} at ${scale}x text: the one action that '
+        'marks the set is off the screen, or the reading is gone from it',
+        (tester) async {
+          tester.view.physicalSize = window;
+          tester.view.devicePixelRatio = 1;
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.view.reset);
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          await tester.pumpWidget(
+            await wirdAround(
+              db,
+              StudyScreen(db: db),
+              route: Routes.study,
+              cache: audio,
+            ),
+          );
+          await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-    // The reading keeps a strip rather than being squeezed out of existence.
-    expect(tester.getRect(find.byType(CustomScrollView)).height, greaterThan(0));
-  });
+          // At 1.4x and up a Row inside the chrome runs off the RIGHT — a
+          // horizontal defect of its own, older than the cap and untouched by
+          // it. Taken so the vertical claims below can be made at 2.0 as well;
+          // they are geometric, so a Column that overflowed downwards again
+          // would fail them whether or not it also raised this.
+          final overflowed = tester.takeException();
+          if (scale == 1.0) expect(overflowed, isNull);
+
+          // `Mark set understood` is the only way through the Qur'an. It is
+          // the last thing in the panel, the panel is capped, and a cap over a
+          // scroll view is a clip — so this is the assertion that says the
+          // button is pinned and not scrolled out.
+          final mark = tester.getRect(find.text('Mark set understood'));
+          expect(
+            window.contains(mark.topLeft) && window.contains(mark.bottomRight),
+            isTrue,
+            reason: 'the button is inside the window, at $mark',
+          );
+
+          // What the panel gives up is the reading's height, so the cap needs
+          // a floor as well as a ceiling. 75px is one aya tile at the default
+          // text size, measured; sideways the reading is a strip, but never
+          // less than one word of it. `greaterThan(0)` passed here at 45.6px
+          // and guarded nothing.
+          expect(
+            tester.getRect(find.byType(CustomScrollView)).height,
+            greaterThanOrEqualTo(75),
+          );
+        },
+      );
+    }
+  }
 
   testWidgets('the reader is stuck in the order they started, with no way to '
       'read the muṣḥaf from its first sūra', (tester) async {

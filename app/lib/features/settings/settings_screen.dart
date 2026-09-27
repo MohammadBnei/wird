@@ -168,13 +168,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Read-only: the corpus ships the paths for one reciter and
               // there is nothing here to choose between. It is said once,
               // here, rather than under the play button, where a name that
-              // never changes read as the transport's own state. Whether the
-              // audio is on the phone is still said there.
+              // never changes read as the transport's own state.
+              //
+              // Who recites is all this says. It used to add that nothing
+              // would play — a claim this query cannot see: the name comes
+              // from `recitations` while what plays is decided by ayah_audio,
+              // and either table can be populated without the other. Whether
+              // a set is playable is said on the screen that knows, under the
+              // button it disables.
               _caption(
                 n,
                 _reciter == null
-                    ? 'This corpus carries no recitation, so nothing on the '
-                          'reading screen will play.'
+                    ? 'No reciter is named in this corpus.'
                     : 'Recited by $_reciter.',
               ),
               _section(n, 'MICROPHONE'),
