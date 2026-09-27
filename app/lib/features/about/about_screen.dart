@@ -122,6 +122,21 @@ const sources = [
         'archive publishes no terms of use, so nothing here is offered as '
         'permission to redistribute it — and that is why this app never does.',
   ),
+  Source(
+    provides: 'Following your voice in prayer',
+    name: 'Quran-Lab zipformer_p-arabic-v3',
+    licence: 'Quran-Lab No-Profit License 1.2',
+    url: 'https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3',
+    terms:
+        'The recogniser that hears your recitation, downloaded on your word '
+        'and run on this phone; nothing you say is sent anywhere. It writes '
+        'Qurʼanic phonemes, including the marks of tajwīd. Wird uses that only '
+        'to find where in the set you are, and never to judge how you recited: '
+        'automatic tajwīd feedback can be wrong, and no software here or '
+        'anywhere replaces a qualified teacher. Its licence forbids charging '
+        'for the model or for any feature it powers, which Wird does not and '
+        'will not do.',
+  ),
 ];
 
 /// Wird's own terms, kept beside the sources because it is the answer to the

@@ -72,6 +72,32 @@ void main() {
     }
   });
 
+  testWidgets('the recogniser is used without the warning its licence '
+      'requires an application built on it to carry', (tester) async {
+    // The Quran-Lab No-Profit License grants this model on three conditions,
+    // and the third is addressed to the person holding the phone rather than
+    // to whoever reads the repository: an application built on it must say
+    // plainly that automatic tajwīd feedback can be wrong and does not replace
+    // a qualified teacher. Iterating `sources` cannot catch an absent entry,
+    // so the words are named here.
+    await phone(tester, const AboutScreen());
+
+    await tester.scrollUntilVisible(
+      find.text('Quran-Lab zipformer_p-arabic-v3'),
+      200,
+    );
+    expect(find.text('Quran-Lab No-Profit License 1.2'), findsWidgets);
+    expect(
+      find.textContaining('automatic tajwīd feedback can be wrong'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('replaces a qualified teacher'),
+      findsOneWidget,
+      reason: 'the licence asks for the teacher, not only for the doubt',
+    );
+  });
+
   testWidgets('the word timings ship with no credit to the person who made '
       'them, which is the only permission Wird has to bundle them',
       (tester) async {
