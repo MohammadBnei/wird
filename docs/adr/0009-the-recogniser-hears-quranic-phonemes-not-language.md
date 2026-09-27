@@ -122,6 +122,13 @@ behind a route that is unauthenticated by design. The terms above are the
 access prompt, which is not the licence text. Reading it is cheap today and
 impossible to reconstruct later.
 
+The first condition binds the store as much as this repo, and is recorded
+where the store is configured: `docs/secrets.md` in infra-bootstrap names the
+model and its licence on the `WIRD_MODELS_S3` row and says these objects may
+never sit behind anything paid (infra-bootstrap#263). That row also records
+why superseded prefixes are not pruned — one prefix per model generation, and
+an old one outlives the phones still resuming against it.
+
 ## Consequences
 
 - A reader who already downloaded the old model downloads this one too. It is
