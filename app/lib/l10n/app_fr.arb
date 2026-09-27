@@ -1,5 +1,10 @@
 {
   "@@locale": "fr",
+  "index_kicker": "TOUT LE CORAN",
+  "index_title": "Les 114",
+  "index_hint": "Une sourate s’ouvre à son premier verset. La flèche en choisit un à l’intérieur.",
+  "index_revealed_nth": "{order} sourate révélée",
+  "index_pick_aya": "Choisir un verset de {sura}",
   "inThisAya": "DANS CE VERSET",
   "markSetUnderstood": "Marquer comme compris",
   "nextSet": "Passage suivant",

@@ -1,5 +1,35 @@
 {
   "@@locale": "en",
+  "index_kicker": "THE WHOLE QUR’AN",
+  "@index_kicker": {
+    "description": "The kicker over the index screen's title, naming what the index covers."
+  },
+  "index_title": "All 114",
+  "@index_title": {
+    "description": "The index screen's title: every sūra of the Qur'an, in written order."
+  },
+  "index_hint": "A sūra opens at its first aya. The arrow picks one inside it.",
+  "@index_hint": {
+    "description": "Under the index screen's title: how the two taps on a sūra row differ."
+  },
+  "index_revealed_nth": "{order} to be revealed",
+  "@index_revealed_nth": {
+    "description": "Under each sūra row in the index: where that sūra falls in the order of revelation, which is the other order the Qur'an is read in. `order` arrives already spelled as an ordinal of this locale — \"83rd\", \"83e\" — because gen-l10n rejects ICU selectordinal.",
+    "placeholders": {
+      "order": {
+        "type": "String"
+      }
+    }
+  },
+  "index_pick_aya": "Pick an aya of {sura}",
+  "@index_pick_aya": {
+    "description": "Screen-reader label for the arrow at the end of a sūra row in the index, which unfolds that sūra's aya numbers.",
+    "placeholders": {
+      "sura": {
+        "type": "String"
+      }
+    }
+  },
   "inThisAya": "IN THIS AYA",
   "@inThisAya": {
     "description": "Heading over the gloss of the selected word in the aya it was tapped in."

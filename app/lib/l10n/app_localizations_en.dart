@@ -9,6 +9,25 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get index_kicker => 'THE WHOLE QUR’AN';
+
+  @override
+  String get index_title => 'All 114';
+
+  @override
+  String get index_hint => 'A sūra opens at its first aya. The arrow picks one inside it.';
+
+  @override
+  String index_revealed_nth(String order) {
+    return '$order to be revealed';
+  }
+
+  @override
+  String index_pick_aya(String sura) {
+    return 'Pick an aya of $sura';
+  }
+
+  @override
   String get inThisAya => 'IN THIS AYA';
 
   @override

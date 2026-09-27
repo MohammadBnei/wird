@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_rule.dart';
 
@@ -121,7 +122,7 @@ class _IndexScreenState extends State<IndexScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'THE WHOLE QUR’AN',
+          AppLocalizations.of(context)!.index_kicker,
           style: TextStyle(
             fontSize: 10,
             height: 1.2,
@@ -130,10 +131,13 @@ class _IndexScreenState extends State<IndexScreen> {
           ),
         ),
         SizedBox(height: n.space('1')),
-        Text('All 114', style: Theme.of(context).textTheme.displaySmall),
+        Text(
+          AppLocalizations.of(context)!.index_title,
+          style: Theme.of(context).textTheme.displaySmall,
+        ),
         SizedBox(height: n.space('1')),
         Text(
-          'A sūra opens at its first aya. The arrow picks one inside it.',
+          AppLocalizations.of(context)!.index_hint,
           style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
         ),
       ],
@@ -198,7 +202,12 @@ class _IndexScreenState extends State<IndexScreen> {
                             // out because a bare number under a count of ayas reads
                             // as a second count.
                             Text(
-                              '${_ordinal(sura.revelationOrder)} to be revealed',
+                              AppLocalizations.of(context)!.index_revealed_nth(
+                                _ordinal(
+                                  Localizations.localeOf(context).languageCode,
+                                  sura.revelationOrder,
+                                ),
+                              ),
                               style: TextStyle(
                                 fontSize: 10,
                                 color: n.textAt(0.42),
@@ -216,7 +225,7 @@ class _IndexScreenState extends State<IndexScreen> {
             ),
             Semantics(
               button: true,
-              label: 'Pick an aya of ${sura.nameEn}',
+              label: AppLocalizations.of(context)!.index_pick_aya(sura.nameEn),
               child: GestureDetector(
                 key: ValueKey('ayas-${sura.id}'),
                 behavior: HitTestBehavior.opaque,
@@ -285,8 +294,18 @@ class _IndexScreenState extends State<IndexScreen> {
   );
 }
 
-/// "1st", "22nd", "113th" — English ordinals, teens included.
-String _ordinal(int n) {
+/// "1st", "22nd", "113th" in English; "1re", "22e", "113e" in French — the
+/// ordinal the reader sees, agreeing with the feminine "sourate" it qualifies.
+///
+/// The suffix is the one reader-facing string that cannot live in the ARB:
+/// gen-l10n rejects ICU `selectordinal`, and `plural`'s `=1 =2 =3` match only
+/// the literal numbers, so 21 and 22 would come out "21th" and "22th". The
+/// sentence around it is `index_revealed_nth`, which takes this already spelled.
+///
+// ponytail: two languages, inline. A third locale means a real ordinal
+// formatter — reach for one then, not now.
+String _ordinal(String languageCode, int n) {
+  if (languageCode == 'fr') return n == 1 ? '${n}re' : '${n}e';
   final suffix = n % 100 >= 11 && n % 100 <= 13
       ? 'th'
       : switch (n % 10) {

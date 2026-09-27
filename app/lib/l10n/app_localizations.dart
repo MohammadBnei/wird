@@ -95,6 +95,36 @@ abstract class AppLocalizations {
     Locale('fr')
   ];
 
+  /// The kicker over the index screen's title, naming what the index covers.
+  ///
+  /// In en, this message translates to:
+  /// **'THE WHOLE QUR’AN'**
+  String get index_kicker;
+
+  /// The index screen's title: every sūra of the Qur'an, in written order.
+  ///
+  /// In en, this message translates to:
+  /// **'All 114'**
+  String get index_title;
+
+  /// Under the index screen's title: how the two taps on a sūra row differ.
+  ///
+  /// In en, this message translates to:
+  /// **'A sūra opens at its first aya. The arrow picks one inside it.'**
+  String get index_hint;
+
+  /// Under each sūra row in the index: where that sūra falls in the order of revelation, which is the other order the Qur'an is read in. `order` arrives already spelled as an ordinal of this locale — "83rd", "83e" — because gen-l10n rejects ICU selectordinal.
+  ///
+  /// In en, this message translates to:
+  /// **'{order} to be revealed'**
+  String index_revealed_nth(String order);
+
+  /// Screen-reader label for the arrow at the end of a sūra row in the index, which unfolds that sūra's aya numbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick an aya of {sura}'**
+  String index_pick_aya(String sura);
+
   /// Heading over the gloss of the selected word in the aya it was tapped in.
   ///
   /// In en, this message translates to:
