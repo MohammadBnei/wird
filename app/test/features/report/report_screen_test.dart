@@ -19,6 +19,14 @@ Future<void> reportFrom(WidgetTester tester, String destination) async {
   await goTo(tester, 'Report something');
 }
 
+/// The version the shipped corpus carries, asked of the corpus rather than
+/// written down here. Written down, every rebuild of the asset reddens these
+/// tests over a number the ETL is supposed to bump.
+Future<int> shippedCorpusVersion(Database db) async =>
+    (await db.query('corpus_meta', columns: ['corpus_version'], limit: 1))
+            .single['corpus_version']!
+        as int;
+
 Future<Map<String, dynamic>?> queued(Database db) async {
   final rows = await db.query('outbox');
   if (rows.isEmpty) return null;
@@ -59,7 +67,7 @@ void main() {
       'app_version': appVersion,
       'platform': platformName,
       'screen': 'index',
-      'corpus_version': 1,
+      'corpus_version': await shippedCorpusVersion(db),
       'created_at': anything,
     });
   });
@@ -90,7 +98,8 @@ void main() {
     await pumpPhone(tester, await wholeApp(db, cache: silent));
     await reportFrom(tester, 'Sūra index');
 
-    for (final shown in [appVersion, platformName, 'index', '1']) {
+    final version = '${await shippedCorpusVersion(db)}';
+    for (final shown in [appVersion, platformName, 'index', version]) {
       expect(
         find.text(shown),
         findsOneWidget,

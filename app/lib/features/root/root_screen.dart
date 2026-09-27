@@ -36,7 +36,11 @@ class RootScreen extends StatefulWidget {
 class _RootScreenState extends State<RootScreen> {
   RootReading? _reading;
   bool _loaded = false;
-  bool _kept = false;
+
+  /// The id this root is kept under, or null. Read once in [_load]; nothing
+  /// listens to `kept_items`, so a delete made on screen 1e while this screen
+  /// is open does not reach the two buttons until it is reopened.
+  String? _keptId;
   int _index = 0;
 
   @override
@@ -47,19 +51,27 @@ class _RootScreenState extends State<RootScreen> {
 
   Future<void> _load() async {
     final reading = await rootReading(widget.db, widget.letters);
-    final kept = await rootKept(widget.db, widget.letters);
+    final keptId = await rootKept(widget.db, widget.letters);
     if (!mounted) return;
     setState(() {
       _reading = reading;
-      _kept = kept;
+      _keptId = keptId;
       _loaded = true;
     });
   }
 
-  Future<void> _keep() async {
-    await keepRoot(widget.db, widget.letters);
+  /// Keeps the root, or takes it back off the list. Both controls on this
+  /// screen — the bookmark at the top and the button in the card — press it,
+  /// because a toggle beside a latched chip is the defect this replaced.
+  Future<void> _toggleKeep() async {
+    String? keptId;
+    if (_keptId == null) {
+      keptId = await keepRoot(widget.db, widget.letters);
+    } else {
+      await forgetRoot(widget.db, widget.letters);
+    }
     if (!mounted) return;
-    setState(() => _kept = true);
+    setState(() => _keptId = keptId);
   }
 
   @override
@@ -77,8 +89,8 @@ class _RootScreenState extends State<RootScreen> {
                 children: [
                   RootChrome(
                     kicker: spine ? 'Root spine' : 'Root',
-                    kept: _kept,
-                    onKeep: _keep,
+                    kept: _keptId != null,
+                    onKeep: _toggleKeep,
                   ),
                   if (reading == null)
                     Expanded(child: _unknown(n))
@@ -151,14 +163,6 @@ class _RootScreenState extends State<RootScreen> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: lexiconSection(context, reading),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 18),
-          child: NocturneRule(),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
           child: tafsirSection(ayahRef(selected.ayahId)),
         ),
         const Padding(
@@ -167,7 +171,15 @@ class _RootScreenState extends State<RootScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 44),
-          child: irabSection(selected.text),
+          // The dial's selected form is a spelling met many times over. The
+          // parsing is of its first occurrence, which is the aya the card above
+          // already names, and the section says so rather than leaving the
+          // reader to read one occurrence's case as the form's own.
+          child: IrabSection(
+            segments: reading.irab[selected.wordId] ?? const [],
+            word: selected.text,
+            where: ayahRef(selected.ayahId),
+          ),
         ),
       ],
     );
@@ -253,8 +265,10 @@ class _RootScreenState extends State<RootScreen> {
                 Expanded(
                   child: NocturneButton(
                     variant: NocturneButtonVariant.primary,
-                    onPressed: _kept ? null : _keep,
-                    child: Text(_kept ? 'Kept' : 'Keep this root'),
+                    onPressed: _toggleKeep,
+                    child: Text(
+                      _keptId == null ? 'Keep this root' : 'Kept · tap to undo',
+                    ),
                   ),
                 ),
               ],

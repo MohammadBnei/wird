@@ -112,7 +112,27 @@ void main() {
 
     final kept = await keptItems(db, kind: KeptKind.root);
     expect(kept.map((item) => item.rootLetters), ['\u0635\u0628\u0631']);
-    expect(await rootKept(db, '\u0635\u0628\u0631'), isTrue);
-    expect(await rootKept(db, '\u0639\u0642\u0644'), isFalse);
+    expect(await rootKept(db, '\u0635\u0628\u0631'), kept.single.id);
+    expect(await rootKept(db, '\u0639\u0642\u0644'), isNull);
+  });
+
+  test('a root taken back off the list is still on it, because the undo '
+      'tombstoned one of the rows holding it there', () async {
+    // Two live rows for one root is reachable: the server keys kept_items on
+    // its id alone and kept_items_live is not unique, so two devices \u2014 one of
+    // them offline \u2014 each mint one. Undoing has to clear all of them.
+    const root = '\u062c\u0645\u0639';
+    Future<int> live() async => (await keptItems(db, kind: KeptKind.root))
+        .where((item) => item.rootLetters == root)
+        .length;
+
+    await keep(db, kind: KeptKind.root, rootLetters: root);
+    await keep(db, kind: KeptKind.root, rootLetters: root);
+    expect(await live(), 2);
+
+    await forgetRoot(db, root);
+
+    expect(await rootKept(db, root), isNull);
+    expect(await live(), 0);
   });
 }
