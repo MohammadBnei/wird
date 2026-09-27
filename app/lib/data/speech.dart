@@ -88,32 +88,58 @@ const heardHeldByHand = Duration(seconds: 4);
 /// opens before the reader begins, so the quiet before the first word is
 /// exactly what should not reach it.
 ///
-/// Low enough to pass a quiet voice a metre away: the owner's own recitation
-/// peaks around 0.4, and the room between his words sits near 0.004.
-///
-/// ponytail: one fixed absolute floor, and it only guards the quiet *before*
+/// ponytail: one fixed absolute floor, and it guards only the quiet *before*
 /// the first word — the caller latches `_speaking` on and never turns it off,
 /// so from the reader's first syllable every batch reaches the recogniser
-/// whatever its level. Reported from the phone in a room where English was
-/// being spoken a metre away: the recitation is followed, and then words keep
-/// arriving after the reader has stopped. A phoneme alphabet cannot write
-/// English, so a bystander is not refused — it is transcribed as whatever
-/// Arabic it sounds closest to, and the matcher is handed that. It is not
-/// harmless: that trail has the cursor moved to word 8 on a phrase nobody
-/// praying had said.
+/// whatever its level. That is deliberate. The two changes that look like
+/// improvements on it are refused below, by measurement.
 ///
-/// The levels are the whole of the case, from that same trail. The reader's
-/// own words peak 0.10 to 0.17; the room talking a metre away peaks 0.03 to
-/// 0.05; this floor is 0.02. One constant cannot separate them and a ratio
-/// against the reader's own loudness separates them with room to spare.
+/// THREE SETS OF NUMBERS HAVE BEEN WRITTEN HERE AND ONLY ONE IS OF THIS PATH.
+/// They disagree by a factor of twenty, which is why they are spelled out rather
+/// than left as a constant nobody can re-derive:
 ///
-/// Upgrade path, when it matters: track the reciter's own level and gate on
-/// that rather than on a constant — keep a running estimate of the loudest
-/// speaker (a decaying peak over the last several seconds), pass a batch only
-/// within some ratio of it, and let the floor rise in a loud room and fall in
-/// a quiet one. Quietest acceptable version first: re-arm this gate at the end
-/// of every utterance, so `said.ended` puts the batch level back in charge
-/// instead of latching open for the rest of the prayer.
+/// - 0.4 reciting / 0.004 room. A voice memo, not this path. `voices_test.dart`
+///   records why those are not the same signal: the memo and the app's own
+///   microphone are the same phone and the same voice, and the recogniser makes
+///   noticeably different work of them. Whatever a recorder app does to a memo,
+///   this path is `autoGain: false`. WRONG SIGNAL.
+/// - 0.10 to 0.17 reader / 0.03 to 0.05 room. Off the phone's own trail, but read
+///   off the batches that trail happened to print — which are the ones that
+///   PASSED this floor and were loud enough to be worth a line. Selected on the
+///   quantity being measured. WRONG SAMPLE.
+/// - 0.02 to 0.24 reader. Off that same trail, over every batch inside confirmed
+///   recitation: 0.24, 0.15, 0.11, 0.10, 0.09, 0.08, 0.06, 0.05, 0.04, 0.03 and
+///   0.02, the last three at 18.1s, 29.1s and 33.9s. This is the one that
+///   survives — this path, and not selected.
+///
+/// So the reader's own recitation reaches down to this floor and the room reaches
+/// up past it. The distributions overlap, and neither of these separates them:
+///
+/// - A ratio against a decaying peak of the reader's own loudness. Refused by
+///   the distribution above: any ratio wide enough to keep the reader's 0.02
+///   batches admits a room at 0.03 to 0.05, and any ratio tight enough to refuse
+///   the room drops recitation.
+/// - Re-arming this gate at `said.ended`, so the batch level is back in charge
+///   instead of latching open. It drops recitation, twice over. `enableEndpoint:
+///   true` leaves sherpa's three defaults in force, and rule 3 ends an utterance
+///   at 20 s of speech — so endpoints fire mid-recitation, guaranteed, in any
+///   longer passage, and the batch after one is usually not an utterance opening.
+///   Re-arming discards the 0.02 batches listed above, which is the one thing
+///   `prayer_voice.dart` forbids. It would also promote this from a lead-in guard
+///   into a VAD threshold running the whole prayer, on the very data that proves
+///   0.02 cannot tell reader from room.
+///
+/// A bystander is refused by the MATCHER, not by the level: a phoneme alphabet
+/// cannot write English, so the room is transcribed as whatever Arabic it sounds
+/// closest to and then scores badly. The walk's own wrong move — the cursor to
+/// word 8 on a phrase nobody praying had said — was not this gate letting the
+/// room in. It was the carried utterance holding the reader's last aya across two
+/// empty endpoints, so the junk was scored with the reader's own recitation glued
+/// to the front of it. `carry` in `prayer_voice.dart` is the fix for that.
+///
+/// The trail now prints the count and range of EVERY batch's peak once a
+/// heartbeat, at three decimals, so the next argument about this number is had
+/// against numbers from this path.
 const heardQuiet = 0.02;
 
 /// How often the trail says something even when nothing has changed. A record
@@ -121,10 +147,6 @@ const heardQuiet = 0.02;
 /// read back.
 const heardHeartbeat = Duration(seconds: 3);
 
-/// How much of what was said is carried past the end of an utterance. The
-/// matcher reads the last couple of dozen letters, so this is generous; it is
-/// bounded at all because a prayer runs for many minutes.
-const heardKeptLetters = 400;
 const heardSampleRate = 16000;
 
 /// Why a download stopped, in the two shapes that mean different things to the

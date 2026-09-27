@@ -21,6 +21,29 @@ import 'prayer_trail.dart';
 /// being no path out of this class onto the screen. It cannot raise a dialog,
 /// it has no error to show, and the only thing it can do to the prayer is call
 /// [PrayerCursor.follow], which refuses to rewind and ceilings a jump.
+
+/// What survives the end of an utterance. An utterance that ended with nothing
+/// decoded is a reader who has stopped, not a breath between ayas.
+///
+/// Finding 1 on the walk: in a room where English was being spoken a metre away
+/// the cursor moved to word 8 on a phrase nobody praying had said. The level
+/// gate is not what let that through — the phrase scored 0.58 on the reader's
+/// OWN last aya, with a bystander fragment glued to the end of it. Two endpoints
+/// in a row had decoded nothing, six seconds apart, and because the carry was
+/// only replaced when an utterance ended with text, the reader's aya stayed
+/// standing as the front half of every window after them. The junk matched on
+/// the strength of somebody else's recitation.
+///
+/// The cost is lateness, and it is not free. sherpa's rule 1 endpoints on 2.4 s
+/// of trailing silence with `must_contain_nonsilence = false`, so it re-fires
+/// through any long quiet: a reader in rukūʿ or sujūd, or listening to an imam,
+/// produces empty endpoints while still praying and each one wipes the field
+/// whose whole purpose is reading across the breath between two ayas. A late
+/// screen beats a wrong one, and the lateness heals itself as the reciter
+/// carries on. A wrong cursor position does not.
+String carry(String previous, ({String text, bool ended}) said) =>
+    said.ended ? said.text.trim() : previous;
+
 class PrayerVoice {
   PrayerVoice._(this._cursor, this._set, this._recogniser, this._mic, this.trail);
 
@@ -67,9 +90,23 @@ class PrayerVoice {
   String _lastHeard = '';
   DateTime _lastSaid = DateTime.fromMillisecondsSinceEpoch(0);
 
-  /// The utterance before the one now being said, when it was Arabic. This is
-  /// what lets the matcher read across the breath between two ayas.
+  /// The utterance before the one now being said. This is what lets the matcher
+  /// read across the breath between two ayas, and [carry] is the whole of the
+  /// rule for what stays in it.
   String _carried = '';
+
+  /// Every batch's peak level since the last heartbeat: how many, and the two
+  /// ends of the range.
+  ///
+  /// Measurement, not a gate — nothing reads these but the trail. Three sets of
+  /// numbers have been written down for [heardQuiet] and they disagree by a
+  /// factor of twenty, so the argument about it has to be had against the levels
+  /// this path actually sees. Counted BEFORE the gate, so the batches it refuses
+  /// are in the distribution too, and printed at three decimals because two
+  /// renders the committed 0.004 room figure as `0.00`.
+  var _peaks = 0;
+  var _quietest = 1.0;
+  var _loudest = 0.0;
 
   /// Starts listening, or answers null and leaves the prayer to the thumb.
   ///
@@ -166,6 +203,9 @@ class PrayerVoice {
           final loud = sample < 0 ? -sample : sample;
           if (loud > peak) peak = loud;
         }
+        _peaks++;
+        if (peak < _quietest) _quietest = peak;
+        if (peak > _loudest) _loudest = peak;
         if (peak < heardQuiet && !_speaking) continue;
         if (!_speaking) {
           trail.note('voice', 'the reader began, at ${peak.toStringAsFixed(2)}');
@@ -175,8 +215,10 @@ class PrayerVoice {
         // What the reciter has said, as far as this side is concerned: the
         // phrase before this one and the one now being spoken.
         final heard = '$_carried ${said.text}'.trim();
+        // Read before it is replaced: this window is the old carry plus what is
+        // being said now, and only the NEXT one is affected by an endpoint here.
+        _carried = carry(_carried, said);
         if (said.ended) {
-          if (said.text.trim().isNotEmpty) _carried = said.text.trim();
           trail.note(
             'utterance ended',
             said.text.isEmpty ? '(nothing)' : said.text,
@@ -190,8 +232,12 @@ class PrayerVoice {
           _lastSaid = DateTime.now();
           trail.note(
             'still here',
-            'peak ${peak.toStringAsFixed(2)} | ${_tail(heard)}',
+            '$_peaks batches, peak ${_quietest.toStringAsFixed(3)} to '
+            '${_loudest.toStringAsFixed(3)} | ${_tail(heard)}',
           );
+          _peaks = 0;
+          _quietest = 1.0;
+          _loudest = 0.0;
         }
         if (heard.isEmpty) continue;
         // The same words as last time are the same question as last time, and

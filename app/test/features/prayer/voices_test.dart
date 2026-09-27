@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
 import 'package:wird/features/prayer/alignment.dart';
+import 'package:wird/features/prayer/prayer_voice.dart';
 import 'package:wird/features/prayer/voice_follow.dart';
 
 /// Voice-follow graded against five recitations of two sūras rather than one.
@@ -219,5 +220,40 @@ void main() {
           '${cursor.at} of ${set.words.length} in $advances advances',
     );
     expect(cursor.at, lessThan(set.words.length));
+  });
+
+  // Finding 1 on the walk, replayed off the trail's own four lines. The reader
+  // had finished al-Fātiḥa's second aya; English was being spoken a metre away;
+  // six seconds later the cursor moved to word 8 on a phrase nobody praying had
+  // said. It scored 0.58 because the reader's own aya was still carried in front
+  // of it.
+  //
+  // This tests `carry` and nothing else. It is deliberately not a `locate` test:
+  // `locate` is unchanged by the fix, and the fixtures that grade it are
+  // Al-ʿAlaq, where "word 8" means nothing.
+  test('an utterance that decoded nothing does not leave the last aya '
+      'carried', () {
+    // 35.4s — the reader's own second aya, ended.
+    const aya = 'ااوَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦن';
+    var carried = carry('', (text: aya, ended: true));
+    expect(carried, aya, reason: 'a breath between two ayas is what this field '
+        'is for, and it has to survive one');
+
+    // 38.2s and 41.1s — two endpoints in a row with nothing decoded. Nearly six
+    // seconds in which the reader said nothing.
+    carried = carry(carried, (text: '', ended: true));
+    expect(carried, isEmpty, reason: 'an utterance that ended with nothing '
+        'decoded is a reader who has stopped, not a reader drawing breath');
+    carried = carry(carried, (text: '   ', ended: true));
+    expect(carried, isEmpty);
+
+    // 42.1s — the bystander, mid-utterance. What the matcher is handed now is
+    // the fragment on its own, which scores as badly as it deserves to. Before
+    // the fix this read `$aya صَد` and matched on the reader's words.
+    const bystander = 'صَد';
+    carried = carry(carried, (text: bystander, ended: false));
+    expect(carried, isEmpty, reason: 'a window that has not ended changes '
+        'nothing about what came before it');
+    expect('$carried $bystander'.trim(), bystander);
   });
 }
