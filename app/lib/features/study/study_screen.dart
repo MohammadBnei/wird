@@ -426,7 +426,7 @@ class _StudyScreenState extends State<StudyScreen> {
     child: Padding(
       padding: EdgeInsets.all(n.space('8')),
       child: Text(
-        'Every aya is understood. There is nothing left to serve.',
+        AppLocalizations.of(context)!.study_nothingLeftToServe,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.headlineSmall,
       ),
@@ -640,7 +640,7 @@ class _StudyScreenState extends State<StudyScreen> {
         if (_audio case final audio? when !audio.ready)
           Text(
             audio.tracks.isEmpty
-                ? 'No recitation for this set'
+                ? AppLocalizations.of(context)!.study_noRecitation
                 : AppLocalizations.of(context)!.notDownloaded,
             style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
           ),

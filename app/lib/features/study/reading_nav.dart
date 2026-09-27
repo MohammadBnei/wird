@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 
@@ -64,6 +65,7 @@ class ReadingNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         n.space('6'),
@@ -77,7 +79,7 @@ class ReadingNav extends StatelessWidget {
           Expanded(
             flex: 3,
             child: _step(
-              'Previous set',
+              l10n.study_previousSet,
               const Key('previous set'),
               Icons.arrow_upward,
               previous,
@@ -97,8 +99,11 @@ class ReadingNav extends StatelessWidget {
               onPressed: onIndex,
               child: _target(
                 Semantics(
-                  label: 'Go to any sūra or aya',
-                  child: const Text('Go to…', style: TextStyle(fontSize: 13)),
+                  label: l10n.study_goToAnyAya,
+                  child: Text(
+                    l10n.study_goTo,
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ),
               ),
             ),
@@ -106,7 +111,7 @@ class ReadingNav extends StatelessWidget {
           Expanded(
             flex: 3,
             child: _step(
-              'Next set',
+              l10n.nextSet,
               const Key('next set'),
               Icons.arrow_downward,
               next,

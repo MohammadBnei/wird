@@ -58,10 +58,16 @@ class StudyHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final first = set.ayas.first;
+    // The place is the sūra's own `revelation_place` out of the corpus —
+    // makkah or madinah — so it is capitalised and handed on rather than
+    // translated: it is a place name, and the only other spelling of it would
+    // be a second table nobody maintains.
+    final place = _capitalise(first.revelationPlace);
     final where = order == ReadingOrder.nuzul
-        ? 'Revelation ${first.revelationOrder} · ${_capitalise(first.revelationPlace)}'
-        : 'Sūra ${first.surahId} · ${_capitalise(first.revelationPlace)}';
+        ? l10n.study_revelationKicker(first.revelationOrder, place)
+        : l10n.study_surahKicker(first.surahId, place);
     return Padding(
       padding: EdgeInsets.fromLTRB(n.space('3'), n.space('2'), n.space('6'), 0),
       child: Column(
@@ -94,9 +100,9 @@ class StudyHeader extends StatelessWidget {
                 NocturneButton(
                   variant: NocturneButtonVariant.ghost,
                   onPressed: onBackToTheWalk,
-                  child: const Text(
-                    'Back to the walk',
-                    style: TextStyle(fontSize: 11),
+                  child: Text(
+                    l10n.study_backToTheWalk,
+                    style: const TextStyle(fontSize: 11),
                   ),
                 ),
               // The preferences the tune icon used to open have a screen of
@@ -106,9 +112,9 @@ class StudyHeader extends StatelessWidget {
                 key: const Key('pray the set'),
                 variant: NocturneButtonVariant.ghost,
                 onPressed: () => prayTheSet(context, set),
-                child: const Text(
-                  'Pray this set',
-                  style: TextStyle(fontSize: 11),
+                child: Text(
+                  l10n.study_prayThisSet,
+                  style: const TextStyle(fontSize: 11),
                 ),
               ),
             ],
@@ -120,7 +126,7 @@ class StudyHeader extends StatelessWidget {
               // says only where they are.
               child: _kicker(n, where),
             ),
-          _progress(n),
+          _progress(l10n, n),
         ],
       ),
     );
@@ -144,7 +150,7 @@ class StudyHeader extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       if (visiting) ...[
-        _kicker(n, 'Visiting'),
+        _kicker(n, AppLocalizations.of(context)!.study_visiting),
         SizedBox(width: n.space('2')),
       ],
       Flexible(
@@ -187,7 +193,7 @@ class StudyHeader extends StatelessWidget {
   /// could not say how far through the set the reader is, and the only other
   /// place that answers is screen 1d. The sentence spelling out which ayas is
   /// what unfolding adds.
-  Widget _progress(Nocturne n) => Padding(
+  Widget _progress(AppLocalizations l10n, Nocturne n) => Padding(
     padding: EdgeInsets.only(top: n.space(open ? '6' : '2')),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +224,7 @@ class StudyHeader extends StatelessWidget {
         if (open) ...[
           SizedBox(height: n.space('2')),
           Text(
-            progressCaption(set.ayas),
+            progressCaption(l10n, set.ayas),
             style: TextStyle(fontSize: 10.5, color: n.textAt(0.42)),
           ),
         ],
@@ -271,6 +277,7 @@ class RootPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final root = this.root;
     final letters = word?.root;
     return Container(
@@ -312,7 +319,7 @@ class RootPanel extends StatelessWidget {
                 children: [
                   if (root == null)
                     Text(
-                      'No word in this set carries a root.',
+                      l10n.study_noRootInSet,
                       style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
                     )
                   else if (!open)
@@ -380,7 +387,7 @@ class RootPanel extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            AppLocalizations.of(context)!.inThisAya,
+                            l10n.inThisAya,
                             style: TextStyle(
                               fontSize: 10,
                               letterSpacing: 0.11 * 10,
@@ -395,9 +402,9 @@ class RootPanel extends StatelessWidget {
                               ayahId: word!.id ~/ 1000,
                               letters: letters,
                             )),
-                            child: const Text(
-                              'Constellation',
-                              style: TextStyle(fontSize: 11),
+                            child: Text(
+                              l10n.study_constellation,
+                              style: const TextStyle(fontSize: 11),
                             ),
                           ),
                       ],
@@ -445,7 +452,7 @@ class RootPanel extends StatelessWidget {
                     ),
                     SizedBox(height: n.space('2')),
                     Text(
-                      'A kin opens the aya it is first met in.',
+                      l10n.study_kinOpensItsAya,
                       style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
                     ),
                   ],
@@ -458,7 +465,7 @@ class RootPanel extends StatelessWidget {
             block: true,
             variant: NocturneButtonVariant.primary,
             onPressed: onMark,
-            child: Text(allUnderstood ? 'Next set' : 'Mark set understood'),
+            child: Text(allUnderstood ? l10n.nextSet : l10n.markSetUnderstood),
           ),
         ],
       ),
@@ -534,7 +541,7 @@ class _DashPainter extends CustomPainter {
 String _capitalise(String word) =>
     word.isEmpty ? word : word[0].toUpperCase() + word.substring(1);
 
-String progressCaption(List<StudyAya> ayas) {
+String progressCaption(AppLocalizations l10n, List<StudyAya> ayas) {
   final done = [
     for (final a in ayas)
       if (a.understood) a.number,
@@ -543,11 +550,14 @@ String progressCaption(List<StudyAya> ayas) {
     for (final a in ayas)
       if (!a.understood) a.number,
   ];
-  if (done.isEmpty) return 'No aya marked understood yet';
-  if (open.isEmpty) return 'Every aya in this set is understood';
-  return 'Aya ${_numbers(done)} marked understood · aya ${_numbers(open)} open';
+  if (done.isEmpty) return l10n.study_noAyaUnderstoodYet;
+  if (open.isEmpty) return l10n.study_everyAyaUnderstood;
+  return l10n.study_progressSplit(_numbers(l10n, done), _numbers(l10n, open));
 }
 
-String _numbers(List<int> numbers) => numbers.length == 1
+String _numbers(AppLocalizations l10n, List<int> numbers) => numbers.length == 1
     ? '${numbers.first}'
-    : '${numbers.sublist(0, numbers.length - 1).join(', ')} and ${numbers.last}';
+    : l10n.study_numbersAnd(
+        numbers.sublist(0, numbers.length - 1).join(', '),
+        numbers.last,
+      );
