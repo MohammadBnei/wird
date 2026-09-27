@@ -292,3 +292,126 @@ three that carry no sense, with `_senseRefused` saying so rather than leaving a
 gap. What has to be decided is height: the panel is the narrowest of the four
 views and this adds a paragraph to a screen that also holds the reading, the
 footer and the transport.
+
+## 2026-09-27, walk two — on the Mac, with Part 1 merged
+
+Same reader, `fvm flutter run -d macos` against the merged branch. The trail is at
+`app/test/fixtures/fatiha_macos_trail.txt`, committed because it is the first
+recording of this failure and every number below is measured off it.
+
+### What the first walk's findings look like now
+
+Findings 1 and 2 are closed, and the trail says so in its first four lines:
+
+```
+0.3s  microphone  listening, 250ms after the prayer opened
+1.0s  recogniser  loaded, 994ms after the prayer opened
+1.0s  still here  1 batches of room, peak 0.010 to 0.010
+2.6s  heard  بِسمِللَ | MOVE to word 0 at 0.75
+```
+
+The microphone now opens before the model rather than 4.5 s after it, and the
+opening of the recitation is matched at 2.6 s instead of the cursor sitting on
+word 0 until 18.1 s and then jumping to word 7. The carry clears on a silent
+endpoint: at 39.1 s `utterance ended (nothing)`, and the next window at 41.0 s is
+`ل` alone rather than the previous aya with a fragment glued to it.
+
+One measurement worth keeping, because it settles an argument the first walk
+started: `MOVE to word 7 at 0.81` arrives at **peak 0.01**, half the `heardQuiet`
+floor of 0.02. Genuine recitation is quieter than the gate. Re-arming the level
+gate at each endpoint — which the first walk's write-up proposed — would have
+thrown that word away.
+
+### 9. The margin rule pins the cursor on any set that says a phrase twice
+
+Reported as the screen not following, and the reader repeating al-Fātiḥa's second
+aya three times to make it move. The trail shows the cursor on **word 1 from 3.6 s
+to 36 s** while the whole basmala and the opening of al-Ḥamd are recited
+correctly.
+
+The cause is not the microphone and not the recogniser. al-Fātiḥa says
+ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ twice inside one seventeen-word set:
+
+```
+set index 2,3   ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ   inside the basmala, aya 1
+set index 8,9   ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ   on its own, aya 3
+```
+
+`locate` (`alignment.dart:124-130`) refuses when `score - rival < followMargin`,
+with `followMargin = 0.32`, and `rival` counts any candidate two or more words
+from the best — six words apart qualifies. So every window the basmala produces
+names two places and is refused. Run the trail's own 48 windows back through
+`explain` against the real set:
+
+```
+windows 48 | moved 12 | refused by MARGIN 27 | refused by the bar 7 | too short 2
+
+refused margins   min 0.000   median 0.158   max 0.313   against followMargin 0.32
+sweep             0.10 releases 19 of 27      0.20 releases 12 of 27
+                  0.15 releases 14 of 27      0.25 releases  7 of 27
+```
+
+**A lower threshold cannot be the whole answer.** Three of the 27 sit at margin
+exactly 0.000 — the two places fit equally well and refusing both is correct.
+`alignment.dart` calls the margin "the guard that does the real work: it is what
+tells the two copies of a repeated phrase apart, by refusing both", and that
+reasoning still holds. What is wrong is applying it to the whole set when only one
+span of the set is ambiguous.
+
+**It is not al-Fātiḥa-specific.** Folding every sūra of sixty words or fewer — the
+size a prayer set actually is — and looking for a two-word phrase repeated at
+least two words away:
+
+```
+short suras                                            22
+carrying such a repeat                                 11   half of them
+sura 109 al-Kāfirūn   4 repeats      sura 99  az-Zalzalah  3
+sura 101 al-Qāriʿah   3 repeats      sura 1   al-Fātiḥa    1  (words 2 and 8)
+```
+
+al-Kāfirūn is built on repetition and is worse than al-Fātiḥa. These are the
+sūras most recited in prayer, so this is the common case rather than an edge.
+
+**The owner's direction, recorded as the direction and not yet designed:** a
+dedicated algorithm per chosen set, rather than one global constant. The set's
+repeat structure is knowable before a word is said, and `Recitation` is already
+built once per prayer for exactly this kind of reason — its own comment says
+rebuilding per window turns a cheap search into a slow one. So a set can know
+which of its spans are ambiguous, and the margin can be demanded only there
+instead of everywhere. What it must not break: the graded fixtures, above all
+`voice_follow_test.dart`'s assertion that the cursor is never ahead of the
+reciter, which is the number that decides whether this may be on by default.
+
+### 10. رحم ships a sense that leaves out the womb
+
+Reported by the reader from the root panel: *"on the root r h m, I read somewhere
+that it means matrice, uterus"*. Correct, and the corpus bears it out. The shipped
+sense is `to be merciful; to show mercy` / `être miséricordieux ; faire
+miséricorde`, and it says nothing of eleven occurrences:
+
+```
+2:228 أَرْحَامِهِنَّ their wombs   3:6 ٱلْأَرْحَامِ the wombs   4:1 وَٱلْأَرْحَامَ and the wombs
+6:143, 6:144 أَرْحَامُ (the) wombs        8:75 ٱلْأَرْحَامِ (of) blood relationship
+13:8 ٱلْأَرْحَامُ the womb   22:5, 31:34 ٱلْأَرْحَامِ the wombs
+33:6 ٱلْأَرْحَامِ (of) relationships      47:22 أَرْحَامَكُمْ your ties of kinship
+```
+
+4:1 puts ٱلْأَرْحَامَ beside ٱللَّه in a single oath, and the womb is the concrete
+sense the moral one is derived from, so this is not a minor branch.
+
+`docs/root-meanings-research.md:148-152` already records رحم as one of the two
+closest calls — but for a **different** unnamed branch, *gracious* (Ar-Raḥmān, 34
+occurrences). Nobody had recorded the womb branch, and a reader found it in one
+sitting. Eleven of roughly 340 occurrences is under the branch ceiling, so the
+gate passed the sense; رحم clears that term at 0.168 against a 0.204 ceiling. The
+question this raises is about the ceiling, not only this row, and it belongs with
+the calibration work rather than here.
+
+### 11. Tafsir's notice reads as a bug rather than a refusal
+
+Reported as "Tafsir is not present". That is the intended behaviour — nothing is
+licensed, nothing is ingested, and `_tafsirPending` says the section is fetched
+per aya and nothing has been fetched. But the reader read it as something broken,
+which means the wording fails at the one job it has. The notice exists to make a
+refusal visible; if it reads as an absence, it is not doing that. Worth rewording
+rather than rebuilding.
