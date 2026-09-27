@@ -62,8 +62,7 @@ import 'app_localizations_fr.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -84,18 +82,17 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('fr'),
+    Locale('fr')
   ];
 
   /// The kicker over the index screen's title, naming what the index covers.
@@ -307,10 +304,1167 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Screen stays awake · tap any time · left edge steps back'**
   String get prayer_foot_following;
+
+  /// The kicker over the title of the passage screen (1d), saying what the screen counts.
+  ///
+  /// In en, this message translates to:
+  /// **'UNDERSTOOD, NOT MERELY READ'**
+  String get progress_kicker;
+
+  /// The title of the passage screen (1d): how far through the Qur'an the reader has come.
+  ///
+  /// In en, this message translates to:
+  /// **'Your passage'**
+  String get progress_title;
+
+  /// The caption inside the juz ring on the passage screen (1d), under the percentage. Both counts arrive already grouped with thousands separators.
+  ///
+  /// In en, this message translates to:
+  /// **'{understood} of {total} ayas'**
+  String progress_ayas(String understood, String total);
+
+  /// The screen-reader label for the juz ring on the passage screen (1d). The ring's own figures are painted, so this is the only way they are ever spoken.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} of the Qur\'an understood, {ayas}. Juz {juz}, set {set}.'**
+  String progress_ringSemantics(String percent, String ayas, int juz, int set);
+
+  /// The line inside the juz ring on the passage screen (1d) naming where the reader stands.
+  ///
+  /// In en, this message translates to:
+  /// **'JUZ {juz} · SET {set}'**
+  String progress_here(int juz, int set);
+
+  /// The label under the first count tile on the passage screen (1d).
+  ///
+  /// In en, this message translates to:
+  /// **'sets understood'**
+  String get progress_setsUnderstood;
+
+  /// The label under the second count tile on the passage screen (1d).
+  ///
+  /// In en, this message translates to:
+  /// **'prayers recorded'**
+  String get progress_prayersRecorded;
+
+  /// The heading over the sūra rows on the passage screen (1d).
+  ///
+  /// In en, this message translates to:
+  /// **'WHERE YOU ARE'**
+  String get progress_whereYouAre;
+
+  /// The button beside that heading on the passage screen (1d); it opens the index of all 114 sūras.
+  ///
+  /// In en, this message translates to:
+  /// **'All 114'**
+  String get progress_allSuras;
+
+  /// The heading on the roots card at the foot of the passage screen (1d).
+  ///
+  /// In en, this message translates to:
+  /// **'ROOTS YOU NOW KNOW'**
+  String get progress_rootsKnown;
+
+  /// What the roots card on the passage screen (1d) says while the reader has understood nothing yet.
+  ///
+  /// In en, this message translates to:
+  /// **'The roots of every set you understand are collected here.'**
+  String get progress_rootsEmpty;
+
+  /// What the roots card on the passage screen (1d) says once there are roots: what they are worth against the text still to come. The count arrives already grouped.
+  ///
+  /// In en, this message translates to:
+  /// **'{roots} roots cover {percent}% of the words ahead of you.'**
+  String progress_rootsCoverage(String roots, int percent);
+
+  /// The eyebrow over the heading of the sources screen, reached from the drawer's Sources row.
+  ///
+  /// In en, this message translates to:
+  /// **'BUILT ON'**
+  String get aboutBuiltOn;
+
+  /// The heading of the sources screen, under the BUILT ON eyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources and licences'**
+  String get aboutTitle;
+
+  /// The kicker on the first card of the sources screen, the one carrying Wird's own terms.
+  ///
+  /// In en, this message translates to:
+  /// **'This app'**
+  String get aboutThisApp;
+
+  /// The snack bar shown on the sources screen once a source's address has been tapped and copied to the clipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied {url}'**
+  String aboutCopied(String url);
+
+  /// The kicker on the Quranic Arabic Corpus card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Roots, word forms and morphology'**
+  String get aboutProvidesMorphology;
+
+  /// The kicker on the Tanzil Project card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'The Qurʼanic text'**
+  String get aboutProvidesText;
+
+  /// The kicker on the Quran Foundation card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Word-by-word gloss and transliteration'**
+  String get aboutProvidesGloss;
+
+  /// The kicker on the Nocturne card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour, space and type'**
+  String get aboutProvidesDesign;
+
+  /// The kicker on the Scheherazade New card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'The Arabic face'**
+  String get aboutProvidesArabicFace;
+
+  /// The kicker on the Inter card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'The Latin face'**
+  String get aboutProvidesLatinFace;
+
+  /// The kicker on the quran-align card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Per-word recitation timings'**
+  String get aboutProvidesTimings;
+
+  /// The kicker on the al-Ḥuṣarī recitation card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Recitation'**
+  String get aboutProvidesRecitation;
+
+  /// The kicker on the Quran-Lab recogniser card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Following your voice in prayer'**
+  String get aboutProvidesVoice;
+
+  /// The deep dive's aya pane kicker, drawn uppercased over the printed aya — the head of the screen in the three-pane layout. The surah name comes from the corpus and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'{surah} · aya {number}'**
+  String deepdive_aya_kicker(String surah, int number);
+
+  /// Screen-reader label on the deep dive's back arrow, at the head of its first column.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get deepdive_back;
+
+  /// Caption under a constellation node when the corpus glossed no occurrence of that form, so only its morphological form number is known. Shown inside the drawn constellation.
+  ///
+  /// In en, this message translates to:
+  /// **'form {form}'**
+  String deepdive_form(String form);
+
+  /// The deep dive's one action button, before the aya has been kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this aya'**
+  String get deepdive_keep;
+
+  /// What the same deep dive button says once the aya is kept: it stays live and carries its own undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept · tap to undo'**
+  String get deepdive_kept;
+
+  /// The kicker beside the back arrow at the top of the deep dive when its three panes are stacked into one column. {ref} is a surah:aya reference.
+  ///
+  /// In en, this message translates to:
+  /// **'DEEP DIVE · {ref}'**
+  String deepdive_kicker(String ref);
+
+  /// Beside the root's Arabic spelling in the deep dive's centre pane: how the root is transliterated and how many times it occurs in the Qur'an.
+  ///
+  /// In en, this message translates to:
+  /// **'{translit} · {count} occurrences'**
+  String deepdive_occurrences(String translit, int count);
+
+  /// Heading over the root's spelling in the deep dive's centre pane, above the constellation or the list of its family.
+  ///
+  /// In en, this message translates to:
+  /// **'ROOT CONSTELLATION'**
+  String get deepdive_root_heading;
+
+  /// Screen-reader label on one node of the drawn constellation, which behaves as a button opening the aya it names. The nodes are painted onto a canvas, so this label is the whole screen-reader surface of the drawing.
+  ///
+  /// In en, this message translates to:
+  /// **'{form} · open {ref}'**
+  String deepdive_star(String form, String ref);
+
+  /// Caption under the one constellation node that marks the form the reader has open, drawn inside the constellation.
+  ///
+  /// In en, this message translates to:
+  /// **'THIS AYA · {ref}'**
+  String deepdive_this_aya(String ref);
+
+  /// Shown in place of the whole deep dive when the corpus holds no such aya, or the aya holds no such root.
+  ///
+  /// In en, this message translates to:
+  /// **'The corpus carries no aya {ref} with a root spelled {letters}.'**
+  String deepdive_unknown(String ref, String letters);
+
+  /// The drawing, as the deep dive's segmented control names it — offered only where the centre pane is wide enough to draw it.
+  ///
+  /// In en, this message translates to:
+  /// **'Constellation'**
+  String get deepdive_view_constellation;
+
+  /// The root's family read as a list, the other option of the deep dive's segmented control.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get deepdive_view_list;
+
+  /// Kicker over the waiting set on home, above its title. The number is how far along the walk the reader has come.
+  ///
+  /// In en, this message translates to:
+  /// **'SET {number} · WAITING'**
+  String dashboard_setWaiting(int number);
+
+  /// How long the waiting set is, on the line under its Arabic name on home. Joined to the prayer count by a middle dot.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 aya} other{{count} ayas}}'**
+  String dashboard_ayaCount(int count);
+
+  /// How often the waiting set has been prayed, on the same line on home as the aya count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no prayer on it yet} =1{prayed once} =2{prayed twice} other{prayed {count} times}}'**
+  String dashboard_prayerCount(int count);
+
+  /// Home's primary button: it opens the prayer on the waiting set.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray this set'**
+  String get dashboard_praySet;
+
+  /// Home's second button, under the prayer one: it opens the reading screen on the waiting set.
+  ///
+  /// In en, this message translates to:
+  /// **'Read it first'**
+  String get dashboard_readFirst;
+
+  /// What home says in place of a waiting set once the reader has finished the whole walk.
+  ///
+  /// In en, this message translates to:
+  /// **'Every aya is understood.'**
+  String get dashboard_allUnderstood;
+
+  /// The line under that on home, telling the finished reader where they can still go.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nothing left to serve. The index opens any sūra again.'**
+  String get dashboard_allUnderstoodWhy;
+
+  /// Kicker over the list of destinations at the bottom of home.
+  ///
+  /// In en, this message translates to:
+  /// **'WHERE TO GO'**
+  String get dashboard_whereToGo;
+
+  /// Home's destination row for the sūra index.
+  ///
+  /// In en, this message translates to:
+  /// **'Sūra index'**
+  String get dashboard_doorIndex;
+
+  /// The subtitle under the sūra index row on home.
+  ///
+  /// In en, this message translates to:
+  /// **'Open any aya you want'**
+  String get dashboard_doorIndexWhy;
+
+  /// Home's destination row for the progress screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Your passage'**
+  String get dashboard_doorProgress;
+
+  /// The subtitle under the progress row on home.
+  ///
+  /// In en, this message translates to:
+  /// **'How much you have understood'**
+  String get dashboard_doorProgressWhy;
+
+  /// Home's destination row for the ayas and roots the reader saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept'**
+  String get dashboard_doorKept;
+
+  /// The subtitle under the kept row on home.
+  ///
+  /// In en, this message translates to:
+  /// **'The ayas and roots you saved'**
+  String get dashboard_doorKeptWhy;
+
+  /// The heading of the report screen, where a reader says what went wrong, what is missing, or what could be better.
+  ///
+  /// In en, this message translates to:
+  /// **'Report something'**
+  String get report_title;
+
+  /// Caption under the report screen's heading, saying that no answer comes back.
+  ///
+  /// In en, this message translates to:
+  /// **'This goes one way. It reaches whoever keeps Wird running, and nothing comes back — there is no inbox here to check.'**
+  String get report_one_way;
+
+  /// Section heading on the report screen, over the bug / request / improvement chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'WHAT KIND'**
+  String get report_kind_heading;
+
+  /// First option of the kind chooser on the report screen: something is broken.
+  ///
+  /// In en, this message translates to:
+  /// **'Bug'**
+  String get report_kind_bug;
+
+  /// Second option of the kind chooser on the report screen: something is missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Request'**
+  String get report_kind_request;
+
+  /// Third option of the kind chooser on the report screen: something could be better.
+  ///
+  /// In en, this message translates to:
+  /// **'Improvement'**
+  String get report_kind_improvement;
+
+  /// Section heading on the report screen, over the field the reader writes the report in.
+  ///
+  /// In en, this message translates to:
+  /// **'IN YOUR OWN WORDS'**
+  String get report_words_heading;
+
+  /// Placeholder shown inside the empty report field on the report screen.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened, or what is missing.'**
+  String get report_words_hint;
+
+  /// Caption under the report field, shown only once the reader is within a paragraph of the length the server accepts.
+  ///
+  /// In en, this message translates to:
+  /// **'{remaining} characters left of {max}. The server takes no more than that.'**
+  String report_chars_left(int remaining, int max);
+
+  /// Section heading on the report screen, over the gathered build, platform, screen and corpus version printed as they will be sent.
+  ///
+  /// In en, this message translates to:
+  /// **'SENT WITH IT'**
+  String get report_context_heading;
+
+  /// Caption under the gathered context on the report screen, saying what does not leave the phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Gathered so you do not have to type it. Nothing else travels: not what you were reading, not what you have kept, not your progress.'**
+  String get report_context_only;
+
+  /// Stands in for the gathered context on the report screen while the corpus is still being asked for its version.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading this build…'**
+  String get report_context_loading;
+
+  /// The report screen's one button: it queues the report and returns.
+  ///
+  /// In en, this message translates to:
+  /// **'Send it'**
+  String get report_send;
+
+  /// Section heading the report screen shows in place of the form once a report has been queued.
+  ///
+  /// In en, this message translates to:
+  /// **'QUEUED'**
+  String get report_queued_heading;
+
+  /// What the report screen says after a send: the report is written locally and flushes with the next sync.
+  ///
+  /// In en, this message translates to:
+  /// **'It is written down on this phone and goes out with the next sync, even if you are offline now.'**
+  String get report_queued_body;
+
+  /// Button on the report screen after a send, which empties the form for a second report.
+  ///
+  /// In en, this message translates to:
+  /// **'Write another'**
+  String get report_write_another;
+
+  /// Reading screen header, shown only while the reader is visiting an aya they asked for: it puts them back on the walk's next set.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the walk'**
+  String get study_backToTheWalk;
+
+  /// Reading screen, the unfolded root panel: opens the deep dive on this aya and this root.
+  ///
+  /// In en, this message translates to:
+  /// **'Constellation'**
+  String get study_constellation;
+
+  /// Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set is still open.
+  ///
+  /// In en, this message translates to:
+  /// **'Every aya in this set is understood'**
+  String get study_everyAyaUnderstood;
+
+  /// Reading screen footer, the middle control: it opens the sūra index, which answers with any aya of the Qur'an.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to…'**
+  String get study_goTo;
+
+  /// Screen-reader label for the reading screen footer's middle control, whose visible face says only "Go to…".
+  ///
+  /// In en, this message translates to:
+  /// **'Go to any sūra or aya'**
+  String get study_goToAnyAya;
+
+  /// Reading screen, the unfolded root panel: what pressing one of the kin tags above it does.
+  ///
+  /// In en, this message translates to:
+  /// **'A kin opens the aya it is first met in.'**
+  String get study_kinOpensItsAya;
+
+  /// Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set has been marked.
+  ///
+  /// In en, this message translates to:
+  /// **'No aya marked understood yet'**
+  String get study_noAyaUnderstoodYet;
+
+  /// Reading screen transport: why the play button is dark when the corpus ships no recitation for these ayas at all, as against notDownloaded, which is one that could still arrive.
+  ///
+  /// In en, this message translates to:
+  /// **'No recitation for this set'**
+  String get study_noRecitation;
+
+  /// Reading screen, in place of the root panel's contents when not one word of the set on screen bears a root.
+  ///
+  /// In en, this message translates to:
+  /// **'No word in this set carries a root.'**
+  String get study_noRootInSet;
+
+  /// The whole of the reading screen once the reader has marked every aya of the Qur'an understood and the walk has no set left to hand them.
+  ///
+  /// In en, this message translates to:
+  /// **'Every aya is understood. There is nothing left to serve.'**
+  String get study_nothingLeftToServe;
+
+  /// How the last of a list of aya numbers is joined to the ones before it, inside the sentences under the reading screen's progress rule.
+  ///
+  /// In en, this message translates to:
+  /// **'{first} and {last}'**
+  String study_numbersAnd(Object first, Object last);
+
+  /// Reading screen footer, the up arrow: it steps to the set before this one. Also its screen-reader label, which the aya numbers are appended to.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous set'**
+  String get study_previousSet;
+
+  /// Reading screen header, the act the reading is for: it opens the prayer screen on this set.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray this set'**
+  String get study_prayThisSet;
+
+  /// Reading screen, the sentence under the progress rule in the unfolded header, when some ayas of the set are marked and some are still open.
+  ///
+  /// In en, this message translates to:
+  /// **'Aya {done} marked understood · aya {open} open'**
+  String study_progressSplit(Object done, Object open);
+
+  /// Reading screen, the kicker in the unfolded header when the reader is in the order of revelation: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Revelation {order} · {place}'**
+  String study_revelationKicker(Object order, Object place);
+
+  /// Reading screen, the kicker in the unfolded header when the reader is in the written order: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Sūra {surah} · {place}'**
+  String study_surahKicker(Object surah, Object place);
+
+  /// Reading screen, the kicker before the set's title: the reader asked for this aya rather than being handed it by the walk.
+  ///
+  /// In en, this message translates to:
+  /// **'Visiting'**
+  String get study_visiting;
+
+  /// Screen-reader label on an aya reference in a root's family — the panel under screen 1a's aya, screen 3a's spine and screen 1c's constellation all draw it.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {ref}'**
+  String root_openAya(String ref);
+
+  /// Mark on the one row of a root's spine whose form the aya on screen in front of the reader spells.
+  ///
+  /// In en, this message translates to:
+  /// **'THIS AYA'**
+  String get root_thisAya;
+
+  /// The second line of every row of a root's spine: which shape the form is and how often it is read.
+  ///
+  /// In en, this message translates to:
+  /// **'Form {form} · {occurrences}×'**
+  String root_weightWithForm(String form, int occurrences);
+
+  /// Screen-reader label on the left chevron under the root dial on screens 3a and 1c, which turns the ring back one form.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get root_previousForm;
+
+  /// Screen-reader label on the right chevron under the root dial on screens 3a and 1c, which turns the ring on one form.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get root_nextForm;
+
+  /// The line between the two chevrons under the root dial: where on the ring the reader stands, and the gesture that moves it.
+  ///
+  /// In en, this message translates to:
+  /// **'{index} of {count} · swipe the ring'**
+  String root_dialPosition(int index, int count);
+
+  /// The kicker across the top of screen 3a, the root read on its dial.
+  ///
+  /// In en, this message translates to:
+  /// **'Root'**
+  String get root_kicker;
+
+  /// The kicker across the top of screen 2b, the same root read as a spine with the dial taken away.
+  ///
+  /// In en, this message translates to:
+  /// **'Root spine'**
+  String get root_kickerSpine;
+
+  /// Drawn in the middle of screens 3a and 2b when the letters asked for name no root in the bundled corpus.
+  ///
+  /// In en, this message translates to:
+  /// **'The corpus carries no root spelled {letters}.'**
+  String root_unknownRoot(String letters);
+
+  /// Heading over the spine of derivatives on screens 3a and 2b.
+  ///
+  /// In en, this message translates to:
+  /// **'Its kin in the Qur\'an'**
+  String get root_kinHeading;
+
+  /// Beside the kin heading on screen 3a: how many forms the root has and how often they are read in all.
+  ///
+  /// In en, this message translates to:
+  /// **'{forms} forms · {occurrences} occurrences'**
+  String root_kinFormsAndOccurrences(int forms, int occurrences);
+
+  /// Beside the kin heading on screen 2b, which gives the count of forms and not the occurrences.
+  ///
+  /// In en, this message translates to:
+  /// **'{forms} forms'**
+  String root_formCount(int forms);
+
+  /// The kicker inside screen 3a's detail card for a form the corpus assigns no shape to.
+  ///
+  /// In en, this message translates to:
+  /// **'{occurrences}× IN THE QUR’AN'**
+  String root_cardWeight(int occurrences);
+
+  /// The kicker inside screen 3a's detail card: the shape of the form on the dial and how often it is read.
+  ///
+  /// In en, this message translates to:
+  /// **'FORM {form} · {occurrences}×'**
+  String root_cardWeightWithForm(String form, int occurrences);
+
+  /// The left button in screen 3a's detail card, which answers the reading screen with the aya the form is first met in.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the aya'**
+  String get root_readTheAya;
+
+  /// The right button in screen 3a's detail card while the root is not on the kept list.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this root'**
+  String get root_keepThisRoot;
+
+  /// What that same button in screen 3a's detail card says once the root is kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept · tap to undo'**
+  String get root_keptTapToUndo;
+
+  /// Screen-reader label on the chevron at the top left of screens 3a and 2b.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get root_back;
+
+  /// Screen-reader label on the bookmark at the top right of screens 3a and 2b while the root is not kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep'**
+  String get root_keep;
+
+  /// Screen-reader label on that same bookmark once the root is kept; it presses the same handler, so it says the press undoes.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept, tap to undo'**
+  String get root_keptTapToUndoLabel;
+
+  /// Heading over the sentence saying what a root means, on screens 3a, 2b, 1a's root panel and 1c.
+  ///
+  /// In en, this message translates to:
+  /// **'Core sense'**
+  String get root_coreSense;
+
+  /// Drawn under the core sense heading for the two roots in three that ship no sense, so the absence reads as a refusal to claim and not as a missing section.
+  ///
+  /// In en, this message translates to:
+  /// **'Wird writes a root\'s sense only where that root\'s own words in the Qur\'an bear it out. These do not, so nothing is claimed here.'**
+  String get root_senseRefused;
+
+  /// Under the core sense on screens 3a, 2b and 1c: whose reading the sentence above is, where it is the app's own. Ends in root_senseBorne, or in nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'This app\'s own reading{borne}'**
+  String root_senseByApp(String borne);
+
+  /// The same line where the sense does come from a named work. Ends in root_senseBorne, or in nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'{source}\'s reading{borne}'**
+  String root_senseBySource(String source, String borne);
+
+  /// The tail of that same line, naming how many of the root's own words the sense was read from. Tapping the line raises them.
+  ///
+  /// In en, this message translates to:
+  /// **', borne out by {words} of the root\'s own words'**
+  String root_senseBorne(int words);
+
+  /// Heading in the sheet of evidence behind a core sense, over the paragraph saying why the sense is kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Whose reading this is'**
+  String get root_whoseReading;
+
+  /// Heading in that same sheet, over the root's own words the sense rests on.
+  ///
+  /// In en, this message translates to:
+  /// **'The words it was read from'**
+  String get root_wordsReadFrom;
+
+  /// Beside that heading in the sheet of evidence: how many words the sense was read from.
+  ///
+  /// In en, this message translates to:
+  /// **'{words} words'**
+  String root_wordCount(int words);
+
+  /// Under a word's gloss in the sheet of evidence, giving the shape that word is in.
+  ///
+  /// In en, this message translates to:
+  /// **'FORM {form}'**
+  String root_formTag(String form);
+
+  /// Heading over the tafsir section where it is drawn with no aya named.
+  ///
+  /// In en, this message translates to:
+  /// **'Tafsir'**
+  String get root_tafsir;
+
+  /// Heading over the tafsir section on screens 3a and 1c, naming the aya the commentary would be fetched for.
+  ///
+  /// In en, this message translates to:
+  /// **'Tafsir · {ref}'**
+  String root_tafsirAt(String ref);
+
+  /// Under the tafsir heading and the works it will quote, saying plainly that it quotes none of them on this build.
+  ///
+  /// In en, this message translates to:
+  /// **'Tafsir is fetched per aya. Nothing is downloaded yet, so nothing is attributed here.'**
+  String get root_tafsirPending;
+
+  /// Heading over the parsing of one word on screens 3a, 2b and 1c.
+  ///
+  /// In en, this message translates to:
+  /// **'Iʿrāb'**
+  String get root_irab;
+
+  /// Beside the iʿrāb heading, naming the one occurrence being parsed — case and mood are the verse's, not the form's.
+  ///
+  /// In en, this message translates to:
+  /// **'as read at {where}'**
+  String root_irabAsReadAt(String where);
+
+  /// Drawn under the iʿrāb heading where the corpus has no segments for the word, rather than leaving a gap that reads as an oversight.
+  ///
+  /// In en, this message translates to:
+  /// **'The corpus carries no parsing for this word.'**
+  String get root_noParsing;
+
+  /// The last line of the iʿrāb section on screens 3a, 2b and 1c. {work} is the upstream corpus named and linked verbatim, which is what its licence asks for; the sentence around it is Wird's own.
+  ///
+  /// In en, this message translates to:
+  /// **'Provenance: {work}; the role names are written for Wird'**
+  String root_irabProvenance(String work);
+
+  /// Beside the root's letters at the top of screen 2b: how it is read aloud, how often it occurs, and across how many sūras.
+  ///
+  /// In en, this message translates to:
+  /// **'{translit} · {occurrences} in {suras} sūras'**
+  String root_spineWeight(String translit, int occurrences, int suras);
+
+  /// Heading over the provenance line at the foot of screen 2b.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get root_sourcesHeading;
+
+  /// The provenance line under that heading. {sources} is the corpus the row itself names, carried verbatim from the data.
+  ///
+  /// In en, this message translates to:
+  /// **'Provenance: {sources}'**
+  String root_provenance(String sources);
+
+  /// The heading at the top of the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// Section heading on the settings screen, over the word display and the reading order.
+  ///
+  /// In en, this message translates to:
+  /// **'READING'**
+  String get settingsReading;
+
+  /// First option of the settings screen's word-display segmented control: print the meaning under each Arabic word.
+  ///
+  /// In en, this message translates to:
+  /// **'Gloss'**
+  String get settingsWordGloss;
+
+  /// Second option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control.
+  ///
+  /// In en, this message translates to:
+  /// **'Translit'**
+  String get settingsWordTranslit;
+
+  /// Third option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word.
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get settingsWordBoth;
+
+  /// Fourth option of the settings screen's word-display segmented control: print nothing under the Arabic.
+  ///
+  /// In en, this message translates to:
+  /// **'Neither'**
+  String get settingsWordNeither;
+
+  /// Caption under the word-display segmented control on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'What is printed under each Arabic word.'**
+  String get settingsWordCaption;
+
+  /// First option of the settings screen's reading-order segmented control: walk the suras in the order they were revealed.
+  ///
+  /// In en, this message translates to:
+  /// **'Chronological'**
+  String get settingsOrderChronological;
+
+  /// Second option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is.
+  ///
+  /// In en, this message translates to:
+  /// **'Muṣḥaf'**
+  String get settingsOrderMushaf;
+
+  /// Caption under the reading-order segmented control on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The chronology orders sūras; ayas inside a sūra stay in written order.'**
+  String get settingsOrderCaption;
+
+  /// Label beside the Arabic-size slider on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic'**
+  String get settingsArabic;
+
+  /// Caption under the Arabic-size slider on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'How large the Arabic is set on the reading screen.'**
+  String get settingsArabicCaption;
+
+  /// Section heading on the settings screen, over the control that widens or narrows the waiting set.
+  ///
+  /// In en, this message translates to:
+  /// **'HOW MUCH YOU TAKE AT ONCE'**
+  String get settingsSetWidth;
+
+  /// Stands in for the set-width control on the settings screen when the walk has no set left to propose.
+  ///
+  /// In en, this message translates to:
+  /// **'Every aya is understood, so no set is waiting.'**
+  String get settingsNoSetWaiting;
+
+  /// How wide the waiting set is, printed between the narrow and widen buttons on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 aya} other{{count} ayas}}'**
+  String settingsSetAyas(int count);
+
+  /// Caption under the set-width stepper on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'A wider set may cross an aya you already understood. It is recited with the rest and stays counted where it is.'**
+  String get settingsSetWidthCaption;
+
+  /// Section heading on the settings screen, over the name of who recites the audio.
+  ///
+  /// In en, this message translates to:
+  /// **'RECITATION'**
+  String get settingsRecitation;
+
+  /// Caption in the settings screen's recitation section when the bundled corpus names nobody.
+  ///
+  /// In en, this message translates to:
+  /// **'No reciter is named in this corpus.'**
+  String get settingsNoReciter;
+
+  /// Caption in the settings screen's recitation section naming who recites. The name is a person's, read out of the corpus, and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recited by {reciter}.'**
+  String settingsRecitedBy(String reciter);
+
+  /// Section heading on the settings screen, over the microphone permission and the recogniser download.
+  ///
+  /// In en, this message translates to:
+  /// **'MICROPHONE'**
+  String get settingsMicrophone;
+
+  /// The button on the settings screen that raises the system microphone prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow microphone'**
+  String get settingsAllowMicrophone;
+
+  /// Caption under the Allow microphone button on the settings screen, before the reader has been asked.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice-follow needs the microphone. Off by default; never asked for during a prayer.'**
+  String get settingsMicNotAsked;
+
+  /// Caption in the settings screen's microphone section once the reader has said yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone allowed.'**
+  String get settingsMicGranted;
+
+  /// Caption in the settings screen's microphone section after the reader has said no.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone refused. The prayer screen advances on a tap, as it always does.'**
+  String get settingsMicDenied;
+
+  /// Caption in the settings screen's microphone section after the request threw rather than being answered.
+  ///
+  /// In en, this message translates to:
+  /// **'The microphone could not be reached last time it was asked for. Try again; the prayer screen advances on a tap either way.'**
+  String get settingsMicUnavailable;
+
+  /// Section heading at the foot of the settings screen, over the sign-in panel.
+  ///
+  /// In en, this message translates to:
+  /// **'ACCOUNT'**
+  String get settingsAccount;
+
+  /// The button that cancels the recogniser download in the settings screen's microphone section, carrying how much has arrived.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop · {percent}%'**
+  String settingsStopDownload(int percent);
+
+  /// The button in the settings screen's microphone section that opens the screen where the reader recites and sees what was heard.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the recogniser'**
+  String get settingsCheckRecogniser;
+
+  /// The button in the settings screen's microphone section that deletes the downloaded recogniser, and so turns voice-follow off.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove recogniser'**
+  String get settingsRemoveRecogniser;
+
+  /// The button in the settings screen's microphone section that fetches the recogniser, carrying its size in megabytes. Pressing it is what turns voice-follow on.
+  ///
+  /// In en, this message translates to:
+  /// **'Download recogniser · {megabytes} MB'**
+  String settingsDownloadRecogniser(int megabytes);
+
+  /// Caption under the recogniser button on the settings screen while the download is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading. Stopping keeps what has arrived, and pressing Download again carries on from there.'**
+  String get settingsRecogniserDownloading;
+
+  /// Caption under the recogniser buttons on the settings screen once the model is on the phone.
+  ///
+  /// In en, this message translates to:
+  /// **'The prayer screen follows your voice. Your recitation is recognised on this phone and never leaves it.'**
+  String get settingsRecogniserReady;
+
+  /// Caption under the recogniser button on the settings screen after the host answered that it has no model to give.
+  ///
+  /// In en, this message translates to:
+  /// **'Wird is not serving the recogniser from here. Nothing on this phone changes that, so the button will not bring it either — voice-follow waits until it is published again.'**
+  String get settingsRecogniserNotServed;
+
+  /// Caption under the recogniser button on the settings screen after the download was cut off part way.
+  ///
+  /// In en, this message translates to:
+  /// **'The download stopped before it finished. What arrived is still on the phone, and pressing Download again carries on from there.'**
+  String get settingsRecogniserInterrupted;
+
+  /// Caption under the recogniser button on the settings screen when part of the model is already on disk from an earlier attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'A stopped download is still on the phone. Downloading again carries on from where it stopped.'**
+  String get settingsRecogniserPartial;
+
+  /// Caption under the recogniser button on the settings screen on a phone that has never downloaded it.
+  ///
+  /// In en, this message translates to:
+  /// **'A Qur\'an recogniser that runs on the phone, so nothing you recite is sent anywhere. Downloading it is what turns voice-follow on; the prayer screen advances on a tap until you do, and after you remove it.'**
+  String get settingsRecogniserAbsent;
+
+  /// The app bar title of the recogniser check screen, opened from the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Can this phone hear you?'**
+  String get settingsVoiceCheckTitle;
+
+  /// On the recogniser check screen, the opening Arabic words of the set the prayer would be following.
+  ///
+  /// In en, this message translates to:
+  /// **'the set: {words}…'**
+  String settingsVoiceCheckSet(String words);
+
+  /// What the recogniser check screen says while the model is being loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the recogniser…'**
+  String get settingsVoiceCheckOpening;
+
+  /// What the recogniser check screen says once the microphone is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Recite, and the words you say should appear below.'**
+  String get settingsVoiceCheckListening;
+
+  /// What the recogniser check screen says when the model would not open.
+  ///
+  /// In en, this message translates to:
+  /// **'The recogniser did not start. The download may be incomplete, or this phone may not be able to load it. Voice-follow stays off and the prayer screen answers your tap, as it always has.'**
+  String get settingsVoiceCheckNoModel;
+
+  /// What the recogniser check screen says when the microphone was refused.
+  ///
+  /// In en, this message translates to:
+  /// **'The microphone was refused, so there is nothing to hear.'**
+  String get settingsVoiceCheckNoMicrophone;
+
+  /// On the recogniser check screen, where the matcher would have put a prayer on the set.
+  ///
+  /// In en, this message translates to:
+  /// **'the prayer would be on word {word} of {total}, after {moves} moves'**
+  String settingsVoiceCheckCursor(int word, int total, int moves);
+
+  /// The last line of the recogniser check screen: how much voice reached the model, and how slow its slowest answer was.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s of voice, slowest answer {millis}ms'**
+  String settingsVoiceCheckAudio(String seconds, int millis);
+
+  /// On the recogniser check screen, why the prayer would not have moved: not enough was heard to match anything.
+  ///
+  /// In en, this message translates to:
+  /// **'heard too little to place'**
+  String get settingsVoiceCheckTooLittle;
+
+  /// On the recogniser check screen, why the prayer would not have moved: the best place in the set is below the threshold.
+  ///
+  /// In en, this message translates to:
+  /// **'best word {word} fits {score}%, needs {needed}%'**
+  String settingsVoiceCheckBelow(int word, int score, int needed);
+
+  /// On the recogniser check screen, why the prayer would not have moved: two places in the set fit about equally well.
+  ///
+  /// In en, this message translates to:
+  /// **'word {word} at {score}% but somewhere else fits {rival}% — the set says this twice'**
+  String settingsVoiceCheckAmbiguous(int word, int score, int rival);
+
+  /// On the recogniser check screen, where the matcher placed the reciter and how well it fitted.
+  ///
+  /// In en, this message translates to:
+  /// **'word {word} at {score}%'**
+  String settingsVoiceCheckPlaced(int word, int score);
+
+  /// Who the phone is signed in as, in the settings screen's account panel. The subject comes from the identity server and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {subject}'**
+  String settingsSignedInAs(String subject);
+
+  /// The button in the settings screen's account panel that forgets the tokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get settingsSignOut;
+
+  /// Caption under the Sign out button in the settings screen's account panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing out stops the sync. Everything you have read, kept and marked stays on this phone.'**
+  String get settingsSignOutCaption;
+
+  /// Caption over the Sign in button in the settings screen's account panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Wird works signed out. Signing in carries what you mark and keep to your other devices.'**
+  String get settingsSignedOutCaption;
+
+  /// The button in the settings screen's account panel that opens the identity server in the phone's own browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get settingsSignIn;
+
+  /// Caption in the settings screen's account panel while a sign-in is waiting on the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish signing in in your browser. This phone is waiting for it to send you back.'**
+  String get settingsFinishInBrowser;
+
+  /// The button in the settings screen's account panel that drops a sign-in the browser never came back from.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get settingsCancelSignIn;
+
+  /// The trouble line in the settings screen's account panel when no browser on the device would take the sign-in address.
+  ///
+  /// In en, this message translates to:
+  /// **'no browser here would open the sign-in address'**
+  String get settingsNoBrowser;
+
+  /// The trouble line in the settings screen's account panel when the identity server answered nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in server could not be reached. Nothing changed.'**
+  String get settingsSignInUnreachable;
+
+  /// Heading of the parked-writes panel on the settings screen: how many writes the server refused.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change has not reached the server} other{{count} changes have not reached the server}}'**
+  String settingsParkedCount(int count);
+
+  /// Caption under the parked-writes heading on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'They are still on this phone. Send them again, or let them go.'**
+  String get settingsParkedCaption;
+
+  /// The button beside a parked write on the settings screen that puts it back on the next flush.
+  ///
+  /// In en, this message translates to:
+  /// **'Send again'**
+  String get settingsSendAgain;
+
+  /// The button beside a parked write on the settings screen that throws it away.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get settingsDiscard;
+
+  /// A parked write named in the settings screen's parked-writes panel: ayas the reader marked understood.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{An aya you marked understood} other{{count} ayas you marked understood}}'**
+  String settingsParkedUnderstood(int count);
+
+  /// A parked write named in the settings screen's parked-writes panel: an item the reader kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Something you kept'**
+  String get settingsParkedKept;
+
+  /// A parked write named in the settings screen's parked-writes panel: an item the reader removed from the Kept screen, which the drawer still names in English.
+  ///
+  /// In en, this message translates to:
+  /// **'Something you removed from Kept'**
+  String get settingsParkedUnkept;
+
+  /// A parked write named in the settings screen's parked-writes panel: a set the reader read.
+  ///
+  /// In en, this message translates to:
+  /// **'A set you read'**
+  String get settingsParkedSetRead;
+
+  /// A parked write named in the settings screen's parked-writes panel: a prayer the reader counted.
+  ///
+  /// In en, this message translates to:
+  /// **'A prayer you counted'**
+  String get settingsParkedPrayer;
+
+  /// A parked write named in the settings screen's parked-writes panel: the reading order the reader chose.
+  ///
+  /// In en, this message translates to:
+  /// **'Your reading order'**
+  String get settingsParkedOrder;
+
+  /// A parked write named in the settings screen's parked-writes panel: a bug or request the reader wrote.
+  ///
+  /// In en, this message translates to:
+  /// **'Something you reported'**
+  String get settingsParkedReport;
+
+  /// A parked write named in the settings screen's parked-writes panel when its kind is one this build does not know.
+  ///
+  /// In en, this message translates to:
+  /// **'A change you made'**
+  String get settingsParkedOther;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -319,26 +1473,25 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'fr'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'fr'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return AppLocalizationsEn();
-    case 'fr':
-      return AppLocalizationsFr();
+    case 'en': return AppLocalizationsEn();
+    case 'fr': return AppLocalizationsFr();
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
+    'that was used.'
   );
 }
