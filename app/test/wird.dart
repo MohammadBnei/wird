@@ -27,6 +27,8 @@ Future<Widget> wirdAround(
   AudioCache? cache,
   Recitation? recitation,
   RouteFactory? onGenerateRoute,
+  /// The locale to draw in. Null follows the test binding's own, which is en.
+  Locale? locale,
 }) async => Wird(
   db: db,
   prefs: await Prefs.read(db),
@@ -42,6 +44,7 @@ Future<Widget> wirdAround(
     // which is the worst way round for this to break.
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
+    locale: locale,
     onGenerateRoute:
         onGenerateRoute ?? (settings) => screenRoute(settings, db),
     home: route == null

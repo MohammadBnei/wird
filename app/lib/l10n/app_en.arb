@@ -1331,5 +1331,13 @@
   "settingsParkedOther": "A change you made",
   "@settingsParkedOther": {
     "description": "A parked write named in the settings screen's parked-writes panel when its kind is one this build does not know."
+  },
+  "study_ayaTranslated": "Rashid Maash",
+  "@study_ayaTranslated": {
+    "description": "Who rendered the aya, shown under the translation."
+  },
+  "study_glossesStayEnglish": "The word meanings under each word are in English; no word-by-word rendering exists in your language.",
+  "@study_glossesStayEnglish": {
+    "description": "Said once above the reading, where the aya is translated but the per-word glosses are not."
   }
 }

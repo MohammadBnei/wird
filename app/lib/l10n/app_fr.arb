@@ -227,5 +227,7 @@
   "settingsParkedPrayer": "Une prière que vous avez comptée",
   "settingsParkedOrder": "Votre ordre de lecture",
   "settingsParkedReport": "Quelque chose que vous avez signalé",
-  "settingsParkedOther": "Une modification que vous avez faite"
+  "settingsParkedOther": "Une modification que vous avez faite",
+  "study_ayaTranslated": "Rashid Maash",
+  "study_glossesStayEnglish": "Le sens de chaque mot est en anglais : il n’existe pas de traduction mot à mot dans votre langue."
 }

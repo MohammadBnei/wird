@@ -841,4 +841,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsParkedOther => 'A change you made';
+
+  @override
+  String get study_ayaTranslated => 'Rashid Maash';
+
+  @override
+  String get study_glossesStayEnglish => 'The word meanings under each word are in English; no word-by-word rendering exists in your language.';
 }

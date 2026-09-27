@@ -1462,6 +1462,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A change you made'**
   String get settingsParkedOther;
+
+  /// Who rendered the aya, shown under the translation.
+  ///
+  /// In en, this message translates to:
+  /// **'Rashid Maash'**
+  String get study_ayaTranslated;
+
+  /// Said once above the reading, where the aya is translated but the per-word glosses are not.
+  ///
+  /// In en, this message translates to:
+  /// **'The word meanings under each word are in English; no word-by-word rendering exists in your language.'**
+  String get study_glossesStayEnglish;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

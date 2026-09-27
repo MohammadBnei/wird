@@ -90,6 +90,11 @@ class _StudyScreenState extends State<StudyScreen> {
   /// Al-Baqarah is 6116 of them and the screen shows twenty.
   Map<int, List<StudyWord>> _words = {};
 
+  /// The reader's own language rendering of each aya, by aya, as far as it has
+  /// been read. Empty in English: there is nothing to draw beside a reading that
+  /// is already in the reader's language, and nothing to read either.
+  final Map<int, String> _translated = {};
+
   /// Ayas whose words are on their way. Without it the list asks for the same
   /// chunk on every frame it draws a gap.
   final _pending = <int>{};
@@ -202,7 +207,21 @@ class _StudyScreenState extends State<StudyScreen> {
       );
     }
     if (!mounted || generation != _generation) return;
+    // The set arrives with its words, so this is where its renderings belong
+    // too — _readWordsAround only fires for ayas the set did not bring.
+    final lang = Localizations.localeOf(context).languageCode;
+    final rendered = lang == 'en' || set == null
+        ? const <int, String>{}
+        : await translationsFor(
+            widget.db,
+            [for (final aya in set.reading) aya.id],
+            lang,
+          );
+    if (!mounted || generation != _generation) return;
     setState(() {
+      _translated
+        ..clear()
+        ..addAll(rendered);
       _order = order;
       _target = at;
       _before = before;
@@ -513,6 +532,15 @@ class _StudyScreenState extends State<StudyScreen> {
               padding: EdgeInsets.symmetric(vertical: n.space('2')),
               child: const DashedRule(),
             ),
+          if (index == 0 && _translated.isNotEmpty) ...[
+            SizedBox(height: n.space('2')),
+            // Once, above the reading, not under every aya: a reader learns this
+            // on the first screenful and does not need telling six more times.
+            Text(
+              AppLocalizations.of(context)!.study_glossesStayEnglish,
+              style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
+            ),
+          ],
           Wrap(
             textDirection: TextDirection.rtl,
             alignment: WrapAlignment.center,
@@ -539,6 +567,26 @@ class _StudyScreenState extends State<StudyScreen> {
               AyaMark(aya: face.aya, arabicSize: _arabicSize),
             ],
           ),
+          if (_translated[aya.id] case final rendered?) ...[
+            SizedBox(height: n.space('3')),
+            // Under the whole aya, because it renders the whole aya. The words
+            // above carry their own English glosses and this does not replace
+            // them — the reader is told so once, above the reading.
+            Text(
+              rendered,
+              textAlign: TextAlign.start,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.55,
+                color: n.textAt(0.78),
+              ),
+            ),
+            SizedBox(height: n.space('1')),
+            Text(
+              AppLocalizations.of(context)!.study_ayaTranslated,
+              style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
+            ),
+          ],
           if (index == lastBeforeBar || index == ayas.length - 1)
             SizedBox(height: n.space('6')),
         ],
@@ -563,9 +611,19 @@ class _StudyScreenState extends State<StudyScreen> {
       if (!_words.containsKey(id) && _pending.add(id)) want.add(id);
     }
     if (want.isEmpty) return;
+    // The reader's language, read before the first await: a BuildContext is not
+    // ours to touch once one has passed.
+    final lang = Localizations.localeOf(context).languageCode;
     final read = await wordsFor(widget.db, want);
+    // English asks for nothing, because the reading is already in it.
+    final rendered = lang == 'en'
+        ? const <int, String>{}
+        : await translationsFor(widget.db, want, lang);
     if (!mounted || generation != _generation) return;
-    setState(() => _words.addAll(read));
+    setState(() {
+      _words.addAll(read);
+      _translated.addAll(rendered);
+    });
   }
 
   Widget _audioBar(Nocturne n) => Container(
