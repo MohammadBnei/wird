@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/outbox.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 
@@ -52,20 +53,19 @@ class _ParkedWritesState extends State<ParkedWrites> {
   Widget build(BuildContext context) {
     if (_parked.isEmpty) return const SizedBox.shrink();
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.only(top: n.space('3')),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _parked.length == 1
-                ? '1 change has not reached the server'
-                : '${_parked.length} changes have not reached the server',
+            l.settingsParkedCount(_parked.length),
             style: TextStyle(fontSize: 12, color: n.text),
           ),
           SizedBox(height: n.space('1')),
           Text(
-            'They are still on this phone. Send them again, or let them go.',
+            l.settingsParkedCaption,
             style: TextStyle(fontSize: 10.5, color: n.textAt(0.42)),
           ),
           for (final op in _parked)
@@ -76,17 +76,17 @@ class _ParkedWritesState extends State<ParkedWrites> {
                 children: [
                   Expanded(
                     child: Text(
-                      describeOp(op),
+                      describeOp(l, op),
                       style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
                     ),
                   ),
                   NocturneButton(
                     onPressed: () => _retry(op),
-                    child: const Text('Send again'),
+                    child: Text(l.settingsSendAgain),
                   ),
                   NocturneButton(
                     onPressed: () => _discard(op),
-                    child: const Text('Discard'),
+                    child: Text(l.settingsDiscard),
                   ),
                 ],
               ),
@@ -98,17 +98,20 @@ class _ParkedWritesState extends State<ParkedWrites> {
 }
 
 /// The op in the words the reader made it in, not the words the wire uses.
-String describeOp(PendingOp op) {
+///
+/// The kinds themselves stay as they are: `ayah_understood` and the rest are
+/// what the server was sent and what the outbox stored, so translating one
+/// would park the write under a name no row carries.
+String describeOp(AppLocalizations l, PendingOp op) {
   final ayas = (op.body['ayah_ids'] as List?)?.length ?? 0;
   return switch (op.kind) {
-    'ayah_understood' when ayas == 1 => 'An aya you marked understood',
-    'ayah_understood' => '$ayas ayas you marked understood',
-    'kept_upsert' => 'Something you kept',
-    'kept_delete' => 'Something you removed from Kept',
-    'set_recorded' => 'A set you read',
-    'set_prayed' => 'A prayer you counted',
-    'prefs_set' => 'Your reading order',
-    'report_written' => 'Something you reported',
-    _ => 'A change you made',
+    'ayah_understood' => l.settingsParkedUnderstood(ayas),
+    'kept_upsert' => l.settingsParkedKept,
+    'kept_delete' => l.settingsParkedUnkept,
+    'set_recorded' => l.settingsParkedSetRead,
+    'set_prayed' => l.settingsParkedPrayer,
+    'prefs_set' => l.settingsParkedOrder,
+    'report_written' => l.settingsParkedReport,
+    _ => l.settingsParkedOther,
   };
 }

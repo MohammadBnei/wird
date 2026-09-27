@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/auth.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 
@@ -93,13 +94,19 @@ class _AccountPanelState extends State<AccountPanel> {
     try {
       await step();
     } on Object catch (e) {
-      if (mounted) setState(() => _trouble = _say(e));
+      if (mounted) {
+        setState(() => _trouble = _say(AppLocalizations.of(context)!, e));
+      }
     } finally {
       if (mounted) setState(() => _working = false);
     }
   }
 
   Future<void> _begin() => _attempt(() async {
+    // Read before the first await: this message is thrown and then printed in
+    // the panel, so it has to be the reader's, and a BuildContext is not to be
+    // touched across an await.
+    final noBrowser = AppLocalizations.of(context)!.settingsNoBrowser;
     final started = await _account.begin();
     // Listening before the browser opens: the link is the only thing that can
     // finish this, and a phone that is not listening when it arrives loses it.
@@ -107,7 +114,7 @@ class _AccountPanelState extends State<AccountPanel> {
     if (mounted) setState(() => _started = started);
     if (!await (widget.open ?? _inTheBrowser)(started.url)) {
       _giveUp();
-      throw const AuthFailed('no browser here would open the sign-in address');
+      throw AuthFailed(noBrowser);
     }
   });
 
@@ -145,11 +152,12 @@ class _AccountPanelState extends State<AccountPanel> {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     final reader = _reader;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (reader != null) ..._signedIn(n, reader) else ..._signedOut(n),
+        if (reader != null) ..._signedIn(n, l, reader) else ..._signedOut(n, l),
         if (_trouble != null) ...[
           SizedBox(height: n.space('2')),
           Text(
@@ -161,41 +169,29 @@ class _AccountPanelState extends State<AccountPanel> {
     );
   }
 
-  List<Widget> _signedIn(Nocturne n, Tokens reader) => [
+  List<Widget> _signedIn(Nocturne n, AppLocalizations l, Tokens reader) => [
     Text(
-      'Signed in as ${reader.subject}',
+      l.settingsSignedInAs(reader.subject),
       style: TextStyle(fontSize: 12, color: n.text),
     ),
     SizedBox(height: n.space('2')),
-    NocturneButton(onPressed: _signOut, child: const Text('Sign out')),
+    NocturneButton(onPressed: _signOut, child: Text(l.settingsSignOut)),
     SizedBox(height: n.space('1')),
-    _caption(
-      n,
-      'Signing out stops the sync. Everything you have read, kept and '
-      'marked stays on this phone.',
-    ),
+    _caption(n, l.settingsSignOutCaption),
   ];
 
-  List<Widget> _signedOut(Nocturne n) => [
-    _caption(
-      n,
-      'Wird works signed out. Signing in carries what you mark and keep to '
-      'your other devices.',
-    ),
+  List<Widget> _signedOut(Nocturne n, AppLocalizations l) => [
+    _caption(n, l.settingsSignedOutCaption),
     SizedBox(height: n.space('2')),
     if (_started == null)
       NocturneButton(
         onPressed: _working ? null : _begin,
-        child: const Text('Sign in'),
+        child: Text(l.settingsSignIn),
       )
     else ...[
-      _caption(
-        n,
-        'Finish signing in in your browser. This phone is waiting for it to '
-        'send you back.',
-      ),
+      _caption(n, l.settingsFinishInBrowser),
       SizedBox(height: n.space('2')),
-      NocturneButton(onPressed: _giveUp, child: const Text('Cancel')),
+      NocturneButton(onPressed: _giveUp, child: Text(l.settingsCancelSignIn)),
     ],
   ];
 
@@ -215,6 +211,6 @@ Future<bool> _inTheBrowser(Uri url) =>
 /// says it; anything else here is the network, and the honest thing to say is
 /// that the identity server was not reached rather than to print a socket
 /// error at someone who wanted to sync their reading.
-String _say(Object trouble) => trouble is AuthFailed
+String _say(AppLocalizations l, Object trouble) => trouble is AuthFailed
     ? trouble.message
-    : 'The sign-in server could not be reached. Nothing changed.';
+    : l.settingsSignInUnreachable;

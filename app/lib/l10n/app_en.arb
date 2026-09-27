@@ -966,5 +966,370 @@
         "example": "Quranic Arabic Corpus 0.4"
       }
     }
+  },
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "The heading at the top of the settings screen."
+  },
+  "settingsReading": "READING",
+  "@settingsReading": {
+    "description": "Section heading on the settings screen, over the word display and the reading order."
+  },
+  "settingsWordGloss": "Gloss",
+  "@settingsWordGloss": {
+    "description": "First option of the settings screen's word-display segmented control: print the meaning under each Arabic word."
+  },
+  "settingsWordTranslit": "Translit",
+  "@settingsWordTranslit": {
+    "description": "Second option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control."
+  },
+  "settingsWordBoth": "Both",
+  "@settingsWordBoth": {
+    "description": "Third option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word."
+  },
+  "settingsWordNeither": "Neither",
+  "@settingsWordNeither": {
+    "description": "Fourth option of the settings screen's word-display segmented control: print nothing under the Arabic."
+  },
+  "settingsWordCaption": "What is printed under each Arabic word.",
+  "@settingsWordCaption": {
+    "description": "Caption under the word-display segmented control on the settings screen."
+  },
+  "settingsOrderChronological": "Chronological",
+  "@settingsOrderChronological": {
+    "description": "First option of the settings screen's reading-order segmented control: walk the suras in the order they were revealed."
+  },
+  "settingsOrderMushaf": "Muṣḥaf",
+  "@settingsOrderMushaf": {
+    "description": "Second option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is."
+  },
+  "settingsOrderCaption": "The chronology orders sūras; ayas inside a sūra stay in written order.",
+  "@settingsOrderCaption": {
+    "description": "Caption under the reading-order segmented control on the settings screen."
+  },
+  "settingsArabic": "Arabic",
+  "@settingsArabic": {
+    "description": "Label beside the Arabic-size slider on the settings screen."
+  },
+  "settingsArabicCaption": "How large the Arabic is set on the reading screen.",
+  "@settingsArabicCaption": {
+    "description": "Caption under the Arabic-size slider on the settings screen."
+  },
+  "settingsSetWidth": "HOW MUCH YOU TAKE AT ONCE",
+  "@settingsSetWidth": {
+    "description": "Section heading on the settings screen, over the control that widens or narrows the waiting set."
+  },
+  "settingsNoSetWaiting": "Every aya is understood, so no set is waiting.",
+  "@settingsNoSetWaiting": {
+    "description": "Stands in for the set-width control on the settings screen when the walk has no set left to propose."
+  },
+  "settingsSetAyas": "{count, plural, =1{1 aya} other{{count} ayas}}",
+  "@settingsSetAyas": {
+    "description": "How wide the waiting set is, printed between the narrow and widen buttons on the settings screen.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSetWidthCaption": "A wider set may cross an aya you already understood. It is recited with the rest and stays counted where it is.",
+  "@settingsSetWidthCaption": {
+    "description": "Caption under the set-width stepper on the settings screen."
+  },
+  "settingsRecitation": "RECITATION",
+  "@settingsRecitation": {
+    "description": "Section heading on the settings screen, over the name of who recites the audio."
+  },
+  "settingsNoReciter": "No reciter is named in this corpus.",
+  "@settingsNoReciter": {
+    "description": "Caption in the settings screen's recitation section when the bundled corpus names nobody."
+  },
+  "settingsRecitedBy": "Recited by {reciter}.",
+  "@settingsRecitedBy": {
+    "description": "Caption in the settings screen's recitation section naming who recites. The name is a person's, read out of the corpus, and is not translated.",
+    "placeholders": {
+      "reciter": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsMicrophone": "MICROPHONE",
+  "@settingsMicrophone": {
+    "description": "Section heading on the settings screen, over the microphone permission and the recogniser download."
+  },
+  "settingsAllowMicrophone": "Allow microphone",
+  "@settingsAllowMicrophone": {
+    "description": "The button on the settings screen that raises the system microphone prompt."
+  },
+  "settingsMicNotAsked": "Voice-follow needs the microphone. Off by default; never asked for during a prayer.",
+  "@settingsMicNotAsked": {
+    "description": "Caption under the Allow microphone button on the settings screen, before the reader has been asked."
+  },
+  "settingsMicGranted": "Microphone allowed.",
+  "@settingsMicGranted": {
+    "description": "Caption in the settings screen's microphone section once the reader has said yes."
+  },
+  "settingsMicDenied": "Microphone refused. The prayer screen advances on a tap, as it always does.",
+  "@settingsMicDenied": {
+    "description": "Caption in the settings screen's microphone section after the reader has said no."
+  },
+  "settingsMicUnavailable": "The microphone could not be reached last time it was asked for. Try again; the prayer screen advances on a tap either way.",
+  "@settingsMicUnavailable": {
+    "description": "Caption in the settings screen's microphone section after the request threw rather than being answered."
+  },
+  "settingsAccount": "ACCOUNT",
+  "@settingsAccount": {
+    "description": "Section heading at the foot of the settings screen, over the sign-in panel."
+  },
+  "settingsStopDownload": "Stop · {percent}%",
+  "@settingsStopDownload": {
+    "description": "The button that cancels the recogniser download in the settings screen's microphone section, carrying how much has arrived.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsCheckRecogniser": "Check the recogniser",
+  "@settingsCheckRecogniser": {
+    "description": "The button in the settings screen's microphone section that opens the screen where the reader recites and sees what was heard."
+  },
+  "settingsRemoveRecogniser": "Remove recogniser",
+  "@settingsRemoveRecogniser": {
+    "description": "The button in the settings screen's microphone section that deletes the downloaded recogniser, and so turns voice-follow off."
+  },
+  "settingsDownloadRecogniser": "Download recogniser · {megabytes} MB",
+  "@settingsDownloadRecogniser": {
+    "description": "The button in the settings screen's microphone section that fetches the recogniser, carrying its size in megabytes. Pressing it is what turns voice-follow on.",
+    "placeholders": {
+      "megabytes": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsRecogniserDownloading": "Downloading. Stopping keeps what has arrived, and pressing Download again carries on from there.",
+  "@settingsRecogniserDownloading": {
+    "description": "Caption under the recogniser button on the settings screen while the download is running."
+  },
+  "settingsRecogniserReady": "The prayer screen follows your voice. Your recitation is recognised on this phone and never leaves it.",
+  "@settingsRecogniserReady": {
+    "description": "Caption under the recogniser buttons on the settings screen once the model is on the phone."
+  },
+  "settingsRecogniserNotServed": "Wird is not serving the recogniser from here. Nothing on this phone changes that, so the button will not bring it either — voice-follow waits until it is published again.",
+  "@settingsRecogniserNotServed": {
+    "description": "Caption under the recogniser button on the settings screen after the host answered that it has no model to give."
+  },
+  "settingsRecogniserInterrupted": "The download stopped before it finished. What arrived is still on the phone, and pressing Download again carries on from there.",
+  "@settingsRecogniserInterrupted": {
+    "description": "Caption under the recogniser button on the settings screen after the download was cut off part way."
+  },
+  "settingsRecogniserPartial": "A stopped download is still on the phone. Downloading again carries on from where it stopped.",
+  "@settingsRecogniserPartial": {
+    "description": "Caption under the recogniser button on the settings screen when part of the model is already on disk from an earlier attempt."
+  },
+  "settingsRecogniserAbsent": "A Qur'an recogniser that runs on the phone, so nothing you recite is sent anywhere. Downloading it is what turns voice-follow on; the prayer screen advances on a tap until you do, and after you remove it.",
+  "@settingsRecogniserAbsent": {
+    "description": "Caption under the recogniser button on the settings screen on a phone that has never downloaded it."
+  },
+  "settingsVoiceCheckTitle": "Can this phone hear you?",
+  "@settingsVoiceCheckTitle": {
+    "description": "The app bar title of the recogniser check screen, opened from the settings screen."
+  },
+  "settingsVoiceCheckSet": "the set: {words}…",
+  "@settingsVoiceCheckSet": {
+    "description": "On the recogniser check screen, the opening Arabic words of the set the prayer would be following.",
+    "placeholders": {
+      "words": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsVoiceCheckOpening": "Starting the recogniser…",
+  "@settingsVoiceCheckOpening": {
+    "description": "What the recogniser check screen says while the model is being loaded."
+  },
+  "settingsVoiceCheckListening": "Recite, and the words you say should appear below.",
+  "@settingsVoiceCheckListening": {
+    "description": "What the recogniser check screen says once the microphone is open."
+  },
+  "settingsVoiceCheckNoModel": "The recogniser did not start. The download may be incomplete, or this phone may not be able to load it. Voice-follow stays off and the prayer screen answers your tap, as it always has.",
+  "@settingsVoiceCheckNoModel": {
+    "description": "What the recogniser check screen says when the model would not open."
+  },
+  "settingsVoiceCheckNoMicrophone": "The microphone was refused, so there is nothing to hear.",
+  "@settingsVoiceCheckNoMicrophone": {
+    "description": "What the recogniser check screen says when the microphone was refused."
+  },
+  "settingsVoiceCheckCursor": "the prayer would be on word {word} of {total}, after {moves} moves",
+  "@settingsVoiceCheckCursor": {
+    "description": "On the recogniser check screen, where the matcher would have put a prayer on the set.",
+    "placeholders": {
+      "word": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "moves": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVoiceCheckAudio": "{seconds}s of voice, slowest answer {millis}ms",
+  "@settingsVoiceCheckAudio": {
+    "description": "The last line of the recogniser check screen: how much voice reached the model, and how slow its slowest answer was.",
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      },
+      "millis": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVoiceCheckTooLittle": "heard too little to place",
+  "@settingsVoiceCheckTooLittle": {
+    "description": "On the recogniser check screen, why the prayer would not have moved: not enough was heard to match anything."
+  },
+  "settingsVoiceCheckBelow": "best word {word} fits {score}%, needs {needed}%",
+  "@settingsVoiceCheckBelow": {
+    "description": "On the recogniser check screen, why the prayer would not have moved: the best place in the set is below the threshold.",
+    "placeholders": {
+      "word": {
+        "type": "int"
+      },
+      "score": {
+        "type": "int"
+      },
+      "needed": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVoiceCheckAmbiguous": "word {word} at {score}% but somewhere else fits {rival}% — the set says this twice",
+  "@settingsVoiceCheckAmbiguous": {
+    "description": "On the recogniser check screen, why the prayer would not have moved: two places in the set fit about equally well.",
+    "placeholders": {
+      "word": {
+        "type": "int"
+      },
+      "score": {
+        "type": "int"
+      },
+      "rival": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVoiceCheckPlaced": "word {word} at {score}%",
+  "@settingsVoiceCheckPlaced": {
+    "description": "On the recogniser check screen, where the matcher placed the reciter and how well it fitted.",
+    "placeholders": {
+      "word": {
+        "type": "int"
+      },
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSignedInAs": "Signed in as {subject}",
+  "@settingsSignedInAs": {
+    "description": "Who the phone is signed in as, in the settings screen's account panel. The subject comes from the identity server and is not translated.",
+    "placeholders": {
+      "subject": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSignOut": "Sign out",
+  "@settingsSignOut": {
+    "description": "The button in the settings screen's account panel that forgets the tokens."
+  },
+  "settingsSignOutCaption": "Signing out stops the sync. Everything you have read, kept and marked stays on this phone.",
+  "@settingsSignOutCaption": {
+    "description": "Caption under the Sign out button in the settings screen's account panel."
+  },
+  "settingsSignedOutCaption": "Wird works signed out. Signing in carries what you mark and keep to your other devices.",
+  "@settingsSignedOutCaption": {
+    "description": "Caption over the Sign in button in the settings screen's account panel."
+  },
+  "settingsSignIn": "Sign in",
+  "@settingsSignIn": {
+    "description": "The button in the settings screen's account panel that opens the identity server in the phone's own browser."
+  },
+  "settingsFinishInBrowser": "Finish signing in in your browser. This phone is waiting for it to send you back.",
+  "@settingsFinishInBrowser": {
+    "description": "Caption in the settings screen's account panel while a sign-in is waiting on the browser."
+  },
+  "settingsCancelSignIn": "Cancel",
+  "@settingsCancelSignIn": {
+    "description": "The button in the settings screen's account panel that drops a sign-in the browser never came back from."
+  },
+  "settingsNoBrowser": "no browser here would open the sign-in address",
+  "@settingsNoBrowser": {
+    "description": "The trouble line in the settings screen's account panel when no browser on the device would take the sign-in address."
+  },
+  "settingsSignInUnreachable": "The sign-in server could not be reached. Nothing changed.",
+  "@settingsSignInUnreachable": {
+    "description": "The trouble line in the settings screen's account panel when the identity server answered nothing."
+  },
+  "settingsParkedCount": "{count, plural, =1{1 change has not reached the server} other{{count} changes have not reached the server}}",
+  "@settingsParkedCount": {
+    "description": "Heading of the parked-writes panel on the settings screen: how many writes the server refused.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsParkedCaption": "They are still on this phone. Send them again, or let them go.",
+  "@settingsParkedCaption": {
+    "description": "Caption under the parked-writes heading on the settings screen."
+  },
+  "settingsSendAgain": "Send again",
+  "@settingsSendAgain": {
+    "description": "The button beside a parked write on the settings screen that puts it back on the next flush."
+  },
+  "settingsDiscard": "Discard",
+  "@settingsDiscard": {
+    "description": "The button beside a parked write on the settings screen that throws it away."
+  },
+  "settingsParkedUnderstood": "{count, plural, =1{An aya you marked understood} other{{count} ayas you marked understood}}",
+  "@settingsParkedUnderstood": {
+    "description": "A parked write named in the settings screen's parked-writes panel: ayas the reader marked understood.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsParkedKept": "Something you kept",
+  "@settingsParkedKept": {
+    "description": "A parked write named in the settings screen's parked-writes panel: an item the reader kept."
+  },
+  "settingsParkedUnkept": "Something you removed from Kept",
+  "@settingsParkedUnkept": {
+    "description": "A parked write named in the settings screen's parked-writes panel: an item the reader removed from the Kept screen, which the drawer still names in English."
+  },
+  "settingsParkedSetRead": "A set you read",
+  "@settingsParkedSetRead": {
+    "description": "A parked write named in the settings screen's parked-writes panel: a set the reader read."
+  },
+  "settingsParkedPrayer": "A prayer you counted",
+  "@settingsParkedPrayer": {
+    "description": "A parked write named in the settings screen's parked-writes panel: a prayer the reader counted."
+  },
+  "settingsParkedOrder": "Your reading order",
+  "@settingsParkedOrder": {
+    "description": "A parked write named in the settings screen's parked-writes panel: the reading order the reader chose."
+  },
+  "settingsParkedReport": "Something you reported",
+  "@settingsParkedReport": {
+    "description": "A parked write named in the settings screen's parked-writes panel: a bug or request the reader wrote."
+  },
+  "settingsParkedOther": "A change you made",
+  "@settingsParkedOther": {
+    "description": "A parked write named in the settings screen's parked-writes panel when its kind is one this build does not know."
   }
 }
