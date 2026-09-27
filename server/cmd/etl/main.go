@@ -50,7 +50,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s\n  suras %d  ayas %d  words %d  roots %d  senses %d\n  audio %d  segments %d (clamped %d)\n  words with no timing %d\n  %.2f MB\n",
+	fmt.Printf("%s\n  suras %d  ayas %d  words %d  roots %d  senses %d\n  audio %d  segments %d (clamped %d)\n  parsed segments %d  roles %d\n  words with no timing %d\n  %.2f MB\n",
 		*out, len(c.Surahs), len(c.Ayahs), len(c.Words), len(c.Roots), len(c.Senses.Senses),
-		len(c.Audio), len(c.Segments), c.Clamped, silent, float64(fi.Size())/(1<<20))
+		len(c.Audio), len(c.Segments), c.Clamped, len(c.Irab), len(IrabRoles()),
+		silent, float64(fi.Size())/(1<<20))
 }

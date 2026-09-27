@@ -119,6 +119,45 @@ roots are decoded, because only roots are rendered. `roots.sources` carries the
 file's name; the corpus is named in full, with its copyright block, in
 `corpus_meta.notice`.
 
+### The parsing: the role names are written here, not copied
+
+`irab` and `irab_roles` are derived from the same file and are a different act
+from copying it. `irab` is one row per morphological segment — 128,219 of them —
+holding that segment's tag and its remaining feature codes exactly as upstream
+writes them. Nothing is authored there; it is `words.morphology` turned sideways
+so a screen can read one word's segments without parsing JSON on a phone.
+
+`irab_roles` is authored. It is 142 rows — 45 tags and 97 feature codes — each
+carrying an English and a French name for what the code means. **The file does
+not contain those names.** `AMD`, `AVR`, `EXL`, `INL`, `PREV`, `RSLT`, `EQ`,
+`SUR` and `RET` appear nowhere in
+`data/raw/quranic-corpus-morphology-0.4.txt`: its header is two copyright blocks
+and its body is codes. The glossary that explains them lives on
+corpus.quran.com's documentation pages, so:
+
+- the **English** half is a person reading that documentation against the forms
+  each code is actually attached to in the file — `INL` is named *Qur'anic
+  initials* because its 14 forms are حم, الم, الر and their kin; `SP:kaAn` is
+  named *of the kāna family* because its forms are كان, كانوا, كن, ليس;
+- the **French** half has no upstream at all. It is standard Arabic-grammar
+  French, and it is review work: nothing can check that `MOOD:JUS` is *mode
+  apocopé* rather than *mode jussif*.
+
+A translated vocabulary of Dukes's own annotation codes is a derivative of his
+annotation, so it travels under the same GPL row below as the morphology it is
+derived from, and `corpus_meta.notice` carries the notice for both.
+
+Two readings the ETL makes, recorded here for the same reason as the two above:
+
+- **The tag is the one part of speech; the `POS:` feature is dropped.** Measured
+  over all 128,219 segments the two never disagree, and 50,304 segments — the
+  prefixes and suffixes — carry no `POS:` feature at all. Shipping both would be
+  the same fact twice.
+- **The codes are namespaced under `POS:`, because the vocabulary collides with
+  itself otherwise.** The tag `P` is a preposition where the feature `P` is a
+  plural; the tag `ACC` is a particle where the feature is a case; the tag `IMPV`
+  is a prefixed lām where the feature is an aspect.
+
 ## Provenance and licence
 
 Every "reached how" below other than the morphology is an unauthenticated public
@@ -131,6 +170,8 @@ is given so the reading can be checked rather than believed.
 | `ayahs.text_uthmani`, `words.text_ar` | `api.quran.com/api/v4/verses/by_chapter`; the text is [Tanzil](https://tanzil.net/download/)'s, which quran.com credits | Tanzil: verbatim copies, attribution, a link to tanzil.net. Delivery is governed by the QF terms | **Yes** for the text, unmodified and attributed; the delivery path carries the QF conditions |
 | `words.gloss_en`, `words.translit` | same endpoint | QF terms treat it as QF Content; **no upstream author is named anywhere I could find** | **Could not determine** — conditionally yes under the QF terms, with an unnamed source underneath |
 | `words.root_letters`, `words.form`, `words.morphology`, `roots` | [Quranic Arabic Corpus 0.4](https://corpus.quran.com/download/), the upstream file, placed by hand | GPL, verbatim copies only, attribution and a link; Tanzil underneath it | **Yes** — Wird is AGPL-3.0 and the notice ships in `corpus_meta.notice`; see above |
+| `irab` | the same file, one row per segment rather than one per word | as above — it is upstream's own tags and features, rearranged and not edited | **Yes**, under the same row above |
+| `irab_roles` | **written here.** A translation of the annotation vocabulary the file uses; the names themselves are documented only on [corpus.quran.com](https://corpus.quran.com/documentation/) | a derivative of Dukes's annotation, so the GPL row above governs it; the French has no upstream at all | **Yes** — see *The parsing* |
 | `word_segments` | [`cpfair/quran-align`](https://github.com/cpfair/quran-align), release `release-2016-11-24`, file `Husary_Muallim_128kbps.json` | **CC BY 4.0** — attribution, and nothing else | **Yes** — see *The word timings* |
 | `ayah_audio.rel_path` | derived from the sura and aya number; nothing is fetched to build it | not a licensable fact | **Yes** — it is a file name, not content |
 | the MP3s themselves | `everyayah.com/data/Husary_Muallim_128kbps/`, fetched by the device at playback | everyayah publishes no terms of any kind | **No, and Wird does not** — see *The recitation audio* |
