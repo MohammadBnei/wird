@@ -9,6 +9,7 @@ import '../../data/db.dart';
 import '../../data/mic.dart';
 import '../../data/sets.dart';
 import '../../data/speech.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import 'voice_check.dart';
 import '../../widgets/nocturne_button.dart';
@@ -75,22 +76,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _load();
   }
 
-  String _micCaption(MicPermission mic) => switch (mic) {
-    MicPermission.notAsked =>
-      'Voice-follow needs the microphone. Off by default; never asked for '
-          'during a prayer.',
-    MicPermission.granted => 'Microphone allowed.',
-    MicPermission.denied =>
-      'Microphone refused. The prayer screen advances on a tap, as it always '
-          'does.',
-    MicPermission.unavailable =>
-      'The microphone could not be reached last time it was asked for. Try '
-          'again; the prayer screen advances on a tap either way.',
+  String _micCaption(AppLocalizations l, MicPermission mic) => switch (mic) {
+    MicPermission.notAsked => l.settingsMicNotAsked,
+    MicPermission.granted => l.settingsMicGranted,
+    MicPermission.denied => l.settingsMicDenied,
+    MicPermission.unavailable => l.settingsMicUnavailable,
   };
 
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     final wird = Wird.of(context);
     final prefs = wird.prefs;
     return Scaffold(
@@ -107,18 +103,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Settings', style: Theme.of(context).textTheme.displaySmall),
-              _section(n, 'READING'),
+              Text(
+                l.settingsTitle,
+                style: Theme.of(context).textTheme.displaySmall,
+              ),
+              _section(n, l.settingsReading),
               NocturneSegmented(
-                options: const ['Gloss', 'Translit', 'Both', 'Neither'],
+                options: [
+                  l.settingsWordGloss,
+                  l.settingsWordTranslit,
+                  l.settingsWordBoth,
+                  l.settingsWordNeither,
+                ],
                 selected: prefs.display,
                 onChanged: prefs.setDisplay,
               ),
               SizedBox(height: n.space('1')),
-              _caption(n, 'What is printed under each Arabic word.'),
+              _caption(n, l.settingsWordCaption),
               SizedBox(height: n.space('3')),
               NocturneSegmented(
-                options: const ['Chronological', 'Muṣḥaf'],
+                options: [
+                  l.settingsOrderChronological,
+                  l.settingsOrderMushaf,
+                ],
                 selected: prefs.order.index,
                 onChanged: (i) async {
                   await prefs.setOrder(ReadingOrder.values[i]);
@@ -126,11 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
               SizedBox(height: n.space('1')),
-              _caption(
-                n,
-                'The chronology orders sūras; ayas inside a sūra stay in '
-                'written order.',
-              ),
+              _caption(n, l.settingsOrderCaption),
               SizedBox(height: n.space('3')),
               Row(
                 children: [
@@ -138,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // the number a designer turns and not one a reader has any
                   // use for. Where the thumb sits is the whole answer.
                   Text(
-                    'Arabic',
+                    l.settingsArabic,
                     style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
                   ),
                   Expanded(
@@ -161,10 +164,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-              _caption(n, 'How large the Arabic is set on the reading screen.'),
-              _section(n, 'HOW MUCH YOU TAKE AT ONCE'),
-              _width(n),
-              _section(n, 'RECITATION'),
+              _caption(n, l.settingsArabicCaption),
+              _section(n, l.settingsSetWidth),
+              _width(n, l),
+              _section(n, l.settingsRecitation),
               // Read-only: the corpus ships the paths for one reciter and
               // there is nothing here to choose between. It is said once,
               // here, rather than under the play button, where a name that
@@ -179,10 +182,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _caption(
                 n,
                 _reciter == null
-                    ? 'No reciter is named in this corpus.'
-                    : 'Recited by $_reciter.',
+                    ? l.settingsNoReciter
+                    : l.settingsRecitedBy(_reciter!),
               ),
-              _section(n, 'MICROPHONE'),
+              _section(n, l.settingsMicrophone),
               // Voice-follow is a later phase and off by default. The
               // microphone is asked for here and only here: the in-prayer
               // screen may not raise a dialog, so it can never be the screen
@@ -200,10 +203,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // mic_consent outlives a reinstall.
                 NocturneButton(
                   onPressed: prefs.askForTheMic,
-                  child: const Text('Allow microphone'),
+                  child: Text(l.settingsAllowMicrophone),
                 ),
               SizedBox(height: n.space('1')),
-              _caption(n, _micCaption(prefs.mic)),
+              _caption(n, _micCaption(l, prefs.mic)),
               // The recogniser is settled here too, and for the same reason:
               // a 160 MB download is not something to discover mid-prayer.
               if (prefs.mic == MicPermission.granted)
@@ -223,7 +226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Last, because it is the one thing on this screen a reader
               // never has to do. Nothing above it — or anywhere else in the
               // app — waits on an account.
-              _section(n, 'ACCOUNT'),
+              _section(n, l.settingsAccount),
               AccountPanel(db: wird.db),
             ],
           ),
@@ -237,10 +240,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// otherwise. It is held against the aya the next set starts at, so a width
   /// set here applies to the portion the reader is about to pray and not to
   /// every set they will ever be handed.
-  Widget _width(Nocturne n) {
+  Widget _width(Nocturne n, AppLocalizations l) {
     final set = _next;
     if (set == null) {
-      return _caption(n, 'Every aya is understood, so no set is waiting.');
+      return _caption(n, l.settingsNoSetWaiting);
     }
     final understood = set.ayas.every((a) => a.understood);
     // The explanation sits under the stepper rather than beside it: three
@@ -261,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Icon(Icons.remove),
             ),
             Text(
-              set.ayas.length == 1 ? '1 aya' : '${set.ayas.length} ayas',
+              l.settingsSetAyas(set.ayas.length),
               style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
             ),
             NocturneButton(
@@ -275,11 +278,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
         SizedBox(height: n.space('1')),
-        _caption(
-          n,
-          'A wider set may cross an aya you already understood. It is '
-          'recited with the rest and stays counted where it is.',
-        ),
+        _caption(n, l.settingsSetWidthCaption),
       ],
     );
   }
@@ -411,11 +410,15 @@ class _VoiceModelState extends State<VoiceModelPanel> {
     }
   }
 
-  String get _size => '${(voiceModelBytes / 1000000).round()} MB';
+  /// The download's size in megabytes. The unit itself belongs to the string
+  /// the reader reads — it is MB in English and Mo in French — so only the
+  /// number is handed over.
+  int get _megabytes => (voiceModelBytes / 1000000).round();
 
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     final done = (_received / voiceModelBytes * 100).clamp(0, 99).round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,7 +429,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             key: VoiceModelPanel.stop,
             variant: NocturneButtonVariant.ghost,
             onPressed: () => _fetching?.cancel(),
-            child: Text('Stop · $done%'),
+            child: Text(l.settingsStopDownload(done)),
           )
         else if (_ready) ...[
           NocturneButton(
@@ -440,56 +443,39 @@ class _VoiceModelState extends State<VoiceModelPanel> {
               ),
               ),
             ),
-            child: const Text('Check the recogniser'),
+            child: Text(l.settingsCheckRecogniser),
           ),
           SizedBox(height: n.space('1')),
           NocturneButton(
             key: VoiceModelPanel.remove,
             variant: NocturneButtonVariant.ghost,
             onPressed: _remove,
-            child: const Text('Remove recogniser'),
+            child: Text(l.settingsRemoveRecogniser),
           ),
         ]
         else
           NocturneButton(
             key: VoiceModelPanel.download,
             onPressed: _download,
-            child: Text('Download recogniser · $_size'),
+            child: Text(l.settingsDownloadRecogniser(_megabytes)),
           ),
         SizedBox(height: n.space('1')),
         Text(
-          _caption,
+          _whyThisButton(l),
           style: TextStyle(fontSize: 10.5, height: 1.4, color: n.textAt(0.5)),
         ),
       ],
     );
   }
 
-  String get _caption {
-    if (_fetching != null) {
-      return 'Downloading. Stopping keeps what has arrived, and pressing '
-          'Download again carries on from there.';
-    }
-    if (_ready) {
-      return 'The prayer screen follows your voice. Your recitation is '
-          'recognised on this phone and never leaves it.';
-    }
+  String _whyThisButton(AppLocalizations l) {
+    if (_fetching != null) return l.settingsRecogniserDownloading;
+    if (_ready) return l.settingsRecogniserReady;
     return switch (_trouble) {
-      VoiceModelTrouble.notServed =>
-        'Wird is not serving the recogniser from here. Nothing on this phone '
-            'changes that, so the button will not bring it either — voice-'
-            'follow waits until it is published again.',
-      VoiceModelTrouble.interrupted =>
-        'The download stopped before it finished. What arrived is still on '
-            'the phone, and pressing Download again carries on from there.',
-      null when _received > 0 =>
-        'A stopped download is still on the phone. Downloading again carries '
-            'on from where it stopped.',
-      null =>
-        "A Qur'an recogniser that runs on the phone, so nothing you recite is "
-            'sent anywhere. Downloading it is what turns voice-follow on; the '
-            'prayer screen advances on a tap until you do, and after you '
-            'remove it.',
+      VoiceModelTrouble.notServed => l.settingsRecogniserNotServed,
+      VoiceModelTrouble.interrupted => l.settingsRecogniserInterrupted,
+      null when _received > 0 => l.settingsRecogniserPartial,
+      null => l.settingsRecogniserAbsent,
     };
   }
 }

@@ -8,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../data/speech.dart';
 import '../../features/prayer/alignment.dart';
 import '../../features/prayer/prayer_cursor.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 
 /// Whether voice-follow works on this phone, answered without praying.
@@ -113,7 +114,10 @@ class _VoiceCheckState extends State<VoiceCheck> {
 
   Future<void> _handOver() async {
     final recogniser = _recogniser;
-    if (_handing || recogniser == null || _waiting.isEmpty) return;
+    if (_handing || recogniser == null || _waiting.isEmpty || !mounted) return;
+    // Read here, before the first await, because the reasons below are the
+    // reader's words and this is the last point the element is certainly alive.
+    final l = AppLocalizations.of(context)!;
     _handing = true;
     try {
       while (_waiting.isNotEmpty && mounted) {
@@ -138,16 +142,23 @@ class _VoiceCheckState extends State<VoiceCheck> {
           // equally well.
           final said = explain(_set, heard);
           _why = said == null
-              ? 'heard too little to place'
+              ? l.settingsVoiceCheckTooLittle
               : said.score < said.needed
-              ? 'best word ${said.word + 1} fits '
-                    '${(said.score * 100).round()}%, needs '
-                    '${(said.needed * 100).round()}%'
+              ? l.settingsVoiceCheckBelow(
+                  said.word + 1,
+                  (said.score * 100).round(),
+                  (said.needed * 100).round(),
+                )
               : said.score - said.rival < followMargin
-              ? 'word ${said.word + 1} at ${(said.score * 100).round()}% but '
-                    'somewhere else fits ${(said.rival * 100).round()}% — the '
-                    'set says this twice'
-              : 'word ${said.word + 1} at ${(said.score * 100).round()}%';
+              ? l.settingsVoiceCheckAmbiguous(
+                  said.word + 1,
+                  (said.score * 100).round(),
+                  (said.rival * 100).round(),
+                )
+              : l.settingsVoiceCheckPlaced(
+                  said.word + 1,
+                  (said.score * 100).round(),
+                );
         }
         setState(() {
           if (took > _slowest) _slowest = took;
@@ -172,25 +183,29 @@ class _VoiceCheckState extends State<VoiceCheck> {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: n.color('bg'),
       appBar: AppBar(
         backgroundColor: n.color('bg'),
-        title: const Text('Can this phone hear you?'),
+        title: Text(l.settingsVoiceCheckTitle),
       ),
       body: Padding(
         padding: EdgeInsets.all(n.space('4')),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_whatIsHappening(), style: TextStyle(color: n.color('neutral-500'))),
+            Text(
+              _whatIsHappening(l),
+              style: TextStyle(color: n.color('neutral-500')),
+            ),
             if (widget.words.isNotEmpty) ...[
               SizedBox(height: n.space('2')),
               // Which set the prayer would be following. A reader reciting one
               // passage while the walk proposes another would see a screen
               // that never moves, and nothing else here would say why.
               Text(
-                'the set: ${widget.words.take(5).join(' ')}…',
+                l.settingsVoiceCheckSet(widget.words.take(5).join(' ')),
                 textDirection: TextDirection.rtl,
                 style: TextStyle(color: n.color('accent-400')),
               ),
@@ -213,15 +228,20 @@ class _VoiceCheckState extends State<VoiceCheck> {
               // is making nothing of it, and those look identical above.
               if (!_set.isEmpty) ...[
                 Text(
-                  'the prayer would be on word ${_cursor.at + 1} of '
-                  '${widget.words.length}, after $_moves moves',
+                  l.settingsVoiceCheckCursor(
+                    _cursor.at + 1,
+                    widget.words.length,
+                    _moves,
+                  ),
                   style: TextStyle(color: n.color('accent-400')),
                 ),
                 Text(_why, style: TextStyle(color: n.color('neutral-500'))),
               ],
               Text(
-                '${(_samples / heardSampleRate).toStringAsFixed(1)}s of voice, '
-                'slowest answer ${_slowest.inMilliseconds}ms',
+                l.settingsVoiceCheckAudio(
+                  (_samples / heardSampleRate).toStringAsFixed(1),
+                  _slowest.inMilliseconds,
+                ),
                 style: TextStyle(color: n.color('neutral-500')),
               ),
             ],
@@ -231,14 +251,10 @@ class _VoiceCheckState extends State<VoiceCheck> {
     );
   }
 
-  String _whatIsHappening() => switch (_stage) {
-    _Stage.opening => 'Starting the recogniser…',
-    _Stage.listening => 'Recite, and the words you say should appear below.',
-    _Stage.noModel =>
-      'The recogniser did not start. The download may be incomplete, or this '
-          'phone may not be able to load it. Voice-follow stays off and the '
-          'prayer screen answers your tap, as it always has.',
-    _Stage.noMicrophone =>
-      'The microphone was refused, so there is nothing to hear.',
+  String _whatIsHappening(AppLocalizations l) => switch (_stage) {
+    _Stage.opening => l.settingsVoiceCheckOpening,
+    _Stage.listening => l.settingsVoiceCheckListening,
+    _Stage.noModel => l.settingsVoiceCheckNoModel,
+    _Stage.noMicrophone => l.settingsVoiceCheckNoMicrophone,
   };
 }
