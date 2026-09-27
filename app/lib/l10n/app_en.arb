@@ -15,5 +15,76 @@
   "notDownloaded": "Not downloaded",
   "@notDownloaded": {
     "description": "Why the play button is dark: the recitation for this set is not on the device."
+  },
+  "dashboard_setWaiting": "SET {number} · WAITING",
+  "@dashboard_setWaiting": {
+    "description": "Kicker over the waiting set on home, above its title. The number is how far along the walk the reader has come.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboard_ayaCount": "{count, plural, =1{1 aya} other{{count} ayas}}",
+  "@dashboard_ayaCount": {
+    "description": "How long the waiting set is, on the line under its Arabic name on home. Joined to the prayer count by a middle dot.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboard_prayerCount": "{count, plural, =0{no prayer on it yet} =1{prayed once} =2{prayed twice} other{prayed {count} times}}",
+  "@dashboard_prayerCount": {
+    "description": "How often the waiting set has been prayed, on the same line on home as the aya count.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboard_praySet": "Pray this set",
+  "@dashboard_praySet": {
+    "description": "Home's primary button: it opens the prayer on the waiting set."
+  },
+  "dashboard_readFirst": "Read it first",
+  "@dashboard_readFirst": {
+    "description": "Home's second button, under the prayer one: it opens the reading screen on the waiting set."
+  },
+  "dashboard_allUnderstood": "Every aya is understood.",
+  "@dashboard_allUnderstood": {
+    "description": "What home says in place of a waiting set once the reader has finished the whole walk."
+  },
+  "dashboard_allUnderstoodWhy": "There is nothing left to serve. The index opens any sūra again.",
+  "@dashboard_allUnderstoodWhy": {
+    "description": "The line under that on home, telling the finished reader where they can still go."
+  },
+  "dashboard_whereToGo": "WHERE TO GO",
+  "@dashboard_whereToGo": {
+    "description": "Kicker over the list of destinations at the bottom of home."
+  },
+  "dashboard_doorIndex": "Sūra index",
+  "@dashboard_doorIndex": {
+    "description": "Home's destination row for the sūra index."
+  },
+  "dashboard_doorIndexWhy": "Open any aya you want",
+  "@dashboard_doorIndexWhy": {
+    "description": "The subtitle under the sūra index row on home."
+  },
+  "dashboard_doorProgress": "Your passage",
+  "@dashboard_doorProgress": {
+    "description": "Home's destination row for the progress screen."
+  },
+  "dashboard_doorProgressWhy": "How much you have understood",
+  "@dashboard_doorProgressWhy": {
+    "description": "The subtitle under the progress row on home."
+  },
+  "dashboard_doorKept": "Kept",
+  "@dashboard_doorKept": {
+    "description": "Home's destination row for the ayas and roots the reader saved."
+  },
+  "dashboard_doorKeptWhy": "The ayas and roots you saved",
+  "@dashboard_doorKeptWhy": {
+    "description": "The subtitle under the kept row on home."
   }
 }

@@ -3,5 +3,19 @@
   "inThisAya": "DANS CE VERSET",
   "markSetUnderstood": "Marquer comme compris",
   "nextSet": "Passage suivant",
-  "notDownloaded": "Non téléchargé"
+  "notDownloaded": "Non téléchargé",
+  "dashboard_setWaiting": "PASSAGE {number} · EN ATTENTE",
+  "dashboard_ayaCount": "{count, plural, =1{1 verset} other{{count} versets}}",
+  "dashboard_prayerCount": "{count, plural, =0{aucune prière dessus pour le moment} =1{prié une fois} =2{prié deux fois} other{prié {count} fois}}",
+  "dashboard_praySet": "Prier ce passage",
+  "dashboard_readFirst": "Le lire d'abord",
+  "dashboard_allUnderstood": "Chaque verset est compris.",
+  "dashboard_allUnderstoodWhy": "Il ne reste rien à servir. L'index ouvre de nouveau n'importe quelle sourate.",
+  "dashboard_whereToGo": "OÙ ALLER",
+  "dashboard_doorIndex": "Index des sourates",
+  "dashboard_doorIndexWhy": "Ouvrir le verset que vous voulez",
+  "dashboard_doorProgress": "Votre progression",
+  "dashboard_doorProgressWhy": "Ce que vous avez compris",
+  "dashboard_doorKept": "Gardés",
+  "dashboard_doorKeptWhy": "Les versets et les racines que vous avez gardés"
 }

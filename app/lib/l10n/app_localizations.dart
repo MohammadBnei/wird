@@ -118,6 +118,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not downloaded'**
   String get notDownloaded;
+
+  /// Kicker over the waiting set on home, above its title. The number is how far along the walk the reader has come.
+  ///
+  /// In en, this message translates to:
+  /// **'SET {number} · WAITING'**
+  String dashboard_setWaiting(int number);
+
+  /// How long the waiting set is, on the line under its Arabic name on home. Joined to the prayer count by a middle dot.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 aya} other{{count} ayas}}'**
+  String dashboard_ayaCount(int count);
+
+  /// How often the waiting set has been prayed, on the same line on home as the aya count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no prayer on it yet} =1{prayed once} =2{prayed twice} other{prayed {count} times}}'**
+  String dashboard_prayerCount(int count);
+
+  /// Home's primary button: it opens the prayer on the waiting set.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray this set'**
+  String get dashboard_praySet;
+
+  /// Home's second button, under the prayer one: it opens the reading screen on the waiting set.
+  ///
+  /// In en, this message translates to:
+  /// **'Read it first'**
+  String get dashboard_readFirst;
+
+  /// What home says in place of a waiting set once the reader has finished the whole walk.
+  ///
+  /// In en, this message translates to:
+  /// **'Every aya is understood.'**
+  String get dashboard_allUnderstood;
+
+  /// The line under that on home, telling the finished reader where they can still go.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nothing left to serve. The index opens any sūra again.'**
+  String get dashboard_allUnderstoodWhy;
+
+  /// Kicker over the list of destinations at the bottom of home.
+  ///
+  /// In en, this message translates to:
+  /// **'WHERE TO GO'**
+  String get dashboard_whereToGo;
+
+  /// Home's destination row for the sūra index.
+  ///
+  /// In en, this message translates to:
+  /// **'Sūra index'**
+  String get dashboard_doorIndex;
+
+  /// The subtitle under the sūra index row on home.
+  ///
+  /// In en, this message translates to:
+  /// **'Open any aya you want'**
+  String get dashboard_doorIndexWhy;
+
+  /// Home's destination row for the progress screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Your passage'**
+  String get dashboard_doorProgress;
+
+  /// The subtitle under the progress row on home.
+  ///
+  /// In en, this message translates to:
+  /// **'How much you have understood'**
+  String get dashboard_doorProgressWhy;
+
+  /// Home's destination row for the ayas and roots the reader saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept'**
+  String get dashboard_doorKept;
+
+  /// The subtitle under the kept row on home.
+  ///
+  /// In en, this message translates to:
+  /// **'The ayas and roots you saved'**
+  String get dashboard_doorKeptWhy;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

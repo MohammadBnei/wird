@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../app.dart';
 import '../../data/db.dart';
 import '../../data/sets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
@@ -121,65 +122,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _next(Nocturne n, StudySet set, Waiting waiting) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'SET ${waiting.number} · WAITING',
-        style: TextStyle(
-          fontSize: 10,
-          height: 1.2,
-          letterSpacing: 0.11 * 10,
-          color: n.accent,
+  Widget _next(Nocturne n, StudySet set, Waiting waiting) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.dashboard_setWaiting(waiting.number),
+          style: TextStyle(
+            fontSize: 10,
+            height: 1.2,
+            letterSpacing: 0.11 * 10,
+            color: n.accent,
+          ),
         ),
-      ),
-      SizedBox(height: n.space('2')),
-      Text(set.title, style: Theme.of(context).textTheme.displaySmall),
-      SizedBox(height: n.space('1')),
-      Text(
-        set.ayas.first.surahNameAr,
-        textDirection: TextDirection.rtl,
-        style: TextStyle(
-          fontFamily: Nocturne.arabicFamily,
-          fontSize: 15,
-          color: n.textAt(0.55),
+        SizedBox(height: n.space('2')),
+        Text(set.title, style: Theme.of(context).textTheme.displaySmall),
+        SizedBox(height: n.space('1')),
+        Text(
+          set.ayas.first.surahNameAr,
+          textDirection: TextDirection.rtl,
+          style: TextStyle(
+            fontFamily: Nocturne.arabicFamily,
+            fontSize: 15,
+            color: n.textAt(0.55),
+          ),
         ),
-      ),
-      SizedBox(height: n.space('3')),
-      Text(
-        '${_ayas(set.ayas.length)} · ${_prayers(waiting.prayers)}',
-        style: TextStyle(fontSize: 11.5, height: 1.45, color: n.textAt(0.55)),
-      ),
-      SizedBox(height: n.space('4')),
-      // Praying the portion is what the app is for, so it is the one action
-      // drawn at the top of the app's first screen. It used to be a button in
-      // the reading screen's settings panel.
-      NocturneButton(
-        key: const Key('pray the set'),
-        block: true,
-        variant: NocturneButtonVariant.primary,
-        onPressed: () => _pray(set),
-        child: const Text('Pray this set'),
-      ),
-      NocturneButton(
-        key: const Key('read the set'),
-        block: true,
-        onPressed: () => _open(Routes.study),
-        child: const Text('Read it first'),
-      ),
-    ],
-  );
+        SizedBox(height: n.space('3')),
+        Text(
+          '${l10n.dashboard_ayaCount(set.ayas.length)} · '
+          '${l10n.dashboard_prayerCount(waiting.prayers)}',
+          style: TextStyle(fontSize: 11.5, height: 1.45, color: n.textAt(0.55)),
+        ),
+        SizedBox(height: n.space('4')),
+        // Praying the portion is what the app is for, so it is the one action
+        // drawn at the top of the app's first screen. It used to be a button in
+        // the reading screen's settings panel.
+        NocturneButton(
+          key: const Key('pray the set'),
+          block: true,
+          variant: NocturneButtonVariant.primary,
+          onPressed: () => _pray(set),
+          child: Text(l10n.dashboard_praySet),
+        ),
+        NocturneButton(
+          key: const Key('read the set'),
+          block: true,
+          onPressed: () => _open(Routes.study),
+          child: Text(l10n.dashboard_readFirst),
+        ),
+      ],
+    );
+  }
 
   Widget _finished(Nocturne n) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
-        'Every aya is understood.',
+        AppLocalizations.of(context)!.dashboard_allUnderstood,
         style: Theme.of(context).textTheme.displaySmall,
       ),
       SizedBox(height: n.space('2')),
       Text(
-        'There is nothing left to serve. The index opens any sūra again.',
+        AppLocalizations.of(context)!.dashboard_allUnderstoodWhy,
         style: TextStyle(fontSize: 12, height: 1.45, color: n.textAt(0.55)),
       ),
     ],
@@ -187,66 +192,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   /// The same destinations the drawer lists, on the screen a reader lands on.
   /// The drawer is how you leave a screen; this is how you start.
-  Widget _doors(Nocturne n) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text(
-        'WHERE TO GO',
-        style: TextStyle(
-          fontSize: 10,
-          height: 1.2,
-          letterSpacing: 0.11 * 10,
-          color: n.accent,
-        ),
-      ),
-      const NocturneRule(fade: 30),
-      for (final door in const [
-        (route: Routes.index, label: 'Sūra index', why: 'Open any aya you want'),
-        (
-          route: Routes.progress,
-          label: 'Your passage',
-          why: 'How much you have understood',
-        ),
-        (route: Routes.kept, label: 'Kept', why: 'The ayas and roots you saved'),
-      ])
-        GestureDetector(
-          key: ValueKey('door${door.route}'),
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _open(door.route),
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: n.space('3')),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        door.label,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      SizedBox(height: n.space('1')),
-                      Text(
-                        door.why,
-                        style: TextStyle(fontSize: 11, color: n.textAt(0.5)),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward, size: 16, color: n.accent),
-              ],
-            ),
+  Widget _doors(Nocturne n) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.dashboard_whereToGo,
+          style: TextStyle(
+            fontSize: 10,
+            height: 1.2,
+            letterSpacing: 0.11 * 10,
+            color: n.accent,
           ),
         ),
-    ],
-  );
+        const NocturneRule(fade: 30),
+        for (final door in [
+          (
+            route: Routes.index,
+            label: l10n.dashboard_doorIndex,
+            why: l10n.dashboard_doorIndexWhy,
+          ),
+          (
+            route: Routes.progress,
+            label: l10n.dashboard_doorProgress,
+            why: l10n.dashboard_doorProgressWhy,
+          ),
+          (
+            route: Routes.kept,
+            label: l10n.dashboard_doorKept,
+            why: l10n.dashboard_doorKeptWhy,
+          ),
+        ])
+          GestureDetector(
+            key: ValueKey('door${door.route}'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _open(door.route),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: n.space('3')),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          door.label,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        SizedBox(height: n.space('1')),
+                        Text(
+                          door.why,
+                          style: TextStyle(fontSize: 11, color: n.textAt(0.5)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward, size: 16, color: n.accent),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
-
-String _ayas(int count) => count == 1 ? '1 aya' : '$count ayas';
-
-String _prayers(int count) => switch (count) {
-  0 => 'no prayer on it yet',
-  1 => 'prayed once',
-  2 => 'prayed twice',
-  _ => 'prayed $count times',
-};
