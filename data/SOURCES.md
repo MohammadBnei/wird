@@ -125,6 +125,43 @@ roots are decoded, because only roots are rendered. `roots.sources` carries the
 file's name; the corpus is named in full, with its copyright block, in
 `corpus_meta.notice`.
 
+### French reaches a reader one ayah at a time, and why
+
+**There is no French word-by-word gloss to be had.** `language=fr` on the verses
+endpoint answers **English**, with `language_name: "english"` in the payload while
+it does so. Measured 2026-09-27 against the repository's own parameters: `ur`
+returns Urdu, `id` returns Indonesian, `bn` returns Bengali, and `fr` and `ru`
+fall back silently. `fr` appears in `/resources/languages` because three
+*whole-ayah* French translations exist, not a word-by-word one, and
+`word_fields=transliteration` is not language-dependent under any parameter — it
+is `wal-ʿaṣri` for every language tested.
+
+That trap is worth naming because the obvious gate cannot see it: "the French
+column is populated" is true of 77,429 English strings sitting in it, and a build
+would have signed off on a French reader being shown `and do` as French.
+`Corpus.Check` therefore counts translations against ayas and refuses a corpus
+that is French for part of the Qurʼan and not the rest — a presence check would
+not have caught the thing that went wrong.
+
+**Which translation, and why it was a person's choice.** Three complete French
+translations are served: Hamidullah (31), Montada (136) and Rashid Maash (779).
+All three were measured complete — 6236 ayas, none empty — so nothing technical
+separated them and the owner chose **Rashid Maash, 779**. Changing it is a
+one-line change of id and a re-ingest, not a new investigation.
+
+**One modification, recorded because it is one.** quran.com wraps a translator's
+note as `<sup foot_note=203920>1</sup>` and the note's own text is in no field of
+the response, so the marker points at nothing a reader could open. The ETL strips
+it rather than rendering a stray digit mid-sentence. Nothing else about the text
+is touched.
+
+**What this does not change.** The QF Developer Terms position is the one this
+file already records for `words.gloss_en`: §3.1 forbids storing QF Content past a
+week except through Content Sync, `translations` is a listed Sync resource, and a
+shipped `corpus.db` is storage without end. Adding a translation puts more prose
+on that same unresolved term. It does not resolve it, and it is not a second
+question.
+
 ### The parsing: the role names are written here, not copied
 
 `irab` and `irab_roles` are derived from the same file and are a different act
@@ -175,6 +212,7 @@ is given so the reading can be checked rather than believed.
 | `surahs` (incl. `revelation_order`) | `api.quran.com/api/v4/chapters` | [Quran Foundation Developer Terms](https://api-docs.quran.foundation/legal/developer-terms/) §2.2, §3.1 | **Yes, conditionally** — see *The one-week rule* |
 | `ayahs.text_uthmani`, `words.text_ar` | `api.quran.com/api/v4/verses/by_chapter`; the text is [Tanzil](https://tanzil.net/download/)'s, which quran.com credits | Tanzil: verbatim copies, attribution, a link to tanzil.net. Delivery is governed by the QF terms | **Yes** for the text, unmodified and attributed; the delivery path carries the QF conditions |
 | `words.gloss_en`, `words.translit` | same endpoint | QF terms treat it as QF Content; **no upstream author is named anywhere I could find** | **Could not determine** — conditionally yes under the QF terms, with an unnamed source underneath |
+| `ayah_translations` | `api.quran.com/api/v4/verses/by_chapter`, `translations=779` — Rashid Maash's French, arriving in the same response as the Arabic and keyed by verse | QF terms treat it as QF Content, and the translator is named where the word gloss's author is not | **Could not determine** — the same unresolved term as the row above, now carrying prose somebody is credited for |
 | `words.root_letters`, `words.form`, `words.morphology`, `roots` | [Quranic Arabic Corpus 0.4](https://corpus.quran.com/download/), the upstream file, placed by hand | GPL, verbatim copies only, attribution and a link; Tanzil underneath it | **Yes** — Wird is AGPL-3.0 and the notice ships in `corpus_meta.notice`; see above |
 | `irab` | the same file, one row per segment rather than one per word | as above — it is upstream's own tags and features, rearranged and not edited | **Yes**, under the same row above |
 | `irab_roles` | **written here.** A translation of the annotation vocabulary the file uses; the names themselves are documented only on [corpus.quran.com](https://corpus.quran.com/documentation/) | a derivative of Dukes's annotation, so the GPL row above governs it; the French has no upstream at all | **Yes** — see *The parsing* |

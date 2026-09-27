@@ -29,6 +29,20 @@ CREATE TABLE ayahs (
   number       INTEGER NOT NULL,
   text_uthmani TEXT NOT NULL
 );
+-- One whole-ayah translation per row, in its own table rather than a column on
+-- ayahs. There is no French word-by-word gloss to be had, so this is the only
+-- shape French reaches a reader in; and the licence position on it is the one
+-- data/SOURCES.md rates "could not determine", so taking the French back out
+-- should be a DROP TABLE and not a schema migration. resource_id is quran.com's
+-- own number for the translation, kept so a row says which rendering it is
+-- rather than only which language.
+CREATE TABLE ayah_translations (
+  ayah_id     INTEGER NOT NULL REFERENCES ayahs(id),
+  resource_id INTEGER NOT NULL,
+  lang        TEXT NOT NULL,
+  text        TEXT NOT NULL,
+  PRIMARY KEY (ayah_id, resource_id)
+);
 CREATE TABLE words (
   id           INTEGER PRIMARY KEY,
   ayah_id      INTEGER NOT NULL REFERENCES ayahs(id),
@@ -184,6 +198,19 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
+	fr := make([]Ayah, 0, len(c.Ayahs))
+	for _, a := range c.Ayahs {
+		if a.TextFr != "" {
+			fr = append(fr, a)
+		}
+	}
+	if err := insert(`INSERT INTO ayah_translations VALUES (?,?,?,?)`, len(fr), func(i int) []any {
+		a := fr[i]
+		return []any{a.ID, frenchTranslation, "fr", a.TextFr}
+	}); err != nil {
+		return err
+	}
+
 	if err := insert(`INSERT INTO words VALUES (?,?,?,?,?,?,?,?,?)`, len(c.Words), func(i int) []any {
 		w := c.Words[i]
 		return []any{w.ID, w.AyahID, w.Position, w.TextAr, w.Translit, w.GlossEn,

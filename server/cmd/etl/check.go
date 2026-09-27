@@ -90,6 +90,26 @@ func (c *Corpus) Check(full bool) error {
 	}
 
 	errs = append(errs, c.checkIrab()...)
+	// All of the French or none of it. A reading that is French for a page and
+	// then English is worse than one that is honestly English throughout, and it
+	// is the failure a presence check cannot see: `language=fr` on the word gloss
+	// answers English and calls it english, so "the column is populated" proves
+	// nothing about what is in it. Counted rather than sampled.
+	if full {
+		var french int
+		for _, a := range c.Ayahs {
+			if a.TextFr != "" {
+				french++
+			}
+		}
+		if french != 0 && french != len(c.Ayahs) {
+			errs = append(errs, fmt.Errorf("%d of %d ayas carry a French translation, so a "+
+				"French reader would read some of the Qur'an in French and the rest in "+
+				"Arabic with an English gloss; ingest all of it or none of it",
+				french, len(c.Ayahs)))
+		}
+	}
+
 	errs = append(errs, c.checkSenses()...)
 	return errors.Join(errs...)
 }
