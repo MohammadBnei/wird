@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/kept_repo.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import 'corpus.dart';
@@ -38,11 +39,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
-        home: DeepDiveScreen(
-          db: db,
-          ayahId: ayaOfPatience,
-          letters: patience,
-        ),
+        // Screen 1c mounts the root sections, which read their strings now.
+        // No locale is set, so the raster is still the English one.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: DeepDiveScreen(db: db, ayahId: ayaOfPatience, letters: patience),
       ),
     );
     await tester.pumpAndSettle();
@@ -64,6 +65,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: DeepDiveScreen(
           db: db,
           // A family of five, so the ring is drawn rather than the spine a

@@ -6,6 +6,7 @@ import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/deepdive/constellation.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/root/root_sections.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
@@ -31,10 +32,7 @@ const inventedProse = [
 ];
 
 /// The two works those summaries were signed with.
-const namedScholars = [
-  'Ibn Fāris',
-  'Lane · Arabic-English Lexicon',
-];
+const namedScholars = ['Ibn Fāris', 'Lane · Arabic-English Lexicon'];
 
 /// 2:282, the longest aya in the Qur'an, and a root it carries.
 const longestAya = 2282;
@@ -62,6 +60,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // Screen 1c mounts the root sections, which read their strings now,
+        // and without the delegates `AppLocalizations.of` is null and they
+        // throw.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: DeepDiveScreen(db: db, ayahId: ayahId, letters: letters),
       ),
     );
@@ -136,6 +139,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: nocturneTheme(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: TextButton(

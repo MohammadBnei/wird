@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/features/root/root_sections.dart';
 import 'package:wird/features/root/root_spine_screen.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import 'corpus.dart';
@@ -27,7 +28,16 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      MaterialApp(theme: nocturneTheme(), home: screen),
+      MaterialApp(
+        theme: nocturneTheme(),
+        // Both root screens read their strings now, and without the delegates
+        // `AppLocalizations.of` is null and every one of them throws. The
+        // raster is the English one either way: no locale is set, so these
+        // goldens are unmoved by the sweep.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: screen,
+      ),
     );
     await tester.pumpAndSettle();
   }

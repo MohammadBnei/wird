@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/root_repo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
@@ -10,20 +11,19 @@ import 'family.dart';
 // screen reading a root asks one file for the sections and the spine both.
 export 'family.dart';
 
-const _tafsirPending =
-    'Tafsir is fetched per aya. Nothing is downloaded yet, so nothing is '
-    'attributed here.';
-
-/// Said where a root ships no sense, which is two roots in three. The absence
-/// is the machine declining to claim something its own evidence does not
-/// carry, and a reader who is not told that reads it as a missing section.
-const _senseRefused =
-    "Wird writes a root's sense only where that root's own words in the "
-    'Qur\'an bear it out. These do not, so nothing is claimed here.';
-
 /// Which commentaries the tafsir section will quote once the fetch exists.
 /// Naming them is not a claim about what they say.
+///
+/// Not localised, and not localisable: these are three men's names, and a
+/// translated authority is a different authority.
 const tafsirSources = ['Al-Ṭabarī', 'Ibn Kathīr', 'Al-Rāzī'];
+
+/// The upstream annotation the iʿrāb is read out of, named and linked the way
+/// its licence asks for. Held apart from the sentence around it in
+/// `root_irabProvenance` so every locale reproduces this part unchanged: the
+/// title, the version and the link are the attribution, and a translated
+/// attribution attributes nothing. See data/SOURCES.md.
+const _irabWork = 'Quranic Arabic Corpus 0.4, corpus.quran.com';
 
 /// An `h6`: 13px, uppercase, widely tracked.
 class SectionHeading extends StatelessWidget {
@@ -136,18 +136,19 @@ class CoreSense extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final sense = reading.coreSense;
     if (sense == null) {
-      return const PendingSection(
-        heading: 'Core sense',
-        explanation: _senseRefused,
+      return PendingSection(
+        heading: l.root_coreSense,
+        explanation: l.root_senseRefused,
       );
     }
     final n = Nocturne.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionHeading('Core sense'),
+        SectionHeading(l.root_coreSense),
         SizedBox(height: n.space('2')),
         Text(
           sense,
@@ -170,21 +171,22 @@ class CoreSense extends StatelessWidget {
   ///
   /// So the app says it is the app. A sense that ever does come from a named
   /// work names that work, and the two no longer look alike.
-  String _whoseWords(String? source, int words) {
-    final borne = words == 0
-        ? ''
-        : ", borne out by $words of the root's own words";
+  String _whoseWords(AppLocalizations l, String? source, int words) {
+    final borne = words == 0 ? '' : l.root_senseBorne(words);
+    // 'Wird' is the value the column holds, not a word on the screen: it is
+    // compared, never drawn, so it is not localised.
     return source == null || source == 'Wird'
-        ? "This app's own reading$borne"
-        : "$source's reading$borne";
+        ? l.root_senseByApp(borne)
+        : l.root_senseBySource(source, borne);
   }
 
   Widget _whose(BuildContext context, Nocturne n) {
+    final l = AppLocalizations.of(context)!;
     final source = reading.senseSource;
     final words = reading.senseEvidence.length;
     if (words == 0) {
       return Text(
-        '${_whoseWords(source, 0)}.',
+        '${_whoseWords(l, source, 0)}.',
         style: TextStyle(fontSize: 12, height: 1.5, color: n.textAt(0.62)),
       );
     }
@@ -196,7 +198,7 @@ class CoreSense extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Text(
-          _whoseWords(source, words),
+          _whoseWords(l, source, words),
           style: TextStyle(
             fontSize: 12,
             height: 1.5,
@@ -239,6 +241,7 @@ class SenseEvidence extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     return ListView(
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
@@ -272,7 +275,7 @@ class SenseEvidence extends StatelessWidget {
           style: TextStyle(fontSize: 14, height: 1.5, color: n.text),
         ),
         const NocturneRule(),
-        const SectionHeading('Whose reading this is'),
+        SectionHeading(l.root_whoseReading),
         SizedBox(height: n.space('2')),
         Text(
           reading.senseBasis ?? '',
@@ -280,18 +283,18 @@ class SenseEvidence extends StatelessWidget {
         ),
         const NocturneRule(),
         SectionHeading(
-          'The words it was read from',
-          trailing: '${reading.senseEvidence.length} words',
+          l.root_wordsReadFrom,
+          trailing: l.root_wordCount(reading.senseEvidence.length),
         ),
         SizedBox(height: n.space('3')),
         // The stored order is the bar's own, grouped by morphological shape,
         // so it is kept rather than sorted: the grouping is the argument.
-        for (final word in reading.senseEvidence) _word(n, word),
+        for (final word in reading.senseEvidence) _word(n, l, word),
       ],
     );
   }
 
-  Widget _word(Nocturne n, String word) {
+  Widget _word(Nocturne n, AppLocalizations l, String word) {
     // ponytail: the word is matched back to its derivative by a linear scan
     // over the family. Index it if a root ever carries evidence past a dozen
     // words, which the shipped set does not.
@@ -330,7 +333,7 @@ class SenseEvidence extends StatelessWidget {
                   ),
                 if (form != null)
                   Text(
-                    'FORM $form',
+                    l.root_formTag(form),
                     style: TextStyle(
                       fontSize: 10,
                       height: 1.6,
@@ -347,10 +350,19 @@ class SenseEvidence extends StatelessWidget {
   }
 }
 
-Widget tafsirSection(String? ref) => PendingSection(
-  heading: ref == null ? 'Tafsir' : 'Tafsir · $ref',
-  sources: tafsirSources,
-  explanation: _tafsirPending,
+/// ponytail: a [Builder] rather than a `BuildContext` parameter. The heading
+/// and the explanation are read strings now, and this is a bare function two
+/// screens call — the wrapper is one line here instead of a signature change
+/// at every call site.
+Widget tafsirSection(String? ref) => Builder(
+  builder: (context) {
+    final l = AppLocalizations.of(context)!;
+    return PendingSection(
+      heading: ref == null ? l.root_tafsir : l.root_tafsirAt(ref),
+      sources: tafsirSources,
+      explanation: l.root_tafsirPending,
+    );
+  },
 );
 
 /// The parsing of one word, segment by segment, out of the bundle.
@@ -392,10 +404,11 @@ class IrabSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeading('Iʿrāb', trailing: 'as read at $where'),
+        SectionHeading(l.root_irab, trailing: l.root_irabAsReadAt(where)),
         SizedBox(height: n.space('3')),
         Text(
           word,
@@ -413,7 +426,7 @@ class IrabSection extends StatelessWidget {
         // as a gap, because an absent section reads as an oversight.
         if (segments.isEmpty)
           Text(
-            'The corpus carries no parsing for this word.',
+            l.root_noParsing,
             style: TextStyle(
               fontSize: 12.5,
               height: 1.55,
@@ -423,8 +436,7 @@ class IrabSection extends StatelessWidget {
         for (final segment in segments) _segment(n, segment),
         SizedBox(height: n.space('2')),
         Text(
-          'Provenance: Quranic Arabic Corpus 0.4, corpus.quran.com; '
-          'the role names are written for Wird',
+          l.root_irabProvenance(_irabWork),
           style: TextStyle(fontSize: 10.5, height: 1.5, color: n.textAt(0.45)),
         ),
       ],
@@ -470,6 +482,7 @@ class _RootSpineViewState extends State<RootSpineView> {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     final reading = widget.reading;
     final selected = reading.derivatives[_index];
     return ListView(
@@ -497,8 +510,11 @@ class _RootSpineViewState extends State<RootSpineView> {
                   ),
                   Expanded(
                     child: Text(
-                      '${reading.translit} · ${reading.occurrences} in '
-                      '${reading.surahCount} sūras',
+                      l.root_spineWeight(
+                        reading.translit,
+                        reading.occurrences,
+                        reading.surahCount,
+                      ),
                       style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
                     ),
                   ),
@@ -512,8 +528,8 @@ class _RootSpineViewState extends State<RootSpineView> {
         Container(height: 1, color: n.divider),
         SizedBox(height: n.space('4')),
         SectionHeading(
-          "Its kin in the Qur'an",
-          trailing: '${reading.derivatives.length} forms',
+          l.root_kinHeading,
+          trailing: l.root_formCount(reading.derivatives.length),
         ),
         SizedBox(height: n.space('4')),
         KinSpine(
@@ -540,10 +556,10 @@ class _RootSpineViewState extends State<RootSpineView> {
         // The server's own /v1/roots/{letters}/lexicon, Store.Lexicon and the
         // lexicon_entries table are left standing on purpose: taking a route
         // and a table out is a separate call from taking a screen section out.
-        SectionHeading('Sources'),
+        SectionHeading(l.root_sourcesHeading),
         SizedBox(height: n.space('3')),
         Text(
-          'Provenance: ${reading.sources.join(', ')}',
+          l.root_provenance(reading.sources.join(', ')),
           style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
         ),
       ],
@@ -575,6 +591,7 @@ class RootChrome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 8),
       child: Row(
@@ -584,7 +601,7 @@ class RootChrome extends StatelessWidget {
             variant: NocturneButtonVariant.icon,
             onPressed: () => Navigator.of(context).maybePop(),
             child: Semantics(
-              label: 'Back',
+              label: l.root_back,
               child: const Icon(Icons.arrow_back_ios_new, size: 16),
             ),
           ),
@@ -606,7 +623,7 @@ class RootChrome extends StatelessWidget {
             variant: NocturneButtonVariant.icon,
             onPressed: onKeep,
             child: Semantics(
-              label: kept ? 'Kept, tap to undo' : 'Keep',
+              label: kept ? l.root_keptTapToUndoLabel : l.root_keep,
               child: Icon(
                 kept ? Icons.bookmark : Icons.bookmark_border,
                 size: 16,
