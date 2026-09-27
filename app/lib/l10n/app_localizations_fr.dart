@@ -19,4 +19,25 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get notDownloaded => 'Non téléchargé';
+
+  @override
+  String get prayer_in_prayer => 'EN PRIÈRE';
+
+  @override
+  String get prayer_following_your_voice => 'SUIT VOTRE VOIX';
+
+  @override
+  String get prayer_exit => 'Quitter';
+
+  @override
+  String get prayer_back_an_aya => 'Revenir au verset précédent';
+
+  @override
+  String get prayer_on_to_the_next_aya => 'Aller au verset suivant';
+
+  @override
+  String get prayer_foot_taps_only => 'Écran maintenu allumé · touchez pour avancer · le bord gauche revient en arrière';
+
+  @override
+  String get prayer_foot_following => 'Écran maintenu allumé · touchez à tout moment · le bord gauche revient en arrière';
 }

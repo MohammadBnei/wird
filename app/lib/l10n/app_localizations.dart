@@ -118,6 +118,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not downloaded'**
   String get notDownloaded;
+
+  /// Kicker beside the dot at the top of the prayer screen, while nothing is following the reciter.
+  ///
+  /// In en, this message translates to:
+  /// **'IN PRAYER'**
+  String get prayer_in_prayer;
+
+  /// The same kicker at the top of the prayer screen, but only once voice-follow is really running.
+  ///
+  /// In en, this message translates to:
+  /// **'FOLLOWING YOUR VOICE'**
+  String get prayer_following_your_voice;
+
+  /// The ghost button at the top right of the prayer screen, the one way out of the prayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit'**
+  String get prayer_exit;
+
+  /// Screen-reader label for the narrow tap zone down the left edge of the prayer field, which steps back an aya.
+  ///
+  /// In en, this message translates to:
+  /// **'Back an aya'**
+  String get prayer_back_an_aya;
+
+  /// Screen-reader label for the wide tap zone filling the rest of the prayer field, which moves on an aya.
+  ///
+  /// In en, this message translates to:
+  /// **'On to the next aya'**
+  String get prayer_on_to_the_next_aya;
+
+  /// The hint under the progress strip at the foot of the prayer screen, when the prayer answers taps only.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen stays awake · tap to go on · left edge steps back'**
+  String get prayer_foot_taps_only;
+
+  /// The same hint at the foot of the prayer screen once voice-follow is running, where a tap is a correction rather than the only way on.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen stays awake · tap any time · left edge steps back'**
+  String get prayer_foot_following;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

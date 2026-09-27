@@ -15,5 +15,33 @@
   "notDownloaded": "Not downloaded",
   "@notDownloaded": {
     "description": "Why the play button is dark: the recitation for this set is not on the device."
+  },
+  "prayer_in_prayer": "IN PRAYER",
+  "@prayer_in_prayer": {
+    "description": "Kicker beside the dot at the top of the prayer screen, while nothing is following the reciter."
+  },
+  "prayer_following_your_voice": "FOLLOWING YOUR VOICE",
+  "@prayer_following_your_voice": {
+    "description": "The same kicker at the top of the prayer screen, but only once voice-follow is really running."
+  },
+  "prayer_exit": "Exit",
+  "@prayer_exit": {
+    "description": "The ghost button at the top right of the prayer screen, the one way out of the prayer."
+  },
+  "prayer_back_an_aya": "Back an aya",
+  "@prayer_back_an_aya": {
+    "description": "Screen-reader label for the narrow tap zone down the left edge of the prayer field, which steps back an aya."
+  },
+  "prayer_on_to_the_next_aya": "On to the next aya",
+  "@prayer_on_to_the_next_aya": {
+    "description": "Screen-reader label for the wide tap zone filling the rest of the prayer field, which moves on an aya."
+  },
+  "prayer_foot_taps_only": "Screen stays awake · tap to go on · left edge steps back",
+  "@prayer_foot_taps_only": {
+    "description": "The hint under the progress strip at the foot of the prayer screen, when the prayer answers taps only."
+  },
+  "prayer_foot_following": "Screen stays awake · tap any time · left edge steps back",
+  "@prayer_foot_following": {
+    "description": "The same hint at the foot of the prayer screen once voice-follow is running, where a tap is a correction rather than the only way on."
   }
 }

@@ -19,4 +19,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notDownloaded => 'Not downloaded';
+
+  @override
+  String get prayer_in_prayer => 'IN PRAYER';
+
+  @override
+  String get prayer_following_your_voice => 'FOLLOWING YOUR VOICE';
+
+  @override
+  String get prayer_exit => 'Exit';
+
+  @override
+  String get prayer_back_an_aya => 'Back an aya';
+
+  @override
+  String get prayer_on_to_the_next_aya => 'On to the next aya';
+
+  @override
+  String get prayer_foot_taps_only => 'Screen stays awake · tap to go on · left edge steps back';
+
+  @override
+  String get prayer_foot_following => 'Screen stays awake · tap any time · left edge steps back';
 }
