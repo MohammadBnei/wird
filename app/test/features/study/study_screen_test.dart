@@ -438,6 +438,75 @@ void main() {
     expect(play.onPressed, isNull);
   });
 
+  testWidgets('the word panel names the root and keeps its sense to itself, so '
+      'the one screen the reader studies from is the one screen that will not '
+      'say what the root means', (tester) async {
+    await openStudy(tester);
+    final panel = find.byKey(const Key('root panel'));
+
+    // قرأ ships a sense, and the panel opens on the set's first rooted word.
+    expect(
+      find.descendant(of: panel, matching: find.text('CORE SENSE')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: panel,
+        matching: find.text('a recitation, the quran; to recite'),
+      ),
+      findsOneWidget,
+    );
+    // The gloss in this aya answers a different question and stays.
+    expect(
+      find.descendant(of: panel, matching: find.text('IN THIS AYA')),
+      findsOneWidget,
+    );
+
+    // ربب ships none. Unguarded is the point: the section is still drawn and
+    // says the absence was chosen, because a panel that simply stopped
+    // printing a sense reads as a section someone forgot.
+    await tester.tap(tile(96001003));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: panel, matching: find.text('CORE SENSE')),
+      findsOneWidget,
+      reason: 'a root with no sense still gets the heading',
+    );
+    expect(
+      find.descendant(
+        of: panel,
+        matching: find.textContaining('nothing is claimed here'),
+      ),
+      findsOneWidget,
+      reason: 'the machine chose the absence, so it says so',
+    );
+  });
+
+  testWidgets('the set turned sideways is a red overflow over the reading, '
+      'because the chrome asks for more height than the phone has',
+      (tester) async {
+    // Nothing in app/lib sets a preferred orientation and the manifest handles
+    // the configuration change itself, so the app rotates. The transport and
+    // the root's sense each added a band to the fixed chrome, and sideways the
+    // sum passed the window.
+    tester.view.physicalSize = const Size(874, 402);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      await wirdAround(
+        db,
+        StudyScreen(db: db),
+        route: Routes.study,
+        cache: audio,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    // The reading keeps a strip rather than being squeezed out of existence.
+    expect(tester.getRect(find.byType(CustomScrollView)).height, greaterThan(0));
+  });
+
   testWidgets('the reader is stuck in the order they started, with no way to '
       'read the muṣḥaf from its first sūra', (tester) async {
     await openStudy(tester);

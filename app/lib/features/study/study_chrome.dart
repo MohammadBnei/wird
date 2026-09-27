@@ -8,6 +8,13 @@ import '../../shell/wird_shell.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_tag.dart';
+// Shown, not imported whole, for two reasons that both bite. root_sections.dart
+// declares a DashedRule of its own — painted with ThreadPainter rather than the
+// _DashPainter below — so an unqualified import makes every `DashedRule` in this
+// file an ambiguous_import, on lines this change does not touch. And it
+// `export`s family.dart, which reaches the deep dive's constellation, so an
+// unqualified import would drag that into the study feature.
+import '../root/root_sections.dart' show CoreSense;
 
 /// Where the reader is — and, since this screen carries the shell's row
 /// itself, the way out of it as well.
@@ -333,10 +340,22 @@ class RootPanel extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: n.space('3')),
               child: const DashedRule(),
             ),
-            // The design's "core sense" prose is lexicon text, which arrives
-            // over the network in a later phase. What the corpus itself knows
-            // about this word is its gloss in this aya, so that is what the
-            // section says it is.
+            // The root the panel is holding already carries its sense: `root`
+            // is a RootReading, the same object the root screen, the spine and
+            // the deep dive all hand to CoreSense. This was the only one of the
+            // four that did not ask, and printed the word's gloss alone.
+            //
+            // Unguarded, like the other three. Where a root ships no sense
+            // CoreSense says so in words, because a root whose sense Wird
+            // declined to claim must not read as a section someone forgot: the
+            // machine chose the absence and the reader is told it chose.
+            //
+            // The dash above supplies the gap over it; the gap under it is
+            // here, or the sentence butts into the IN THIS AYA kicker.
+            Padding(
+              padding: EdgeInsets.only(bottom: n.space('4')),
+              child: CoreSense(reading: root),
+            ),
             // "Open constellation" used to sit beside "Mark set understood"
             // at equal weight. One of the two moves the reader through the
             // Qur'an and the other is an occasional detour, so the detour is

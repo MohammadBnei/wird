@@ -324,17 +324,43 @@ class _StudyScreenState extends State<StudyScreen> {
                   ),
                   Expanded(child: _reading(n, set)),
                   _footer(n, set),
-                  RootPanel(
-                    root: _root,
-                    word: _word,
-                    open: _prefs.rootOpen,
-                    onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
-                    onVisit: _visit,
-                    onKin: (ayahId) => _load(target: ayahId),
-                    allUnderstood: _allUnderstood(set),
-                    onMark: _allUnderstood(set)
-                        ? () => _load()
-                        : () => _markUnderstood(set),
+                  // ponytail: half the window, and the panel scrolls past it.
+                  //
+                  // The panel is the last child of this Column and the reading
+                  // above it is the Expanded, so the panel takes whatever
+                  // height it asks for and the reading pays. The transport in
+                  // the footer and the root's sense in the panel each added a
+                  // band, and the phone this was walked on rotates — nothing
+                  // sets a preferred orientation — so in landscape the fixed
+                  // chrome asked for 69px more than the window has and the
+                  // Column overflowed. The cap is the only thing standing
+                  // between that and a red screen over someone's prayer.
+                  //
+                  // In portrait the cap is never reached, so the panel is
+                  // unchanged there. The ceiling: in landscape the reading is
+                  // squeezed to a sliver, because this buys a layout that does
+                  // not break rather than one that reads well sideways. The
+                  // fraction is the knob. If landscape is ever a shape the app
+                  // is meant to be read in, that is a layout of its own and a
+                  // golden the harness does not take yet.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                    ),
+                    child: SingleChildScrollView(
+                      child: RootPanel(
+                        root: _root,
+                        word: _word,
+                        open: _prefs.rootOpen,
+                        onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
+                        onVisit: _visit,
+                        onKin: (ayahId) => _load(target: ayahId),
+                        allUnderstood: _allUnderstood(set),
+                        onMark: _allUnderstood(set)
+                            ? () => _load()
+                            : () => _markUnderstood(set),
+                      ),
+                    ),
                   ),
                 ],
               ),
