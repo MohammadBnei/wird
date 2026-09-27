@@ -107,7 +107,7 @@ abstract class AppLocalizations {
   /// **'Mark set understood'**
   String get markSetUnderstood;
 
-  /// What the same button says once every aya of the set is understood.
+  /// Two places on the reading screen, and the same words in both: what the mark button says once every aya of the set is understood, and the down arrow in the footer that steps to the set after this one.
   ///
   /// In en, this message translates to:
   /// **'Next set'**
@@ -118,6 +118,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not downloaded'**
   String get notDownloaded;
+
+  /// Reading screen header, shown only while the reader is visiting an aya they asked for: it puts them back on the walk's next set.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the walk'**
+  String get study_backToTheWalk;
+
+  /// Reading screen, the unfolded root panel: opens the deep dive on this aya and this root.
+  ///
+  /// In en, this message translates to:
+  /// **'Constellation'**
+  String get study_constellation;
+
+  /// Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set is still open.
+  ///
+  /// In en, this message translates to:
+  /// **'Every aya in this set is understood'**
+  String get study_everyAyaUnderstood;
+
+  /// Reading screen footer, the middle control: it opens the sūra index, which answers with any aya of the Qur'an.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to…'**
+  String get study_goTo;
+
+  /// Screen-reader label for the reading screen footer's middle control, whose visible face says only "Go to…".
+  ///
+  /// In en, this message translates to:
+  /// **'Go to any sūra or aya'**
+  String get study_goToAnyAya;
+
+  /// Reading screen, the unfolded root panel: what pressing one of the kin tags above it does.
+  ///
+  /// In en, this message translates to:
+  /// **'A kin opens the aya it is first met in.'**
+  String get study_kinOpensItsAya;
+
+  /// Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set has been marked.
+  ///
+  /// In en, this message translates to:
+  /// **'No aya marked understood yet'**
+  String get study_noAyaUnderstoodYet;
+
+  /// Reading screen transport: why the play button is dark when the corpus ships no recitation for these ayas at all, as against notDownloaded, which is one that could still arrive.
+  ///
+  /// In en, this message translates to:
+  /// **'No recitation for this set'**
+  String get study_noRecitation;
+
+  /// Reading screen, in place of the root panel's contents when not one word of the set on screen bears a root.
+  ///
+  /// In en, this message translates to:
+  /// **'No word in this set carries a root.'**
+  String get study_noRootInSet;
+
+  /// The whole of the reading screen once the reader has marked every aya of the Qur'an understood and the walk has no set left to hand them.
+  ///
+  /// In en, this message translates to:
+  /// **'Every aya is understood. There is nothing left to serve.'**
+  String get study_nothingLeftToServe;
+
+  /// How the last of a list of aya numbers is joined to the ones before it, inside the sentences under the reading screen's progress rule.
+  ///
+  /// In en, this message translates to:
+  /// **'{first} and {last}'**
+  String study_numbersAnd(Object first, Object last);
+
+  /// Reading screen footer, the up arrow: it steps to the set before this one. Also its screen-reader label, which the aya numbers are appended to.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous set'**
+  String get study_previousSet;
+
+  /// Reading screen header, the act the reading is for: it opens the prayer screen on this set.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray this set'**
+  String get study_prayThisSet;
+
+  /// Reading screen, the sentence under the progress rule in the unfolded header, when some ayas of the set are marked and some are still open.
+  ///
+  /// In en, this message translates to:
+  /// **'Aya {done} marked understood · aya {open} open'**
+  String study_progressSplit(Object done, Object open);
+
+  /// Reading screen, the kicker in the unfolded header when the reader is in the order of revelation: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Revelation {order} · {place}'**
+  String study_revelationKicker(Object order, Object place);
+
+  /// Reading screen, the kicker in the unfolded header when the reader is in the written order: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Sūra {surah} · {place}'**
+  String study_surahKicker(Object surah, Object place);
+
+  /// Reading screen, the kicker before the set's title: the reader asked for this aya rather than being handed it by the walk.
+  ///
+  /// In en, this message translates to:
+  /// **'Visiting'**
+  String get study_visiting;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -10,10 +10,110 @@
   },
   "nextSet": "Next set",
   "@nextSet": {
-    "description": "What the same button says once every aya of the set is understood."
+    "description": "Two places on the reading screen, and the same words in both: what the mark button says once every aya of the set is understood, and the down arrow in the footer that steps to the set after this one."
   },
   "notDownloaded": "Not downloaded",
   "@notDownloaded": {
     "description": "Why the play button is dark: the recitation for this set is not on the device."
+  },
+  "study_backToTheWalk": "Back to the walk",
+  "@study_backToTheWalk": {
+    "description": "Reading screen header, shown only while the reader is visiting an aya they asked for: it puts them back on the walk's next set."
+  },
+  "study_constellation": "Constellation",
+  "@study_constellation": {
+    "description": "Reading screen, the unfolded root panel: opens the deep dive on this aya and this root."
+  },
+  "study_everyAyaUnderstood": "Every aya in this set is understood",
+  "@study_everyAyaUnderstood": {
+    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set is still open."
+  },
+  "study_goTo": "Go to…",
+  "@study_goTo": {
+    "description": "Reading screen footer, the middle control: it opens the sūra index, which answers with any aya of the Qur'an."
+  },
+  "study_goToAnyAya": "Go to any sūra or aya",
+  "@study_goToAnyAya": {
+    "description": "Screen-reader label for the reading screen footer's middle control, whose visible face says only \"Go to…\"."
+  },
+  "study_kinOpensItsAya": "A kin opens the aya it is first met in.",
+  "@study_kinOpensItsAya": {
+    "description": "Reading screen, the unfolded root panel: what pressing one of the kin tags above it does."
+  },
+  "study_noAyaUnderstoodYet": "No aya marked understood yet",
+  "@study_noAyaUnderstoodYet": {
+    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set has been marked."
+  },
+  "study_noRecitation": "No recitation for this set",
+  "@study_noRecitation": {
+    "description": "Reading screen transport: why the play button is dark when the corpus ships no recitation for these ayas at all, as against notDownloaded, which is one that could still arrive."
+  },
+  "study_noRootInSet": "No word in this set carries a root.",
+  "@study_noRootInSet": {
+    "description": "Reading screen, in place of the root panel's contents when not one word of the set on screen bears a root."
+  },
+  "study_nothingLeftToServe": "Every aya is understood. There is nothing left to serve.",
+  "@study_nothingLeftToServe": {
+    "description": "The whole of the reading screen once the reader has marked every aya of the Qur'an understood and the walk has no set left to hand them."
+  },
+  "study_numbersAnd": "{first} and {last}",
+  "@study_numbersAnd": {
+    "description": "How the last of a list of aya numbers is joined to the ones before it, inside the sentences under the reading screen's progress rule.",
+    "placeholders": {
+      "first": {
+        "example": "1, 2"
+      },
+      "last": {
+        "example": "3"
+      }
+    }
+  },
+  "study_previousSet": "Previous set",
+  "@study_previousSet": {
+    "description": "Reading screen footer, the up arrow: it steps to the set before this one. Also its screen-reader label, which the aya numbers are appended to."
+  },
+  "study_prayThisSet": "Pray this set",
+  "@study_prayThisSet": {
+    "description": "Reading screen header, the act the reading is for: it opens the prayer screen on this set."
+  },
+  "study_progressSplit": "Aya {done} marked understood · aya {open} open",
+  "@study_progressSplit": {
+    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when some ayas of the set are marked and some are still open.",
+    "placeholders": {
+      "done": {
+        "example": "1 and 2"
+      },
+      "open": {
+        "example": "3"
+      }
+    }
+  },
+  "study_revelationKicker": "Revelation {order} · {place}",
+  "@study_revelationKicker": {
+    "description": "Reading screen, the kicker in the unfolded header when the reader is in the order of revelation: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.",
+    "placeholders": {
+      "order": {
+        "example": "1"
+      },
+      "place": {
+        "example": "Makkah"
+      }
+    }
+  },
+  "study_surahKicker": "Sūra {surah} · {place}",
+  "@study_surahKicker": {
+    "description": "Reading screen, the kicker in the unfolded header when the reader is in the written order: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.",
+    "placeholders": {
+      "surah": {
+        "example": "96"
+      },
+      "place": {
+        "example": "Makkah"
+      }
+    }
+  },
+  "study_visiting": "Visiting",
+  "@study_visiting": {
+    "description": "Reading screen, the kicker before the set's title: the reader asked for this aya rather than being handed it by the walk."
   }
 }
