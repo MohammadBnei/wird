@@ -168,6 +168,7 @@ class VoiceModel {
     void Function(int received, int total)? onProgress,
     CancelToken? cancel,
   }) async {
+    sweepUpAfterAnOlderModel();
     var done = bytesOnDisk;
     try {
       for (final part in voiceModelParts) {
@@ -223,6 +224,33 @@ class VoiceModel {
           : VoiceModelTrouble.interrupted;
     } on Object {
       return VoiceModelTrouble.interrupted;
+    }
+  }
+
+  /// Throws away anything in the model's directory that this build does not
+  /// ask for.
+  ///
+  /// A phone that downloaded a previous recogniser keeps its files forever
+  /// otherwise: they are not [voiceModelParts] any more, so [ready] ignores
+  /// them, nothing offers to remove them, and the reader pays for them in disk
+  /// they cannot see. The transducer this replaced was 339 MB of exactly that.
+  ///
+  /// Only this directory, and only names this build has no use for — the
+  /// parts, and the `.part` and `.etag` a resume of them is holding. Never
+  /// throws: a reader who cannot be tidied up after still gets their
+  /// download.
+  void sweepUpAfterAnOlderModel() {
+    final keep = {
+      for (final part in voiceModelParts) ...[part, '$part.part', '$part.etag'],
+    };
+    try {
+      for (final entry in dir.listSync()) {
+        if (entry is! File) continue;
+        if (keep.contains(entry.uri.pathSegments.last)) continue;
+        entry.deleteSync();
+      }
+    } on Object {
+      // Disk the reader cannot see is not worth failing a download over.
     }
   }
 
