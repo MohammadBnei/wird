@@ -37,7 +37,6 @@ class _StudyScreenState extends State<StudyScreen> {
   StudySet? _set;
   RootDetail? _root;
   StudyWord? _word;
-  String? _reciter;
   ReadingOrder _order = ReadingOrder.nuzul;
 
   /// The application's recitation, once it is carrying the set on screen.
@@ -152,7 +151,6 @@ class _StudyScreenState extends State<StudyScreen> {
             at,
             ayas: step == null ? 1 : step.last - step.first + 1,
           );
-    final reciter = await reciterLabel(widget.db);
     // The width the reader reads in. On the walk the set already is it, the
     // width they pulled in settings and all. A step keeps the width it was
     // taken at rather than the width it got — a step into Al-Kawthar takes
@@ -210,7 +208,6 @@ class _StudyScreenState extends State<StudyScreen> {
       _after = after;
       _width = width;
       _set = set;
-      _reciter = reciter;
       _word = first;
       _root = root;
       _audio = set == null ? null : recitation;
@@ -345,14 +342,22 @@ class _StudyScreenState extends State<StudyScreen> {
     );
   }
 
-  /// What is sounding, and where the reader can go: one block at the foot of
-  /// the screen, under one edge.
+  /// What plays, what is sounding, and where the reader can go: one block at
+  /// the foot of the screen, under one edge.
   ///
   /// The transport used to sit under the top bar, a thumb's length from the
   /// controls it belongs with. It is first in the block rather than last
   /// because a [Column] hangs its tail off the bottom: everything below the
   /// transport keeps its place when a recitation starts, and the reading gives
   /// up the height instead. Nothing under the reader's thumb moves.
+  ///
+  /// The play button came here from inside the scrolling list, where starting
+  /// the recitation — and learning whether the recitation was even on the
+  /// phone — meant scrolling past the whole set first. It is always drawn,
+  /// which reverses the trade [SoundingNow] makes just below it: a reader who
+  /// never plays anything now pays for a band of chrome. The transport is the
+  /// reason the screen exists to be prayed from, so it is the one piece of
+  /// chrome that does not earn its place by being asked for.
   Widget _footer(Nocturne n, StudySet set) => Container(
     decoration: BoxDecoration(
       border: Border(top: BorderSide(color: n.divider)),
@@ -360,6 +365,15 @@ class _StudyScreenState extends State<StudyScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            n.space('6'),
+            n.space('2'),
+            n.space('6'),
+            0,
+          ),
+          child: _audioBar(n),
+        ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: n.space('6')),
           child: const SoundingNow(),
@@ -414,23 +428,20 @@ class _StudyScreenState extends State<StudyScreen> {
           const SliverToBoxAdapter(key: _anchor, child: SizedBox.shrink()),
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, i) => i == set.ayas.length
-                  // The recitation carries the acted set and nothing else, so
-                  // the bar sits where that set ends: under the last aya on
-                  // the walk, and under the visited aya rather than 285 ayas
-                  // below it while a sūra is being read.
-                  ? Padding(
-                      padding: EdgeInsets.symmetric(horizontal: n.space('6')),
-                      child: _audioBar(n),
-                    )
-                  : _ayaTile(
-                      n,
-                      ayas,
-                      focus + (i > set.ayas.length ? i - 1 : i),
-                      recited,
-                      lastBeforeBar: focus + set.ayas.length - 1,
-                    ),
-              childCount: ayas.length - focus + 1,
+              // The bar has left the list for the footer, but the gap under
+              // the acted set has not: `lastBeforeBar` is the last aya the
+              // play button will recite, and `ayas.length - 1` is the last aya
+              // of the whole reading. Opening 2:255 those are 31 ayas apart,
+              // so that gap is the only thing on screen saying where the span
+              // an always-visible play button covers ends.
+              (context, i) => _ayaTile(
+                n,
+                ayas,
+                focus + i,
+                recited,
+                lastBeforeBar: focus + set.ayas.length - 1,
+              ),
+              childCount: ayas.length - focus,
             ),
           ),
           SliverToBoxAdapter(child: SizedBox(height: n.space('6'))),
@@ -550,6 +561,11 @@ class _StudyScreenState extends State<StudyScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             spacing: n.space('1'),
             children: [
+              // ponytail: five fixed heights, not a level. Mid-scroll that was
+              // incidental; pinned beside a real transport it is a fake meter
+              // that is always on screen. Carried across unchanged — drawing
+              // the real amplitude is its own step, and deleting it leaves the
+              // row with a hole. Replace it, do not tune it.
               for (final (i, height) in const [
                 20.0,
                 14.0,
@@ -576,10 +592,16 @@ class _StudyScreenState extends State<StudyScreen> {
             ],
           ),
         ),
-        Text(
-          (_audio?.ready ?? false) ? (_reciter ?? '') : 'Not downloaded',
-          style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
-        ),
+        // Not the reciter's name — that is who is reciting, it never changes
+        // mid-set, and it reads as settled rather than as the state of this
+        // button. It is said once, in Settings. What stays here is the one
+        // thing that explains why the play button beside it is dark: a screen
+        // may not draw a dead control with nothing saying why.
+        if (!(_audio?.ready ?? false))
+          Text(
+            'Not downloaded',
+            style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
+          ),
       ],
     ),
   );

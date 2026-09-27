@@ -33,6 +33,15 @@ Future<String> word(Database db, int id) async {
 /// set, so a finder on the text alone matches the wrong tile.
 Finder tile(int wordId) => find.byKey(WordKey(wordId));
 
+/// Whether a word's tile has been built at all.
+///
+/// The reading is a lazy sliver list. The transport left that list for the
+/// pinned footer, so the pane is one transport shorter than it was and the
+/// set's last aya is no longer built on the first frame. A row that was never
+/// built paints nothing, so it can carry no claim either way — these tests ask
+/// their question of the rows the reader is actually looking at.
+bool drawn(int wordId) => tile(wordId).evaluate().isNotEmpty;
+
 /// The Arabic of a word: the first thing painted in its tile, above the
 /// transliteration and the gloss.
 Finder arabic(int wordId) =>
@@ -267,7 +276,7 @@ void main() {
         for (final word in aya.words) word.id,
     ];
     expect(
-      [for (final id in ids) if (lit(tester, id)) id],
+      [for (final id in ids) if (drawn(id) && lit(tester, id)) id],
       [96001001],
       reason: 'the panel opens on the first rooted word and says so',
     );
@@ -276,7 +285,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      [for (final id in ids) if (lit(tester, id)) id],
+      [for (final id in ids) if (drawn(id) && lit(tester, id)) id],
       [96002004],
       reason: 'one word at a time wears the accent, and it is the one tapped',
     );
@@ -293,6 +302,7 @@ void main() {
       for (final word in aya.words) {
         // A tile scrolled out of the set's own pane would take the tap on
         // whatever is painted over it, which proves nothing about the word.
+        if (!drawn(word.id)) continue;
         final rect = tester.getRect(tile(word.id));
         if (rect.top < shown.top || rect.bottom > shown.bottom) continue;
         await tester.tap(tile(word.id));
@@ -344,7 +354,8 @@ void main() {
     final undownloaded = [
       for (final aya in set.ayas)
         if (aya.id != 96001)
-          for (final word in aya.words) word,
+          for (final word in aya.words)
+            if (drawn(word.id)) word,
     ];
     expect(
       undownloaded.where((word) => word.root != null),
@@ -413,11 +424,10 @@ void main() {
   testWidgets('the recitation offers to play a set that is not on the phone, '
       'and stalls on a file it cannot fetch', (tester) async {
     await openStudy(tester);
-    // The bar sits under the last aya of the set, and an aya is only built
-    // when it comes near the viewport now that a sūra can be 286 of them.
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -2000));
-    await tester.pumpAndSettle();
-
+    // The bar is pinned in the footer, so nothing is scrolled to reach it.
+    // It used to be an item in the sliver list under the last aya of the set,
+    // and this test had to drag two thousand pixels before the play button
+    // existed at all — which is the finding, not the setup.
     expect(find.text('Not downloaded'), findsOneWidget);
     final play = tester.widget<NocturneButton>(
       find.ancestor(
