@@ -86,7 +86,22 @@ const heardHeldByHand = Duration(seconds: 4);
 /// A recogniser handed silence still answers, and what it invents out of a
 /// quiet room is a phrase the matcher then has to refuse. The prayer screen
 /// opens before the reader begins, so the quiet before the first word is
-/// exactly what should not reach it.
+/// exactly what should not reach it — and there is more of it than there was,
+/// because `PrayerVoice.start` now opens the microphone BEFORE loading the
+/// model rather than after, to stop losing the opening of the recitation.
+///
+/// THE DECISION THAT ORDERING FORCES, so it is not found later in a commit
+/// message. `prayer_screen_test.dart` asserts that a reader with permission and
+/// no model gets no microphone, and says why in words: "opening the microphone
+/// would be a recording nobody asked for". That still holds — [VoiceModel.ready]
+/// is still checked before the recorder is built. But with the files PRESENT and
+/// unloadable, which [Recogniser.open] below documents as a real case, the
+/// microphone now runs for up to twenty seconds of a prayer and every sample of
+/// it is thrown away. On Android the OS microphone indicator appears over the
+/// prayer for those seconds, on a phone where voice-follow will never work.
+/// Nothing leaves the device either way. The alternative is to open the
+/// microphone only once the model has loaded and accept that the opening of the
+/// recitation is lost, which is the second walk finding left unfixed.
 ///
 /// ponytail: one fixed absolute floor, and it guards only the quiet *before*
 /// the first word — the caller latches `_speaking` on and never turns it off,

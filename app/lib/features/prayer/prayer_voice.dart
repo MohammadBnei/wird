@@ -12,10 +12,12 @@ import 'prayer_trail.dart';
 
 /// The microphone, wired to the cursor.
 ///
-/// It holds the last few seconds of the reciter's voice, hands a window of it
-/// to the recogniser when the last one has come back, and gives whatever came
-/// out to [followHeard]. That is the whole of it, and the shortness is the
-/// point: everything that could go wrong here goes wrong as silence.
+/// It holds whatever of the reciter's voice the recogniser has not been handed
+/// yet — a fraction of a second in the ordinary case, and up to twenty at the
+/// start of a prayer while the model is still loading — hands it over when the
+/// last batch has come back, and gives whatever came out to [followHeard]. That
+/// is the whole of it, and the shortness is the point: everything that could go
+/// wrong here goes wrong as silence.
 ///
 /// Contract 2 — nothing appears in front of someone praying — is kept by there
 /// being no path out of this class onto the screen. It cannot raise a dialog,
@@ -45,7 +47,7 @@ String carry(String previous, ({String text, bool ended}) said) =>
     said.ended ? said.text.trim() : previous;
 
 class PrayerVoice {
-  PrayerVoice._(this._cursor, this._set, this._recogniser, this._mic, this.trail);
+  PrayerVoice._(this._cursor, this._set, this._mic, this.trail);
 
   /// The last words the recogniser was sure enough about to move the prayer
   /// on, and nothing else.
@@ -60,16 +62,34 @@ class PrayerVoice {
 
   /// What happened, for reading afterwards. A prayer cannot be watched.
   final PrayerTrail trail;
-  final Recogniser _recogniser;
   final AudioRecorder _mic;
+
+  /// Null until the model has finished loading, because the microphone is opened
+  /// first — see [start]. Nullable and mutable, so Dart will not promote it: bind
+  /// a local before using it.
+  Recogniser? _recogniser;
 
   StreamSubscription<Uint8List>? _stream;
 
   /// Recitation the recogniser has not been handed yet, because it is still
-  /// working on what came before. Nothing here may be dropped: a transducer
-  /// that misses a second of speech misses the words in it for good.
+  /// working on what came before — or because it does not exist yet, which is the
+  /// whole of what [start]'s reorder buys. Nothing here may be dropped: a
+  /// transducer that misses a second of speech misses the words in it for good.
   final _waiting = <double>[];
   var _handing = false;
+
+  /// Whether [stop] has already run. It is called from the prayer screen's way
+  /// out AND from [start]'s own handler, and `matched.dispose()` throws the
+  /// second time.
+  var _stopped = false;
+
+  /// [heardChunk]'s worth of samples: the batch size everything on this path was
+  /// measured at, and the size the catch-up drain hands over in.
+  ///
+  /// Derived, not a new number to tune. ADR 0009 and [heardChunk]'s own doc both
+  /// say 300 ms, "the way the app feeds it", and all five graded fixtures are
+  /// 300 ms batches. Nothing in the suite covers a twenty-second one.
+  static final _slice = heardChunk.inMilliseconds * heardSampleRate ~/ 1000;
 
   /// Until when the reader's own hand has the prayer.
   ///
@@ -84,6 +104,18 @@ class PrayerVoice {
   /// kept away from the recogniser; afterwards it is fed everything, because
   /// a pause between ayas is part of the recitation and cutting it out would
   /// hand the recogniser a reader who never breathes.
+  ///
+  /// There is more of that lead-in quiet than there used to be: the microphone
+  /// now opens before the model loads, so the first thing the recogniser is
+  /// handed is a catch-up buffer that begins several seconds before the reader
+  /// did. That is why the drain hands it over in [_slice]-sized batches rather
+  /// than as one window — a single batch computes ONE peak, so one loud sample
+  /// would walk twenty seconds of room straight through this gate. Sliced, the
+  /// gate refuses the silent batches one at a time, which is what it was
+  /// measured doing.
+  ///
+  /// It is latched on purpose and must stay latched. See [heardQuiet] for why
+  /// re-arming it at an endpoint drops recitation.
   var _speaking = false;
 
   /// What the recogniser last said, so an unchanged answer is not re-judged.
@@ -114,48 +146,73 @@ class PrayerVoice {
   /// microphone, an isolate that would not start. Voice-follow is on exactly
   /// when the reader has granted the microphone and downloaded the model, both
   /// of which happen in Settings, long before anyone is praying.
+  ///
+  /// THE MICROPHONE OPENS BEFORE THE MODEL LOADS, and that ordering is the fix
+  /// for the second walk finding: it took 4.5 s to reach first audio, so the
+  /// opening of the recitation was never captured at all — the cursor sat on
+  /// word 0 until 18.1s and then jumped to word 7. [Recogniser.open] spawns an
+  /// isolate and loads 72.7 MB of int8 with a twenty-second timeout of its own,
+  /// and `_waiting`'s promise that nothing is dropped can only begin when the
+  /// stream does.
   static Future<PrayerVoice?> start(
     Database db,
     PrayerCursor cursor,
     List<String> words, {
     PrayerTrail? trail,
   }) async {
-    Recogniser? recogniser;
+    PrayerVoice? voice;
     AudioRecorder? mic;
-    // How long the reader waited before the microphone was even open. Nothing
-    // said in here is recorded — the mic is started below, after the model has
-    // loaded — so this is exactly the opening of the recitation that is lost,
-    // and the trail could not say how long it was.
+    // How long the reader waited, for both halves of it. The microphone is
+    // opened first now, so `microphone listening` comes before `recogniser
+    // loaded` and the gap between them is exactly the audio the catch-up buffer
+    // is holding.
     final log = trail ?? PrayerTrail.none();
     final asked = DateTime.now();
     String since() =>
         '${DateTime.now().difference(asked).inMilliseconds}ms after the prayer opened';
-    // Nothing is allocated before the recogniser, and nothing past it returns:
-    // an exit from there on throws, so the one handler that knows what is open
-    // is the one that closes it.
+    // NOTHING PAST THE MICROPHONE RETURNS. [Recogniser.open] answers null rather
+    // than throwing, and a `return null` from below here would walk out leaving
+    // a live stream appending into `_waiting` for the length of the prayer while
+    // the screen says IN PRAYER — boxed doubles at 16 kHz, so a ten-minute
+    // prayer is a couple of hundred megabytes and an OS kill mid-sujūd. So every
+    // exit from here on throws, and the handler below is the one thing that
+    // knows what is open.
     try {
       if (await micPermission(db) != MicPermission.granted) return null;
       final model = await VoiceModel.beside(await getDatabasesPath());
       if (!model.ready) return null;
-      recogniser = await Recogniser.open(model);
-      if (recogniser == null) return null;
-      log.note('recogniser', 'loaded, ${since()}');
       mic = AudioRecorder();
       // Asked without a prompt. The reader already answered in Settings, and
       // a device that has since had the permission taken away answers false
       // here rather than raising anything over the prayer. Thrown rather than
-      // returned: the recogniser above is open by now, and only the handler
-      // below knows to close it.
+      // returned: see above.
       if (!await mic.hasPermission(request: false)) {
         throw StateError('the microphone was taken away since Settings');
       }
-      final voice = PrayerVoice._(cursor, Recitation(words), recogniser, mic, log);
+      voice = PrayerVoice._(cursor, Recitation(words), mic, log);
       await voice._listen();
       log.note('microphone', 'listening, ${since()}');
+      final recogniser = await Recogniser.open(model);
+      if (recogniser == null) {
+        // Files of the right names and the wrong bytes — a download the phone
+        // truncated. Thrown rather than returned, because the stream above is
+        // live by now.
+        throw StateError('the model is on the phone and would not load');
+      }
+      log.note('recogniser', 'loaded, ${since()}');
+      voice._recogniser = recogniser;
+      // Explicitly, or the catch-up buffer sits there until the microphone's
+      // next chunk happens to call `_handOver` for us.
+      unawaited(voice._handOver());
       return voice;
     } on Object {
-      recogniser?.close();
-      await mic?.dispose();
+      // Once the voice exists it owns the stream, and only [stop] knows how to
+      // put all of it back. It is total and idempotent for exactly this reason.
+      if (voice != null) {
+        await voice.stop();
+      } else {
+        await mic?.dispose();
+      }
       return null;
     }
   }
@@ -187,13 +244,28 @@ class PrayerVoice {
   /// being dropped. Under load the batches grow instead of the audio thinning,
   /// so the answer is late rather than wrong — and a phone that cannot keep up
   /// leaves the reader the tap, which is what they had before any of this.
+  ///
+  /// IN [_slice]-SIZED BATCHES, never in one. At the start of a prayer this is
+  /// draining up to twenty seconds of catch-up audio, and handing that over as a
+  /// single batch would be wrong four ways: it can exceed `hear`'s own ten-second
+  /// timeout, which nulls `_pending` while the isolate is still working and leaves
+  /// every answer after it — `ended` included — permanently one batch out of step;
+  /// an endpoint is then certain on the first answer, so the carried utterance is
+  /// set from a window that is mostly empty room; one peak over twenty seconds
+  /// walks the room through the level gate on a single loud sample; and it
+  /// abandons the 300 ms regime every fixture and every measurement is in.
   Future<void> _handOver() async {
-    if (_handing || _waiting.isEmpty) return;
+    // Dart will not promote a nullable mutable field, and the recogniser may not
+    // exist yet: until it does, the audio waits. `start` calls this itself once
+    // the model is up.
+    final recogniser = _recogniser;
+    if (_handing || recogniser == null || _waiting.isEmpty) return;
     _handing = true;
     try {
       while (_waiting.isNotEmpty) {
-        final samples = Float32List.fromList(_waiting);
-        _waiting.clear();
+        final take = _waiting.length < _slice ? _waiting.length : _slice;
+        final samples = Float32List.fromList(_waiting.sublist(0, take));
+        _waiting.removeRange(0, take);
         // A recogniser handed silence answers anyway, with a phrase the
         // matcher then has to refuse. The prayer screen opens before the
         // reader begins, so the quiet before the first word is exactly what
@@ -211,7 +283,7 @@ class PrayerVoice {
           trail.note('voice', 'the reader began, at ${peak.toStringAsFixed(2)}');
         }
         _speaking = true;
-        final said = await _recogniser.hear(samples);
+        final said = await recogniser.hear(samples);
         // What the reciter has said, as far as this side is concerned: the
         // phrase before this one and the one now being spoken.
         final heard = '$_carried ${said.text}'.trim();
@@ -293,17 +365,38 @@ class PrayerVoice {
         '— said twice';
   }
 
+  /// Ends the listening. It cannot fail, and it cannot be run twice.
+  ///
+  /// Both of those are load-bearing now that [start]'s own handler calls this:
+  /// `matched.dispose()` throws the second time, and `start` is reached from the
+  /// prayer screen's `initState` through an `unawaited` with no `try` around it,
+  /// so anything escaping here is an uncaught async error raised over somebody
+  /// praying. Every line below is a platform, isolate or stream call on the way
+  /// out of a prayer and not one of them is worth failing over.
+  ///
+  /// It blocks for up to two seconds: `close` asks the isolate to unwind rather
+  /// than killing it, because killing reclaims the Dart heap and not the weights
+  /// onnxruntime malloc'd.
   Future<void> stop() async {
-    matched.dispose();
-    await _stream?.cancel();
+    if (_stopped) return;
+    _stopped = true;
+    final stream = _stream;
     _stream = null;
+    final recogniser = _recogniser;
+    _recogniser = null;
     _waiting.clear();
-    _recogniser.close();
-    try {
-      await _mic.stop();
-    } on Object {
-      // Leaving the prayer is not a moment to fail in either.
+    Future<void> attempt(Future<void> Function() step) async {
+      try {
+        await step();
+      } on Object {
+        // Leaving the prayer is not a moment to fail in either.
+      }
     }
-    await _mic.dispose();
+
+    await attempt(() async => matched.dispose());
+    await attempt(() async => stream?.cancel());
+    await attempt(() async => recogniser?.close());
+    await attempt(_mic.stop);
+    await attempt(_mic.dispose);
   }
 }
