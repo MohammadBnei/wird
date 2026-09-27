@@ -3,5 +3,21 @@
   "inThisAya": "DANS CE VERSET",
   "markSetUnderstood": "Marquer comme compris",
   "nextSet": "Passage suivant",
-  "notDownloaded": "Non téléchargé"
+  "notDownloaded": "Non téléchargé",
+  "report_title": "Signaler quelque chose",
+  "report_one_way": "Cela part dans un seul sens. Le message parvient à ceux qui font tourner Wird, et rien ne revient — il n'y a pas de boîte de réception à consulter ici.",
+  "report_kind_heading": "QUEL TYPE",
+  "report_kind_bug": "Bogue",
+  "report_kind_request": "Demande",
+  "report_kind_improvement": "Amélioration",
+  "report_words_heading": "DANS VOS PROPRES MOTS",
+  "report_words_hint": "Ce qui s'est passé, ou ce qui manque.",
+  "report_chars_left": "{remaining} caractères restants sur {max}. Le serveur ne va pas au-delà.",
+  "report_context_heading": "ENVOYÉ AVEC",
+  "report_context_only": "Recueilli pour que vous n'ayez pas à le saisir. Rien d'autre ne part : ni ce que vous lisiez, ni ce que vous avez gardé, ni votre progression.",
+  "report_context_loading": "Lecture de cette version…",
+  "report_send": "Envoyer",
+  "report_queued_heading": "EN ATTENTE",
+  "report_queued_body": "C'est noté sur ce téléphone et partira à la prochaine synchronisation, même si vous êtes hors ligne.",
+  "report_write_another": "En écrire un autre"
 }
