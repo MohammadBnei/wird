@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/theme/nocturne.dart';
@@ -30,6 +31,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: PrayerScreen(
           db: db,
           set: await alAsr(db),

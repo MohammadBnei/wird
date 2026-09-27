@@ -8,5 +8,12 @@
   "inThisAya": "DANS CE VERSET",
   "markSetUnderstood": "Marquer comme compris",
   "nextSet": "Passage suivant",
-  "notDownloaded": "Non téléchargé"
+  "notDownloaded": "Non téléchargé",
+  "prayer_in_prayer": "EN PRIÈRE",
+  "prayer_following_your_voice": "SUIT VOTRE VOIX",
+  "prayer_exit": "Quitter",
+  "prayer_back_an_aya": "Revenir au verset précédent",
+  "prayer_on_to_the_next_aya": "Aller au verset suivant",
+  "prayer_foot_taps_only": "Écran maintenu allumé · touchez pour avancer · le bord gauche revient en arrière",
+  "prayer_foot_following": "Écran maintenu allumé · touchez à tout moment · le bord gauche revient en arrière"
 }

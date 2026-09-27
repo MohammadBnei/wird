@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../data/sets.dart';
 import '../study/word_row.dart';
 import '../../theme/nocturne.dart';
@@ -358,7 +359,9 @@ class _PrayerScreenState extends State<PrayerScreen> {
             // while something is: a screen that claims to hear the reader
             // when it does not is worse than a plain one.
             Text(
-              _voice == null ? 'IN PRAYER' : 'FOLLOWING YOUR VOICE',
+              _voice == null
+                  ? AppLocalizations.of(context)!.prayer_in_prayer
+                  : AppLocalizations.of(context)!.prayer_following_your_voice,
               style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 0.13 * 10,
@@ -371,7 +374,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
           variant: NocturneButtonVariant.ghost,
           onPressed: () => Navigator.of(context).maybePop(),
           child: Text(
-            'Exit',
+            AppLocalizations.of(context)!.prayer_exit,
             style: TextStyle(fontSize: 12, color: n.textAt(0.6)),
           ),
         ),
@@ -490,13 +493,17 @@ class _PrayerScreenState extends State<PrayerScreen> {
           child: Row(
             children: [
               Expanded(
-                child: _zone(PrayerScreen.backZone, 'Back an aya', _backAnAya),
+                child: _zone(
+                  PrayerScreen.backZone,
+                  AppLocalizations.of(context)!.prayer_back_an_aya,
+                  _backAnAya,
+                ),
               ),
               Expanded(
                 flex: 2,
                 child: _zone(
                   PrayerScreen.nextZone,
-                  'On to the next aya',
+                  AppLocalizations.of(context)!.prayer_on_to_the_next_aya,
                   _onToTheNextAya,
                 ),
               ),
@@ -630,8 +637,8 @@ class _PrayerScreenState extends State<PrayerScreen> {
           SizedBox(height: n.space('4')),
           Text(
             _voice == null
-                ? 'Screen stays awake · tap to go on · left edge steps back'
-                : 'Screen stays awake · tap any time · left edge steps back',
+                ? AppLocalizations.of(context)!.prayer_foot_taps_only
+                : AppLocalizations.of(context)!.prayer_foot_following,
             style: TextStyle(fontSize: 10.5, color: n.textAt(0.58)),
           ),
         ],

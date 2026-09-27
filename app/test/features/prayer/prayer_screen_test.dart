@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/data/sets.dart';
@@ -39,6 +40,10 @@ Future<void> pumpPrayer(
   await tester.pumpWidget(
     MaterialApp(
       theme: nocturneTheme(),
+      // The delegates the app has, so the prayer can read its strings the way
+      // it will in the app rather than throwing on a null AppLocalizations.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
