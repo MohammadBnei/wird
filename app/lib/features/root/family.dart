@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/root_repo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../deepdive/constellation.dart';
 import 'root_dial.dart';
@@ -55,7 +56,7 @@ class AyaRef extends StatelessWidget {
     final n = Nocturne.of(context);
     return Semantics(
       button: true,
-      label: 'Open ${ayahRef(ayahId)}',
+      label: AppLocalizations.of(context)!.root_openAya(ayahRef(ayahId)),
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -100,6 +101,7 @@ class KinSpine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.only(left: 26),
       child: Stack(
@@ -118,7 +120,7 @@ class KinSpine extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (var i = 0; i < derivatives.length; i++)
-                _row(n, derivatives[i], i),
+                _row(n, l, derivatives[i], i),
             ],
           ),
         ],
@@ -126,7 +128,7 @@ class KinSpine extends StatelessWidget {
     );
   }
 
-  Widget _row(Nocturne n, Derivative derivative, int i) {
+  Widget _row(Nocturne n, AppLocalizations l, Derivative derivative, int i) {
     final lit = i == selected;
     return Padding(
       padding: EdgeInsets.only(bottom: i == derivatives.length - 1 ? 0 : 14),
@@ -183,7 +185,7 @@ class KinSpine extends StatelessWidget {
                       // reference still opens where it says it does.
                       if (here != null && derivative == here)
                         Text(
-                          'THIS AYA',
+                          l.root_thisAya,
                           style: TextStyle(
                             fontSize: 9.5,
                             letterSpacing: 0.1 * 9.5,
@@ -197,8 +199,8 @@ class KinSpine extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       derivative.note == null
-                          ? derivativeWeight(derivative)
-                          : '${derivativeWeight(derivative)} · '
+                          ? derivativeWeight(l, derivative)
+                          : '${derivativeWeight(l, derivative)} · '
                               '${derivative.note}',
                       style: TextStyle(
                         fontSize: 12,
@@ -249,9 +251,14 @@ class KinSpine extends StatelessWidget {
 /// under every row of the spine. Thirty of ṣ-b-r's thirty-eight rows wrote the
 /// same one, and the two facts that differ were the two words buried inside
 /// it. A list where every row reads the same is a list nobody reads.
-String derivativeWeight(Derivative derivative) => derivative.form == null
+///
+/// [l] rather than a context: the row this is drawn on is built from a
+/// [Nocturne] the caller has already read off its own context, and one of the
+/// two shapes is a count and a multiplication sign with no words in it at all.
+String derivativeWeight(AppLocalizations l, Derivative derivative) =>
+    derivative.form == null
     ? '${derivative.occurrences}×'
-    : 'Form ${derivative.form} · ${derivative.occurrences}×';
+    : l.root_weightWithForm(derivative.form!, derivative.occurrences);
 
 /// A root's family drawn for the space it is given: the design's
 /// constellation where that fits, and the ring with the spine under it where

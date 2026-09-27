@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/root_repo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
@@ -47,6 +48,11 @@ class _RootScreenState extends State<RootScreen> {
   /// also the only thing stopping that.
   bool _busy = false;
   int _index = 0;
+
+  /// The strings this screen draws. A getter rather than a local threaded
+  /// through every builder: the card, the kicker and the headings are four
+  /// methods deep and none of them takes a context of its own.
+  AppLocalizations get _l => AppLocalizations.of(context)!;
 
   @override
   void initState() {
@@ -99,7 +105,7 @@ class _RootScreenState extends State<RootScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   RootChrome(
-                    kicker: spine ? 'Root spine' : 'Root',
+                    kicker: spine ? _l.root_kickerSpine : _l.root_kicker,
                     kept: _keptId != null,
                     onKeep: _busy ? null : _toggleKeep,
                   ),
@@ -119,7 +125,7 @@ class _RootScreenState extends State<RootScreen> {
     child: Padding(
       padding: EdgeInsets.all(n.space('8')),
       child: Text(
-        'The corpus carries no root spelled ${widget.letters}.',
+        _l.root_unknownRoot(widget.letters),
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.headlineSmall,
       ),
@@ -154,10 +160,11 @@ class _RootScreenState extends State<RootScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionHeading(
-                "Its kin in the Qur'an",
-                trailing:
-                    '${reading.derivatives.length} forms · '
-                    '${reading.occurrences} occurrences',
+                _l.root_kinHeading,
+                trailing: _l.root_kinFormsAndOccurrences(
+                  reading.derivatives.length,
+                  reading.occurrences,
+                ),
               ),
               SizedBox(height: n.space('4')),
               KinSpine(
@@ -241,8 +248,11 @@ class _RootScreenState extends State<RootScreen> {
             ),
             Text(
               selected.form == null
-                  ? '${selected.occurrences}× IN THE QUR’AN'
-                  : 'FORM ${selected.form} · ${selected.occurrences}×',
+                  ? _l.root_cardWeight(selected.occurrences)
+                  : _l.root_cardWeightWithForm(
+                      selected.form!,
+                      selected.occurrences,
+                    ),
               style: TextStyle(
                 fontSize: 10,
                 height: 1.2,
@@ -270,7 +280,7 @@ class _RootScreenState extends State<RootScreen> {
                   // is already reachable from the word that led here.
                   child: NocturneButton(
                     onPressed: () => openAya(context, selected.ayahId),
-                    child: const Text('Read the aya'),
+                    child: Text(_l.root_readTheAya),
                   ),
                 ),
                 Expanded(
@@ -278,7 +288,9 @@ class _RootScreenState extends State<RootScreen> {
                     variant: NocturneButtonVariant.primary,
                     onPressed: _busy ? null : _toggleKeep,
                     child: Text(
-                      _keptId == null ? 'Keep this root' : 'Kept · tap to undo',
+                      _keptId == null
+                          ? _l.root_keepThisRoot
+                          : _l.root_keptTapToUndo,
                     ),
                   ),
                 ),

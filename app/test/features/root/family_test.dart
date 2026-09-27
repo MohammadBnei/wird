@@ -10,6 +10,7 @@ import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/root/family.dart';
 import 'package:wird/features/root/root_dial.dart';
 import 'package:wird/features/root/root_screen.dart';
+import 'package:wird/l10n/app_localizations.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -181,12 +182,14 @@ void main() {
     expect(find.textContaining('in the Qur’an.'), findsNothing);
 
     final first = spine.first;
+    // Off the mounted spine, so the line is read the way the row reads it.
+    final l = AppLocalizations.of(tester.element(find.byType(KinSpine)))!;
     expect(
-      derivativeWeight(first),
+      derivativeWeight(l, first),
       'Form ${first.form} · ${first.occurrences}×',
       reason: 'the two facts that differ are the whole line',
     );
-    expect(find.text(derivativeWeight(first)), findsWidgets);
+    expect(find.text(derivativeWeight(l, first)), findsWidgets);
   });
 
   test('the panel under the aya and the drawing beside it are built by '

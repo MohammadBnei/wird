@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/root_repo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 
@@ -96,6 +97,7 @@ class _RootDialState extends State<RootDial> {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
     final reading = widget.reading;
     final labels = [
       for (final derivative in reading.derivatives) _measure(derivative.text),
@@ -142,19 +144,19 @@ class _RootDialState extends State<RootDial> {
               children: [
                 _round(
                   n,
-                  'Previous',
+                  l.root_previousForm,
                   Icons.chevron_left,
                   () => _step(-1),
                 ),
                 Text(
-                  '${widget.index + 1} of $_count · swipe the ring',
+                  l.root_dialPosition(widget.index + 1, _count),
                   style: TextStyle(
                     fontSize: 10.5,
                     letterSpacing: 0.06 * 10.5,
                     color: n.textAt(0.55),
                   ),
                 ),
-                _round(n, 'Next', Icons.chevron_right, () => _step(1)),
+                _round(n, l.root_nextForm, Icons.chevron_right, () => _step(1)),
               ],
             ),
           ),

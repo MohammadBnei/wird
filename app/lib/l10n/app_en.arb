@@ -146,7 +146,7 @@
   },
   "nextSet": "Next set",
   "@nextSet": {
-    "description": "Two places on the reading screen, and the same words in both: what the mark button says once every aya of the set is understood, and the down arrow in the footer that steps to the set after this one."
+    "description": "What the same button says once every aya of the set is understood."
   },
   "notDownloaded": "Not downloaded",
   "@notDownloaded": {
@@ -674,5 +674,297 @@
   "study_visiting": "Visiting",
   "@study_visiting": {
     "description": "Reading screen, the kicker before the set's title: the reader asked for this aya rather than being handed it by the walk."
+  },
+  "root_openAya": "Open {ref}",
+  "@root_openAya": {
+    "description": "Screen-reader label on an aya reference in a root's family — the panel under screen 1a's aya, screen 3a's spine and screen 1c's constellation all draw it.",
+    "placeholders": {
+      "ref": {
+        "type": "String",
+        "example": "2:153"
+      }
+    }
+  },
+  "root_thisAya": "THIS AYA",
+  "@root_thisAya": {
+    "description": "Mark on the one row of a root's spine whose form the aya on screen in front of the reader spells."
+  },
+  "root_weightWithForm": "Form {form} · {occurrences}×",
+  "@root_weightWithForm": {
+    "description": "The second line of every row of a root's spine: which shape the form is and how often it is read.",
+    "placeholders": {
+      "form": {
+        "type": "String",
+        "example": "I"
+      },
+      "occurrences": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_previousForm": "Previous",
+  "@root_previousForm": {
+    "description": "Screen-reader label on the left chevron under the root dial on screens 3a and 1c, which turns the ring back one form."
+  },
+  "root_nextForm": "Next",
+  "@root_nextForm": {
+    "description": "Screen-reader label on the right chevron under the root dial on screens 3a and 1c, which turns the ring on one form."
+  },
+  "root_dialPosition": "{index} of {count} · swipe the ring",
+  "@root_dialPosition": {
+    "description": "The line between the two chevrons under the root dial: where on the ring the reader stands, and the gesture that moves it.",
+    "placeholders": {
+      "index": {
+        "type": "int",
+        "example": "3"
+      },
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "root_kicker": "Root",
+  "@root_kicker": {
+    "description": "The kicker across the top of screen 3a, the root read on its dial."
+  },
+  "root_kickerSpine": "Root spine",
+  "@root_kickerSpine": {
+    "description": "The kicker across the top of screen 2b, the same root read as a spine with the dial taken away."
+  },
+  "root_unknownRoot": "The corpus carries no root spelled {letters}.",
+  "@root_unknownRoot": {
+    "description": "Drawn in the middle of screens 3a and 2b when the letters asked for name no root in the bundled corpus.",
+    "placeholders": {
+      "letters": {
+        "type": "String",
+        "example": "عقل"
+      }
+    }
+  },
+  "root_kinHeading": "Its kin in the Qur'an",
+  "@root_kinHeading": {
+    "description": "Heading over the spine of derivatives on screens 3a and 2b."
+  },
+  "root_kinFormsAndOccurrences": "{forms} forms · {occurrences} occurrences",
+  "@root_kinFormsAndOccurrences": {
+    "description": "Beside the kin heading on screen 3a: how many forms the root has and how often they are read in all.",
+    "placeholders": {
+      "forms": {
+        "type": "int",
+        "example": "5"
+      },
+      "occurrences": {
+        "type": "int",
+        "example": "49"
+      }
+    }
+  },
+  "root_formCount": "{forms} forms",
+  "@root_formCount": {
+    "description": "Beside the kin heading on screen 2b, which gives the count of forms and not the occurrences.",
+    "placeholders": {
+      "forms": {
+        "type": "int",
+        "example": "38"
+      }
+    }
+  },
+  "root_cardWeight": "{occurrences}× IN THE QUR’AN",
+  "@root_cardWeight": {
+    "description": "The kicker inside screen 3a's detail card for a form the corpus assigns no shape to.",
+    "placeholders": {
+      "occurrences": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_cardWeightWithForm": "FORM {form} · {occurrences}×",
+  "@root_cardWeightWithForm": {
+    "description": "The kicker inside screen 3a's detail card: the shape of the form on the dial and how often it is read.",
+    "placeholders": {
+      "form": {
+        "type": "String",
+        "example": "I"
+      },
+      "occurrences": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_readTheAya": "Read the aya",
+  "@root_readTheAya": {
+    "description": "The left button in screen 3a's detail card, which answers the reading screen with the aya the form is first met in."
+  },
+  "root_keepThisRoot": "Keep this root",
+  "@root_keepThisRoot": {
+    "description": "The right button in screen 3a's detail card while the root is not on the kept list."
+  },
+  "root_keptTapToUndo": "Kept · tap to undo",
+  "@root_keptTapToUndo": {
+    "description": "What that same button in screen 3a's detail card says once the root is kept."
+  },
+  "root_back": "Back",
+  "@root_back": {
+    "description": "Screen-reader label on the chevron at the top left of screens 3a and 2b."
+  },
+  "root_keep": "Keep",
+  "@root_keep": {
+    "description": "Screen-reader label on the bookmark at the top right of screens 3a and 2b while the root is not kept."
+  },
+  "root_keptTapToUndoLabel": "Kept, tap to undo",
+  "@root_keptTapToUndoLabel": {
+    "description": "Screen-reader label on that same bookmark once the root is kept; it presses the same handler, so it says the press undoes."
+  },
+  "root_coreSense": "Core sense",
+  "@root_coreSense": {
+    "description": "Heading over the sentence saying what a root means, on screens 3a, 2b, 1a's root panel and 1c."
+  },
+  "root_senseRefused": "Wird writes a root's sense only where that root's own words in the Qur'an bear it out. These do not, so nothing is claimed here.",
+  "@root_senseRefused": {
+    "description": "Drawn under the core sense heading for the two roots in three that ship no sense, so the absence reads as a refusal to claim and not as a missing section."
+  },
+  "root_senseByApp": "This app's own reading{borne}",
+  "@root_senseByApp": {
+    "description": "Under the core sense on screens 3a, 2b and 1c: whose reading the sentence above is, where it is the app's own. Ends in root_senseBorne, or in nothing.",
+    "placeholders": {
+      "borne": {
+        "type": "String",
+        "example": ", borne out by 11 of the root's own words"
+      }
+    }
+  },
+  "root_senseBySource": "{source}'s reading{borne}",
+  "@root_senseBySource": {
+    "description": "The same line where the sense does come from a named work. Ends in root_senseBorne, or in nothing.",
+    "placeholders": {
+      "source": {
+        "type": "String",
+        "example": "Al-Rāzī"
+      },
+      "borne": {
+        "type": "String",
+        "example": ", borne out by 11 of the root's own words"
+      }
+    }
+  },
+  "root_senseBorne": ", borne out by {words} of the root's own words",
+  "@root_senseBorne": {
+    "description": "The tail of that same line, naming how many of the root's own words the sense was read from. Tapping the line raises them.",
+    "placeholders": {
+      "words": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_whoseReading": "Whose reading this is",
+  "@root_whoseReading": {
+    "description": "Heading in the sheet of evidence behind a core sense, over the paragraph saying why the sense is kept."
+  },
+  "root_wordsReadFrom": "The words it was read from",
+  "@root_wordsReadFrom": {
+    "description": "Heading in that same sheet, over the root's own words the sense rests on."
+  },
+  "root_wordCount": "{words} words",
+  "@root_wordCount": {
+    "description": "Beside that heading in the sheet of evidence: how many words the sense was read from.",
+    "placeholders": {
+      "words": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_formTag": "FORM {form}",
+  "@root_formTag": {
+    "description": "Under a word's gloss in the sheet of evidence, giving the shape that word is in.",
+    "placeholders": {
+      "form": {
+        "type": "String",
+        "example": "I"
+      }
+    }
+  },
+  "root_tafsir": "Tafsir",
+  "@root_tafsir": {
+    "description": "Heading over the tafsir section where it is drawn with no aya named."
+  },
+  "root_tafsirAt": "Tafsir · {ref}",
+  "@root_tafsirAt": {
+    "description": "Heading over the tafsir section on screens 3a and 1c, naming the aya the commentary would be fetched for.",
+    "placeholders": {
+      "ref": {
+        "type": "String",
+        "example": "2:153"
+      }
+    }
+  },
+  "root_tafsirPending": "Tafsir is fetched per aya. Nothing is downloaded yet, so nothing is attributed here.",
+  "@root_tafsirPending": {
+    "description": "Under the tafsir heading and the works it will quote, saying plainly that it quotes none of them on this build."
+  },
+  "root_irab": "Iʿrāb",
+  "@root_irab": {
+    "description": "Heading over the parsing of one word on screens 3a, 2b and 1c."
+  },
+  "root_irabAsReadAt": "as read at {where}",
+  "@root_irabAsReadAt": {
+    "description": "Beside the iʿrāb heading, naming the one occurrence being parsed — case and mood are the verse's, not the form's.",
+    "placeholders": {
+      "where": {
+        "type": "String",
+        "example": "2:153"
+      }
+    }
+  },
+  "root_noParsing": "The corpus carries no parsing for this word.",
+  "@root_noParsing": {
+    "description": "Drawn under the iʿrāb heading where the corpus has no segments for the word, rather than leaving a gap that reads as an oversight."
+  },
+  "root_irabProvenance": "Provenance: {work}; the role names are written for Wird",
+  "@root_irabProvenance": {
+    "description": "The last line of the iʿrāb section on screens 3a, 2b and 1c. {work} is the upstream corpus named and linked verbatim, which is what its licence asks for; the sentence around it is Wird's own.",
+    "placeholders": {
+      "work": {
+        "type": "String",
+        "example": "Quranic Arabic Corpus 0.4, corpus.quran.com"
+      }
+    }
+  },
+  "root_spineWeight": "{translit} · {occurrences} in {suras} sūras",
+  "@root_spineWeight": {
+    "description": "Beside the root's letters at the top of screen 2b: how it is read aloud, how often it occurs, and across how many sūras.",
+    "placeholders": {
+      "translit": {
+        "type": "String",
+        "example": "ṣ-b-r"
+      },
+      "occurrences": {
+        "type": "int",
+        "example": "103"
+      },
+      "suras": {
+        "type": "int",
+        "example": "45"
+      }
+    }
+  },
+  "root_sourcesHeading": "Sources",
+  "@root_sourcesHeading": {
+    "description": "Heading over the provenance line at the foot of screen 2b."
+  },
+  "root_provenance": "Provenance: {sources}",
+  "@root_provenance": {
+    "description": "The provenance line under that heading. {sources} is the corpus the row itself names, carried verbatim from the data.",
+    "placeholders": {
+      "sources": {
+        "type": "String",
+        "example": "Quranic Arabic Corpus 0.4"
+      }
+    }
   }
 }

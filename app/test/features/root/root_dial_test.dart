@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/root/root_dial.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
@@ -29,6 +30,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // The dial reads its two chevron labels and its position line, and
+        // without the delegates `AppLocalizations.of` is null and it throws.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: StatefulBuilder(
             builder: (context, setState) => RootDial(
