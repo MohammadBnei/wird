@@ -95,6 +95,84 @@ abstract class AppLocalizations {
     Locale('fr')
   ];
 
+  /// The deep dive's aya pane kicker, drawn uppercased over the printed aya — the head of the screen in the three-pane layout. The surah name comes from the corpus and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'{surah} · aya {number}'**
+  String deepdive_aya_kicker(String surah, int number);
+
+  /// Screen-reader label on the deep dive's back arrow, at the head of its first column.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get deepdive_back;
+
+  /// Caption under a constellation node when the corpus glossed no occurrence of that form, so only its morphological form number is known. Shown inside the drawn constellation.
+  ///
+  /// In en, this message translates to:
+  /// **'form {form}'**
+  String deepdive_form(String form);
+
+  /// The deep dive's one action button, before the aya has been kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this aya'**
+  String get deepdive_keep;
+
+  /// What the same deep dive button says once the aya is kept: it stays live and carries its own undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept · tap to undo'**
+  String get deepdive_kept;
+
+  /// The kicker beside the back arrow at the top of the deep dive when its three panes are stacked into one column. {ref} is a surah:aya reference.
+  ///
+  /// In en, this message translates to:
+  /// **'DEEP DIVE · {ref}'**
+  String deepdive_kicker(String ref);
+
+  /// Beside the root's Arabic spelling in the deep dive's centre pane: how the root is transliterated and how many times it occurs in the Qur'an.
+  ///
+  /// In en, this message translates to:
+  /// **'{translit} · {count} occurrences'**
+  String deepdive_occurrences(String translit, int count);
+
+  /// Heading over the root's spelling in the deep dive's centre pane, above the constellation or the list of its family.
+  ///
+  /// In en, this message translates to:
+  /// **'ROOT CONSTELLATION'**
+  String get deepdive_root_heading;
+
+  /// Screen-reader label on one node of the drawn constellation, which behaves as a button opening the aya it names. The nodes are painted onto a canvas, so this label is the whole screen-reader surface of the drawing.
+  ///
+  /// In en, this message translates to:
+  /// **'{form} · open {ref}'**
+  String deepdive_star(String form, String ref);
+
+  /// Caption under the one constellation node that marks the form the reader has open, drawn inside the constellation.
+  ///
+  /// In en, this message translates to:
+  /// **'THIS AYA · {ref}'**
+  String deepdive_this_aya(String ref);
+
+  /// Shown in place of the whole deep dive when the corpus holds no such aya, or the aya holds no such root.
+  ///
+  /// In en, this message translates to:
+  /// **'The corpus carries no aya {ref} with a root spelled {letters}.'**
+  String deepdive_unknown(String ref, String letters);
+
+  /// The drawing, as the deep dive's segmented control names it — offered only where the centre pane is wide enough to draw it.
+  ///
+  /// In en, this message translates to:
+  /// **'Constellation'**
+  String get deepdive_view_constellation;
+
+  /// The root's family read as a list, the other option of the deep dive's segmented control.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get deepdive_view_list;
+
   /// Heading over the gloss of the selected word in the aya it was tapped in.
   ///
   /// In en, this message translates to:

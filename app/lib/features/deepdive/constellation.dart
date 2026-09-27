@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
 import '../../data/root_repo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../root/family.dart';
 
@@ -123,6 +124,10 @@ class Constellation extends StatelessWidget {
             stars: stars,
             ayahId: ayahId,
             n: Nocturne.of(context),
+            // A painter is handed its strings the same way it is handed its
+            // theme: it paints outside a build, so it cannot read either off a
+            // context of its own.
+            l10n: AppLocalizations.of(context)!,
             onOpen: (ayahId) => openAya(context, ayahId),
           ),
         ),
@@ -137,6 +142,7 @@ class _ConstellationPainter extends CustomPainter {
     required this.stars,
     required this.ayahId,
     required this.n,
+    required this.l10n,
     required this.onOpen,
   });
 
@@ -144,6 +150,7 @@ class _ConstellationPainter extends CustomPainter {
   final List<Star> stars;
   final int ayahId;
   final Nocturne n;
+  final AppLocalizations l10n;
   final ValueChanged<int> onOpen;
 
   @override
@@ -246,7 +253,7 @@ class _ConstellationPainter extends CustomPainter {
     );
     _text(
       canvas,
-      'THIS AYA · ${ayahRef(ayahId)}',
+      l10n.deepdive_this_aya(ayahRef(ayahId)),
       at: star.at.translate(0, 26),
       style: TextStyle(
         fontFamily: Nocturne.bodyFamily,
@@ -282,8 +289,10 @@ class _ConstellationPainter extends CustomPainter {
   String _caption(Derivative derivative) =>
       derivative.gloss ??
       (derivative.form == null
+          // ponytail: '×' is the multiplication sign, not a word, so it reads
+          // the same in both locales and stays in the code.
           ? '${derivative.occurrences}×'
-          : 'form ${derivative.form}');
+          : l10n.deepdive_form(derivative.form!));
 
   /// The nodes are drawn onto a canvas, where a screen reader finds nothing.
   /// Each one is published as the button it behaves as, carrying the form and
@@ -299,9 +308,10 @@ class _ConstellationPainter extends CustomPainter {
             radius: _nodeReach * fit.scale,
           ),
           properties: SemanticsProperties(
-            label:
-                '${star.derivative.text} · '
-                'open ${ayahRef(star.derivative.ayahId)}',
+            label: l10n.deepdive_star(
+              star.derivative.text,
+              ayahRef(star.derivative.ayahId),
+            ),
             button: true,
             // The label opens with the Arabic form, so it is read as Arabic.
             textDirection: TextDirection.rtl,
@@ -315,5 +325,9 @@ class _ConstellationPainter extends CustomPainter {
   bool shouldRepaint(_ConstellationPainter old) =>
       old.display != display ||
       old.ayahId != ayahId ||
+      // Every caption and every screen-reader label is drawn from this, so a
+      // reader who changes the device's language and gets no repaint keeps the
+      // old language's drawing.
+      old.l10n != l10n ||
       !listEquals(old.stars, stars);
 }
