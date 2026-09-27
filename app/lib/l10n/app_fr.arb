@@ -15,5 +15,17 @@
   "prayer_back_an_aya": "Revenir au verset précédent",
   "prayer_on_to_the_next_aya": "Aller au verset suivant",
   "prayer_foot_taps_only": "Écran maintenu allumé · touchez pour avancer · le bord gauche revient en arrière",
-  "prayer_foot_following": "Écran maintenu allumé · touchez à tout moment · le bord gauche revient en arrière"
+  "prayer_foot_following": "Écran maintenu allumé · touchez à tout moment · le bord gauche revient en arrière",
+  "progress_kicker": "COMPRIS, ET PAS SEULEMENT LU",
+  "progress_title": "Votre parcours",
+  "progress_ayas": "{understood} versets sur {total}",
+  "progress_ringSemantics": "{percent} du Coran compris, {ayas}. Juz {juz}, passage {set}.",
+  "progress_here": "JUZ {juz} · PASSAGE {set}",
+  "progress_setsUnderstood": "passages compris",
+  "progress_prayersRecorded": "prières enregistrées",
+  "progress_whereYouAre": "OÙ VOUS EN ÊTES",
+  "progress_allSuras": "Les 114",
+  "progress_rootsKnown": "LES RACINES QUE VOUS CONNAISSEZ",
+  "progress_rootsEmpty": "Les racines de chaque passage que vous comprenez sont rassemblées ici.",
+  "progress_rootsCoverage": "{roots} racines couvrent {percent} % des mots qui vous restent à lire."
 }

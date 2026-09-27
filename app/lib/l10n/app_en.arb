@@ -73,5 +73,101 @@
   "prayer_foot_following": "Screen stays awake · tap any time · left edge steps back",
   "@prayer_foot_following": {
     "description": "The same hint at the foot of the prayer screen once voice-follow is running, where a tap is a correction rather than the only way on."
+  },
+  "progress_kicker": "UNDERSTOOD, NOT MERELY READ",
+  "@progress_kicker": {
+    "description": "The kicker over the title of the passage screen (1d), saying what the screen counts."
+  },
+  "progress_title": "Your passage",
+  "@progress_title": {
+    "description": "The title of the passage screen (1d): how far through the Qur'an the reader has come."
+  },
+  "progress_ayas": "{understood} of {total} ayas",
+  "@progress_ayas": {
+    "description": "The caption inside the juz ring on the passage screen (1d), under the percentage. Both counts arrive already grouped with thousands separators.",
+    "placeholders": {
+      "understood": {
+        "type": "String",
+        "example": "1,148"
+      },
+      "total": {
+        "type": "String",
+        "example": "6,236"
+      }
+    }
+  },
+  "progress_ringSemantics": "{percent} of the Qur'an understood, {ayas}. Juz {juz}, set {set}.",
+  "@progress_ringSemantics": {
+    "description": "The screen-reader label for the juz ring on the passage screen (1d). The ring's own figures are painted, so this is the only way they are ever spoken.",
+    "placeholders": {
+      "percent": {
+        "type": "String",
+        "example": "18.4%"
+      },
+      "ayas": {
+        "type": "String",
+        "example": "1,148 of 6,236 ayas"
+      },
+      "juz": {
+        "type": "int",
+        "example": "6"
+      },
+      "set": {
+        "type": "int",
+        "example": "42"
+      }
+    }
+  },
+  "progress_here": "JUZ {juz} · SET {set}",
+  "@progress_here": {
+    "description": "The line inside the juz ring on the passage screen (1d) naming where the reader stands.",
+    "placeholders": {
+      "juz": {
+        "type": "int",
+        "example": "6"
+      },
+      "set": {
+        "type": "int",
+        "example": "42"
+      }
+    }
+  },
+  "progress_setsUnderstood": "sets understood",
+  "@progress_setsUnderstood": {
+    "description": "The label under the first count tile on the passage screen (1d)."
+  },
+  "progress_prayersRecorded": "prayers recorded",
+  "@progress_prayersRecorded": {
+    "description": "The label under the second count tile on the passage screen (1d)."
+  },
+  "progress_whereYouAre": "WHERE YOU ARE",
+  "@progress_whereYouAre": {
+    "description": "The heading over the sūra rows on the passage screen (1d)."
+  },
+  "progress_allSuras": "All 114",
+  "@progress_allSuras": {
+    "description": "The button beside that heading on the passage screen (1d); it opens the index of all 114 sūras."
+  },
+  "progress_rootsKnown": "ROOTS YOU NOW KNOW",
+  "@progress_rootsKnown": {
+    "description": "The heading on the roots card at the foot of the passage screen (1d)."
+  },
+  "progress_rootsEmpty": "The roots of every set you understand are collected here.",
+  "@progress_rootsEmpty": {
+    "description": "What the roots card on the passage screen (1d) says while the reader has understood nothing yet."
+  },
+  "progress_rootsCoverage": "{roots} roots cover {percent}% of the words ahead of you.",
+  "@progress_rootsCoverage": {
+    "description": "What the roots card on the passage screen (1d) says once there are roots: what they are worth against the text still to come. The count arrives already grouped.",
+    "placeholders": {
+      "roots": {
+        "type": "String",
+        "example": "1,204"
+      },
+      "percent": {
+        "type": "int",
+        "example": "63"
+      }
+    }
   }
 }

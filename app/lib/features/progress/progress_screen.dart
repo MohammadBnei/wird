@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
@@ -26,6 +27,10 @@ class ProgressScreen extends StatefulWidget {
 
 class _ProgressScreenState extends State<ProgressScreen> {
   Passage? _passage;
+
+  // ponytail: one getter rather than the inline lookup at each of the seven
+  // places this screen reads a string.
+  AppLocalizations get _l10n => AppLocalizations.of(context)!;
 
   @override
   void initState() {
@@ -79,7 +84,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Understood, not merely read'.toUpperCase(),
+          _l10n.progress_kicker,
           style: TextStyle(
             fontSize: 10,
             height: 1.2,
@@ -88,18 +93,26 @@ class _ProgressScreenState extends State<ProgressScreen> {
           ),
         ),
         const SizedBox(height: 5),
-        Text('Your passage', style: Theme.of(context).textTheme.displaySmall),
+        Text(
+          _l10n.progress_title,
+          style: Theme.of(context).textTheme.displaySmall,
+        ),
       ],
     ),
   );
 
   Widget _ring(Nocturne n, Passage passage) {
-    final ayas =
-        '${_grouped(passage.understood)} of ${_grouped(ayasInTheQuran)} ayas';
+    final ayas = _l10n.progress_ayas(
+      _grouped(passage.understood),
+      _grouped(ayasInTheQuran),
+    );
     return Semantics(
-      label:
-          '${_percent(passage)} of the Qur\'an understood, $ayas. '
-          'Juz ${passage.currentJuz}, set ${passage.currentSet}.',
+      label: _l10n.progress_ringSemantics(
+        _percent(passage),
+        ayas,
+        passage.currentJuz,
+        passage.currentSet,
+      ),
       child: SizedBox(
         height: 250,
         child: Center(
@@ -111,7 +124,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 juz: passage.juz,
                 percent: _percent(passage),
                 ayas: ayas,
-                here: 'JUZ ${passage.currentJuz} · SET ${passage.currentSet}',
+                here: _l10n.progress_here(
+                  passage.currentJuz,
+                  passage.currentSet,
+                ),
                 text: n.text,
                 accent: n.accent,
                 spent: n.color('neutral-800'),
@@ -130,8 +146,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
     child: Row(
       spacing: 9,
       children: [
-        _tile(n, _grouped(passage.setsUnderstood), 'sets understood'),
-        _tile(n, _grouped(passage.prayersRecorded), 'prayers recorded'),
+        _tile(
+          n,
+          _grouped(passage.setsUnderstood),
+          _l10n.progress_setsUnderstood,
+        ),
+        _tile(
+          n,
+          _grouped(passage.prayersRecorded),
+          _l10n.progress_prayersRecorded,
+        ),
       ],
     ),
   );
@@ -179,7 +203,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Where you are'.toUpperCase(),
+              _l10n.progress_whereYouAre,
               style: TextStyle(
                 fontFamily: Nocturne.headingFamily,
                 fontVariations: Nocturne.headingVariations,
@@ -192,7 +216,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
             NocturneButton(
               variant: NocturneButtonVariant.ghost,
               onPressed: _openIndex,
-              child: const Text('All 114', style: TextStyle(fontSize: 11)),
+              child: Text(
+                _l10n.progress_allSuras,
+                style: const TextStyle(fontSize: 11),
+              ),
             ),
           ],
         ),
@@ -290,7 +317,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Roots you now know'.toUpperCase(),
+            _l10n.progress_rootsKnown,
             style: TextStyle(
               fontSize: 10,
               height: 1.2,
@@ -312,9 +339,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
           const SizedBox(height: 5),
           Text(
             passage.rootsKnownCount == 0
-                ? 'The roots of every set you understand are collected here.'
-                : '${_grouped(passage.rootsKnownCount)} roots cover '
-                      '${passage.coverageAhead}% of the words ahead of you.',
+                ? _l10n.progress_rootsEmpty
+                : _l10n.progress_rootsCoverage(
+                    _grouped(passage.rootsKnownCount),
+                    passage.coverageAhead,
+                  ),
             style: TextStyle(fontSize: 11, height: 1.4, color: n.textAt(0.5)),
           ),
         ],
