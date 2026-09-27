@@ -10,16 +10,9 @@ import 'family.dart';
 // screen reading a root asks one file for the sections and the spine both.
 export 'family.dart';
 
-const _lexiconPending =
-    'The lexicon is fetched rather than bundled. Neither the fetch nor the '
-    'choice of lexicon is settled, so no work is named here and none is '
-    'quoted.';
 const _tafsirPending =
     'Tafsir is fetched per aya. Nothing is downloaded yet, so nothing is '
     'attributed here.';
-const _irabPending =
-    'The parsing of this phrase is fetched per aya, and no aya has been '
-    'downloaded yet.';
 
 /// Said where a root ships no sense, which is two roots in three. The absence
 /// is the machine declining to claim something its own evidence does not
@@ -123,10 +116,6 @@ class PendingSection extends StatelessWidget {
     );
   }
 }
-
-/// The section a fetched lexicon fills once it exists.
-Widget lexiconSection(BuildContext context, RootReading reading) =>
-    const PendingSection(heading: 'Lexicon', explanation: _lexiconPending);
 
 /// Core sense: what the root means, and whose reading that is.
 ///
@@ -364,22 +353,125 @@ Widget tafsirSection(String? ref) => PendingSection(
   explanation: _tafsirPending,
 );
 
-Widget irabSection(String? phrase) => PendingSection(
-  heading: phrase == null ? 'Iʿrāb' : 'Iʿrāb · $phrase',
-  sources: const ['The word-by-word parsing of this aya'],
-  explanation: _irabPending,
-);
+/// The parsing of one word, segment by segment, out of the bundle.
+///
+/// It names the occurrence it is showing, and that is not decoration. Case and
+/// mood are assigned by the syntax of the verse — the shipped corpus carries
+/// 12,629 genitives, 10,331 accusatives and 8,954 nominatives of the same
+/// spellings — so a parsing drawn under a root with no aya beside it silently
+/// presents one arbitrary occurrence's role as the form's own.
+///
+/// The provenance is drawn here and not by the screen around it: the tags and
+/// features are Dukes's annotation under the GPL and the role names are written
+/// for Wird, and a notice that lives on one of the two bodies that mount this
+/// section is a notice that does not reach the other reader. data/SOURCES.md
+/// records attribution that is in the data and not on the screen as a release
+/// blocker.
+///
+/// [word] is drawn in the Arabic face rather than put in the heading: the
+/// heading face is Inter, which has no Arabic and would print the word as
+/// boxes. No segment's own spelling is drawn at all — the morphology file writes
+/// those in Buckwalter, and the only Arabic the corpus has for a segment is the
+/// whole word above it.
+class IrabSection extends StatelessWidget {
+  const IrabSection({
+    super.key,
+    required this.segments,
+    required this.word,
+    required this.where,
+  });
+
+  final List<IrabSegment> segments;
+
+  /// The word as the aya spells it.
+  final String word;
+
+  /// The occurrence being parsed, the way a reference is written.
+  final String where;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Nocturne.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeading('Iʿrāb', trailing: 'as read at $where'),
+        SizedBox(height: n.space('3')),
+        Text(
+          word,
+          textDirection: TextDirection.rtl,
+          style: TextStyle(
+            fontFamily: Nocturne.arabicFamily,
+            fontSize: 21,
+            height: 1.6,
+            color: n.color('accent-200'),
+          ),
+        ),
+        SizedBox(height: n.space('2')),
+        // Unreachable while the ETL's own gate holds — it refuses a corpus with
+        // a word whose segments are not all parsed — and said rather than drawn
+        // as a gap, because an absent section reads as an oversight.
+        if (segments.isEmpty)
+          Text(
+            'The corpus carries no parsing for this word.',
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.55,
+              color: n.textAt(0.6),
+            ),
+          ),
+        for (final segment in segments) _segment(n, segment),
+        SizedBox(height: n.space('2')),
+        Text(
+          'Provenance: Quranic Arabic Corpus 0.4, corpus.quran.com; '
+          'the role names are written for Wird',
+          style: TextStyle(fontSize: 10.5, height: 1.5, color: n.textAt(0.45)),
+        ),
+      ],
+    );
+  }
+
+  Widget _segment(Nocturne n, IrabSegment segment) => Padding(
+    padding: const EdgeInsets.only(bottom: 9),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          segment.role,
+          style: TextStyle(fontSize: 12.5, height: 1.45, color: n.textAt(0.86)),
+        ),
+        if (segment.features.isNotEmpty)
+          Text(
+            segment.features.join(' · '),
+            style: TextStyle(fontSize: 10.5, height: 1.5, color: n.accent),
+          ),
+      ],
+    ),
+  );
+}
 
 /// Screen 2b's body: the same root with the dial taken away. A root with more
 /// derivatives than the ring can hold is read here instead.
-class RootSpineView extends StatelessWidget {
+class RootSpineView extends StatefulWidget {
   const RootSpineView({super.key, required this.reading});
 
   final RootReading reading;
 
   @override
+  State<RootSpineView> createState() => _RootSpineViewState();
+}
+
+class _RootSpineViewState extends State<RootSpineView> {
+  /// The form whose parsing is drawn below the spine. The dial's index is the
+  /// same idea; here the spine itself is the only control, so it starts on the
+  /// first form rather than on nothing.
+  int _index = 0;
+
+  @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final reading = widget.reading;
+    final selected = reading.derivatives[_index];
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 34),
       children: [
@@ -424,11 +516,31 @@ class RootSpineView extends StatelessWidget {
           trailing: '${reading.derivatives.length} forms',
         ),
         SizedBox(height: n.space('4')),
-        KinSpine(derivatives: reading.derivatives),
+        KinSpine(
+          derivatives: reading.derivatives,
+          selected: _index,
+          onTap: (i) => setState(() => _index = i),
+        ),
         const NocturneRule(),
+        // Screen 2b is the reading a third of the roots get — 516 of the 1,642
+        // in the corpus have more derivatives than the ring holds — and the
+        // route a reader takes to ask for the spine outright. The parsing was
+        // drawn only by the dial body, so those readers saw none of it.
+        IrabSection(
+          segments: reading.irab[selected.wordId] ?? const [],
+          word: selected.text,
+          where: ayahRef(selected.ayahId),
+        ),
+        const NocturneRule(),
+        // The lexicon section stood under this heading and is gone: Lane is
+        // ruled out twice over in docs/lane-lexicon.md, and CoreSense above
+        // answers what the placeholder stood in for. What is left under Sources
+        // is the provenance line, which is what the heading was always for.
+        //
+        // The server's own /v1/roots/{letters}/lexicon, Store.Lexicon and the
+        // lexicon_entries table are left standing on purpose: taking a route
+        // and a table out is a separate call from taking a screen section out.
         SectionHeading('Sources'),
-        SizedBox(height: n.space('3')),
-        lexiconSection(context, reading),
         SizedBox(height: n.space('3')),
         Text(
           'Provenance: ${reading.sources.join(', ')}',
@@ -440,6 +552,10 @@ class RootSpineView extends StatelessWidget {
 }
 
 /// The back-and-keep row both root screens carry.
+///
+/// ponytail: [kept] is a bool and not the kept row's id. This draws an icon and
+/// a label and has nothing to do with an id; the screen that holds the id is
+/// the one that presses [onKeep].
 class RootChrome extends StatelessWidget {
   const RootChrome({
     super.key,
@@ -450,7 +566,11 @@ class RootChrome extends StatelessWidget {
 
   final String kicker;
   final bool kept;
-  final VoidCallback onKeep;
+
+  /// Null while the screen's own keep is in flight: the bookmark and the
+  /// button in the card press the same handler, and the pair of them used to
+  /// be the way to mint two rows for one root with two taps.
+  final VoidCallback? onKeep;
 
   @override
   Widget build(BuildContext context) {
@@ -479,11 +599,14 @@ class RootChrome extends StatelessWidget {
               ),
             ),
           ),
+          // Live once kept, not latched: a filled bookmark that refuses the
+          // press is a control saying the thing cannot be undone, while the
+          // only undo in the app is a swipe on a screen nobody is shown.
           NocturneButton(
             variant: NocturneButtonVariant.icon,
-            onPressed: kept ? null : onKeep,
+            onPressed: onKeep,
             child: Semantics(
-              label: kept ? 'Kept' : 'Keep',
+              label: kept ? 'Kept, tap to undo' : 'Keep',
               child: Icon(
                 kept ? Icons.bookmark : Icons.bookmark_border,
                 size: 16,

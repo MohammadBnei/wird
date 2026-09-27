@@ -80,6 +80,26 @@ CREATE TABLE word_segments (
   start_ms        INTEGER NOT NULL,
   end_ms          INTEGER NOT NULL
 );
+-- The parsing vocabulary: one row per code the morphology file writes, named in
+-- both languages. A code per segment and a lookup, rather than two prose strings
+-- on each of 128,219 segments — which is the same words written 128,219 times,
+-- around 10 MB of them, and a both-languages rule nothing could check.
+CREATE TABLE irab_roles (
+  code    TEXT PRIMARY KEY,
+  role_en TEXT NOT NULL,
+  role_fr TEXT NOT NULL
+);
+-- One row per segment of one word, in the order the word is written. Case and
+-- mood are assigned by the syntax of the verse, so this is per occurrence and
+-- never per spelling: a screen showing it has to say which occurrence it means.
+CREATE TABLE irab (
+  word_id  INTEGER NOT NULL REFERENCES words(id),
+  position INTEGER NOT NULL,
+  code     TEXT NOT NULL REFERENCES irab_roles(code),
+  -- The segment's remaining codes, space-joined, each one a row of irab_roles.
+  features TEXT NOT NULL,
+  PRIMARY KEY (word_id, position)
+);
 CREATE TABLE corpus_meta (
   corpus_version INTEGER NOT NULL,
   built_at       TEXT NOT NULL,
@@ -192,6 +212,19 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 		}); err != nil {
 			return err
 		}
+	}
+	roles := IrabRoles()
+	if err := insert(`INSERT INTO irab_roles VALUES (?,?,?)`, len(roles), func(i int) []any {
+		r := roles[i]
+		return []any{r.Code, r.En, r.Fr}
+	}); err != nil {
+		return err
+	}
+	if err := insert(`INSERT INTO irab VALUES (?,?,?,?)`, len(c.Irab), func(i int) []any {
+		s := c.Irab[i]
+		return []any{s.WordID, s.Position, s.Code, s.Features}
+	}); err != nil {
+		return err
 	}
 	if err := insert(`INSERT INTO ayah_audio VALUES (?,?,?)`, len(c.Audio), func(i int) []any {
 		a := c.Audio[i]

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:wird/data/kept_repo.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/root/root_dial.dart';
 import 'package:wird/features/root/root_sections.dart';
@@ -62,15 +63,16 @@ void main() {
     final reading = (await rootReading(db, onTheDial))!;
     await open(tester, RootScreen(db: db, letters: onTheDial));
 
-    // The one being read is named three times — on the ring, in the card
-    // under it, and on the spine. Every other derivative is named twice.
-    expect(find.text(reading.derivatives.first.text), findsNWidgets(3));
+    // The one being read is named four times — on the ring, in the card under
+    // it, on the spine, and over its parsing at the foot of the screen. Every
+    // other derivative is named twice.
+    expect(find.text(reading.derivatives.first.text), findsNWidgets(4));
     expect(find.text(reading.derivatives[1].text), findsNWidgets(2));
 
     await tester.tap(find.bySemanticsLabel('Next'));
     await tester.pumpAndSettle();
 
-    expect(find.text(reading.derivatives[1].text), findsNWidgets(3));
+    expect(find.text(reading.derivatives[1].text), findsNWidgets(4));
     expect(find.text(reading.derivatives.first.text), findsNWidgets(2));
   });
 
@@ -79,10 +81,13 @@ void main() {
     final reading = (await rootReading(db, onTheDial))!;
     await open(tester, RootScreen(db: db, letters: onTheDial));
 
+    // Unselected it is named twice, on the ring and on the spine, and .last is
+    // the spine row the reader taps. Selected, it is named four times: the
+    // card and its parsing name it too.
     await tester.tap(find.text(reading.derivatives[2].text).last);
     await tester.pumpAndSettle();
 
-    expect(find.text(reading.derivatives[2].text), findsNWidgets(3));
+    expect(find.text(reading.derivatives[2].text), findsNWidgets(4));
   });
 
   testWidgets('a root with more derivatives than the ring can hold is put on '
@@ -95,8 +100,14 @@ void main() {
     await open(tester, RootScreen(db: db, letters: pastTheRing));
 
     expect(find.byType(RootDial), findsNothing);
-    for (final derivative in reading.derivatives) {
-      expect(find.text(derivative.text), findsOneWidget);
+    for (var i = 0; i < reading.derivatives.length; i++) {
+      // Once down the spine, and the form the parsing under it is showing —
+      // the first, until the reader taps another — a second time above its
+      // segments.
+      expect(
+        find.text(reading.derivatives[i].text),
+        i == 0 ? findsNWidgets(2) : findsOneWidget,
+      );
     }
   });
 
@@ -108,14 +119,44 @@ void main() {
     expect(find.byType(RootDial), findsNothing);
   });
 
-  testWidgets('fetched lexicon and tafsir are shown as though they had been '
-      'fetched, on a build that fetches nothing', (tester) async {
+  testWidgets('tafsir is shown as though it had been fetched, on a build that '
+      'fetches nothing', (tester) async {
     await open(tester, RootScreen(db: db, letters: onTheDial));
 
-    expect(find.textContaining('fetched rather than bundled'), findsOneWidget);
     expect(find.textContaining('Nothing is downloaded yet'), findsOneWidget);
     // Naming the works it will quote is not a claim about what they say.
     expect(find.text('Al-Ṭabarī'), findsOneWidget);
+    // The lexicon section is gone rather than pending: Lane has no route into
+    // AGPL-3.0 and the core sense answers what the placeholder stood in for.
+    expect(find.text('LEXICON'), findsNothing);
+    expect(find.textContaining('fetched rather than bundled'), findsNothing);
+  });
+
+  testWidgets("the parsing says it was fetched while it is sitting in the "
+      'bundle, and says nothing about which occurrence it is of', (
+    tester,
+  ) async {
+    final reading = (await rootReading(db, onTheDial))!;
+    final selected = reading.derivatives.first;
+    await open(tester, RootScreen(db: db, letters: onTheDial));
+
+    // What the section used to say. Tafsir still says its own half of it.
+    expect(find.textContaining('no aya has been downloaded'), findsNothing);
+
+    // تَعْقِلُونَ at 2:44, ʿ-q-l's commonest form: a verb carrying an attached
+    // pronoun, which is two segments and not one word's worth of label.
+    expect(selected.wordId, 2044010);
+    expect(find.text('Verb'), findsOneWidget);
+    expect(find.text('Personal pronoun'), findsOneWidget);
+    expect(
+      find.text('Stem · Imperfect · 2nd person masculine plural'),
+      findsOneWidget,
+    );
+
+    // The occurrence, named: the case and the mood are the verse's own, so a
+    // parsing drawn under a root with no aya beside it would read as a claim
+    // about the spelling.
+    expect(find.textContaining(ayahRef(selected.ayahId)), findsWidgets);
   });
 
   testWidgets('prose attributed to a scholar who never wrote it reaches a '
@@ -225,9 +266,54 @@ void main() {
     await tester.tap(find.text('Keep this root'));
     await tester.pumpAndSettle();
 
-    expect(await rootKept(db, onTheDial), isTrue);
-    expect(find.text('Kept'), findsOneWidget);
+    expect(await rootKept(db, onTheDial), isNotNull);
+    expect(find.text('Kept · tap to undo'), findsOneWidget);
     expect(find.byIcon(Icons.bookmark), findsOneWidget);
+  });
+
+  testWidgets('the two Keep controls disagree: one is a toggle and the other '
+      'latches, on the same screen and the same root', (tester) async {
+    // kept_items is made on first use, after corpus.dart has worked out which
+    // tables to empty between tests, so it is never emptied: the test above
+    // has already kept this root.
+    await forgetRoot(db, onTheDial);
+    await open(tester, RootScreen(db: db, letters: onTheDial));
+
+    // The bookmark at the top of the screen keeps it…
+    await tester.tap(find.bySemanticsLabel('Keep'));
+    await tester.pumpAndSettle();
+    expect(await rootKept(db, onTheDial), isNotNull);
+    expect(find.text('Kept · tap to undo'), findsOneWidget);
+    expect(find.bySemanticsLabel('Kept, tap to undo'), findsOneWidget);
+
+    // …and the button in the card below takes it back off.
+    await tester.tap(find.text('Kept · tap to undo'));
+    await tester.pumpAndSettle();
+    expect(await rootKept(db, onTheDial), isNull);
+    expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
+    expect(find.text('Keep this root'), findsOneWidget);
+  });
+
+  testWidgets('a double tap on Keep mints two kept rows for one root, because '
+      'nothing guards the write in flight', (tester) async {
+    await forgetRoot(db, onTheDial);
+    await open(tester, RootScreen(db: db, letters: onTheDial));
+    Future<int> live() async => (await keptItems(db, kind: KeptKind.root))
+        .where((item) => item.rootLetters == onTheDial)
+        .length;
+
+    // Both presses land while the write is in flight. sqflite serialises on
+    // the database, so an open transaction is what a phone's platform channel
+    // is for free: the first press is still waiting on its read when the
+    // second arrives, and nothing has rebuilt in between.
+    await db.transaction((txn) async {
+      await tester.tap(find.text('Keep this root'));
+      await tester.tap(find.text('Keep this root'));
+    });
+    await tester.pumpAndSettle();
+
+    expect(await live(), 1);
+    expect(find.text('Kept · tap to undo'), findsOneWidget);
   });
 
   testWidgets('a root the corpus does not carry leaves the screen blank '

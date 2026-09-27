@@ -255,7 +255,45 @@ void main() {
     final kept = await db.query('kept_items', where: 'deleted_at IS NULL');
     expect(kept.single['kind'], 'aya');
     expect(kept.single['ayah_id'], ayaOfPatience);
-    expect(find.text('Kept'), findsOneWidget);
+    expect(find.text('Kept · tap to undo'), findsOneWidget);
+  });
+
+  testWidgets('the button latches once pressed, so keeping an aya reads as '
+      'permanent and the only way back is a swipe nobody is shown', (
+    tester,
+  ) async {
+    await open(tester, size: tablet);
+
+    await tester.tap(find.text('Keep this aya'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kept · tap to undo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Keep this aya'), findsOneWidget);
+    expect(await db.query('kept_items', where: 'deleted_at IS NULL'), isEmpty);
+    // The row stays, tombstoned: a delete with nothing behind it is handed
+    // back by the next sync.
+    expect(await db.query('kept_items'), hasLength(1));
+  });
+
+  testWidgets('a double tap on Keep mints two kept rows for one aya, because '
+      'nothing guards the write in flight', (tester) async {
+    await open(tester, size: tablet);
+
+    // Both presses land while the write is in flight. sqflite serialises on the
+    // database, so an open transaction gives the test the window a phone's
+    // platform channel gives a reader: the first press is still waiting when
+    // the second arrives, and nothing has rebuilt in between.
+    await db.transaction((txn) async {
+      await tester.tap(find.text('Keep this aya'));
+      await tester.tap(find.text('Keep this aya'));
+    });
+    await tester.pumpAndSettle();
+
+    expect(
+      await db.query('kept_items', where: 'deleted_at IS NULL'),
+      hasLength(1),
+    );
   });
 
   testWidgets('the aya pane overflows on 2:282, the longest aya in the '

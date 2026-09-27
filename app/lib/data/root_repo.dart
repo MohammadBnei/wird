@@ -27,20 +27,34 @@ final _pauseMarks = RegExp('[\u{6D6}-\u{6DE}\u{6E9}-\u{6ED}]');
 /// occurrence to the reader. A form that occurs eighty times has no one aya,
 /// and the first is the only one that can be named without inventing a rule
 /// the reader cannot see.
+///
+/// [wordId] is that same first occurrence, to the word. It is what the parsing
+/// is read against, and it is held beside [ayahId] rather than instead of it
+/// because a family is drawn from the aya in four places and parsed in one.
 typedef Derivative = ({
   String text,
   String? gloss,
   String? form,
   String? note,
+  int wordId,
   int ayahId,
   int occurrences,
 });
 
+/// One segment of a word's parsing, in the order the word is written: a prefix,
+/// the stem, a suffix. [role] is its part of speech and [features] the rest of
+/// what the corpus says about it, both already named in words rather than codes.
+///
+/// Case and mood are assigned by the syntax of the verse, so a segment belongs
+/// to one occurrence and never to a spelling. Whatever draws these has to say
+/// which occurrence it is drawing.
+typedef IrabSegment = ({int position, String role, List<String> features});
+
 /// The sūra and aya an id names, written the way a reference is written.
 String ayahRef(int ayahId) => '${ayahId ~/ 1000}:${ayahId % 1000}';
 
-/// Everything the bundled corpus knows about one root. Lexicon prose, tafsir
-/// and iʿrāb are fetched rather than bundled, so they are not here.
+/// Everything the bundled corpus knows about one root. Tafsir is fetched rather
+/// than bundled, so it is not here.
 class RootReading {
   const RootReading({
     required this.letters,
@@ -54,6 +68,7 @@ class RootReading {
     required this.senseBasis,
     required this.senseEvidence,
     required this.derivatives,
+    required this.irab,
   });
 
   final String letters;
@@ -85,6 +100,12 @@ class RootReading {
   final List<String> senseEvidence;
 
   final List<Derivative> derivatives;
+
+  /// The parsing of each derivative's first occurrence, keyed by its word id.
+  /// Read in one query with the family rather than one per turn of the dial: a
+  /// root's whole family is a few hundred segments, and a screen that fetches
+  /// on selection draws the section empty for a frame every time.
+  final Map<int, List<IrabSegment>> irab;
 
   bool get readsAsSpine => derivatives.length > dialCapacity;
 
@@ -166,6 +187,7 @@ Future<RootReading?> rootReading(Database db, String letters) async {
         gloss: held[text]!['gloss'] as String?,
         form: held[text]!['form'] as String?,
         note: held[text]!['note'] as String?,
+        wordId: held[text]!['id']! as int,
         ayahId: (held[text]!['id']! as int) ~/ 1000,
         occurrences: counts[text]!,
       ),
@@ -195,7 +217,57 @@ Future<RootReading?> rootReading(Database db, String letters) async {
     senseBasis: sense['basis'] as String?,
     senseEvidence: _evidenceWords(sense['evidence'] as String?),
     derivatives: derivatives,
+    irab: await _irab(db, [for (final d in derivatives) d.wordId]),
   );
+}
+
+/// The parsing of one word, segment by segment. Empty only for a word the
+/// corpus carries no morphology for, which the ETL's own gate refuses to write.
+Future<List<IrabSegment>> wordIrab(Database db, int wordId) async =>
+    (await _irab(db, [wordId]))[wordId] ?? const [];
+
+/// The parsing of several words at once, keyed by word id.
+///
+/// Two queries rather than one: the segment rows name their part of speech by a
+/// code, and the features beside it are a list of codes in one column, which no
+/// join can spread. The vocabulary is 142 rows, so it is read whole and looked
+/// up here.
+///
+/// ponytail: `role_en`, because there is one locale. The row beside it is
+/// `role_fr`, and choosing between them is the locale layer's job, not this
+/// function's.
+Future<Map<int, List<IrabSegment>>> _irab(
+  Database db,
+  List<int> wordIds,
+) async {
+  if (wordIds.isEmpty) return const {};
+  final roles = {
+    for (final row in await db.query('irab_roles', columns: ['code', 'role_en']))
+      row['code']! as String: row['role_en']! as String,
+  };
+  final rows = await db.query(
+    'irab',
+    columns: ['word_id', 'position', 'code', 'features'],
+    where: 'word_id IN (${List.filled(wordIds.length, '?').join(',')})',
+    whereArgs: wordIds,
+    orderBy: 'word_id, position',
+  );
+  final out = <int, List<IrabSegment>>{};
+  for (final row in rows) {
+    final code = row['code']! as String;
+    // A code the vocabulary does not name cannot be written: Corpus.Check stops
+    // the build over it. If one ever arrives, the code itself is shown rather
+    // than a blank, so the defect is on the screen and not hidden by it.
+    out.putIfAbsent(row['word_id']! as int, () => []).add((
+      position: row['position']! as int,
+      role: roles[code] ?? code,
+      features: [
+        for (final feature in (row['features']! as String).split(' '))
+          if (feature.isNotEmpty) roles[feature] ?? feature,
+      ],
+    ));
+  }
+  return out;
 }
 
 /// The evidence column is the words themselves, joined by the middle dot a
@@ -206,26 +278,86 @@ List<String> _evidenceWords(String? evidence) => [
       if (word.trim().isNotEmpty) word.trim(),
 ];
 
-/// Whether this root is already on the kept list.
-Future<bool> rootKept(Database db, String letters) async {
+/// The id this root is kept under, or null where it is not kept.
+///
+/// Newest first, which the query has to say: `kept_items` is indexed on its id
+/// alone, so an unordered `limit: 1` hands back whichever row was inserted
+/// first. That was inert while the button latched. It is not now — a root can
+/// carry more than one live row, because the server's own table has only `id`
+/// as its primary key and two devices, one of them offline, can each mint one.
+Future<String?> rootKept(Database db, String letters) async =>
+    _keptId(db, 'root_letters = ?', [KeptKind.root.name, letters]);
+
+/// Keeps a root, once, and answers with the id it is kept under — the one just
+/// minted, or the one it was already kept under. A second press finds it there
+/// and writes nothing, so the kept list never carries the same root twice.
+Future<String> keepRoot(Database db, String letters) async =>
+    await rootKept(db, letters) ??
+    await keep(db, kind: KeptKind.root, rootLetters: letters);
+
+/// Takes a root back off the kept list.
+///
+/// Every live row for it, not the one the screen is holding: a root reachable
+/// under two live ids would come back the moment the screen reloaded, with the
+/// button reading Keep again and the root still on screen 1e. An undo that
+/// leaves the thing undone is worse than no undo.
+Future<void> forgetRoot(Database db, String letters) async {
+  for (final id in await _liveKeptIds(db, 'root_letters = ?', [
+    KeptKind.root.name,
+    letters,
+  ])) {
+    await forget(db, id);
+  }
+}
+
+/// The newest live kept row for one target, or null. [what] is the column test
+/// that names the target, and [args] the kind followed by that test's values.
+Future<String?> _keptId(Database db, String what, List<Object?> args) async =>
+    (await _liveKeptIds(db, what, args)).firstOrNull;
+
+/// Every live kept row for one target, newest first.
+///
+/// The order is stated because `kept_items` carries no index but its primary
+/// key, so an unordered read answers with whichever row was written first. Two
+/// rows stamped in the same microsecond are still not told apart — that is not
+/// worth a tiebreaker, because the undo above clears every live row rather
+/// than the one this picked.
+Future<List<String>> _liveKeptIds(
+  Database db,
+  String what,
+  List<Object?> args,
+) async {
   await ensureKeptTable(db);
   final rows = await db.query(
     'kept_items',
-    where: 'kind = ? AND root_letters = ? AND deleted_at IS NULL',
-    whereArgs: [KeptKind.root.name, letters],
-    limit: 1,
+    columns: ['id'],
+    where: 'kind = ? AND $what AND deleted_at IS NULL',
+    whereArgs: args,
+    orderBy: 'created_at DESC',
   );
-  return rows.isNotEmpty;
+  return [for (final row in rows) row['id']! as String];
 }
 
-/// Keeps a root, once. A second press — or the screen reopened and pressed
-/// again — finds it already there and writes nothing, so the kept list never
-/// carries the same root twice.
-///
-/// ponytail: keeping is one-way from here. Taking a root back off the list is
-/// what screen 1e's own delete is for, and it already leaves the tombstone the
-/// sync needs.
-Future<void> keepRoot(Database db, String letters) async {
-  if (await rootKept(db, letters)) return;
-  await keep(db, kind: KeptKind.root, rootLetters: letters);
+/// The same reader, for an aya. It lives here rather than beside the deep dive
+/// because the ordering and the duplicate rule above are the same rule, and a
+/// second copy of them is a second place for them to drift.
+Future<String?> ayaKept(Database db, int ayahId) async =>
+    _keptId(db, 'ayah_id = ?', [KeptKind.aya.name, ayahId]);
+
+/// And the same keep: a press finds the row this aya is already kept under and
+/// writes nothing. The screen's own `_keptId` cannot answer this — it is read
+/// once when the screen opens, so a row kept on screen 1e or arriving from a
+/// sync while the deep dive sits open would mint a second live row for one aya.
+Future<String> keepAya(Database db, int ayahId) async =>
+    await ayaKept(db, ayahId) ??
+    await keep(db, kind: KeptKind.aya, ayahId: ayahId);
+
+/// And the same undo.
+Future<void> forgetAya(Database db, int ayahId) async {
+  for (final id in await _liveKeptIds(db, 'ayah_id = ?', [
+    KeptKind.aya.name,
+    ayahId,
+  ])) {
+    await forget(db, id);
+  }
 }

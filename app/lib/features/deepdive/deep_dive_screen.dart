@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../../data/kept_repo.dart';
 import '../../data/root_repo.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
@@ -21,8 +20,12 @@ const threePaneWidth = 964.0;
 typedef AyaReading = ({
   String surahName,
   int number,
-  List<({String text, bool lit})> words,
+  List<AyaWord> words,
 });
+
+/// One word of the aya: its id, so the parsing of this occurrence can be read,
+/// and whether it carries the root that was opened.
+typedef AyaWord = ({int id, String text, bool lit});
 
 /// Screen 1c — one aya, its sources side by side, on a tablet.
 ///
@@ -54,8 +57,22 @@ class DeepDiveScreen extends StatefulWidget {
 class _DeepDiveScreenState extends State<DeepDiveScreen> {
   RootReading? _reading;
   AyaReading? _aya;
+
+  /// The parsing of the root's own word in *this* aya — not of the spelling.
+  /// The root screen's copy reads the first occurrence in the muṣḥaf; here the
+  /// aya is given, so the occurrence is too.
+  List<IrabSegment> _irab = const [];
   bool _loaded = false;
-  bool _kept = false;
+
+  /// The id this aya is kept under, or null. Read once in [_load]; nothing
+  /// listens to `kept_items`, so a delete made on screen 1e while this screen
+  /// is open does not reach the button until it is reopened.
+  String? _keptId;
+
+  /// Whether a keep or an undo is in flight. Two taps inside the `await` would
+  /// both read `_keptId` as null and both write: the latch this replaced was
+  /// also the only thing stopping that.
+  bool _busy = false;
   int _view = 0;
 
   @override
@@ -67,21 +84,39 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   Future<void> _load() async {
     final reading = await rootReading(widget.db, widget.letters);
     final aya = await ayaReading(widget.db, widget.ayahId, widget.letters);
-    final kept = await ayaKept(widget.db, widget.ayahId);
+    final keptId = await ayaKept(widget.db, widget.ayahId);
+    final lit = aya == null ? null : _litWord(aya);
+    final irab = lit == null
+        ? const <IrabSegment>[]
+        : await wordIrab(widget.db, lit.id);
     if (!mounted) return;
     setState(() {
       _reading = reading;
       _aya = aya;
-      _kept = kept;
+      _irab = irab;
+      _keptId = keptId;
       _loaded = true;
     });
   }
 
-  Future<void> _keep() async {
-    if (_kept) return;
-    await keep(widget.db, kind: KeptKind.aya, ayahId: widget.ayahId);
-    if (!mounted) return;
-    setState(() => _kept = true);
+  /// Keeps the aya, or takes it back off the list. One handler, because the
+  /// control is one button: a reader who has just pressed Keep is the reader
+  /// most likely to want it undone.
+  Future<void> _toggleKeep() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      String? keptId;
+      if (_keptId == null) {
+        keptId = await keepAya(widget.db, widget.ayahId);
+      } else {
+        await forgetAya(widget.db, widget.ayahId);
+      }
+      if (!mounted) return;
+      setState(() => _keptId = keptId);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -158,7 +193,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
-          child: _sourcesPane(reading),
+          child: _sourcesPane(),
         ),
       ),
     ],
@@ -212,7 +247,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
               view: _family(n, reading, aya),
             ),
             SizedBox(height: n.space('6')),
-            _sourcesPane(reading),
+            _sourcesPane(),
           ],
         ),
       ),
@@ -284,12 +319,17 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
             color: n.text,
           ),
         ),
-        const NocturneRule(fade: 40),
-        // The design names the phrase in this heading. The heading face is
-        // Inter, which has no Arabic, and the phrase is already lit in the aya
-        // directly above — so it is not repeated here in a font that would
-        // print it as boxes.
-        irabSection(null),
+        // Both the rule and the section go when the aya does not carry the root:
+        // there is no word to parse, and a heading over nothing reads worse
+        // than no heading.
+        if (_litWord(aya) case final lit?) ...[
+          const NocturneRule(fade: 40),
+          IrabSection(
+            segments: _irab,
+            word: lit.text,
+            where: '${aya.surahName} ${aya.number}',
+          ),
+        ],
       ],
     );
   }
@@ -301,10 +341,15 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   // It used to say "Add to notes" and write a bookmark, which sent the reader
   // to a Notes list that stayed empty. Nothing in the app writes a note, and
   // this keeps the aya, so it says so — in the root screen's own words.
+  //
+  // It used to disable itself once pressed, and read "Kept". That is a control
+  // saying the thing is done and permanent, while the only way back was a
+  // swipe on another screen nobody is shown. So it stays live and the label
+  // carries its own undo.
   Widget _keepButton() => NocturneButton(
     block: true,
-    onPressed: _kept ? null : _keep,
-    child: Text(_kept ? 'Kept' : 'Keep this aya'),
+    onPressed: _busy ? null : _toggleKeep,
+    child: Text(_keptId == null ? 'Keep this aya' : 'Kept · tap to undo'),
   );
 
   /// [drawn] is whether this pane is wide enough for the design's
@@ -361,7 +406,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
 
   /// The root's family, however this screen has room to draw it.
   Widget _family(Nocturne n, RootReading reading, AyaReading aya) {
-    final here = _wordInAya(aya);
+    final here = _litWord(aya)?.text;
     if (_view == 1) {
       return SingleChildScrollView(
         padding: EdgeInsets.only(top: n.space('4')),
@@ -379,10 +424,10 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   }
 
   /// How this aya spells the root, or null where it does not carry it.
-  String? _wordInAya(AyaReading aya) {
+  AyaWord? _litWord(AyaReading aya) {
     final lit = [
       for (final word in aya.words)
-        if (word.lit) word.text,
+        if (word.lit) word,
     ];
     return lit.isEmpty ? null : lit.last;
   }
@@ -423,14 +468,9 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     ],
   );
 
-  Widget _sourcesPane(RootReading reading) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      lexiconSection(context, reading),
-      const NocturneRule(fade: 30),
-      tafsirSection(ayahRef(widget.ayahId)),
-    ],
-  );
+  /// What is left of the sources pane now the lexicon placeholder is gone. The
+  /// rule above it went with it: it separated two sections and there is one.
+  Widget _sourcesPane() => tafsirSection(ayahRef(widget.ayahId));
 }
 
 /// The aya as it is printed, with the words carrying [letters] marked. Null
@@ -446,7 +486,7 @@ Future<AyaReading?> ayaReading(Database db, int ayahId, String letters) async {
   if (place.isEmpty) return null;
   final words = await db.query(
     'words',
-    columns: ['text_ar', 'root_letters'],
+    columns: ['id', 'text_ar', 'root_letters'],
     where: 'ayah_id = ?',
     whereArgs: [ayahId],
     orderBy: 'position',
@@ -456,19 +496,15 @@ Future<AyaReading?> ayaReading(Database db, int ayahId, String letters) async {
     number: place.first['number']! as int,
     words: [
       for (final w in words)
-        (text: w['text_ar']! as String, lit: w['root_letters'] == letters),
+        (
+          id: w['id']! as int,
+          text: w['text_ar']! as String,
+          lit: w['root_letters'] == letters,
+        ),
     ],
   );
 }
 
-/// Whether this aya is already in the reader's notes.
-Future<bool> ayaKept(Database db, int ayahId) async {
-  await ensureKeptTable(db);
-  final rows = await db.query(
-    'kept_items',
-    where: 'kind = ? AND ayah_id = ? AND deleted_at IS NULL',
-    whereArgs: [KeptKind.aya.name, ayahId],
-    limit: 1,
-  );
-  return rows.isNotEmpty;
-}
+// ayaKept moved into app/lib/data/root_repo.dart beside rootKept: the undo
+// needs every live row for the aya, and reading them in the order that rule
+// asks for is the same rule twice if it is written twice.
