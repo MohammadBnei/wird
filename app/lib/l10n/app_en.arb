@@ -226,5 +226,104 @@
   "aboutProvidesVoice": "Following your voice in prayer",
   "@aboutProvidesVoice": {
     "description": "The kicker on the Quran-Lab recogniser card of the sources screen: what of the app would be missing without it."
+  },
+  "deepdive_aya_kicker": "{surah} · aya {number}",
+  "@deepdive_aya_kicker": {
+    "description": "The deep dive's aya pane kicker, drawn uppercased over the printed aya — the head of the screen in the three-pane layout. The surah name comes from the corpus and is not translated.",
+    "placeholders": {
+      "surah": {
+        "type": "String"
+      },
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "deepdive_back": "Back",
+  "@deepdive_back": {
+    "description": "Screen-reader label on the deep dive's back arrow, at the head of its first column."
+  },
+  "deepdive_form": "form {form}",
+  "@deepdive_form": {
+    "description": "Caption under a constellation node when the corpus glossed no occurrence of that form, so only its morphological form number is known. Shown inside the drawn constellation.",
+    "placeholders": {
+      "form": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_keep": "Keep this aya",
+  "@deepdive_keep": {
+    "description": "The deep dive's one action button, before the aya has been kept."
+  },
+  "deepdive_kept": "Kept · tap to undo",
+  "@deepdive_kept": {
+    "description": "What the same deep dive button says once the aya is kept: it stays live and carries its own undo."
+  },
+  "deepdive_kicker": "DEEP DIVE · {ref}",
+  "@deepdive_kicker": {
+    "description": "The kicker beside the back arrow at the top of the deep dive when its three panes are stacked into one column. {ref} is a surah:aya reference.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_occurrences": "{translit} · {count} occurrences",
+  "@deepdive_occurrences": {
+    "description": "Beside the root's Arabic spelling in the deep dive's centre pane: how the root is transliterated and how many times it occurs in the Qur'an.",
+    "placeholders": {
+      "translit": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deepdive_root_heading": "ROOT CONSTELLATION",
+  "@deepdive_root_heading": {
+    "description": "Heading over the root's spelling in the deep dive's centre pane, above the constellation or the list of its family."
+  },
+  "deepdive_star": "{form} · open {ref}",
+  "@deepdive_star": {
+    "description": "Screen-reader label on one node of the drawn constellation, which behaves as a button opening the aya it names. The nodes are painted onto a canvas, so this label is the whole screen-reader surface of the drawing.",
+    "placeholders": {
+      "form": {
+        "type": "String"
+      },
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_this_aya": "THIS AYA · {ref}",
+  "@deepdive_this_aya": {
+    "description": "Caption under the one constellation node that marks the form the reader has open, drawn inside the constellation.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_unknown": "The corpus carries no aya {ref} with a root spelled {letters}.",
+  "@deepdive_unknown": {
+    "description": "Shown in place of the whole deep dive when the corpus holds no such aya, or the aya holds no such root.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      },
+      "letters": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_view_constellation": "Constellation",
+  "@deepdive_view_constellation": {
+    "description": "The drawing, as the deep dive's segmented control names it — offered only where the centre pane is wide enough to draw it."
+  },
+  "deepdive_view_list": "List",
+  "@deepdive_view_list": {
+    "description": "The root's family read as a list, the other option of the deep dive's segmented control."
   }
 }

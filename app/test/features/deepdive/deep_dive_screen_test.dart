@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/kept_repo.dart';
@@ -6,6 +7,7 @@ import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/deepdive/constellation.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/root/root_sections.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
@@ -55,6 +57,7 @@ void main() {
     required Size size,
     int ayahId = ayaOfPatience,
     String letters = patience,
+    Locale? locale,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -62,6 +65,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // The delegates the app has: without them the screen reads a
+        // null AppLocalizations and throws under test but not in the app.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: locale,
         home: DeepDiveScreen(db: db, ayahId: ayahId, letters: letters),
       ),
     );
@@ -136,6 +144,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: nocturneTheme(),
+          // The delegates the app has: without them the screen reads a
+          // null AppLocalizations and throws under test but not in the app.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: TextButton(
@@ -309,6 +321,57 @@ void main() {
 
     expect(find.textContaining('carries no aya 115:1'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a French reader is drawn an English constellation: its nodes '
+      'are painted onto a canvas, so the labels reach a screen reader from a '
+      'painter that has no context to read them from', (tester) async {
+    final semantics = tester.ensureSemantics();
+    // The clot, whose four forms are the ring. ṣ-b-r has thirty-eight and
+    // falls back to the spine, which draws no nodes to label.
+    await open(
+      tester,
+      size: tablet,
+      ayahId: ayaOfTheClot,
+      letters: clot,
+      locale: const Locale('fr'),
+    );
+    expect(find.byType(Constellation), findsOneWidget);
+
+    // The pane's own heading, which is a Text, and a node's screen-reader
+    // label, which is not. The second only reaches French if the painter was
+    // handed the strings the way it is handed its theme.
+    expect(find.text('CONSTELLATION DE LA RACINE'), findsOneWidget);
+    expect(find.text('Garder ce verset'), findsOneWidget);
+    expect(find.text('Liste'), findsOneWidget);
+
+    // `find.bySemanticsLabel` walks elements, and a node of the constellation
+    // is not one — it is a CustomPainterSemantics the painter publishes. The
+    // semantics tree is the only place it exists, so that is where it is read.
+    final labels = <String>[];
+    void walk(SemanticsNode node) {
+      if (node.label.isNotEmpty) labels.add(node.label);
+      node.visitChildren((child) {
+        walk(child);
+        return true;
+      });
+    }
+
+    walk(tester.semantics.find(find.byType(Constellation)));
+    semantics.dispose();
+
+    expect(
+      labels.where((l) => l.contains('ouvrir')),
+      isNotEmpty,
+      reason:
+          'the constellation nodes are the drawing’s whole screen-reader '
+          'surface, and they are still in English: $labels',
+    );
+    expect(
+      labels.where((l) => l.contains('open ')),
+      isEmpty,
+      reason: 'an English node label survived into a French drawing',
+    );
   });
 
   test('the constellation captions a form the aya does not contain as the one '

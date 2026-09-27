@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/root_repo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
@@ -75,6 +76,8 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   bool _busy = false;
   int _view = 0;
 
+  AppLocalizations get _l10n => AppLocalizations.of(context)!;
+
   @override
   void initState() {
     super.initState();
@@ -145,8 +148,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     child: Padding(
       padding: EdgeInsets.all(n.space('8')),
       child: Text(
-        'The corpus carries no aya ${ayahRef(widget.ayahId)} with a root '
-        'spelled ${widget.letters}.',
+        _l10n.deepdive_unknown(ayahRef(widget.ayahId), widget.letters),
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.headlineSmall,
       ),
@@ -218,7 +220,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
             _back(),
             Expanded(
               child: Text(
-                'DEEP DIVE · ${ayahRef(widget.ayahId)}',
+                _l10n.deepdive_kicker(ayahRef(widget.ayahId)),
                 style: TextStyle(
                   fontSize: 10,
                   height: 1.2,
@@ -260,7 +262,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     variant: NocturneButtonVariant.icon,
     onPressed: () => Navigator.of(context).maybePop(),
     child: Semantics(
-      label: 'Back',
+      label: _l10n.deepdive_back,
       child: const Icon(Icons.arrow_back_ios_new, size: 16),
     ),
   );
@@ -269,7 +271,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   /// top line of the leftmost one and so the head of the screen.
   Widget _ayaPane(Nocturne n, AyaReading aya, {Widget? leading}) {
     final kicker = Text(
-      '${aya.surahName} · aya ${aya.number}'.toUpperCase(),
+      _l10n.deepdive_aya_kicker(aya.surahName, aya.number).toUpperCase(),
       style: TextStyle(
         fontSize: 10,
         height: 1.2,
@@ -349,7 +351,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   Widget _keepButton() => NocturneButton(
     block: true,
     onPressed: _busy ? null : _toggleKeep,
-    child: Text(_keptId == null ? 'Keep this aya' : 'Kept · tap to undo'),
+    child: Text(_keptId == null ? _l10n.deepdive_keep : _l10n.deepdive_kept),
   );
 
   /// [drawn] is whether this pane is wide enough for the design's
@@ -385,7 +387,10 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
                 Expanded(child: _rootName(n, reading)),
                 if (drawn)
                   NocturneSegmented(
-                    options: const ['Constellation', 'List'],
+                    options: [
+                      _l10n.deepdive_view_constellation,
+                      _l10n.deepdive_view_list,
+                    ],
                     selected: _view,
                     onChanged: (i) => setState(() => _view = i),
                   ),
@@ -436,7 +441,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
-        'ROOT CONSTELLATION',
+        _l10n.deepdive_root_heading,
         style: TextStyle(
           fontSize: 10,
           height: 1.2,
@@ -460,7 +465,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
             ),
           ),
           Text(
-            '${reading.translit} · ${reading.occurrences} occurrences',
+            _l10n.deepdive_occurrences(reading.translit, reading.occurrences),
             style: TextStyle(fontSize: 12, color: n.textAt(0.6)),
           ),
         ],

@@ -40,5 +40,18 @@
   "aboutProvidesLatinFace": "La police latine",
   "aboutProvidesTimings": "Minutage de la récitation, mot par mot",
   "aboutProvidesRecitation": "Récitation",
-  "aboutProvidesVoice": "Le suivi de votre voix pendant la prière"
+  "aboutProvidesVoice": "Le suivi de votre voix pendant la prière",
+  "deepdive_aya_kicker": "{surah} · verset {number}",
+  "deepdive_back": "Retour",
+  "deepdive_form": "forme {form}",
+  "deepdive_keep": "Garder ce verset",
+  "deepdive_kept": "Gardé · toucher pour annuler",
+  "deepdive_kicker": "EXPLORATION · {ref}",
+  "deepdive_occurrences": "{translit} · {count} occurrences",
+  "deepdive_root_heading": "CONSTELLATION DE LA RACINE",
+  "deepdive_star": "{form} · ouvrir {ref}",
+  "deepdive_this_aya": "CE VERSET · {ref}",
+  "deepdive_unknown": "Le corpus ne contient aucun verset {ref} dont un mot vienne de la racine épelée {letters}.",
+  "deepdive_view_constellation": "Constellation",
+  "deepdive_view_list": "Liste"
 }
