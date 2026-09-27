@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../app.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
@@ -640,7 +641,7 @@ class _StudyScreenState extends State<StudyScreen> {
           Text(
             audio.tracks.isEmpty
                 ? 'No recitation for this set'
-                : 'Not downloaded',
+                : AppLocalizations.of(context)!.notDownloaded,
             style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
           ),
       ],

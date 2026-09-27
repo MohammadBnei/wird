@@ -10,6 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # The delegates Material and Cupertino need per locale. `intl` comes with it
+  # and gen-l10n's output imports it directly.
+  flutter_localizations:
+    sdk: flutter
   flutter_riverpod: ^3.0.3
   crypto: ^3.0.6
   sqflite: ^2.4.2
@@ -34,6 +38,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # gen-l10n, on its defaults: lib/l10n/app_en.arb is the template and
+  # AppLocalizations lands beside it. No l10n.yaml, because every value in one
+  # would be the default written out.
+  generate: true
 
   assets:
     - assets/corpus.db

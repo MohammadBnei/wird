@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../app.dart';
 import '../../data/db.dart';
 import '../../data/sets.dart';
@@ -379,7 +380,7 @@ class RootPanel extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'IN THIS AYA',
+                            AppLocalizations.of(context)!.inThisAya,
                             style: TextStyle(
                               fontSize: 10,
                               letterSpacing: 0.11 * 10,

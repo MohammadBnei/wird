@@ -1,0 +1,19 @@
+{
+  "@@locale": "en",
+  "inThisAya": "IN THIS AYA",
+  "@inThisAya": {
+    "description": "Heading over the gloss of the selected word in the aya it was tapped in."
+  },
+  "markSetUnderstood": "Mark set understood",
+  "@markSetUnderstood": {
+    "description": "The reading screen's one action: it advances the reader through the Qur'an."
+  },
+  "nextSet": "Next set",
+  "@nextSet": {
+    "description": "What the same button says once every aya of the set is understood."
+  },
+  "notDownloaded": "Not downloaded",
+  "@notDownloaded": {
+    "description": "Why the play button is dark: the recitation for this set is not on the device."
+  }
+}

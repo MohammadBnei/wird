@@ -79,6 +79,32 @@ toolchain_recorded() {
 	return 1
 }
 
+# Every string a reader sees exists in both locales.
+#
+# A key in app_en.arb and not in app_fr.arb is a French reader shown English,
+# and nothing else catches it: the analyzer sees a valid getter, the goldens are
+# English, and gen-l10n fills the gap from the template rather than complaining.
+# This is the cheap half of the job — the expensive half, hunting literals still
+# sitting in a widget, needs an AST walk and a named allowlist for the licence
+# notices corpus_meta.notice requires verbatim, so it is not attempted here.
+#
+# ponytail: key parity plus one French widget test. Reach for package:analyzer
+# the first time a missed literal actually ships.
+arb_locales_agree() {
+	local dir="$ROOT/app/lib/l10n" missing
+	missing=$(
+		jq -r --slurpfile fr "$dir/app_fr.arb" \
+			'keys - ($fr[0] | keys) | map(select(startswith("@") | not)) | .[]' \
+			"$dir/app_en.arb"
+		jq -r --slurpfile en "$dir/app_en.arb" \
+			'keys - ($en[0] | keys) | map(select(startswith("@") | not)) | .[]' \
+			"$dir/app_fr.arb"
+	)
+	[ -z "$missing" ] && return 0
+	printf 'these strings exist in one locale only, so a reader of the other is shown the wrong language:\n%s\n' "$missing"
+	return 1
+}
+
 corpus_under_budget() {
 	local bytes limit=$((60 * 1024 * 1024))
 	bytes=$(wc -c <"$ROOT/app/assets/corpus.db")
@@ -488,6 +514,7 @@ fi
 
 if [ -f "$ROOT/app/assets/corpus.db" ]; then
 	check "corpus.db under budget" corpus_under_budget
+	check "both locales carry the same strings" arb_locales_agree
 else
 	skip "corpus.db under budget" "app/assets/corpus.db is built by the ETL phase; the 60 MB budget is checked from then on"
 fi
