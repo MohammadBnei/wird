@@ -62,7 +62,8 @@ import 'app_localizations_fr.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,18 +84,97 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('fr')
+    Locale('fr'),
   ];
+
+  /// The eyebrow over the heading of the sources screen, reached from the drawer's Sources row.
+  ///
+  /// In en, this message translates to:
+  /// **'BUILT ON'**
+  String get aboutBuiltOn;
+
+  /// The heading of the sources screen, under the BUILT ON eyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources and licences'**
+  String get aboutTitle;
+
+  /// The kicker on the first card of the sources screen, the one carrying Wird's own terms.
+  ///
+  /// In en, this message translates to:
+  /// **'This app'**
+  String get aboutThisApp;
+
+  /// The snack bar shown on the sources screen once a source's address has been tapped and copied to the clipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied {url}'**
+  String aboutCopied(String url);
+
+  /// The kicker on the Quranic Arabic Corpus card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Roots, word forms and morphology'**
+  String get aboutProvidesMorphology;
+
+  /// The kicker on the Tanzil Project card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'The Qurʼanic text'**
+  String get aboutProvidesText;
+
+  /// The kicker on the Quran Foundation card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Word-by-word gloss and transliteration'**
+  String get aboutProvidesGloss;
+
+  /// The kicker on the Nocturne card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour, space and type'**
+  String get aboutProvidesDesign;
+
+  /// The kicker on the Scheherazade New card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'The Arabic face'**
+  String get aboutProvidesArabicFace;
+
+  /// The kicker on the Inter card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'The Latin face'**
+  String get aboutProvidesLatinFace;
+
+  /// The kicker on the quran-align card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Per-word recitation timings'**
+  String get aboutProvidesTimings;
+
+  /// The kicker on the al-Ḥuṣarī recitation card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Recitation'**
+  String get aboutProvidesRecitation;
+
+  /// The kicker on the Quran-Lab recogniser card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Following your voice in prayer'**
+  String get aboutProvidesVoice;
 
   /// Heading over the gloss of the selected word in the aya it was tapped in.
   ///
@@ -120,7 +201,8 @@ abstract class AppLocalizations {
   String get notDownloaded;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -129,25 +211,26 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'fr'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'fr'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
-
-
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en': return AppLocalizationsEn();
-    case 'fr': return AppLocalizationsFr();
+    case 'en':
+      return AppLocalizationsEn();
+    case 'fr':
+      return AppLocalizationsFr();
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.'
+    'that was used.',
   );
 }
