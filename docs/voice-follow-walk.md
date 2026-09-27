@@ -9,6 +9,30 @@ The phone is a 23117RA68G on Android 16, running the debug build. The trail is
 `/data/data/dev.bnei.wird/databases/prayer-trail.log`, read with
 `adb shell run-as dev.bnei.wird cat`.
 
+Walking it, from the repo root:
+
+```sh
+# Release APK for the walk. The flag drops the per-ABI version-code offset, so
+# this APK carries versionCode 1 and a later `flutter run` installs over it
+# instead of uninstalling and taking the 72.7 MB of weights with it (finding 4).
+cd app && fvm flutter build apk --release --split-per-abi \
+  -P force-version-code-ignoring-abi=true
+
+# Check what the APK actually claims, before handing it to the phone.
+# aapt2 lives in the SDK: $(sed -n 's/^sdk.dir=//p' android/local.properties)/build-tools/<ver>/
+aapt2 dump badging build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+  | grep versionCode        # expect 1, not 2001
+
+adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+fvm flutter run -d qse6wk6h7pmza6kr          # nothing should be uninstalled
+adb shell run-as dev.bnei.wird cat \
+  /data/data/dev.bnei.wird/databases/prayer-trail.log > trail.log
+```
+
+Development only: the Play Store requires a distinct version code per split
+APK, which is why the offsets exist. See the comment in
+`app/android/app/build.gradle.kts`.
+
 ## 2026-09-27, first walk on Quran-Lab/zipformer_p-arabic-v3
 
 The recogniser itself is doing its job. Both findings are about what surrounds
@@ -112,8 +136,21 @@ INSTALL_FAILED_VERSION_DOWNGRADE: Downgrade detected: Update version code 1 is o
 
 `flutter run` handles it by uninstalling, which takes the app's data with it —
 so every walk that follows a release build starts by downloading 72.7 MB of
-weights again over whatever connection the reader has. Worth a versionCode for
-debug builds that does not sit below the release one.
+weights again over whatever connection the reader has.
+
+**Corrected: 2001 is not an outside number and no versionCode needs setting.**
+`--split-per-abi` makes Flutter's own Gradle plugin mint
+`abi * 1000 + pubspec build number` per APK — arm64 is 2, the pubspec is
+1.0.0+1, so 2001 — because Play refuses two split APKs with the same code.
+Overriding it in `build.gradle.kts` would not work: the plugin's override runs
+in `afterEvaluate` through the legacy `applicationVariants` API, after
+`androidComponents.onVariants`, so a block written there is clobbered on the
+split build. The fix is the build flag above,
+`-P force-version-code-ignoring-abi=true`, which skips the ABI offset and keeps
+the split. Release then carries versionCode 1, the same as debug, and equal
+codes install over each other. It is a development flag: releasing to Play
+means dropping it and bumping the pubspec build number past the last release's
+offset code, or `adb install -d`.
 
 ### 5. Iʿrāb, lexicon and tafsir are placeholders end to end
 
