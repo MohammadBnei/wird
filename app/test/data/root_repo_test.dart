@@ -116,6 +116,21 @@ void main() {
     expect(await rootKept(db, '\u0639\u0642\u0644'), isNull);
   });
 
+  test('an aya kept twice reaches the kept list as two entries, because only '
+      'the root path deduped', () async {
+    // The screen's own `_keptId` cannot answer this: it is read when the screen
+    // opens, so a row kept on screen 1e — or arriving from a sync — while the
+    // deep dive sits open is invisible to the button.
+    const aya = 112004;
+    Future<int> live() async => (await keptItems(db, kind: KeptKind.aya))
+        .where((item) => item.ayahId == aya)
+        .length;
+
+    expect(await keepAya(db, aya), await keepAya(db, aya));
+    expect(await live(), 1);
+    expect(await ayaKept(db, aya), isNotNull);
+  });
+
   test('a root taken back off the list is still on it, because the undo '
       'tombstoned one of the rows holding it there', () async {
     // Two live rows for one root is reachable: the server keys kept_items on

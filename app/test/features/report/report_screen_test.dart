@@ -35,6 +35,13 @@ Future<Map<String, dynamic>?> queued(Database db) async {
   return jsonDecode(row['body']! as String) as Map<String, dynamic>;
 }
 
+/// The version the asset in `app/assets/` is expected to carry, and the only
+/// place in the app's tests it is written down. `server/cmd/etl`'s
+/// `-corpus-version` default has to agree with it: the API groups reports by
+/// this number, so a rebuild that regresses it misattributes every report, and
+/// the report golden only bakes the digit as pixels.
+const expectedCorpusVersion = 2;
+
 void main() {
   late Database db;
   late AudioCache silent;
@@ -43,6 +50,10 @@ void main() {
   setUp(() async {
     db = await testCorpus();
     silent = await emptyCache();
+  });
+
+  test('the shipped corpus carries the version the ETL writes', () async {
+    expect(await shippedCorpusVersion(db), expectedCorpusVersion);
   });
 
   // The failure: the report arrives saying "the audio stops" and nothing else

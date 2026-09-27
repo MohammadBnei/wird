@@ -16,7 +16,10 @@ func main() {
 		"which of quran-align's recitations data/raw/timings/ holds")
 	reciter := flag.String("reciter", "Mahmoud Khalil Al-Husary", "reciter name")
 	style := flag.String("style", "Muallim", "recitation style")
-	version := flag.Int("corpus-version", 1, "corpus_version the API negotiates")
+	// 2 since the parsing shipped: the asset in app/assets/ carries 2, the API
+	// groups reports by this number, and the rebuild SOURCES.md documents passes
+	// no flag — so a default of 1 would silently regress every report's build.
+	version := flag.Int("corpus-version", 2, "corpus_version the API negotiates")
 	full := flag.Bool("full", true, "require the whole Qur'an: 114 suras, 6236 ayas")
 	senses := flag.String("senses", "./data/root_senses.json", "the checked root senses to bundle")
 	flag.Parse()

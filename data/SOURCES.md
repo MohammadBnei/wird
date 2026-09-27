@@ -8,6 +8,12 @@ go run ./server/cmd/ingest                      # -suras 1,2,103,112 for a parti
 go run ./server/cmd/etl -in ./data/raw/ -out ./app/assets/corpus.db
 ```
 
+That command writes `corpus_version` 2, which is what the shipped asset carries:
+the number is the ETL's `-corpus-version` default so the documented rebuild
+cannot regress it, and the app asserts it in
+`app/test/features/report/report_screen_test.dart`. The API groups reports by
+it.
+
 ```
 data/raw/chapters.json                          surah metadata
 data/raw/verses/NNN.json                        one file per surah: ayas and their words

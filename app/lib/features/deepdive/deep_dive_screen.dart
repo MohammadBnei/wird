@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../../data/kept_repo.dart';
 import '../../data/root_repo.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
@@ -69,6 +68,11 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   /// listens to `kept_items`, so a delete made on screen 1e while this screen
   /// is open does not reach the button until it is reopened.
   String? _keptId;
+
+  /// Whether a keep or an undo is in flight. Two taps inside the `await` would
+  /// both read `_keptId` as null and both write: the latch this replaced was
+  /// also the only thing stopping that.
+  bool _busy = false;
   int _view = 0;
 
   @override
@@ -99,14 +103,20 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   /// control is one button: a reader who has just pressed Keep is the reader
   /// most likely to want it undone.
   Future<void> _toggleKeep() async {
-    String? keptId;
-    if (_keptId == null) {
-      keptId = await keep(widget.db, kind: KeptKind.aya, ayahId: widget.ayahId);
-    } else {
-      await forgetAya(widget.db, widget.ayahId);
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      String? keptId;
+      if (_keptId == null) {
+        keptId = await keepAya(widget.db, widget.ayahId);
+      } else {
+        await forgetAya(widget.db, widget.ayahId);
+      }
+      if (!mounted) return;
+      setState(() => _keptId = keptId);
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    if (!mounted) return;
-    setState(() => _keptId = keptId);
   }
 
   @override
@@ -338,7 +348,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   // carries its own undo.
   Widget _keepButton() => NocturneButton(
     block: true,
-    onPressed: _toggleKeep,
+    onPressed: _busy ? null : _toggleKeep,
     child: Text(_keptId == null ? 'Keep this aya' : 'Kept · tap to undo'),
   );
 

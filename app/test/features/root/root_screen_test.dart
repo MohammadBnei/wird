@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:wird/data/kept_repo.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/root/root_dial.dart';
 import 'package:wird/features/root/root_sections.dart';
@@ -99,8 +100,14 @@ void main() {
     await open(tester, RootScreen(db: db, letters: pastTheRing));
 
     expect(find.byType(RootDial), findsNothing);
-    for (final derivative in reading.derivatives) {
-      expect(find.text(derivative.text), findsOneWidget);
+    for (var i = 0; i < reading.derivatives.length; i++) {
+      // Once down the spine, and the form the parsing under it is showing —
+      // the first, until the reader taps another — a second time above its
+      // segments.
+      expect(
+        find.text(reading.derivatives[i].text),
+        i == 0 ? findsNWidgets(2) : findsOneWidget,
+      );
     }
   });
 
@@ -285,6 +292,28 @@ void main() {
     expect(await rootKept(db, onTheDial), isNull);
     expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
     expect(find.text('Keep this root'), findsOneWidget);
+  });
+
+  testWidgets('a double tap on Keep mints two kept rows for one root, because '
+      'nothing guards the write in flight', (tester) async {
+    await forgetRoot(db, onTheDial);
+    await open(tester, RootScreen(db: db, letters: onTheDial));
+    Future<int> live() async => (await keptItems(db, kind: KeptKind.root))
+        .where((item) => item.rootLetters == onTheDial)
+        .length;
+
+    // Both presses land while the write is in flight. sqflite serialises on
+    // the database, so an open transaction is what a phone's platform channel
+    // is for free: the first press is still waiting on its read when the
+    // second arrives, and nothing has rebuilt in between.
+    await db.transaction((txn) async {
+      await tester.tap(find.text('Keep this root'));
+      await tester.tap(find.text('Keep this root'));
+    });
+    await tester.pumpAndSettle();
+
+    expect(await live(), 1);
+    expect(find.text('Kept · tap to undo'), findsOneWidget);
   });
 
   testWidgets('a root the corpus does not carry leaves the screen blank '

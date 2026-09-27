@@ -344,6 +344,14 @@ Future<List<String>> _liveKeptIds(
 Future<String?> ayaKept(Database db, int ayahId) async =>
     _keptId(db, 'ayah_id = ?', [KeptKind.aya.name, ayahId]);
 
+/// And the same keep: a press finds the row this aya is already kept under and
+/// writes nothing. The screen's own `_keptId` cannot answer this — it is read
+/// once when the screen opens, so a row kept on screen 1e or arriving from a
+/// sync while the deep dive sits open would mint a second live row for one aya.
+Future<String> keepAya(Database db, int ayahId) async =>
+    await ayaKept(db, ayahId) ??
+    await keep(db, kind: KeptKind.aya, ayahId: ayahId);
+
 /// And the same undo.
 Future<void> forgetAya(Database db, int ayahId) async {
   for (final id in await _liveKeptIds(db, 'ayah_id = ?', [

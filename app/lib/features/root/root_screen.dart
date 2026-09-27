@@ -41,6 +41,11 @@ class _RootScreenState extends State<RootScreen> {
   /// listens to `kept_items`, so a delete made on screen 1e while this screen
   /// is open does not reach the two buttons until it is reopened.
   String? _keptId;
+
+  /// Whether a keep or an undo is in flight. Two taps inside the `await` would
+  /// both read `_keptId` as null and both write: the latch this replaced was
+  /// also the only thing stopping that.
+  bool _busy = false;
   int _index = 0;
 
   @override
@@ -64,14 +69,20 @@ class _RootScreenState extends State<RootScreen> {
   /// screen — the bookmark at the top and the button in the card — press it,
   /// because a toggle beside a latched chip is the defect this replaced.
   Future<void> _toggleKeep() async {
-    String? keptId;
-    if (_keptId == null) {
-      keptId = await keepRoot(widget.db, widget.letters);
-    } else {
-      await forgetRoot(widget.db, widget.letters);
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      String? keptId;
+      if (_keptId == null) {
+        keptId = await keepRoot(widget.db, widget.letters);
+      } else {
+        await forgetRoot(widget.db, widget.letters);
+      }
+      if (!mounted) return;
+      setState(() => _keptId = keptId);
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    if (!mounted) return;
-    setState(() => _keptId = keptId);
   }
 
   @override
@@ -90,7 +101,7 @@ class _RootScreenState extends State<RootScreen> {
                   RootChrome(
                     kicker: spine ? 'Root spine' : 'Root',
                     kept: _keptId != null,
-                    onKeep: _toggleKeep,
+                    onKeep: _busy ? null : _toggleKeep,
                   ),
                   if (reading == null)
                     Expanded(child: _unknown(n))
@@ -265,7 +276,7 @@ class _RootScreenState extends State<RootScreen> {
                 Expanded(
                   child: NocturneButton(
                     variant: NocturneButtonVariant.primary,
-                    onPressed: _toggleKeep,
+                    onPressed: _busy ? null : _toggleKeep,
                     child: Text(
                       _keptId == null ? 'Keep this root' : 'Kept · tap to undo',
                     ),

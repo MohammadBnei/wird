@@ -276,6 +276,26 @@ void main() {
     expect(await db.query('kept_items'), hasLength(1));
   });
 
+  testWidgets('a double tap on Keep mints two kept rows for one aya, because '
+      'nothing guards the write in flight', (tester) async {
+    await open(tester, size: tablet);
+
+    // Both presses land while the write is in flight. sqflite serialises on the
+    // database, so an open transaction gives the test the window a phone's
+    // platform channel gives a reader: the first press is still waiting when
+    // the second arrives, and nothing has rebuilt in between.
+    await db.transaction((txn) async {
+      await tester.tap(find.text('Keep this aya'));
+      await tester.tap(find.text('Keep this aya'));
+    });
+    await tester.pumpAndSettle();
+
+    expect(
+      await db.query('kept_items', where: 'deleted_at IS NULL'),
+      hasLength(1),
+    );
+  });
+
   testWidgets('the aya pane overflows on 2:282, the longest aya in the '
       'Qur’an', (tester) async {
     await open(tester, size: tablet, ayahId: longestAya, letters: writing);

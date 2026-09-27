@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/features/root/root_screen.dart';
+import 'package:wird/features/root/root_sections.dart';
 import 'package:wird/features/root/root_spine_screen.dart';
 import 'package:wird/theme/nocturne.dart';
 
@@ -31,6 +32,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Brings the sections below the fold into the raster.
+  ///
+  /// A golden of the first screenful is a golden of the first screenful: a
+  /// `ListView` never builds what is under it, so the sections these tests name
+  /// could be deleted outright without moving a pixel — and were. The parsing
+  /// and the provenance under it are both down here.
+  Future<void> toTheSections(WidgetTester tester) async {
+    await tester.scrollUntilVisible(
+      find.byType(IrabSection),
+      300,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('screen 3a drifts away from the design in a way no behaviour '
       'test can see: the ring, the card under it, or the sections below', (
     tester,
@@ -39,6 +58,12 @@ void main() {
     await expectLater(
       find.byType(RootScreen),
       matchesGoldenFile('goldens/root.png'),
+    );
+
+    await toTheSections(tester);
+    await expectLater(
+      find.byType(RootScreen),
+      matchesGoldenFile('goldens/root_sections.png'),
     );
   });
 
@@ -50,6 +75,12 @@ void main() {
     await expectLater(
       find.byType(RootSpineScreen),
       matchesGoldenFile('goldens/root_spine.png'),
+    );
+
+    await toTheSections(tester);
+    await expectLater(
+      find.byType(RootSpineScreen),
+      matchesGoldenFile('goldens/root_spine_sections.png'),
     );
   });
 }
