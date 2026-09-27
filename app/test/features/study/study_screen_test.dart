@@ -33,6 +33,15 @@ Future<String> word(Database db, int id) async {
 /// set, so a finder on the text alone matches the wrong tile.
 Finder tile(int wordId) => find.byKey(WordKey(wordId));
 
+/// Whether a word's tile has been built at all.
+///
+/// The reading is a lazy sliver list. The transport left that list for the
+/// pinned footer, so the pane is one transport shorter than it was and the
+/// set's last aya is no longer built on the first frame. A row that was never
+/// built paints nothing, so it can carry no claim either way — these tests ask
+/// their question of the rows the reader is actually looking at.
+bool drawn(int wordId) => tile(wordId).evaluate().isNotEmpty;
+
 /// The Arabic of a word: the first thing painted in its tile, above the
 /// transliteration and the gloss.
 Finder arabic(int wordId) =>
@@ -267,7 +276,7 @@ void main() {
         for (final word in aya.words) word.id,
     ];
     expect(
-      [for (final id in ids) if (lit(tester, id)) id],
+      [for (final id in ids) if (drawn(id) && lit(tester, id)) id],
       [96001001],
       reason: 'the panel opens on the first rooted word and says so',
     );
@@ -276,7 +285,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      [for (final id in ids) if (lit(tester, id)) id],
+      [for (final id in ids) if (drawn(id) && lit(tester, id)) id],
       [96002004],
       reason: 'one word at a time wears the accent, and it is the one tapped',
     );
@@ -293,6 +302,7 @@ void main() {
       for (final word in aya.words) {
         // A tile scrolled out of the set's own pane would take the tap on
         // whatever is painted over it, which proves nothing about the word.
+        if (!drawn(word.id)) continue;
         final rect = tester.getRect(tile(word.id));
         if (rect.top < shown.top || rect.bottom > shown.bottom) continue;
         await tester.tap(tile(word.id));
@@ -344,7 +354,8 @@ void main() {
     final undownloaded = [
       for (final aya in set.ayas)
         if (aya.id != 96001)
-          for (final word in aya.words) word,
+          for (final word in aya.words)
+            if (drawn(word.id)) word,
     ];
     expect(
       undownloaded.where((word) => word.root != null),
@@ -413,11 +424,10 @@ void main() {
   testWidgets('the recitation offers to play a set that is not on the phone, '
       'and stalls on a file it cannot fetch', (tester) async {
     await openStudy(tester);
-    // The bar sits under the last aya of the set, and an aya is only built
-    // when it comes near the viewport now that a sūra can be 286 of them.
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -2000));
-    await tester.pumpAndSettle();
-
+    // The bar is pinned in the footer, so nothing is scrolled to reach it.
+    // It used to be an item in the sliver list under the last aya of the set,
+    // and this test had to drag two thousand pixels before the play button
+    // existed at all — which is the finding, not the setup.
     expect(find.text('Not downloaded'), findsOneWidget);
     final play = tester.widget<NocturneButton>(
       find.ancestor(
@@ -427,6 +437,127 @@ void main() {
     );
     expect(play.onPressed, isNull);
   });
+
+  testWidgets('the dark play button offers a download of a recitation the '
+      'corpus does not carry', (tester) async {
+    // A corpus with no ayah_audio rows: nothing to fetch, ever. The button is
+    // dark for a different reason than an empty cache, and the footer is the
+    // only place that reason is said.
+    await db.delete('ayah_audio');
+    await openStudy(tester);
+
+    expect(find.text('No recitation for this set'), findsOneWidget);
+    expect(find.text('Not downloaded'), findsNothing);
+  });
+
+  testWidgets('the word panel names the root and keeps its sense to itself, so '
+      'the one screen the reader studies from is the one screen that will not '
+      'say what the root means', (tester) async {
+    await openStudy(tester);
+    final panel = find.byKey(const Key('root panel'));
+
+    // قرأ ships a sense, and the panel opens on the set's first rooted word.
+    expect(
+      find.descendant(of: panel, matching: find.text('CORE SENSE')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: panel,
+        matching: find.text('a recitation, the quran; to recite'),
+      ),
+      findsOneWidget,
+    );
+    // The gloss in this aya answers a different question and stays.
+    expect(
+      find.descendant(of: panel, matching: find.text('IN THIS AYA')),
+      findsOneWidget,
+    );
+
+    // ربب ships none. Unguarded is the point: the section is still drawn and
+    // says the absence was chosen, because a panel that simply stopped
+    // printing a sense reads as a section someone forgot.
+    await tester.tap(tile(96001003));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: panel, matching: find.text('CORE SENSE')),
+      findsOneWidget,
+      reason: 'a root with no sense still gets the heading',
+    );
+    expect(
+      find.descendant(
+        of: panel,
+        matching: find.textContaining('nothing is claimed here'),
+      ),
+      findsOneWidget,
+      reason: 'the machine chose the absence, so it says so',
+    );
+  });
+
+  // Nothing in app/lib sets a preferred orientation and the manifest handles
+  // the configuration change itself, so the app rotates; the system text size
+  // is the reader's and goes to 2x. The transport and the root's sense each
+  // added a band to the fixed chrome, and at every one of these shapes the sum
+  // passed the window: sideways as a red overflow, and — once the panel was
+  // capped and scrolled — as a Mark button quietly off the bottom of the
+  // screen, which is worse, because the overflow at least says so.
+  //
+  // 874x402 is the same phone sideways, 320x568 the smallest phone still sold,
+  // and 2.0 the top of the system text slider.
+  for (final window in const [Size(402, 874), Size(320, 568), Size(874, 402)]) {
+    for (final scale in const [1.0, 2.0]) {
+      testWidgets(
+        'the reader cannot advance the walk at ${window.width.toInt()}x'
+        '${window.height.toInt()} at ${scale}x text: the one action that '
+        'marks the set is off the screen, or the reading is gone from it',
+        (tester) async {
+          tester.view.physicalSize = window;
+          tester.view.devicePixelRatio = 1;
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.view.reset);
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          await tester.pumpWidget(
+            await wirdAround(
+              db,
+              StudyScreen(db: db),
+              route: Routes.study,
+              cache: audio,
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // At 1.4x and up a Row inside the chrome runs off the RIGHT — a
+          // horizontal defect of its own, older than the cap and untouched by
+          // it. Taken so the vertical claims below can be made at 2.0 as well;
+          // they are geometric, so a Column that overflowed downwards again
+          // would fail them whether or not it also raised this.
+          final overflowed = tester.takeException();
+          if (scale == 1.0) expect(overflowed, isNull);
+
+          // `Mark set understood` is the only way through the Qur'an. It is
+          // the last thing in the panel, the panel is capped, and a cap over a
+          // scroll view is a clip — so this is the assertion that says the
+          // button is pinned and not scrolled out.
+          final mark = tester.getRect(find.text('Mark set understood'));
+          expect(
+            window.contains(mark.topLeft) && window.contains(mark.bottomRight),
+            isTrue,
+            reason: 'the button is inside the window, at $mark',
+          );
+
+          // What the panel gives up is the reading's height, so the cap needs
+          // a floor as well as a ceiling. 75px is one aya tile at the default
+          // text size, measured; sideways the reading is a strip, but never
+          // less than one word of it. `greaterThan(0)` passed here at 45.6px
+          // and guarded nothing.
+          expect(
+            tester.getRect(find.byType(CustomScrollView)).height,
+            greaterThanOrEqualTo(75),
+          );
+        },
+      );
+    }
+  }
 
   testWidgets('the reader is stuck in the order they started, with no way to '
       'read the muṣḥaf from its first sūra', (tester) async {

@@ -8,6 +8,13 @@ import '../../shell/wird_shell.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_tag.dart';
+// Shown, not imported whole, for two reasons that both bite. root_sections.dart
+// declares a DashedRule of its own — painted with ThreadPainter rather than the
+// _DashPainter below — so an unqualified import makes every `DashedRule` in this
+// file an ambiguous_import, on lines this change does not touch. And it
+// `export`s family.dart, which reaches the deep dive's constellation, so an
+// unqualified import would drag that into the study feature.
+import '../root/root_sections.dart' show CoreSense;
 
 /// Where the reader is — and, since this screen carries the shell's row
 /// itself, the way out of it as well.
@@ -286,129 +293,165 @@ class RootPanel extends StatelessWidget {
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (root == null)
-            Text(
-              'No word in this set carries a root.',
-              style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
-            )
-          else if (!open)
-            // Folded, the root line is the handle: there is nowhere else to
-            // press, so it unfolds the panel rather than opening the root
-            // screen.
-            GestureDetector(
-              key: const Key('toggle root panel'),
-              behavior: HitTestBehavior.opaque,
-              onTap: onToggle,
-              child: _rootLine(n, root, trailing: Icons.expand_less),
-            )
-          else ...[
-            Row(
-              children: [
-                // The design reaches 3a by tapping a word in 1a, but the
-                // word's gestures are spoken for — a tap speaks it, a long
-                // press swaps this panel — so the root the panel names opens
-                // the root screen.
-                Expanded(
-                  child: GestureDetector(
-                    key: const ValueKey('open-root'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: letters == null
-                        ? null
-                        : () => onVisit(Routes.root, letters),
-                    child: _rootLine(n, root),
-                  ),
-                ),
-                SizedBox(width: n.space('2')),
-                NocturneButton(
-                  key: const Key('toggle root panel'),
-                  variant: NocturneButtonVariant.icon,
-                  onPressed: onToggle,
-                  child: const Icon(Icons.expand_more, size: 16),
-                ),
-              ],
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: n.space('3')),
-              child: const DashedRule(),
-            ),
-            // The design's "core sense" prose is lexicon text, which arrives
-            // over the network in a later phase. What the corpus itself knows
-            // about this word is its gloss in this aya, so that is what the
-            // section says it is.
-            // "Open constellation" used to sit beside "Mark set understood"
-            // at equal weight. One of the two moves the reader through the
-            // Qur'an and the other is an occasional detour, so the detour is
-            // demoted into the panel it belongs to and the bottom of the
-            // screen carries one action.
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'IN THIS AYA',
-                    style: TextStyle(
-                      fontSize: 10,
-                      letterSpacing: 0.11 * 10,
-                      color: n.accent,
+          // The body scrolls, the action does not. The screen caps this panel
+          // at half the window, and a cap over a scroll view is a clip: put
+          // the whole panel inside one and `Mark set understood` — the only
+          // way through the Qur'an — goes off the bottom with no scrollbar to
+          // hint at it. So only what is above it is scrollable, and the button
+          // keeps its place at the foot of the panel at every window size and
+          // every text scale.
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (root == null)
+                    Text(
+                      'No word in this set carries a root.',
+                      style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
+                    )
+                  else if (!open)
+                    // Folded, the root line is the handle: there is nowhere else to
+                    // press, so it unfolds the panel rather than opening the root
+                    // screen.
+                    GestureDetector(
+                      key: const Key('toggle root panel'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onToggle,
+                      child: _rootLine(n, root, trailing: Icons.expand_less),
+                    )
+                  else ...[
+                    Row(
+                      children: [
+                        // The design reaches 3a by tapping a word in 1a, but the
+                        // word's gestures are spoken for — a tap speaks it, a long
+                        // press swaps this panel — so the root the panel names opens
+                        // the root screen.
+                        Expanded(
+                          child: GestureDetector(
+                            key: const ValueKey('open-root'),
+                            behavior: HitTestBehavior.opaque,
+                            onTap: letters == null
+                                ? null
+                                : () => onVisit(Routes.root, letters),
+                            child: _rootLine(n, root),
+                          ),
+                        ),
+                        SizedBox(width: n.space('2')),
+                        NocturneButton(
+                          key: const Key('toggle root panel'),
+                          variant: NocturneButtonVariant.icon,
+                          onPressed: onToggle,
+                          child: const Icon(Icons.expand_more, size: 16),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                if (letters != null)
-                  NocturneButton(
-                    variant: NocturneButtonVariant.ghost,
-                    onPressed: () => onVisit(Routes.deepDive, (
-                      ayahId: word!.id ~/ 1000,
-                      letters: letters,
-                    )),
-                    child: const Text(
-                      'Constellation',
-                      style: TextStyle(fontSize: 11),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: n.space('3')),
+                      child: const DashedRule(),
                     ),
-                  ),
-              ],
-            ),
-            SizedBox(height: n.space('1')),
-            Text(
-              word?.gloss ?? '—',
-              style: TextStyle(fontSize: 13.5, height: 1.5, color: n.text),
-            ),
-            SizedBox(height: n.space('3')),
-            Wrap(
-              spacing: n.space('2'),
-              runSpacing: n.space('2'),
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                // The tag sets everything about its label but the family, so
-                // the Arabic face reaches it through the default style.
-                for (final kin in root.kin)
-                  GestureDetector(
-                    // Keyed by the form as well as the aya: two derivatives
-                    // are first met in the same aya often enough, and the two
-                    // tags cannot carry one key.
-                    key: ValueKey('kin-${kin.text}-${kin.ayahId}'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => onKin(kin.ayahId),
-                    child: DefaultTextStyle.merge(
-                      style: const TextStyle(fontFamily: Nocturne.arabicFamily),
-                      child: NocturneTag(
-                        kin.text,
-                        variant: NocturneTagVariant.neutral,
+                    // The root the panel is holding already carries its sense: `root`
+                    // is a RootReading, the same object the root screen, the spine and
+                    // the deep dive all hand to CoreSense. This was the only one of the
+                    // four that did not ask, and printed the word's gloss alone.
+                    //
+                    // Unguarded, like the other three. Where a root ships no sense
+                    // CoreSense says so in words, because a root whose sense Wird
+                    // declined to claim must not read as a section someone forgot: the
+                    // machine chose the absence and the reader is told it chose.
+                    //
+                    // The dash above supplies the gap over it; the gap under it is
+                    // here, or the sentence butts into the IN THIS AYA kicker.
+                    Padding(
+                      padding: EdgeInsets.only(bottom: n.space('4')),
+                      child: CoreSense(reading: root),
+                    ),
+                    // "Open constellation" used to sit beside "Mark set understood"
+                    // at equal weight. One of the two moves the reader through the
+                    // Qur'an and the other is an occasional detour, so the detour is
+                    // demoted into the panel it belongs to and the bottom of the
+                    // screen carries one action.
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'IN THIS AYA',
+                            style: TextStyle(
+                              fontSize: 10,
+                              letterSpacing: 0.11 * 10,
+                              color: n.accent,
+                            ),
+                          ),
+                        ),
+                        if (letters != null)
+                          NocturneButton(
+                            variant: NocturneButtonVariant.ghost,
+                            onPressed: () => onVisit(Routes.deepDive, (
+                              ayahId: word!.id ~/ 1000,
+                              letters: letters,
+                            )),
+                            child: const Text(
+                              'Constellation',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: n.space('1')),
+                    Text(
+                      word?.gloss ?? '—',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.5,
+                        color: n.text,
                       ),
                     ),
-                  ),
-                Text(
-                  root.sources.join(', '),
-                  style: TextStyle(fontSize: 11, color: n.textAt(0.45)),
-                ),
-              ],
+                    SizedBox(height: n.space('3')),
+                    Wrap(
+                      spacing: n.space('2'),
+                      runSpacing: n.space('2'),
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // The tag sets everything about its label but the family, so
+                        // the Arabic face reaches it through the default style.
+                        for (final kin in root.kin)
+                          GestureDetector(
+                            // Keyed by the form as well as the aya: two derivatives
+                            // are first met in the same aya often enough, and the two
+                            // tags cannot carry one key.
+                            key: ValueKey('kin-${kin.text}-${kin.ayahId}'),
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => onKin(kin.ayahId),
+                            child: DefaultTextStyle.merge(
+                              style: const TextStyle(
+                                fontFamily: Nocturne.arabicFamily,
+                              ),
+                              child: NocturneTag(
+                                kin.text,
+                                variant: NocturneTagVariant.neutral,
+                              ),
+                            ),
+                          ),
+                        Text(
+                          root.sources.join(', '),
+                          style: TextStyle(fontSize: 11, color: n.textAt(0.45)),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: n.space('2')),
+                    Text(
+                      'A kin opens the aya it is first met in.',
+                      style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
+                    ),
+                  ],
+                ],
+              ),
             ),
-            SizedBox(height: n.space('2')),
-            Text(
-              'A kin opens the aya it is first met in.',
-              style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
-            ),
-          ],
+          ),
           SizedBox(height: n.space('3')),
           NocturneButton(
             block: true,

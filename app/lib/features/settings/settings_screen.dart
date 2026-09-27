@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../app.dart';
+import '../../data/db.dart';
 import '../../data/mic.dart';
 import '../../data/sets.dart';
 import '../../data/speech.dart';
@@ -40,6 +41,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// at.
   StudySet? _next;
 
+  /// Who recites the audio the app plays. It came off the reading screen's
+  /// transport, where it sat beside the play button and read as that button's
+  /// state — which it is not: it never changes while a set is open, and the
+  /// state the button does have is whether the recitation is on the phone.
+  /// That half stayed on the transport, with the button it disables.
+  String? _reciter;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -49,7 +57,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final wird = Wird.of(context);
     final next = await nextSet(wird.db, wird.prefs.order);
-    if (mounted) setState(() => _next = next);
+    final reciter = await reciterLabel(wird.db);
+    if (mounted) {
+      setState(() {
+        _next = next;
+        _reciter = reciter;
+      });
+    }
   }
 
   Future<void> _resize(StudySet set, int by) async {
@@ -150,6 +164,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _caption(n, 'How large the Arabic is set on the reading screen.'),
               _section(n, 'HOW MUCH YOU TAKE AT ONCE'),
               _width(n),
+              _section(n, 'RECITATION'),
+              // Read-only: the corpus ships the paths for one reciter and
+              // there is nothing here to choose between. It is said once,
+              // here, rather than under the play button, where a name that
+              // never changes read as the transport's own state.
+              //
+              // Who recites is all this says. It used to add that nothing
+              // would play — a claim this query cannot see: the name comes
+              // from `recitations` while what plays is decided by ayah_audio,
+              // and either table can be populated without the other. Whether
+              // a set is playable is said on the screen that knows, under the
+              // button it disables.
+              _caption(
+                n,
+                _reciter == null
+                    ? 'No reciter is named in this corpus.'
+                    : 'Recited by $_reciter.',
+              ),
               _section(n, 'MICROPHONE'),
               // Voice-follow is a later phase and off by default. The
               // microphone is asked for here and only here: the in-prayer

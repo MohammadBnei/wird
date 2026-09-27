@@ -125,7 +125,12 @@ void main() {
       'cannot see what comes before it', (tester) async {
     await openStudy(tester, target: _kursi);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, 900));
+    // One pane's worth, read off the pane rather than typed. The transport
+    // and the root's sense both moved into the fixed chrome, so the reading
+    // is shorter than it was and a fixed 900px now carries 2:254 back past
+    // the far edge of the cache without ever building it.
+    final pane = tester.getRect(find.byType(CustomScrollView)).height;
+    await tester.drag(find.byType(CustomScrollView), Offset(0, pane));
     await tester.pumpAndSettle();
 
     expect(find.byKey(WordKey(_word(2254, 1))), findsOneWidget);
