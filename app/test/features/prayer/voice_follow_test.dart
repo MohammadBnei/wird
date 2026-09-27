@@ -158,10 +158,21 @@ void main() {
 
   test('a microphone taken away since Settings leaves nothing listening', () async {
     // Granted in Settings and revoked in the OS afterwards, which is the one
-    // case `request: false` is written for. By the time the recorder says no
-    // the recogniser is open and nothing upstream has been handed it, so an
-    // answer of null that walked out past it would leave it behind for the
-    // length of the app.
+    // case `request: false` is written for.
+    //
+    // UNTIL THE MICROPHONE WAS OPENED FIRST, THIS PASSED VACUOUSLY. The model
+    // files below are empty, so `Recogniser.open` could not build a recogniser
+    // and `start` returned before `AudioRecorder` was ever constructed:
+    // `hasPermission` was never reached and `opened` was empty because nothing
+    // had opened. Now the recorder IS built, and is asked, and says no — so
+    // `opened` being empty is the disposal doing its job rather than the code
+    // never arriving.
+    //
+    // It is also the one order in which `FakeMic` can carry this at all: the
+    // throw lands before `_listen()`, and `startStream` is not overridden, so a
+    // test that reached the stream would fail on `noSuchMethod` instead. The
+    // ordering itself — that the audio before the model loads is kept — is
+    // device evidence, off the trail's two note lines. Nothing here proves it.
     final db = await testCorpus();
     await setMicPermission(db, MicPermission.granted);
     await _aModelOnDisk();
