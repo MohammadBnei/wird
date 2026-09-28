@@ -37,10 +37,18 @@ a list that runs on is worse than a short one, because a reader stops reading it
 
 Choose the branches that **share the root's underlying idea**. Lane's noun entries
 also record incidental things a word of the root can denote — a particular bird, a
-kind of bread, a sort of cloud. Those are not senses of the root and do not
-belong, unless one of them shows the idea especially clearly (a mountain and a
-ship's ballast both say *holds fast under load*, and earn their place; a
-red-bellied bird does not).
+kind of bread, a sort of cloud, a skin complaint. Those are attested and they are
+still not senses of the root: they are things one of its words happens to name.
+Leave them out.
+
+The test is whether the thing says the idea. A mountain and a ship's ballast both
+say *holds fast under load*, so they earn a place beside patience. A red-bellied
+bird says nothing about the idea and does not, however faithfully Lane records it.
+When a branch only passes because Lane mentions it, that is not passing.
+
+Write each clause as a sense, not as a thing: *to be firm, as a mountain is* over
+*to be a mountain*. A list of "to be a X; to be a Y" is a list of denotations,
+which is the mistake above wearing a verb.
 
 **The poetic line** names the connection the plain list can only enumerate. One
 sentence, and the register that says *why* these senses are one word — not
@@ -70,5 +78,8 @@ those words, that image, or that sentence pattern.**
 ## Answer
 
 A single JSON object and nothing else. No prose before or after, no code fence.
+
+Each of the four strings is a finished sentence or a finished list: no trailing
+`;`, no trailing comma, nothing left hanging at the end.
 
 {"sense_en": "...", "sense_fr": "...", "poetic_en": "...", "poetic_fr": "..."}

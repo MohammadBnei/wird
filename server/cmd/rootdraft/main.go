@@ -8,6 +8,12 @@
 // without "womb" under a gate that scored six terms; no threshold found that, a
 // reader did.
 //
+// The output is an append-only log, and the LAST row for a root is the current
+// one. A -force re-run does not replace the earlier row, it writes a newer one
+// beside it — so two prompt versions sit in the file together and can be read
+// against each other, which is how a prompt change is judged. Whatever promotes
+// these into data/root_senses.tsv takes the last row per root.
+//
 // Built to be re-run. The prompt is a file, not a string in this program; every
 // row records its digest; and a root already drafted is skipped unless -force,
 // so iterating means editing data/root-sense-prompt.md and re-running a handful
@@ -41,7 +47,7 @@ func main() {
 	db := flag.String("db", "./app/assets/corpus.db", "corpus.db to read the glosses from")
 	laneDir := flag.String("lane", "./data/raw/lane", "the `originals` clone of Lane's TEI; gitignored, consulted, never shipped")
 	promptPath := flag.String("prompt", "./data/root-sense-prompt.md", "the prompt to send; edit this to iterate")
-	out := flag.String("out", "./data/root_senses_draft.tsv", "drafts land here, for a person to read and promote")
+	out := flag.String("out", "./data/root_senses_draft.tsv", "drafts land here, for a person to read and promote; append-only, last row for a root wins")
 	roots := flag.String("roots", "", "comma-separated roots to draft; default is every root")
 	limit := flag.Int("limit", 0, "draft at most this many, commonest first; 0 means no limit")
 	model := flag.String("model", "deepseek-ai/DeepSeek-V3.2", "the model to draft with")
@@ -81,7 +87,9 @@ func run(dbPath, laneDir, promptPath, outPath, only string, limit int, model, ba
 		return err
 	}
 	done := map[string]bool{}
-	if !force {
+	// -dry never skips. It exists to show what WOULD be sent, and a root already
+	// drafted is exactly the one you want to inspect when its row looks wrong.
+	if !force && !dry {
 		if done, err = alreadyDrafted(outPath); err != nil {
 			return err
 		}
@@ -115,7 +123,7 @@ func run(dbPath, laneDir, promptPath, outPath, only string, limit int, model, ba
 		fmt.Fprintln(file, header)
 	}
 
-	var drafts, skipped, failed int
+	var drafts, skipped, failed, refused int
 	for _, root := range want {
 		if done[root] {
 			skipped++
@@ -135,8 +143,15 @@ func run(dbPath, laneDir, promptPath, outPath, only string, limit int, model, ba
 		}
 		got, raw, err := writer.draft(context.Background(), text)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  %s: %v\n%s\n", root, err, firstLine(raw))
+			fmt.Fprintf(os.Stderr, "  %s: %v\n", root, err)
+			if raw != "" {
+				fmt.Fprintf(os.Stderr, "    %s\n", firstLine(raw))
+			}
 			failed++
+			// No body came back at all: the request never reached a model.
+			if raw == "" {
+				refused++
+			}
 			continue
 		}
 		fmt.Fprintf(file, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
@@ -152,7 +167,17 @@ func run(dbPath, laneDir, promptPath, outPath, only string, limit int, model, ba
 	fmt.Fprintf(os.Stderr, "%d drafted, %d already there, %d failed → %s\n",
 		drafts, skipped, failed, outPath)
 	if failed > 0 {
-		return fmt.Errorf("%d roots failed; the prompt or the model is what to change, not the rows", failed)
+		// Two different failures, and conflating them sends you to the wrong file.
+		// A provider that refused — no credit, rate limited, unreachable — says
+		// nothing about the prompt, and re-running picks up exactly what is left
+		// because the rows already written are skipped.
+		if refused > 0 {
+			return fmt.Errorf("%d roots failed because the provider refused (%d of them): "+
+				"credit, rate limit, or reachability. Nothing to change here — re-run to "+
+				"resume, or point -base-url and -model somewhere else", failed, refused)
+		}
+		return fmt.Errorf("%d roots failed on what came back; the prompt is what to change, "+
+			"not the rows", failed)
 	}
 	return nil
 }
