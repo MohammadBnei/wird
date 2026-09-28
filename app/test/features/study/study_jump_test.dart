@@ -82,7 +82,14 @@ void main() {
     await openStudy(tester);
     expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
 
-    await tester.tap(find.byKey(ValueKey('kin-${kin.text}-${kin.ayahId}')));
+    // The panel's body scrolls, and the kin tags sit below its fold on a phone
+    // — scroll to the tag rather than tapping where it would be if nothing were
+    // above it, or every row added to the panel breaks this test instead of the
+    // jump it is about.
+    final tag = find.byKey(ValueKey('kin-${kin.text}-${kin.ayahId}'));
+    await tester.ensureVisible(tag);
+    await tester.pumpAndSettle();
+    await tester.tap(tag);
     await tester.pumpAndSettle();
 
     expect(find.textContaining('$surah ${kin.ayahId % 1000}'), findsOneWidget);

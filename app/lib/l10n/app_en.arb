@@ -1339,5 +1339,17 @@
   "study_glossesStayEnglish": "The word meanings under each word are in English; no word-by-word rendering exists in your language.",
   "@study_glossesStayEnglish": {
     "description": "Said once above the reading, where the aya is translated but the per-word glosses are not."
+  },
+  "root_senseJudgeThanks": "Noted — thank you.",
+  "@root_senseJudgeThanks": {
+    "description": "Shown once a verdict has been recorded."
+  },
+  "root_senseJudgeGoodLabel": "This sense is right",
+  "@root_senseJudgeGoodLabel": {
+    "description": "Screen-reader label for the yes control."
+  },
+  "root_senseJudgeBadLabel": "This sense is wrong",
+  "@root_senseJudgeBadLabel": {
+    "description": "Screen-reader label for the no control."
   }
 }

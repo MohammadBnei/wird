@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../app.dart';
+import '../report/report.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
 import '../../data/sets.dart';
@@ -285,6 +286,22 @@ class _StudyScreenState extends State<StudyScreen> {
     });
   }
 
+  /// A reader's verdict on the sense drawn for a root, on its way to the people
+  /// who wrote it.
+  ///
+  /// Queued, never sent here: the outbox flushes when there is a signal, so a
+  /// reader judging a sense on a plane is not told their opinion failed. Nothing
+  /// is shown either way — `_JudgeSense` says thank you itself, and a screen that
+  /// raised a snackbar over the reading would charge the reader for helping.
+  Future<void> _judgeSense(String root, bool good) async {
+    await judgeSense(
+      widget.db,
+      root: root,
+      good: good,
+      context: await reportContext(widget.db, screen: screenName(Routes.study)),
+    );
+  }
+
   /// Sounds one word. An aya that was never downloaded shows the word's
   /// transliteration under it and plays nothing — it must never spin, and it
   /// must not shout.
@@ -386,6 +403,7 @@ class _StudyScreenState extends State<StudyScreen> {
                       onMark: _allUnderstood(set)
                           ? () => _load()
                           : () => _markUnderstood(set),
+                      onJudge: _judgeSense,
                     ),
                   ),
                 ],

@@ -847,4 +847,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get study_glossesStayEnglish => 'Le sens de chaque mot est en anglais : il n’existe pas de traduction mot à mot dans votre langue.';
+
+  @override
+  String get root_senseJudgeThanks => 'C’est noté — merci.';
+
+  @override
+  String get root_senseJudgeGoodLabel => 'Ce sens est juste';
+
+  @override
+  String get root_senseJudgeBadLabel => 'Ce sens est faux';
 }

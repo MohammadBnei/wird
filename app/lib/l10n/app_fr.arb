@@ -229,5 +229,8 @@
   "settingsParkedReport": "Quelque chose que vous avez signalé",
   "settingsParkedOther": "Une modification que vous avez faite",
   "study_ayaTranslated": "Rashid Maash",
-  "study_glossesStayEnglish": "Le sens de chaque mot est en anglais : il n’existe pas de traduction mot à mot dans votre langue."
+  "study_glossesStayEnglish": "Le sens de chaque mot est en anglais : il n’existe pas de traduction mot à mot dans votre langue.",
+  "root_senseJudgeThanks": "C’est noté — merci.",
+  "root_senseJudgeGoodLabel": "Ce sens est juste",
+  "root_senseJudgeBadLabel": "Ce sens est faux"
 }

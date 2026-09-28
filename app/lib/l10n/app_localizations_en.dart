@@ -847,4 +847,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get study_glossesStayEnglish => 'The word meanings under each word are in English; no word-by-word rendering exists in your language.';
+
+  @override
+  String get root_senseJudgeThanks => 'Noted — thank you.';
+
+  @override
+  String get root_senseJudgeGoodLabel => 'This sense is right';
+
+  @override
+  String get root_senseJudgeBadLabel => 'This sense is wrong';
 }

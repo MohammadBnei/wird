@@ -252,6 +252,7 @@ class RootPanel extends StatelessWidget {
     required this.onKin,
     required this.allUnderstood,
     required this.onMark,
+    required this.onJudge,
   });
 
   final RootDetail? root;
@@ -273,6 +274,9 @@ class RootPanel extends StatelessWidget {
   final bool allUnderstood;
 
   final VoidCallback onMark;
+
+  /// A reader's verdict on the sense drawn for this root.
+  final void Function(String root, bool good) onJudge;
 
   @override
   Widget build(BuildContext context) {
@@ -378,6 +382,23 @@ class RootPanel extends StatelessWidget {
                       padding: EdgeInsets.only(bottom: n.space('4')),
                       child: CoreSense(reading: root),
                     ),
+                    // Whether the sense above is right, asked of the one person
+                    // who can tell. The sense is written from lexicography and
+                    // checked against the Qurʼan for contradiction, and neither
+                    // can see whether it is COMPLETE — ر ح م shipped without
+                    // "womb" past a gate scoring six terms.
+                    //
+                    // Only where there is a sense to judge: CoreSense draws a
+                    // refusal notice when a root has none, and asking a reader to
+                    // rate a refusal asks them nothing.
+                    if (root.coreSense != null)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: n.space('4')),
+                        child: _JudgeSense(
+                          root: root.letters,
+                          onJudge: onJudge,
+                        ),
+                      ),
                     // "Open constellation" used to sit beside "Mark set understood"
                     // at equal weight. One of the two moves the reader through the
                     // Qur'an and the other is an occasional detour, so the detour is
@@ -561,3 +582,64 @@ String _numbers(AppLocalizations l10n, List<int> numbers) => numbers.length == 1
         numbers.sublist(0, numbers.length - 1).join(', '),
         numbers.last,
       );
+
+/// Yes or no on the sense above, and then nothing.
+///
+/// Stateful only to stop asking once answered: a control that stays live invites a
+/// second press, and two verdicts from one reader on one root is noise in the one
+/// signal this feature exists to collect. It does not undo — a reader who
+/// mis-taps has said something true about how clear the sense was.
+class _JudgeSense extends StatefulWidget {
+  const _JudgeSense({required this.root, required this.onJudge});
+
+  final String root;
+  final void Function(String root, bool good) onJudge;
+
+  @override
+  State<_JudgeSense> createState() => _JudgeSenseState();
+}
+
+class _JudgeSenseState extends State<_JudgeSense> {
+  bool _answered = false;
+
+  void _say(bool good) {
+    if (_answered) return;
+    setState(() => _answered = true);
+    widget.onJudge(widget.root, good);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
+    final quiet = TextStyle(fontSize: 10.5, color: n.textAt(0.45));
+    if (_answered) {
+      return Text(l.root_senseJudgeThanks, style: quiet);
+    }
+    // Two thumbs and no question. The sense is directly above them, so what is
+    // being judged needs no naming; a screen reader gets the naming through the
+    // Semantics label, which is the one thing here that is not an icon.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (good, icon, semantics) in [
+          (true, Icons.thumb_up_outlined, l.root_senseJudgeGoodLabel),
+          (false, Icons.thumb_down_outlined, l.root_senseJudgeBadLabel),
+        ])
+          Padding(
+            padding: EdgeInsets.only(right: n.space('2')),
+            child: Semantics(
+              button: true,
+              label: semantics,
+              child: NocturneButton(
+                key: Key('judge sense ${good ? 'good' : 'bad'}'),
+                variant: NocturneButtonVariant.icon,
+                onPressed: () => _say(good),
+                child: Icon(icon, size: 16),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}

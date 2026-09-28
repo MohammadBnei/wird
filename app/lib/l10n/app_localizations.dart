@@ -1474,6 +1474,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The word meanings under each word are in English; no word-by-word rendering exists in your language.'**
   String get study_glossesStayEnglish;
+
+  /// Shown once a verdict has been recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Noted — thank you.'**
+  String get root_senseJudgeThanks;
+
+  /// Screen-reader label for the yes control.
+  ///
+  /// In en, this message translates to:
+  /// **'This sense is right'**
+  String get root_senseJudgeGoodLabel;
+
+  /// Screen-reader label for the no control.
+  ///
+  /// In en, this message translates to:
+  /// **'This sense is wrong'**
+  String get root_senseJudgeBadLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
