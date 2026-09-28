@@ -46,9 +46,12 @@ say *holds fast under load*, so they earn a place beside patience. A red-bellied
 bird says nothing about the idea and does not, however faithfully Lane records it.
 When a branch only passes because Lane mentions it, that is not passing.
 
-Write each clause as a sense, not as a thing: *to be firm, as a mountain is* over
-*to be a mountain*. A list of "to be a X; to be a Y" is a list of denotations,
-which is the mistake above wearing a verb.
+Each clause names what the root **does**, not what one of its words **is**. A run
+of "to be a X; to be a Y" is the denotation list above wearing a verb.
+
+Do not adopt one sentence pattern for every clause. Clauses that all share a
+shape read as a template rather than as a reading, and the shape starts standing
+in for the sense.
 
 **The poetic line** names the connection the plain list can only enumerate. One
 sentence, and the register that says *why* these senses are one word — not
@@ -66,6 +69,12 @@ those words, that image, or that sentence pattern.**
 - **A claim about the word, never about a verse.** Name no sūra, cite no verse,
   and do not explain what a passage means. That is the line between lexicography
   and tafsir, and it is not yours to cross.
+
+  It is crossed by naming doctrine as well as by citing chapter and line. "A
+  bridge, narrow and perilous, over an abyss" is the sense; "the bridge over
+  Hell" is a doctrinal claim about a named thing and does not belong, however
+  standard it is. Where a word has become a term of religion, give the sense the
+  term was built on and stop there.
 - **French is written, not translated.** Write the French as French lexicography.
   Its clauses may differ in number and order from the English if that is how
   French says it. Do not calque.
