@@ -13,6 +13,7 @@ qa-report.json
 /etl
 /ingest
 /rootcheck
+/rootdraft
 /adminweb
 /rootd
 # And beside the module they were built from, which is where `go build ./cmd/x`
@@ -24,6 +25,7 @@ qa-report.json
 /server/ingest
 /server/jidhrcorpus
 /server/rootcheck
+/server/rootdraft
 /jidhr/rootd
 /jidhr/rootcheck
 
