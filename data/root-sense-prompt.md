@@ -31,17 +31,35 @@ A root carries several senses at once, and holding them together is what makes
 Arabic readable: a reader who knows the root behind patience also means binding
 fast reads patience differently.
 
-**As many clauses as the root carries**, separated by `; `, concrete sense first
-where one plainly yields another. Never repeat a clause. Most roots run to four or
-five; some carry ten, and those are the ones a reader most needs whole. Do not pad
-a narrow root to look full, and do not cut a wide one to look tidy — the root sets
-the length, and no number does.
+**One clause per sense the root carries**, separated by `; `, concrete sense first
+where one plainly yields another. Never repeat a clause.
+
+Write no number of them. Any figure here becomes a target — a range was tried and
+the drafts piled up on its highest value, and naming a typical length pulled them
+down to that instead. A narrow root is short and a wide one is long, and the only
+question for each clause is whether the root carries that sense.
+
+One clause per sense, and not one per example of it. Heat, effort, wind and rain
+being violent are one sense written four times, not four senses. If two clauses
+would be glossed the same way, they are one clause.
+
+**The heaviest sense opens the list**, whatever its place in the root's development.
+The counts below decide this. A reader who taps a word meets the sense they were
+reading, and a root whose commonest branch sits sixth has answered someone else's
+question — write the concrete origin, but do not lead with it when the reader's
+sense is elsewhere.
 
 Choose the branches that **share the root's underlying idea**. Lane's noun entries
 also record incidental things a word of the root can denote — a particular bird, a
 kind of bread, a sort of cloud, a skin complaint. Those are attested and they are
 still not senses of the root: they are things one of its words happens to name.
 Leave them out.
+
+Writing one as a verb does not make it a sense. "To be a swift and excellent
+horse", "to be the palm of the hand", "to be of one unmixed colour" are a bird and
+a bread and a cloud with `to be` in front. Ask what idea the clause carries, not
+what grammatical shape it wears: if the answer is a particular thing rather than
+something the root does or means, it does not belong.
 
 The test is whether the thing says the idea. A mountain and a ship's ballast both
 say *holds fast under load*, so they earn a place beside patience. A red-bellied
