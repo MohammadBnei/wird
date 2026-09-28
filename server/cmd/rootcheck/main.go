@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/MohammadBnei/wird/server/internal/lane"
 	"github.com/MohammadBnei/wird/server/internal/rootsense"
 	"os"
 	"sort"
@@ -18,7 +19,7 @@ import (
 
 func main() {
 	db := flag.String("db", "./app/assets/corpus.db", "corpus.db to read")
-	lane := flag.String("lane", "./data/raw/lane", "the  clone of Lane's TEI; gitignored, consulted, never shipped")
+	laneDir := flag.String("lane", "./data/raw/lane", "the  clone of Lane's TEI; gitignored, consulted, never shipped")
 	threshold := flag.Float64("threshold", 0, "score pass mark; 0 means the calibrated bar. Overriding it drops every term but the score and the clause order")
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, `rootcheck <command> [flags]
@@ -59,7 +60,7 @@ func main() {
 			flag.Usage()
 			os.Exit(2)
 		}
-		if err := laneRoot(os.Stdout, *lane, args[1]); err != nil {
+		if err := lane.Print(os.Stdout, *laneDir, args[1]); err != nil {
 			fmt.Fprintln(os.Stderr, "rootcheck:", err)
 			os.Exit(1)
 		}
