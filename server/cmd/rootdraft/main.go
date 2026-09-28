@@ -35,6 +35,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/MohammadBnei/wird/server/internal/lane"
 	_ "modernc.org/sqlite"
@@ -50,7 +51,7 @@ const draftHeader = "root\tsense_en\tsense_fr\tpoetic_en\tpoetic_fr\tlane\tpromp
 type config struct {
 	db, laneDir, prompt, out string
 	roots                    string
-	limit                    int
+	limit, workers           int
 	model, baseURL, apiKey   string
 	jsonMode, force, dry     bool
 }
@@ -69,6 +70,8 @@ func main() {
 	flag.StringVar(&c.apiKey, "api-key", envOr("HF_TOKEN", os.Getenv("OPENAI_API_KEY")),
 		"bearer token; falls back to `hf auth token`")
 	flag.BoolVar(&c.jsonMode, "json-mode", true, "ask the provider for JSON; some reject the field, so turn it off for those")
+	flag.IntVar(&c.workers, "workers", 6, "roots drafted at once; the run waits on the provider, "+
+		"not on this machine, so raise it until the provider rate-limits and then back off")
 	flag.BoolVar(&c.force, "force", false, "redo roots already in -out")
 	flag.BoolVar(&c.dry, "dry", false, "print the assembled prompt for each root and call nothing")
 	flag.Parse()
@@ -196,38 +199,81 @@ func draftStage(c config) error {
 		return err
 	}
 
+	// Settle what this run will attempt before attempting any of it. -limit then
+	// means the same under one worker as under twenty, which it would not if the
+	// loop stopped on a count several goroutines were racing to raise.
 	var t tally
+	var todo []string
 	for _, root := range want {
 		if s.done[root] {
 			t.skipped++
 			continue
 		}
-		if c.limit > 0 && t.did+t.failed >= c.limit {
+		if c.limit > 0 && len(todo) >= c.limit {
 			break
 		}
-		subject, err := subjectFor(s.conn, articles, root)
-		if err != nil {
-			t.blame(root, err, "")
-			continue
-		}
-		text := s.prompt.for_(subject)
-		if c.dry {
-			fmt.Printf("───── %s (%d occurrences, Lane: %s %d chars)\n%s\n",
-				root, subject.Occurrences, subject.LaneHow, subject.LaneChars, text)
-			t.did++
-			continue
-		}
-		got, raw, err := s.writer.draft(context.Background(), text)
-		if err != nil {
-			t.blame(root, err, raw)
-			continue
-		}
-		fmt.Fprintf(s.file, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			root, tab(got.SenseEn), tab(got.SenseFr), tab(got.PoeticEn), tab(got.PoeticFr),
-			subject.LaneHow, s.prompt.sha, c.model)
-		t.did++
-		fmt.Fprintf(os.Stderr, "  %s ✓ %s\n", root, firstLine(got.SenseEn))
+		todo = append(todo, root)
 	}
+
+	if c.dry {
+		for _, root := range todo {
+			subject, err := subjectFor(s.conn, articles, root)
+			if err != nil {
+				t.blame(root, err, "")
+				continue
+			}
+			fmt.Printf("───── %s (%d occurrences, Lane: %s %d chars)\n%s\n",
+				root, subject.Occurrences, subject.LaneHow, subject.LaneChars,
+				s.prompt.for_(subject))
+			t.did++
+		}
+		return t.report("drafted", c.out, c.dry)
+	}
+
+	// A root's draft is one request and a wait, so the run is bound by the
+	// provider rather than by this machine: 1,642 of them in series is hours of
+	// mostly waiting. Everything a worker reads is safe to share — database/sql
+	// pools its own connections, and the Lane articles and the prompt are built
+	// once and never written again — so the lock covers only the two things that
+	// are not: the output file and the tally.
+	//
+	// The log stops being ordered commonest-first, which costs nothing: every row
+	// names its own root, and the file was already append-only with the last row
+	// for a root winning. A run killed mid-flight still leaves whole rows, because
+	// each is written under the lock in one call.
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	gate := make(chan struct{}, c.workers)
+	for _, root := range todo {
+		wg.Add(1)
+		go func(root string) {
+			defer wg.Done()
+			gate <- struct{}{}
+			defer func() { <-gate }()
+
+			subject, err := subjectFor(s.conn, articles, root)
+			if err != nil {
+				mu.Lock()
+				t.blame(root, err, "")
+				mu.Unlock()
+				return
+			}
+			got, raw, err := s.writer.draft(context.Background(), s.prompt.for_(subject))
+
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				t.blame(root, err, raw)
+				return
+			}
+			fmt.Fprintf(s.file, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				root, tab(got.SenseEn), tab(got.SenseFr), tab(got.PoeticEn), tab(got.PoeticFr),
+				subject.LaneHow, s.prompt.sha, c.model)
+			t.did++
+			fmt.Fprintf(os.Stderr, "  %s ✓ %s\n", root, firstLine(got.SenseEn))
+		}(root)
+	}
+	wg.Wait()
 	return t.report("drafted", c.out, c.dry)
 }
 
