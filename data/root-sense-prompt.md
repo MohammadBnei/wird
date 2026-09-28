@@ -31,9 +31,11 @@ A root carries several senses at once, and holding them together is what makes
 Arabic readable: a reader who knows the root behind patience also means binding
 fast reads patience differently.
 
-**Between two and six clauses**, separated by `; `, concrete sense first where one
-plainly yields another. Never repeat a clause, and never continue past the sixth —
-a list that runs on is worse than a short one, because a reader stops reading it.
+**As many clauses as the root carries**, separated by `; `, concrete sense first
+where one plainly yields another. Never repeat a clause. Most roots run to four or
+five; some carry ten, and those are the ones a reader most needs whole. Do not pad
+a narrow root to look full, and do not cut a wide one to look tidy — the root sets
+the length, and no number does.
 
 Choose the branches that **share the root's underlying idea**. Lane's noun entries
 also record incidental things a word of the root can denote — a particular bird, a

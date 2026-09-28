@@ -152,7 +152,13 @@ func (s *stage) close() {
 
 // tally is what a run reports, and it keeps a provider's refusal apart from a
 // fault in what came back: conflating them sends you to the wrong file.
-type tally struct{ did, skipped, failed, refused int }
+type tally struct {
+	did, skipped, failed, refused int
+	// Which roots failed, so a run that is piped through `tail` — which every
+	// long one is — can still say what to re-run. The per-root reason is printed
+	// as it happens and scrolls away; this line is at the end, where it survives.
+	fell []string
+}
 
 func (t tally) report(what, where string, dry bool) error {
 	if dry {
@@ -163,6 +169,7 @@ func (t tally) report(what, where string, dry bool) error {
 	if t.failed == 0 {
 		return nil
 	}
+	fmt.Fprintf(os.Stderr, "re-run them with:  -roots %s\n", strings.Join(t.fell, ","))
 	if t.refused > 0 {
 		return fmt.Errorf("%d roots failed because the provider refused (%d of them): credit, "+
 			"rate limit, or reachability. Nothing to change here — re-run to resume, or point "+
@@ -177,6 +184,7 @@ func (t *tally) blame(root string, err error, raw string) {
 		fmt.Fprintf(os.Stderr, "    %s\n", firstLine(raw))
 	}
 	t.failed++
+	t.fell = append(t.fell, root)
 	// No body came back at all: the request never reached a model.
 	if raw == "" {
 		t.refused++
