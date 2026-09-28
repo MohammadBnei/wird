@@ -1,12 +1,17 @@
-// rootdraft writes a first draft of every root's sense, from Lane's article and
-// the corpus's own glosses, in English and French and in two registers.
+// rootdraft drafts a root's senses. It ships nothing.
 //
-// It writes DRAFTS. Nothing here reaches a reader: the output is a TSV a person
-// reads and promotes into data/root_senses.tsv by hand, because the standard is
-// established lexicography checked against the corpus, and the check that the
-// corpus cannot perform — whether a sense is complete — is a human's. رحم shipped
-// without "womb" under a gate that scored six terms; no threshold found that, a
-// reader did.
+// One call per root: Lane's article and the Qur'an's own glosses, with how often
+// a reader meets each, go in together and a sense comes back. An earlier version
+// asked a second pass to revise a draft against the corpus, and it made senses
+// worse — told it had "missed" a gloss, the model inserted that gloss verbatim as
+// a clause, which turns lexicography back into the list of Qur'anic glosses the
+// standard moved away from. The corpus informs the writing; it does not correct it.
+//
+// The output is a TSV a person reads and promotes into data/root_senses.tsv by
+// hand. That step is deliberate: the standard is established lexicography checked
+// against the corpus, and the check the corpus cannot perform — whether a sense is
+// complete — is a human's. ر ح م shipped without "womb" under a gate that scored
+// six terms; no threshold found that, a reader did.
 //
 // The output is an append-only log, and the LAST row for a root is the current
 // one. A -force re-run does not replace the earlier row, it writes a newer one
@@ -14,11 +19,10 @@
 // against each other, which is how a prompt change is judged. Whatever promotes
 // these into data/root_senses.tsv takes the last row per root.
 //
-// Built to be re-run. The prompt is a file, not a string in this program; every
-// row records its digest; and a root already drafted is skipped unless -force,
-// so iterating means editing data/root-sense-prompt.md and re-running a handful
-// of roots rather than paying for 1,642 again. -dry prints the assembled prompt
-// and calls nothing.
+// Built to be re-run. Each stage's prompt is a file, not a string in this
+// program; every row records the digest of the prompt that wrote it; a root
+// already done is skipped unless -force; and -dry assembles a prompt and calls
+// nothing. Iterating means editing a prompt and re-running a handful of roots.
 package main
 
 import (
@@ -41,63 +45,77 @@ import (
 // crossed in machine-readable form.
 var verseRef = regexp.MustCompile(`\b\d{1,3}\s*:\s*\d{1,3}\b`)
 
-const header = "root\tsense_en\tsense_fr\tpoetic_en\tpoetic_fr\tlane\tprompt\tmodel"
+const draftHeader = "root\tsense_en\tsense_fr\tpoetic_en\tpoetic_fr\tlane\tprompt\tmodel"
+
+type config struct {
+	db, laneDir, prompt, out string
+	roots                    string
+	limit                    int
+	model, baseURL, apiKey   string
+	jsonMode, force, dry     bool
+}
 
 func main() {
-	db := flag.String("db", "./app/assets/corpus.db", "corpus.db to read the glosses from")
-	laneDir := flag.String("lane", "./data/raw/lane", "the `originals` clone of Lane's TEI; gitignored, consulted, never shipped")
-	promptPath := flag.String("prompt", "./data/root-sense-prompt.md", "the prompt to send; edit this to iterate")
-	out := flag.String("out", "./data/root_senses_draft.tsv", "drafts land here, for a person to read and promote; append-only, last row for a root wins")
-	roots := flag.String("roots", "", "comma-separated roots to draft; default is every root")
-	limit := flag.Int("limit", 0, "draft at most this many, commonest first; 0 means no limit")
-	model := flag.String("model", "deepseek-ai/DeepSeek-V3.2", "the model to draft with")
-	baseURL := flag.String("base-url", envOr("OPENAI_BASE_URL", "https://router.huggingface.co/v1"),
+	var c config
+	flag.StringVar(&c.db, "db", "./app/assets/corpus.db", "corpus.db to read the glosses from")
+	flag.StringVar(&c.laneDir, "lane", "./data/raw/lane", "the `originals` clone of Lane's TEI; gitignored, consulted, never shipped")
+	flag.StringVar(&c.prompt, "prompt", "", "the prompt to send; edit this to iterate")
+	flag.StringVar(&c.out, "out", "", "rows land here, for a person to read and promote; append-only, last row for a root wins")
+	flag.StringVar(&c.roots, "roots", "", "comma-separated roots; default is every root, commonest first")
+	flag.IntVar(&c.limit, "limit", 0, "do this many NEW roots; ones already done do not count against it; 0 means all")
+	flag.StringVar(&c.model, "model", "deepseek-ai/DeepSeek-V3.2", "the model to use")
+	flag.StringVar(&c.baseURL, "base-url", envOr("OPENAI_BASE_URL", "https://router.huggingface.co/v1"),
 		"any OpenAI-shaped endpoint: the HF router, OpenAI, OpenRouter, a local Ollama or vLLM")
-	apiKey := flag.String("api-key", envOr("HF_TOKEN", os.Getenv("OPENAI_API_KEY")),
+	flag.StringVar(&c.apiKey, "api-key", envOr("HF_TOKEN", os.Getenv("OPENAI_API_KEY")),
 		"bearer token; falls back to `hf auth token`")
-	jsonMode := flag.Bool("json-mode", true, "ask the provider for JSON; some reject the field, so turn it off for those")
-	force := flag.Bool("force", false, "redraft roots already in -out")
-	dry := flag.Bool("dry", false, "print the assembled prompt for each root and call nothing")
+	flag.BoolVar(&c.jsonMode, "json-mode", true, "ask the provider for JSON; some reject the field, so turn it off for those")
+	flag.BoolVar(&c.force, "force", false, "redo roots already in -out")
+	flag.BoolVar(&c.dry, "dry", false, "print the assembled prompt for each root and call nothing")
 	flag.Parse()
 
-	if err := run(*db, *laneDir, *promptPath, *out, *roots, *limit, *model, *baseURL, *apiKey, *jsonMode, *force, *dry); err != nil {
+	if c.prompt == "" {
+		c.prompt = "./data/root-sense-prompt.md"
+	}
+	if c.out == "" {
+		c.out = "./data/root_senses_draft.tsv"
+	}
+
+	if err := draftStage(c); err != nil {
 		fmt.Fprintln(os.Stderr, "rootdraft:", err)
 		os.Exit(1)
 	}
 }
 
-func run(dbPath, laneDir, promptPath, outPath, only string, limit int, model, baseURL, apiKey string, jsonMode, force, dry bool) error {
-	prompt, err := readPrompt(promptPath)
-	if err != nil {
-		return err
-	}
-	conn, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+// Everything a run needs: the corpus, the prompt, the output, and a model to
+// talk to unless this is a dry run.
+type stage struct {
+	cfg    config
+	conn   *sql.DB
+	prompt promptFile
+	done   map[string]bool
+	file   *os.File
+	writer drafter
+}
 
-	articles, err := lane.Articles(laneDir)
+func begin(c config, header string) (*stage, error) {
+	p, err := readPrompt(c.prompt)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	want, err := chooseRoots(conn, only, limit)
+	conn, err := sql.Open("sqlite", c.db)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	done := map[string]bool{}
+	s := &stage{cfg: c, conn: conn, prompt: p, done: map[string]bool{}}
 	// -dry never skips. It exists to show what WOULD be sent, and a root already
-	// drafted is exactly the one you want to inspect when its row looks wrong.
-	if !force && !dry {
-		if done, err = alreadyDrafted(outPath); err != nil {
-			return err
+	// done is exactly the one you want to inspect when its row looks wrong.
+	if !c.force && !c.dry {
+		if s.done, err = alreadyDone(c.out); err != nil {
+			return nil, err
 		}
 	}
-
-	var writer drafter
-	if !dry {
-		key := apiKey
+	if !c.dry {
+		key := c.apiKey
 		if key == "" {
 			// The token already on this machine, rather than a second one to
 			// manage: `hf auth login` puts it where the CLI can print it.
@@ -106,106 +124,120 @@ func run(dbPath, laneDir, promptPath, outPath, only string, limit int, model, ba
 			}
 		}
 		if key == "" {
-			return fmt.Errorf("no API key: pass -api-key, set HF_TOKEN or OPENAI_API_KEY, " +
+			return nil, fmt.Errorf("no API key: pass -api-key, set HF_TOKEN or OPENAI_API_KEY, " +
 				"or run `hf auth login` so `hf auth token` can print one")
 		}
-		if writer, err = newDrafter(baseURL, key, model, jsonMode); err != nil {
-			return err
+		if s.writer, err = newDrafter(c.baseURL, key, c.model, c.jsonMode); err != nil {
+			return nil, err
+		}
+		if s.file, err = os.OpenFile(c.out, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err != nil {
+			return nil, err
+		}
+		if info, err := s.file.Stat(); err == nil && info.Size() == 0 {
+			fmt.Fprintln(s.file, header)
 		}
 	}
+	return s, nil
+}
 
-	file, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+func (s *stage) close() {
+	if s.file != nil {
+		s.file.Close()
+	}
+	s.conn.Close()
+}
+
+// tally is what a run reports, and it keeps a provider's refusal apart from a
+// fault in what came back: conflating them sends you to the wrong file.
+type tally struct{ did, skipped, failed, refused int }
+
+func (t tally) report(what, where string, dry bool) error {
+	if dry {
+		fmt.Fprintf(os.Stderr, "%d prompts assembled, nothing sent\n", t.did)
+		return nil
+	}
+	fmt.Fprintf(os.Stderr, "%d %s, %d already there, %d failed → %s\n", t.did, what, t.skipped, t.failed, where)
+	if t.failed == 0 {
+		return nil
+	}
+	if t.refused > 0 {
+		return fmt.Errorf("%d roots failed because the provider refused (%d of them): credit, "+
+			"rate limit, or reachability. Nothing to change here — re-run to resume, or point "+
+			"-base-url and -model somewhere else", t.failed, t.refused)
+	}
+	return fmt.Errorf("%d roots failed on what came back; the prompt is what to change, not the rows", t.failed)
+}
+
+func (t *tally) blame(root string, err error, raw string) {
+	fmt.Fprintf(os.Stderr, "  %s: %v\n", root, err)
+	if raw != "" {
+		fmt.Fprintf(os.Stderr, "    %s\n", firstLine(raw))
+	}
+	t.failed++
+	// No body came back at all: the request never reached a model.
+	if raw == "" {
+		t.refused++
+	}
+}
+
+func draftStage(c config) error {
+	s, err := begin(c, draftHeader)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	if info, err := file.Stat(); err == nil && info.Size() == 0 {
-		fmt.Fprintln(file, header)
+	defer s.close()
+
+	articles, err := lane.Articles(c.laneDir)
+	if err != nil {
+		return err
+	}
+	want, err := chooseRoots(s.conn, c.roots)
+	if err != nil {
+		return err
 	}
 
-	var drafts, skipped, failed, refused int
+	var t tally
 	for _, root := range want {
-		if done[root] {
-			skipped++
+		if s.done[root] {
+			t.skipped++
 			continue
 		}
-		subject, err := subjectFor(conn, articles, root)
+		if c.limit > 0 && t.did+t.failed >= c.limit {
+			break
+		}
+		subject, err := subjectFor(s.conn, articles, root)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  %s: %v\n", root, err)
-			failed++
+			t.blame(root, err, "")
 			continue
 		}
-		text := prompt.for_(subject)
-		if dry {
+		text := s.prompt.for_(subject)
+		if c.dry {
 			fmt.Printf("───── %s (%d occurrences, Lane: %s %d chars)\n%s\n",
 				root, subject.Occurrences, subject.LaneHow, subject.LaneChars, text)
+			t.did++
 			continue
 		}
-		got, raw, err := writer.draft(context.Background(), text)
+		got, raw, err := s.writer.draft(context.Background(), text)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  %s: %v\n", root, err)
-			if raw != "" {
-				fmt.Fprintf(os.Stderr, "    %s\n", firstLine(raw))
-			}
-			failed++
-			// No body came back at all: the request never reached a model.
-			if raw == "" {
-				refused++
-			}
+			t.blame(root, err, raw)
 			continue
 		}
-		fmt.Fprintf(file, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(s.file, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			root, tab(got.SenseEn), tab(got.SenseFr), tab(got.PoeticEn), tab(got.PoeticFr),
-			subject.LaneHow, prompt.sha, model)
-		drafts++
+			subject.LaneHow, s.prompt.sha, c.model)
+		t.did++
 		fmt.Fprintf(os.Stderr, "  %s ✓ %s\n", root, firstLine(got.SenseEn))
 	}
-	if dry {
-		fmt.Fprintf(os.Stderr, "%d prompts assembled, nothing sent\n", len(want))
-		return nil
-	}
-	fmt.Fprintf(os.Stderr, "%d drafted, %d already there, %d failed → %s\n",
-		drafts, skipped, failed, outPath)
-	if failed > 0 {
-		// Two different failures, and conflating them sends you to the wrong file.
-		// A provider that refused — no credit, rate limited, unreachable — says
-		// nothing about the prompt, and re-running picks up exactly what is left
-		// because the rows already written are skipped.
-		if refused > 0 {
-			return fmt.Errorf("%d roots failed because the provider refused (%d of them): "+
-				"credit, rate limit, or reachability. Nothing to change here — re-run to "+
-				"resume, or point -base-url and -model somewhere else", failed, refused)
-		}
-		return fmt.Errorf("%d roots failed on what came back; the prompt is what to change, "+
-			"not the rows", failed)
-	}
-	return nil
-}
-
-func envOr(name, fallback string) string {
-	if v := os.Getenv(name); v != "" {
-		return v
-	}
-	return fallback
+	return t.report("drafted", c.out, c.dry)
 }
 
 // Commonest first, so a truncated run leaves the roots a reader actually meets
-// drafted rather than an alphabetical prefix.
-func chooseRoots(db *sql.DB, only string, limit int) ([]string, error) {
+// done rather than an alphabetical prefix.
+func chooseRoots(db *sql.DB, only string) ([]string, error) {
 	if only != "" {
-		var out []string
-		for _, r := range strings.Split(only, ",") {
-			if r = strings.TrimSpace(r); r != "" {
-				out = append(out, r)
-			}
-		}
-		return out, nil
+		return splitRoots(only), nil
 	}
-	q := `SELECT letters FROM roots ORDER BY quran_occurrences DESC, letters`
-	if limit > 0 {
-		q += fmt.Sprintf(" LIMIT %d", limit)
-	}
-	rows, err := db.Query(q)
+	rows, err := db.Query(`SELECT letters FROM roots ORDER BY quran_occurrences DESC, letters`)
 	if err != nil {
 		return nil, err
 	}
@@ -221,13 +253,36 @@ func chooseRoots(db *sql.DB, only string, limit int) ([]string, error) {
 	return out, rows.Err()
 }
 
+func splitRoots(csv string) []string {
+	var out []string
+	for _, r := range strings.Split(csv, ",") {
+		if r = strings.TrimSpace(r); r != "" {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // Which roots the output already holds, so a re-run costs only what is new. A
 // missing file is not an error: the first run has nothing to resume.
-func alreadyDrafted(path string) (map[string]bool, error) {
+func alreadyDone(path string) (map[string]bool, error) {
 	done := map[string]bool{}
+	rows, err := readTSV(path)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		if len(r) > 0 && r[0] != "root" {
+			done[r[0]] = true
+		}
+	}
+	return done, nil
+}
+
+func readTSV(path string) ([][]string, error) {
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {
-		return done, nil
+		return nil, nil
 	}
 	if err != nil {
 		return nil, err
@@ -240,12 +295,14 @@ func alreadyDrafted(path string) (map[string]bool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s is not readable as TSV: %w", path, err)
 	}
-	for _, row := range rows {
-		if len(row) > 0 && row[0] != "root" {
-			done[row[0]] = true
-		}
+	return rows, nil
+}
+
+func envOr(name, fallback string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
 	}
-	return done, nil
+	return fallback
 }
 
 // A tab or a newline inside a field would silently shift every column after it.

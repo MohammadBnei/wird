@@ -78,9 +78,20 @@ those words, that image, or that sentence pattern.**
 - **French is written, not translated.** Write the French as French lexicography.
   Its clauses may differ in number and order from the English if that is how
   French says it. Do not calque.
-- **Contradiction, not coverage.** The corpus glosses above are a check: nothing
-  you write may contradict them. They are not a ceiling — a sense Lane attests
-  and the Qur'an never uses still belongs.
+- **The counts say what a reader meets, and that decides the ORDER.** A branch
+  carrying a hundred occurrences belongs in the sense and belongs early; one
+  carrying three belongs if Lane attests it, but not first. Lead with the concrete
+  sense where one plainly yields another, and otherwise with weight.
+
+- **Do not paste a gloss in as a clause.** The glosses are word-in-context
+  translations, not senses: "the Most Merciful ×72" tells you mercy is the heavy
+  branch, and the clause you write for it is still yours. A sense assembled out of
+  glosses is the corpus talking, which is the thing this is not.
+
+- **Contradiction, not coverage.** Nothing you write may contradict the glosses.
+  They are not a ceiling either — a sense Lane attests and the Qur'an never uses
+  still belongs, and a root whose occurrences are nearly all one proper name will
+  leave most of its count unaccounted for however complete the sense is.
 - **Where Lane is absent** the entry says NO LANE ARTICLE. Write from what you
   know of the root and keep it to what you are sure of.
 

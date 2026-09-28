@@ -77,20 +77,28 @@ func subjectFor(db *sql.DB, articles map[string]string, root string) (subject, e
 	).Scan(&s.Occurrences); err != nil {
 		return s, fmt.Errorf("%s is not a root in this corpus: %w", root, err)
 	}
+	// With counts, heaviest first. The count is the whole point: it separates what
+	// the corpus contains from what a reader meets, so a branch carrying a hundred
+	// occurrences is visible as such while the sense is being written. An earlier
+	// version sent an alphabetical list with no counts and then had a second pass
+	// complain about "missed" glosses, which taught the model to paste corpus
+	// glosses in as clauses.
 	rows, err := db.Query(
-		`SELECT DISTINCT gloss_en FROM words
+		`SELECT gloss_en, COUNT(*) n FROM words
 		  WHERE root_letters = ? AND gloss_en IS NOT NULL AND gloss_en <> ''
-		  ORDER BY gloss_en`, root)
+		  GROUP BY LOWER(gloss_en) ORDER BY n DESC, gloss_en
+		  LIMIT 40`, root)
 	if err != nil {
 		return s, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var g string
-		if err := rows.Scan(&g); err != nil {
+		var n int
+		if err := rows.Scan(&g, &n); err != nil {
 			return s, err
 		}
-		s.Glosses = append(s.Glosses, g)
+		s.Glosses = append(s.Glosses, fmt.Sprintf("%s  ×%d", g, n))
 	}
 	if err := rows.Err(); err != nil {
 		return s, err

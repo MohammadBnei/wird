@@ -72,10 +72,10 @@ func newDrafter(baseURL, apiKey, model string, jsonMode bool) (drafter, error) {
 	return drafter{llm: llm, jsonMode: jsonMode}, nil
 }
 
-// draft asks once and parses. A reply that is not the one object asked for is an
-// error rather than something to salvage: the prompt says "no prose before or
-// after", so digging JSON out of chatter would hide a prompt worth fixing.
-func (d drafter) draft(ctx context.Context, prompt string) (drafted, string, error) {
+// ask is one round trip, and the text it returns is what both stages parse. An
+// empty string back means the request never reached a model, which is how a
+// caller tells a provider's refusal from a fault in the answer.
+func (d drafter) ask(ctx context.Context, prompt string) (string, error) {
 	opts := []llms.CallOption{llms.WithMaxTokens(4000)}
 	// Not every provider honours it and some reject it outright, so it is a flag
 	// rather than an assumption.
@@ -86,19 +86,28 @@ func (d drafter) draft(ctx context.Context, prompt string) (drafted, string, err
 		llms.TextParts(llms.ChatMessageTypeHuman, prompt),
 	}, opts...)
 	if err != nil {
-		return drafted{}, "", err
+		return "", err
 	}
 	if len(res.Choices) == 0 {
-		return drafted{}, "", fmt.Errorf("the model answered with no choices")
+		return "", fmt.Errorf("the model answered with no choices")
 	}
 	choice := res.Choices[0]
 	// A cut-off answer is a bad row, not a short one: say so rather than writing
 	// half a sense.
 	if choice.StopReason != "" && choice.StopReason != "stop" {
-		return drafted{}, choice.Content,
-			fmt.Errorf("the answer stopped on %q rather than finishing", choice.StopReason)
+		return choice.Content, fmt.Errorf("the answer stopped on %q rather than finishing", choice.StopReason)
 	}
-	text := unfence(choice.Content)
+	return unfence(choice.Content), nil
+}
+
+// draft asks once and parses. A reply that is not the one object asked for is an
+// error rather than something to salvage: the prompt says "no prose before or
+// after", so digging JSON out of chatter would hide a prompt worth fixing.
+func (d drafter) draft(ctx context.Context, prompt string) (drafted, string, error) {
+	text, err := d.ask(ctx, prompt)
+	if err != nil {
+		return drafted{}, text, err
+	}
 	var out drafted
 	if err := json.Unmarshal([]byte(text), &out); err != nil {
 		return drafted{}, text, fmt.Errorf("not the one JSON object the prompt asks for: %w", err)
