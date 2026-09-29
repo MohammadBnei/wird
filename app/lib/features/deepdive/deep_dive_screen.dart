@@ -93,7 +93,11 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   }
 
   Future<void> _load() async {
-    final reading = await rootReading(widget.db, widget.letters);
+    final reading = await rootReading(
+      widget.db,
+      widget.letters,
+      readIn: _readIn ?? Localizations.localeOf(context),
+    );
     final aya = await ayaReading(widget.db, widget.ayahId, widget.letters);
     final keptId = await ayaKept(widget.db, widget.ayahId);
     final lit = aya == null ? null : _litWord(aya);

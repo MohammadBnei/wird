@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
@@ -273,6 +272,12 @@ Future<String?> languagePref(Database db) async {
 /// than storing a word for "the phone's own" keeps the absent row meaning one
 /// thing, so a reader who goes back to following their phone is in the state
 /// they were in before they ever opened this setting.
+///
+/// ponytail: no screen reaches the null. The control offers two languages and
+/// always writes one, deliberately — there is no "follow my phone" option to
+/// choose, because the phone's is what is already selected on arrival. The
+/// branch is three lines and it is what makes the absent row mean one thing,
+/// so it stays as the way back if that option is ever added.
 Future<void> setLanguagePref(Database db, String? locale) async {
   if (locale == null) {
     await db.delete('language_pref');
@@ -283,22 +288,6 @@ Future<void> setLanguagePref(Database db, String? locale) async {
     'locale': locale,
   }, conflictAlgorithm: ConflictAlgorithm.replace);
 }
-
-/// Whether a root's sense should be read in French.
-///
-/// The stored choice, and the phone's own language until there is one — the
-/// same two steps [MaterialApp.locale] takes, so the sense and the screen
-/// around it are never in different languages. A device set to neither answers
-/// false, which is English, the one sentence every sense has.
-///
-/// ponytail: those two steps are resolved twice, here and in [Prefs.locale],
-/// and the day they disagree the screen and the sense on it are in different
-/// languages. One resolver both read is the fix; it wants the data layer to be
-/// able to see the app's locale, which is a structural change, not this one.
-Future<bool> readingInFrench(Database db) async =>
-    (await languagePref(db) ??
-        PlatformDispatcher.instance.locale.languageCode) ==
-    'fr';
 
 Future<void> setReadingOrder(Database db, ReadingOrder order) =>
     db.transaction((txn) async {
@@ -397,8 +386,6 @@ Future<void> setDisplayPrefs(
 typedef Kin = Derivative;
 typedef RootDetail = RootReading;
 
-Future<RootDetail?> rootDetail(Database db, String letters) =>
-    rootReading(db, letters);
 
 /// The reciter whose audio the corpus carries paths for.
 Future<String?> reciterLabel(Database db) async {

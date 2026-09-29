@@ -209,7 +209,9 @@ class Prefs extends ChangeNotifier {
     this._rootOpen,
     this._mic,
     this._locale,
-  );
+  ) {
+    locale.value = _locale == null ? null : Locale(_locale!);
+  }
 
   static Future<Prefs> read(Database db) async {
     final display = await displayPrefs(db);
@@ -253,14 +255,25 @@ class Prefs extends ChangeNotifier {
   /// The language the reader picked, or null to take the phone's. Null is what
   /// [MaterialApp.locale] wants for "resolve it from the device", so the two
   /// agree without a translation between them.
-  Locale? get locale => _locale == null ? null : Locale(_locale!);
+  ///
+  /// Its own notifier rather than this object's: the app root listens for the
+  /// language, and it is the only preference that rebuilds the whole tree. On
+  /// [notifyListeners] it would rebuild once per frame of the Arabic-size
+  /// drag, which is every screen redrawn to move a slider.
+  final locale = ValueNotifier<Locale?>(null);
 
   Future<void> setLocale(Locale? locale) async {
     final code = locale?.languageCode;
     if (code == _locale) return;
     _locale = code;
-    notifyListeners();
+    this.locale.value = code == null ? null : Locale(code);
     await setLanguagePref(_db, code);
+  }
+
+  @override
+  void dispose() {
+    locale.dispose();
+    super.dispose();
   }
 
   bool get showGloss => _display == 0 || _display == 2;

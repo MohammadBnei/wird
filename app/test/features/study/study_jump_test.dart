@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
+import 'package:wird/data/root_repo.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/nav.dart';
@@ -66,8 +67,11 @@ void main() {
 
   /// The kin the root panel offers first, and the aya it leads to.
   Future<Kin> firstKin() async =>
-      (await rootDetail(db, (await nextSet(db, ReadingOrder.nuzul))!
-          .ayas.first.words.first.root!))!.kin.first;
+      (await rootReading(
+        db,
+        (await nextSet(db, ReadingOrder.nuzul))!.ayas.first.words.first.root!,
+        readIn: const Locale('en'),
+      ))!.kin.first;
 
   testWidgets('a kin printed in the root panel leads nowhere, so the aya it '
       'names cannot be read', (tester) async {

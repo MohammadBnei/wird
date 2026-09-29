@@ -95,7 +95,7 @@ void main() {
     // the app fetches them (docs/adr/0010). A served sense has no evidence
     // words, which is exactly the shape the sheet has to open for.
     await seedSenses(db, {patience: 'to bind oneself fast; to endure'});
-    final reading = (await rootReading(db, patience))!;
+    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
     for (final size in [tablet, phone]) {
       await open(tester, size: size);
       expect(find.text(reading.coreSense!), findsOneWidget);
@@ -252,7 +252,7 @@ void main() {
   testWidgets('the constellation’s five nodes are all the reader is ever '
       'shown of a root the corpus holds thirty-eight forms of', (tester) async {
     await open(tester, size: tablet);
-    final reading = (await rootReading(db, patience))!;
+    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
     expect(reading.derivatives.length, greaterThan(5));
 
     await tester.tap(find.text('List'));
@@ -385,7 +385,7 @@ void main() {
   test('the constellation captions a form the aya does not contain as the one '
       'being recited', () async {
     db = await testCorpus();
-    final reading = (await rootReading(db, patience))!;
+    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
     final aya = (await ayaReading(db, ayaOfPatience, patience))!;
     final lit = [
       for (final w in aya.words)
@@ -407,7 +407,7 @@ void main() {
   test('a root opened on an aya that does not contain it is still drawn with '
       'a node saying the reader is reciting it', () async {
     db = await testCorpus();
-    final reading = (await rootReading(db, clot))!;
+    final reading = (await rootReading(db, clot, readIn: const Locale('en')))!;
 
     final stars = constellation(reading, null);
 

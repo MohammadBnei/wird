@@ -21,7 +21,7 @@ void main() {
   setUpAll(loadBundledFonts);
   setUp(() async {
     db = await testCorpus();
-    reading = (await rootReading(db, fiveDerivatives))!;
+    reading = (await rootReading(db, fiveDerivatives, readIn: const Locale('en')))!;
   });
 
   /// The dial with the index held outside it, the way the screen holds it.

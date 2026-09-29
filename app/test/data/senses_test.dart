@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/root_repo.dart';
@@ -65,11 +66,11 @@ void main() {
   test('a phone that has never fetched cannot tell that apart from a root '
       'nobody wrote a sense for', () async {
     expect(await installed(db), isNull);
-    expect((await rootReading(db, 'صبر'))!.sensesFetched, isFalse);
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched, isFalse);
 
     server.senses = pack('1-1-1', [sense('صبر', 'to bear')]);
     expect(await installSenses(db, over: server.dio), '1-1-1');
-    expect((await rootReading(db, 'صبر'))!.sensesFetched, isTrue);
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched, isTrue);
   });
 
   test('the device re-downloads 800 KB it already has, because the check '
@@ -114,7 +115,7 @@ void main() {
     expect(await installed(db), '5-5-5');
     expect(await served(db), 1);
 
-    final gathered = (await rootReading(db, 'جمع'))!;
+    final gathered = (await rootReading(db, 'جمع', readIn: const Locale('en')))!;
     expect(gathered.coreSense, 'to gather');
     expect(gathered.senseSource, 'Wird');
     expect(gathered.senseBasis, contains('no person has checked it'));
@@ -125,8 +126,8 @@ void main() {
     // A full replace, not a merge: صبر carried a bundled sense and the pack
     // does not name it, so it has none. Anything else and a correction that
     // *removes* a sense could never reach a reader.
-    expect((await rootReading(db, 'صبر'))!.coreSense, isNull);
-    expect((await rootReading(db, 'صبر'))!.sensesFetched, isTrue);
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.coreSense, isNull);
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched, isTrue);
   });
 
   test('the pack takes a note keyed to one word with it, though the server '
@@ -153,7 +154,7 @@ void main() {
     server.senses = pack('1-0-0', []);
     expect(await installSenses(db, over: server.dio), isNull);
     expect(await served(db), 1);
-    expect((await rootReading(db, 'جمع'))!.coreSense, 'to gather');
+    expect((await rootReading(db, 'جمع', readIn: const Locale('en')))!.coreSense, 'to gather');
     expect(await installed(db), '7-7-7');
   });
 
@@ -164,7 +165,7 @@ void main() {
     server.senses = pack('1-0-0', []);
     expect(await installSenses(db, over: server.dio), isNull);
     expect(await installed(db), isNull);
-    expect((await rootReading(db, 'جمع'))!.sensesFetched, isFalse);
+    expect((await rootReading(db, 'جمع', readIn: const Locale('en')))!.sensesFetched, isFalse);
   });
 
   test('a captive portal answers 200 with its own sign-in page and the '
@@ -244,7 +245,7 @@ void main() {
 
     expect(await served(db), before, reason: 'the reader kept what they had');
     expect(await installed(db), '6-6-6', reason: 'so the next check offers again');
-    expect((await rootReading(db, 'صبر'))?.coreSense, 'to bind oneself fast');
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))?.coreSense, 'to bind oneself fast');
   });
 
   // The same invariant from the other side: a pack whose roots DO match lands,
@@ -258,6 +259,6 @@ void main() {
     expect(await installSenses(db, over: server.dio), '8-8-8');
 
     expect(await served(db), 1);
-    expect((await rootReading(db, 'صبر'))?.coreSense, 'to bind oneself fast');
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))?.coreSense, 'to bind oneself fast');
   });
 }

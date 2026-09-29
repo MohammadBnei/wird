@@ -9,6 +9,7 @@ import '../../app.dart';
 import '../report/report.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
+import '../../data/root_repo.dart';
 import '../../data/sets.dart';
 import '../../nav.dart';
 import '../../shell/wird_shell.dart';
@@ -126,10 +127,22 @@ class _StudyScreenState extends State<StudyScreen> {
 
   /// The set is read here rather than in initState because the reader's order
   /// and the recitation are reached through the application above this screen.
+  /// The language the root panel's sentence was read in, so a reader who
+  /// switches language is handed the other one where they stand rather than
+  /// on the next set.
+  Locale? _readIn;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_loaded) _load(target: widget.target);
+    final locale = Localizations.localeOf(context);
+    if (!_loaded) {
+      _readIn = locale;
+      _load(target: widget.target);
+    } else if (locale != _readIn) {
+      _readIn = locale;
+      _load(target: widget.target);
+    }
   }
 
   /// Reads what the screen shows: the walk's next set, the portion a footer
@@ -147,6 +160,7 @@ class _StudyScreenState extends State<StudyScreen> {
   /// one aya it named, which is ADR 0003 and has not moved.
   Future<void> _load({int? target, AyaSpan? step}) async {
     final generation = ++_generation;
+    final readIn = Localizations.localeOf(context);
     final recitation = Wird.of(context).recitation;
     final order = _prefs.order;
     final at = step?.first ?? target;
@@ -193,7 +207,7 @@ class _StudyScreenState extends State<StudyScreen> {
     final first = rooted.isEmpty ? null : rooted.first;
     final root = first == null
         ? null
-        : await rootDetail(widget.db, first.root!);
+        : await rootReading(widget.db, first.root!, readIn: readIn);
     final keep = set == null
         ? const <String>[]
         : await pathsToKeep(widget.db, order, set, onTheWalk: at == null);
@@ -325,7 +339,11 @@ class _StudyScreenState extends State<StudyScreen> {
   /// The panel keeps the root it is showing until the next one has been read,
   /// so a tap never blanks the screen the reader is looking at.
   Future<void> _openRoot(StudyWord word) async {
-    final detail = await rootDetail(widget.db, word.root!);
+    final detail = await rootReading(
+      widget.db,
+      word.root!,
+      readIn: Localizations.localeOf(context),
+    );
     if (!mounted || detail == null) return;
     setState(() {
       _word = word;

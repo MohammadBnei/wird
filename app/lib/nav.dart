@@ -195,22 +195,21 @@ Widget wirdApp(
   recitation: recitation ?? Recitation(),
   child: Flushing(
     flusher: flusher,
-    // Rebuilt when a preference moves, because one of them is now the language
-    // the whole tree is built in: Settings writes it and every screen has to
-    // come back in the new one, not just the screen that was open.
-    child: ListenableBuilder(
-      listenable: prefs,
-      builder: (context, _) => MaterialApp(
+    // Rebuilt when the language moves and at no other time. It is the one
+    // preference that rebuilds the whole tree — every screen has to come back
+    // in the new language, not just the one that was open — and listening to
+    // Prefs itself would redraw all of them once per frame of the Arabic-size
+    // drag.
+    child: ValueListenableBuilder<Locale?>(
+      valueListenable: prefs.locale,
+      builder: (context, locale, _) => MaterialApp(
         title: 'Wird',
         theme: nocturneTheme(),
         // The reader's own language: what they picked, and their phone's until
         // they pick. Null is MaterialApp's own word for the second, so no
         // choice stays one state rather than a stored word meaning "no word".
         //
-        // It lives in `language_pref` and not on `display_prefs`, whose writer
-        // replaces the whole row — a column added there would be reset by the
-        // next change of Arabic size.
-        locale: prefs.locale,
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         initialRoute: Routes.dashboard,

@@ -52,11 +52,11 @@
   },
   "kept_filter_notes": "Notes",
   "@kept_filter_notes": {
-    "description": "Second option of the segmented filter above the kept list's cards."
+    "description": "Third option of the segmented filter above the kept list's cards."
   },
   "kept_filter_roots": "Roots",
   "@kept_filter_roots": {
-    "description": "First option of the segmented filter above the kept list's cards."
+    "description": "Second option of the segmented filter above the kept list's cards."
   },
   "kept_kicker_revisit": "{at} · revisit",
   "@kept_kicker_revisit": {
@@ -521,11 +521,11 @@
   },
   "report_kind_request": "Request",
   "@report_kind_request": {
-    "description": "First option of the kind chooser on the report screen: something is missing."
+    "description": "Second option of the kind chooser on the report screen: something is missing."
   },
   "report_kind_improvement": "Improvement",
   "@report_kind_improvement": {
-    "description": "Second option of the kind chooser on the report screen: something could be better."
+    "description": "Third option of the kind chooser on the report screen: something could be better."
   },
   "report_words_heading": "IN YOUR OWN WORDS",
   "@report_words_heading": {
@@ -1001,11 +1001,11 @@
   },
   "settingsWordTranslit": "Translit",
   "@settingsWordTranslit": {
-    "description": "First option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control."
+    "description": "Second option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control."
   },
   "settingsWordBoth": "Both",
   "@settingsWordBoth": {
-    "description": "Second option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word."
+    "description": "Third option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word."
   },
   "settingsWordNeither": "Neither",
   "@settingsWordNeither": {
@@ -1021,7 +1021,7 @@
   },
   "settingsOrderMushaf": "Muṣḥaf",
   "@settingsOrderMushaf": {
-    "description": "First option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is."
+    "description": "Second option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is."
   },
   "settingsOrderCaption": "The chronology orders sūras; ayas inside a sūra stay in written order.",
   "@settingsOrderCaption": {

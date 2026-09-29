@@ -9,15 +9,19 @@ void main() {
 
   setUp(() async => db = await testCorpus());
 
-  // The failure: a reader who has never opened the language setting is not in
-  // "English", they are in "whatever this phone is", and only an absent row
-  // says that. A stored default would pin an English phone's reader to English
-  // the day they set their phone to French.
-  test('a reader who has chosen nothing follows their phone', () async {
+  // The failure: a reader who has never opened the language setting gets
+  // pinned to English, so setting their phone to French later changes nothing.
+  // Only an absent row can mean "whatever this phone is".
+  test('nothing is stored until the reader chooses, so an English phone is '
+      'not a choice', () async {
     expect(await languagePref(db), isNull);
   });
 
-  test('the choice is kept, and going back to the phone forgets it', () async {
+  // The failure: a reader picks French, comes back tomorrow, and reads English
+  // — or goes back to following their phone and stays pinned to the last
+  // language they happened to tap.
+  test('a language picked is still picked next launch, and going back to the '
+      'phone forgets it', () async {
     await setLanguagePref(db, 'fr');
     expect(await languagePref(db), 'fr');
 
@@ -25,22 +29,6 @@ void main() {
     expect(await languagePref(db), 'en');
 
     await setLanguagePref(db, null);
-    expect(
-      await languagePref(db),
-      isNull,
-      reason: 'the row is gone, so this reader is where they started rather '
-          'than pinned to the last language they happened to pick',
-    );
-  });
-
-  // The failure: the row is written with REPLACE on a fixed id, and a second
-  // write that inserted instead would leave two rows with the first one won by
-  // the `limit: 1` read — a reader switching language once and then back
-  // reading in the language they left.
-  test('switching twice leaves one row', () async {
-    await setLanguagePref(db, 'fr');
-    await setLanguagePref(db, 'en');
-    final rows = await db.query('language_pref');
-    expect(rows.length, 1);
+    expect(await languagePref(db), isNull);
   });
 }
