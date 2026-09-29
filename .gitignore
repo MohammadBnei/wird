@@ -55,3 +55,5 @@ app/test/failures/
 # Rendered screens a gate agent left behind while looking at its own work.
 app/gate-shots/
 __pycache__/
+.claude/worktrees/
+.claude/settings.local.json

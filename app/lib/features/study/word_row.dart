@@ -97,7 +97,7 @@ AyaFace faceOf(StudyAya aya, List<StudyWord> words, Set<int> hearable) => (
 /// A tap asks what the word MEANS; a press asks what it SOUNDS like. The
 /// reader tried it the other way round, used it, and reversed it: the root is
 /// the far more frequent intent, and the frequent intent belongs on the
-/// cheaper gesture. Both calls are recorded in docs/walkthrough.md finding 13
+/// cheaper gesture. Both calls are recorded in docs/journal/walkthrough.md finding 13
 /// so that neither is quietly undone.
 ///
 /// A word carrying no root is not a dead tile. Its tap falls through to its

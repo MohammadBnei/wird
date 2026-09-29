@@ -1,7 +1,8 @@
 # Root meanings — the research question, before any plan
 
-Status: not started. This note exists so the framing is not lost, because the
-framing is the valuable part.
+Status: answered 2026-09-24 — see [The answer](#the-answer-2026-09-24) below and
+[ADR 0010](../adr/0010-the-server-owns-the-roots-and-their-senses.md). The framing
+is kept because it is the valuable part.
 
 ## The wrong framing, and why it cost days
 

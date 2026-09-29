@@ -1,0 +1,31 @@
+# Architecture decisions
+
+Each file records one decision: the context, what was chosen, and what it costs. They are history, so their bodies are never edited. A later ADR supersedes or amends an earlier one instead, and only the earlier one's status line changes.
+
+New ADRs start from [TEMPLATE.md](TEMPLATE.md) and take the next free number. Two early files share the number 5, so this index lists files, not numbers.
+
+```mermaid
+flowchart LR
+  A1[0001 stack] --> A2[0002 set identity]
+  A3[0003 addressable reader] -. amended by .-> A6[0006 passage vs set]
+  A5v[0005 voice-follow on the phone] -. amended by .-> A9[0009 phoneme recogniser]
+  A7[0007 model published upstream] -. superseded by .-> A8[0008 served from Wird's host]
+  A8 -. amends .-> A5d[0005 deploying the API]
+  A10[0010 server owns the senses]
+  A11[0011 two doc families]
+```
+
+| File | Decision | Status |
+|---|---|---|
+| [0001-stack.md](0001-stack.md) | Flutter, Go, Postgres 18, Authentik, GitOps; offline-first with an outbox | accepted |
+| [0002-set-identity.md](0002-set-identity.md) | A set's identity is derived, and one op records a prayer | accepted |
+| [0003-addressable-reader.md](0003-addressable-reader.md) | Screen 1a is addressable, and it changes in place | accepted, amended by 0006 |
+| [0004-the-operations-view-behind-authentiks-group.md](0004-the-operations-view-behind-authentiks-group.md) | The operations view sits behind Authentik's group and only sees totals | accepted |
+| [0005-deploying-the-api.md](0005-deploying-the-api.md) | One image, the API only, database credentials from Infisical | accepted, amended by 0008 |
+| [0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md](0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md) | Voice-follow runs a Qur'an model on the phone | accepted, model choice superseded by 0009 |
+| [0006-a-passage-is-read-a-set-is-answered-for.md](0006-a-passage-is-read-a-set-is-answered-for.md) | A passage is read; a set is answered for | accepted |
+| [0007-the-voice-model-is-published-where-its-weights-already-live.md](0007-the-voice-model-is-published-where-its-weights-already-live.md) | Publish the voice model where its weights live | superseded by 0008 |
+| [0008-the-recogniser-is-served-from-wirds-own-host.md](0008-the-recogniser-is-served-from-wirds-own-host.md) | The recogniser is served from Wird's own host | accepted |
+| [0009-the-recogniser-hears-quranic-phonemes-not-language.md](0009-the-recogniser-hears-quranic-phonemes-not-language.md) | The recogniser hears Qur'anic phonemes, not language | accepted |
+| [0010-the-server-owns-the-roots-and-their-senses.md](0010-the-server-owns-the-roots-and-their-senses.md) | The server owns the roots and their senses | accepted |
+| [0011-two-doc-families.md](0011-two-doc-families.md) | Agent docs and human docs are two families with two styles | accepted |
