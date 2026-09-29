@@ -190,7 +190,7 @@ The senses go into `root_notes`, a table the corpus already has and ships empty.
 
 Both sentences are stored, and which one a reader gets is settled when the root
 is read rather than when the pack lands — see [Which language a sense is read
-in](#which-language-a-sense-is-read-in) below.
+in](#7-which-language-a-sense-is-read-in) below.
 
 ### 5. Refuse a pack no reader could see
 
