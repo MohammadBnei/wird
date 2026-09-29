@@ -42,6 +42,20 @@ class FakeWird {
   /// nothing has changed.
   List<Map<String, dynamic>> pages = [];
 
+  /// The pack `/v1/senses` answers with. Dictated, like everything else here.
+  /// The route never 404s, so an unseeded server is an empty list and not an
+  /// error.
+  Map<String, dynamic> senses = {
+    'version': '1-0-0',
+    'source': 'Wird',
+    'basis': 'no person has checked this',
+    'senses': <Map<String, dynamic>>[],
+  };
+
+  /// The `ETag` served with it. Null means the contract's own rule — the ETag
+  /// is the version — and a test that wants the two to disagree says so here.
+  String? sensesEtag;
+
   /// Every Authorization header that arrived, in order, so a test can say
   /// which token the device chose to send.
   final bearers = <String?>[];
@@ -98,6 +112,18 @@ class FakeWird {
               },
           ],
         });
+      } else if (request.uri.path == '/v1/senses') {
+        final body = jsonEncode(senses);
+        request.response
+          ..headers.contentType = ContentType.json
+          ..headers.set(
+            HttpHeaders.etagHeader,
+            sensesEtag ?? senses['version'] as String,
+          );
+        // A HEAD is how the device asks whether there is anything new without
+        // paying for 800 KB, so it must answer with headers and nothing else.
+        if (request.method != 'HEAD') request.response.write(body);
+        unawaited(request.response.close());
       } else {
         cursorsAsked.add(request.uri.queryParameters['since'] ?? '');
         _answer(
