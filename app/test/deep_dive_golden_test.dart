@@ -23,6 +23,10 @@ void main() {
   setUpAll(loadBundledFonts);
   setUp(() async {
     db = await testCorpus();
+    await seedSenses(db, {
+      patience: 'to bind oneself fast; to endure; to hold under load',
+      reason: 'to bind, to tie; to understand; to be of sound judgement',
+    });
     await ensureKeptTable(db);
     await db.delete('kept_items');
   });

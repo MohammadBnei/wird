@@ -43,7 +43,47 @@ Future<Database> testCorpus() async {
   for (final table in _userTables) {
     await _db!.delete(table);
   }
+  // root_notes is a SHIPPED table, so it is not in _userTables — but since the
+  // corpus stopped bundling senses it ships empty, and a test that seeds one
+  // would otherwise leak it into every later test in the same file, because
+  // this database is cached for the whole process. Emptying it costs nothing
+  // now and would have blanked 523 rows before.
+  await _db!.delete('root_notes');
   return _db!;
+}
+
+/// Puts senses where a fetched pack would put them, for the tests and goldens
+/// that need a root to have one.
+///
+/// The bundle carries none (docs/adr/0010), so without this every screen test
+/// draws the notice for a root nothing has been written for — and the goldens
+/// would raster that notice permanently and stop guarding the sense layout at
+/// the exact moment the prose grew from a 26-character median to 200.
+///
+/// `evidence` is null because a served sense has no evidence words, which is
+/// what the screen has to cope with.
+Future<void> seedSenses(
+  Database db,
+  Map<String, String> byRoot, {
+  String source = 'Wird',
+  String basis = 'A draft, written by a machine and read by no person.',
+}) async {
+  final rows = db.batch();
+  for (final entry in byRoot.entries) {
+    rows.insert('root_notes', {
+      'root_letters': entry.key,
+      'note': entry.value,
+      'source': source,
+      'basis': basis,
+      'evidence': null,
+    });
+  }
+  rows.insert('sense_pack', {
+    'id': 1,
+    'version': '1-test',
+    'fetched_at': DateTime.now().toIso8601String(),
+  }, conflictAlgorithm: ConflictAlgorithm.replace);
+  await rows.commit(noResult: true);
 }
 
 /// How screen 1a heads an aya: the sūra's name and the aya's number. What a

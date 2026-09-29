@@ -68,6 +68,12 @@ class Flusher with WidgetsBindingObserver {
   final Duration gap;
 
   Future<SyncReport>? _running;
+
+  /// The senses fetch in flight, and when the last one was tried. Separate
+  /// from the queue's: they run on the same moment but one is kilobytes of the
+  /// reader's own writes and the other is most of a megabyte of content.
+  Future<void>? _fetchingSenses;
+  DateTime? _lastSenses;
   DateTime? _last;
 
   /// Watches for the foreground, and flushes once now: a launch is a return
@@ -108,18 +114,38 @@ class Flusher with WidgetsBindingObserver {
   /// ponytail: the FIRST pack only, and a correction to a sense the reader
   /// already has is Settings' business. ADR 0010 gives the reader the choice
   /// of when bytes move, and this moment has nowhere to ask them. A phone
-  /// holding no senses is not that case: there is nothing to replace and
-  /// nothing to weigh, only an app missing the content its own screens
-  /// describe. The cost of this line is that a correction reaches only a
-  /// reader who opens Settings — close it by giving the shell somewhere to
-  /// show "senses waiting" that is not a dialog.
+  /// holding no senses is not that case, and since the corpus stopped
+  /// bundling them that is literally true: `root_notes` ships empty, so there
+  /// is nothing to replace and nothing to weigh, only an app missing the
+  /// content its own screens describe. The cost of this line is that a
+  /// correction reaches only a reader who opens Settings — close it by giving
+  /// the shell somewhere to show "senses waiting" that is not a dialog.
   ///
   /// ponytail: `sense_pack` is read here rather than asked of `senses.dart`.
   /// [sensesOnOffer] answers what is offered and cannot say "this device holds
   /// none", and one local query beats a second public door for the gate to
   /// account for.
+  /// Guarded like [flush] and for the same two reasons, one of which is worse
+  /// here. Two `resumed` events inside one fetch window — routine on iOS, where
+  /// a control-centre pull and an app-switcher return both deliver one — would
+  /// start two 800 KB downloads and two delete-all-and-insert transactions over
+  /// one table. And a pack this corpus cannot use records no version, so
+  /// without a floor every single unlock would fetch the whole body again,
+  /// forever, on whatever connection the reader is paying for. A phone is
+  /// unlocked dozens of times an hour.
   Future<void> theFirstSenses() async {
+    final running = _fetchingSenses;
+    if (running != null) return running;
+    final last = _lastSenses;
+    if (last != null && DateTime.now().difference(last) < gap) return;
     if ((await db.query('sense_pack', limit: 1)).isNotEmpty) return;
+    _lastSenses = DateTime.now();
+    final run = _fetchTheFirstSenses();
+    _fetchingSenses = run;
+    return run.whenComplete(() => _fetchingSenses = null);
+  }
+
+  Future<void> _fetchTheFirstSenses() async {
     if (await sensesOnOffer(db, over: over) == null) return;
     await installSenses(db, over: over);
   }

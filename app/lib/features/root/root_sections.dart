@@ -202,10 +202,22 @@ class CoreSense extends StatelessWidget {
   /// the sentence saying the sense is an unread machine draft was reachable on
   /// no root in the corpus. ADR 0010's one named risk is that prose not
   /// reaching the reader, so the tap is the mitigation.
+  /// The one case where it is NOT a door: a sense carrying neither a basis nor
+  /// evidence words has nothing behind the tap, and an underlined line opening
+  /// onto a heading over blank space is the same defect this fixed, one field
+  /// along. The wire makes `basis` optional, so this is reachable rather than
+  /// theoretical.
   Widget _whose(BuildContext context, Nocturne n) {
     final l = AppLocalizations.of(context)!;
     final source = reading.senseSource;
     final words = reading.senseEvidence.length;
+    final basis = reading.senseBasis?.trim() ?? '';
+    if (basis.isEmpty && words == 0) {
+      return Text(
+        '${_whoseWords(l, source, 0)}.',
+        style: TextStyle(fontSize: 12, height: 1.5, color: n.textAt(0.62)),
+      );
+    }
     // Underlined rather than given a chevron. The line wraps at the width of
     // the deep dive's centre pane, and a trailing icon lands alone on the
     // second row; an underline follows the words however they break.

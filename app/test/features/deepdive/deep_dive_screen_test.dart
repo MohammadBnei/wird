@@ -91,6 +91,10 @@ void main() {
   testWidgets('the deep dive prints a sense as a bare assertion, so the one '
       'screen that reads a root deepest is the one that says least about '
       'whose reading it is', (tester) async {
+    // Seeded, because the bundle carries no sense: the server owns them and
+    // the app fetches them (docs/adr/0010). A served sense has no evidence
+    // words, which is exactly the shape the sheet has to open for.
+    await seedSenses(db, {patience: 'to bind oneself fast; to endure'});
     final reading = (await rootReading(db, patience))!;
     for (final size in [tablet, phone]) {
       await open(tester, size: size);
@@ -109,7 +113,11 @@ void main() {
       'so the reader takes the machine’s restraint for a hole', (tester) async {
     await open(tester, size: phone, ayahId: ayaOfTheClot, letters: clot);
     expect(find.text('CORE SENSE'), findsOneWidget);
-    expect(find.textContaining('bear it out'), findsOneWidget);
+    // The bundle ships no sense and nothing has been fetched, so this is the
+    // second of the two absences: not 'nobody wrote one' but 'none has been
+    // downloaded'. Telling a reader the first when the truth is the second is
+    // what the two sentences exist to prevent.
+    expect(find.textContaining('has not fetched'), findsOneWidget);
   });
 
   testWidgets('a phone opening a constellation is handed the design’s three '

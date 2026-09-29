@@ -42,7 +42,7 @@ const sensesPath = "GET /v1/senses"
 // moves only when a sense moves. Without the prefix, rewriting the sentence
 // that says no person has checked these drafts would reach no installed device,
 // which is ADR 0010's one named risk surviving its own fix.
-const provenanceRevision = 1
+const provenanceRevision = 2
 
 // The three strings a screen puts around a sense: the byline, the long
 // attribution, and the line drawn one tap under every sense.
@@ -62,18 +62,21 @@ const provenanceRevision = 1
 const (
 	sensesSource = "Wird"
 
-	sensesAttribution = "Wird's own wording, and Wird's alone. These senses are drafts written " +
-		"by a language model from each root's own words in the Qur'an, and no person has " +
-		"checked them. They are not quoted from, attributed to, or derived from any lexicon or " +
-		"scholar, and a sense is a claim about the word, never about a verse. The roots and the " +
-		"morphology they are written against are the Quranic Arabic Corpus, which Wird bundles " +
-		"rather than serves."
+	sensesAttribution = "Wird's own wording, and Wird's alone — but not Wird's own scholarship. " +
+		"These senses are drafts written by a language model from established Arabic " +
+		"lexicography, with Lane's Lexicon consulted and never quoted, and checked against how " +
+		"the root's own words are glossed in the Qur'an rather than derived from them. No " +
+		"person has read them. Not one sentence here is copied from, or attributable to, any " +
+		"lexicon or scholar, and a sense is a claim about the word, never about a verse. The " +
+		"roots and the morphology they are written against are the Quranic Arabic Corpus, " +
+		"which Wird bundles rather than serves."
 
-	sensesBasis = "A draft, written by a machine and read by no person. Wird wrote this reading " +
-		"from the root's own words in the Qur'an; it is not quoted from any lexicon and carries " +
-		"nobody's authority. If it reads wrong to you, say so with the thumb under it — a " +
-		"reader's verdict is how a sense gets corrected, and a correction reaches every phone " +
-		"without waiting for a release."
+	sensesBasis = "A draft, written by a machine and read by no person. It was written from " +
+		"established Arabic lexicography — Lane's Lexicon was consulted and none of it is " +
+		"quoted — and then checked against how this root's own words are glossed in the " +
+		"Qur'an. It carries nobody's authority. If it reads wrong to you, say so with the " +
+		"thumb under it: a reader's verdict is how a sense gets corrected, and a correction " +
+		"reaches every phone without waiting for a release."
 )
 
 type sensesBody struct {

@@ -189,7 +189,10 @@ void main() {
     ]) {
       await open(tester, screen);
       expect(find.text('CORE SENSE'), findsOneWidget);
-      expect(find.textContaining('bear it out'), findsOneWidget);
+      // Nothing has been fetched here, and that is a different fact from
+      // "nobody wrote a sense for this root". The bundle carries no senses
+      // since ADR 0010, so a device with no pack must be told the second.
+      expect(find.textContaining('has not fetched'), findsOneWidget);
       // It says nothing is claimed, so it must not also claim something.
       expect(find.textContaining("This app's own reading"), findsNothing);
     }
@@ -199,7 +202,9 @@ void main() {
       'exception, because the refusal shouts louder than the sense', (
     tester,
   ) async {
+    await seedSenses(db, {theDesignsRoot: 'to bind oneself fast; to endure'});
     await open(tester, RootScreen(db: db, letters: theDesignsRoot));
+    expect(find.textContaining('has not fetched'), findsNothing);
     expect(find.textContaining('bear it out'), findsNothing);
   });
 
@@ -207,6 +212,7 @@ void main() {
       'a reader it is this app\'s own reading rather than a quotation', (
     tester,
   ) async {
+    await seedSenses(db, {theDesignsRoot: 'to bind oneself fast; to endure'});
     final reading = (await rootReading(db, theDesignsRoot))!;
     for (final screen in [
       RootScreen(db: db, letters: theDesignsRoot),
@@ -215,17 +221,12 @@ void main() {
       await open(tester, screen);
       expect(find.text(reading.coreSense!), findsOneWidget);
       expect(find.textContaining("This app's own reading"), findsOneWidget);
-      // The line says how much stands behind it, so it reads as a claim
-      // rather than as a disclaimer.
-      expect(
-        find.textContaining('${reading.senseEvidence.length}'),
-        findsWidgets,
-      );
     }
   });
 
   testWidgets('the words a sense was read from cannot be reached from the '
       'screen that claims it', (tester) async {
+    await seedSenses(db, {theDesignsRoot: 'to bind oneself fast; to endure'});
     final reading = (await rootReading(db, theDesignsRoot))!;
     await open(tester, RootScreen(db: db, letters: theDesignsRoot));
 
@@ -235,27 +236,22 @@ void main() {
     await tester.tap(find.textContaining("This app's own reading"));
     await tester.pumpAndSettle();
 
+    // Reachable even though the sense carries no evidence words, which every
+    // served sense does. That tap used to exist only when there were words,
+    // so the sentence saying a machine wrote this and nobody checked it was
+    // reachable on no root at all — ADR 0010's one named risk.
     expect(find.byType(SenseEvidence), findsOneWidget);
     expect(find.text(reading.senseBasis!), findsOneWidget);
-    for (final word in reading.senseEvidence) {
-      expect(
-        find.descendant(
-          of: find.byType(SenseEvidence),
-          matching: find.text(word),
-        ),
-        findsOneWidget,
-        reason: word,
-      );
-    }
-    // A word on its own is not evidence. The gloss the corpus carries for it
-    // is what a reader checks the sense against.
-    final glossed = reading.spelled(reading.senseEvidence.first)!;
+    // No word list, and no empty heading over one either. A served sense
+    // carries no evidence words — it was not read off a word list — so the
+    // sheet drops that section rather than drawing a heading above nothing.
+    expect(reading.senseEvidence, isEmpty);
     expect(
       find.descendant(
         of: find.byType(SenseEvidence),
-        matching: find.text(glossed.gloss!),
+        matching: find.textContaining('THE WORDS'),
       ),
-      findsOneWidget,
+      findsNothing,
     );
   });
 

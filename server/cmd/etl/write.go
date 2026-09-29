@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -224,22 +223,21 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
-	// One row per root, word_id NULL: the authored-prose path the app already
-	// reads as RootReading.coreSense, now carrying its French, its byline and
-	// the words that bore it out beside it.
-	if c.Senses != nil {
-		if err := insert(`INSERT INTO root_notes VALUES (?,NULL,?,?,?,?,?)`, len(c.Senses.Senses), func(i int) []any {
-			n := c.Senses.Senses[i]
-			words := make([]string, 0, len(n.Support))
-			for _, sup := range n.Support {
-				words = append(words, sup.Word)
-			}
-			return []any{n.Root, n.SenseEn, n.SenseFr, c.Senses.Source, c.Senses.Basis,
-				strings.Join(words, " · ")}
-		}); err != nil {
-			return err
-		}
-	}
+	// root_notes is created and left EMPTY. The table stays because the app
+	// still reads it — it is where a fetched pack of senses lands — but nothing
+	// here fills it any more.
+	//
+	// A sense is Wird's own sentence and it is corrected by the reader's thumb,
+	// so freezing it into this asset put every correction behind a store
+	// release. The server owns the senses now and the app fetches them
+	// (docs/adr/0010). What ships in this file is what came from an upstream
+	// source and does not move: the Qur'an, Dukes's morphology, the timings and
+	// a licensed translation.
+	//
+	// So a fresh install has a whole Qur'an and no senses, which is a state the
+	// app was built for: CoreSense draws a notice for a root without one, and
+	// since ADR 0010 it draws a different notice for a device that has not
+	// fetched yet.
 	roles := IrabRoles()
 	if err := insert(`INSERT INTO irab_roles VALUES (?,?,?)`, len(roles), func(i int) []any {
 		r := roles[i]

@@ -21,7 +21,16 @@ void main() {
   late Database db;
 
   setUpAll(loadBundledFonts);
-  setUp(() async => db = await testCorpus());
+  setUp(() async {
+    db = await testCorpus();
+    // The bundle carries no senses since ADR 0010. Without this the goldens
+    // raster the not-fetched notice and stop guarding the sense layout — at
+    // the moment the prose grew from a 26-character median to 200.
+    await seedSenses(db, {
+      onTheDial: 'to bind, to tie; to understand; to be of sound judgement',
+      onTheSpine: 'to bind oneself fast; to endure; to hold under load',
+    });
+  });
 
   Future<void> phone(WidgetTester tester, Widget screen) async {
     tester.view.physicalSize = const Size(402, 874);

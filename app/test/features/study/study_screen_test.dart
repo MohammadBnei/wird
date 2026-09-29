@@ -453,10 +453,12 @@ void main() {
   testWidgets('the word panel names the root and keeps its sense to itself, so '
       'the one screen the reader studies from is the one screen that will not '
       'say what the root means', (tester) async {
+    // Seeded: the bundle carries no senses since ADR 0010, and قرأ is the root
+    // the panel opens on for this set's first rooted word.
+    await seedSenses(db, {'قرأ': 'a recitation, the quran; to recite'});
     await openStudy(tester);
     final panel = find.byKey(const Key('root panel'));
 
-    // قرأ ships a sense, and the panel opens on the set's first rooted word.
     expect(
       find.descendant(of: panel, matching: find.text('CORE SENSE')),
       findsOneWidget,
@@ -474,9 +476,11 @@ void main() {
       findsOneWidget,
     );
 
-    // ربب ships none. Unguarded is the point: the section is still drawn and
-    // says the absence was chosen, because a panel that simply stopped
-    // printing a sense reads as a section someone forgot.
+    // ربب was not in the pack. Unguarded is the point: the section is still
+    // drawn and says why it is empty, because a panel that simply stopped
+    // printing a sense reads as a section someone forgot. And since a pack HAS
+    // been fetched here, the sentence is the first of the two absences —
+    // nobody wrote one for this root — not "nothing has been downloaded".
     await tester.tap(tile(96001003));
     await tester.pumpAndSettle();
     expect(
@@ -487,7 +491,7 @@ void main() {
     expect(
       find.descendant(
         of: panel,
-        matching: find.textContaining('nothing is claimed here'),
+        matching: find.textContaining('None has been written for this root'),
       ),
       findsOneWidget,
       reason: 'the machine chose the absence, so it says so',
