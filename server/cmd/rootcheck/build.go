@@ -43,14 +43,23 @@ type Sense struct {
 	Support    []rootsense.Support `json:"support"`
 }
 
-// Bundle is the file the ETL reads. The attribution and the basis line travel
-// with the senses because they have to reach a screen: a reader who cannot tell
-// authored prose from a quoted lexicon has been told something false about
-// where the words came from.
+// Bundle is the file this command writes: the senses it kept, the bar they were
+// kept against, and how the bar was measured.
+//
+// It carries no attribution, source or basis line any more, and that is the
+// point rather than an omission. Those three strings were reader-facing prose,
+// and they used to reach a reader: the ETL copied them into every root_notes row
+// of corpus.db and the app drew them one tap under each sense. They do not any
+// more — senses reach a phone from GET /v1/senses now (docs/adr/0010), and the
+// prose reaches it from the constants beside that handler, which are the one
+// holder of it. Keeping a second copy here would be two sentences with nothing
+// to make them agree, which is exactly the divergence ADR 0010 exists to end,
+// and the copy that lost is the one no reader can see.
+//
+// method and the bar stay. They are this command describing its own arithmetic
+// to whoever reads the file, not a claim shown to anybody about where the words
+// came from.
 type Bundle struct {
-	Attribution string  `json:"attribution"`
-	Source      string  `json:"source"`
-	Basis       string  `json:"basis"`
 	Method      string  `json:"method"`
 	Bar         barJSON `json:"bar"`
 	SpecificBar int     `json:"specificity_bar"`
@@ -63,22 +72,6 @@ type barJSON struct {
 	Dispersion int     `json:"dispersion"`
 	Branch     float64 `json:"branch"`
 }
-
-const attribution = "Wird's own wording. Each sense was written from the root's own words in " +
-	"the bundled corpus and kept only where it predicted those words' English glosses across " +
-	"more than one morphological shape, explained most of the root's occurrences, left no branch of " +
-	"the root unnamed, led with the branch a reader is likeliest to meet, and rested on no word the " +
-	"corpus reserves for another root. It is not quoted from, attributed to, or " +
-	"derived from any lexicon or scholar, and it is a claim about the word, never about a verse."
-
-// source is the byline a screen puts beside the sense, and basis the line under
-// it. Both are short enough to render and blunt enough that no reader mistakes
-// the prose for a lexicon entry.
-const (
-	source = "Wird"
-	basis  = "Wird's own reading of this root, written from the root's own words in this corpus " +
-		"and kept only because their glosses bear it out. Not quoted from any lexicon."
-)
 
 const method = "rootcheck: a proposed sense is matched against every distinct gloss of the root, " +
 	"bucketed by morphological shape, after the shape's own English has been stripped out. score " +
@@ -188,7 +181,7 @@ func Build(w io.Writer, roots map[string]*rootsense.Root, tsv, out string, bar r
 	specific := specificityBar(roots, letters, bar)
 
 	bundle := Bundle{
-		Attribution: attribution, Source: source, Basis: basis, Method: method,
+		Method:      method,
 		Bar:         barJSON{bar.Score, bar.Coverage, bar.Dispersion, bar.Branch},
 		SpecificBar: specific,
 	}
