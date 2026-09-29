@@ -146,4 +146,38 @@ void main() {
     expect(await rootKept(db, root), isNull);
     expect(await live(), 0);
   });
+
+  // The failure: a reader switches the app to French, opens a root, and reads
+  // the English sense — which is what shipped before the language setting, when
+  // note_fr was a column nothing drew.
+  test('a root read in French carries the French sense', () async {
+    await db.insert('root_notes', {
+      'root_letters': 'فلح',
+      'word_id': null,
+      'note': 'to succeed, to prosper',
+      'note_fr': 'réussir, prospérer',
+    });
+
+    expect(
+      (await rootReading(db, 'فلح', inFrench: true))!.coreSense,
+      'réussir, prospérer',
+    );
+    expect((await rootReading(db, 'فلح'))!.coreSense, 'to succeed, to prosper');
+  });
+
+  // The failure: a root whose French never arrived draws nothing at all in
+  // French, so a reader is told no sense is written when one is.
+  test('a root with no French falls back to the sense that exists', () async {
+    await db.insert('root_notes', {
+      'root_letters': 'فلح',
+      'word_id': null,
+      'note': 'to succeed, to prosper',
+      'note_fr': null,
+    });
+
+    expect(
+      (await rootReading(db, 'فلح', inFrench: true))!.coreSense,
+      'to succeed, to prosper',
+    );
+  });
 }

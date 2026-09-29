@@ -83,6 +83,16 @@ Future<Database> openWirdAt(String path) async {
       root_open   INTEGER NOT NULL DEFAULT 1
     )''');
   await ensureChromeColumns(db);
+  // The language the reader chose, when they chose one. Its own table and not
+  // a column on `display_prefs`, because that row is written whole: a column
+  // added there would be reset by the next change of Arabic size. Absent means
+  // no choice has been made, which is not the same as English — it is the
+  // phone's own language, and it follows the phone when that changes.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS language_pref (
+      id     INTEGER PRIMARY KEY CHECK (id = 1),
+      locale TEXT NOT NULL
+    )''');
   await db.execute('''
     CREATE TABLE IF NOT EXISTS mic_consent (
       id          INTEGER PRIMARY KEY CHECK (id = 1),
@@ -246,6 +256,31 @@ Future<ReadingOrder> readingOrder(Database db) async {
     (o) => o.name == stored,
     orElse: () => ReadingOrder.nuzul,
   );
+}
+
+/// The language the reader picked, or null to follow the phone.
+///
+/// Device-local and outside the outbox, like the display settings and unlike
+/// the reading order: a reader who signs in on a second phone set to another
+/// language has not asked for this one's choice to follow them there.
+Future<String?> languagePref(Database db) async {
+  final rows = await db.query('language_pref', columns: ['locale'], limit: 1);
+  return rows.isEmpty ? null : rows.first['locale'] as String?;
+}
+
+/// Writes the choice, or deletes it when [locale] is null. Deleting rather
+/// than storing a word for "the phone's own" keeps the absent row meaning one
+/// thing, so a reader who goes back to following their phone is in the state
+/// they were in before they ever opened this setting.
+Future<void> setLanguagePref(Database db, String? locale) async {
+  if (locale == null) {
+    await db.delete('language_pref');
+    return;
+  }
+  await db.insert('language_pref', {
+    'id': 1,
+    'locale': locale,
+  }, conflictAlgorithm: ConflictAlgorithm.replace);
 }
 
 Future<void> setReadingOrder(Database db, ReadingOrder order) =>

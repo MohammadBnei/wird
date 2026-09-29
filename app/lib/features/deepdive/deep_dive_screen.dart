@@ -78,14 +78,26 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
 
   AppLocalizations get _l10n => AppLocalizations.of(context)!;
 
+  /// The language the sense on screen was read in, so a reader who switches
+  /// language is handed the other sentence where they are rather than on the
+  /// next visit. Null until the first load.
+  Locale? _readIn;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (locale == _readIn) return;
+    _readIn = locale;
     _load();
   }
 
   Future<void> _load() async {
-    final reading = await rootReading(widget.db, widget.letters);
+    final reading = await rootReading(
+      widget.db,
+      widget.letters,
+      inFrench: _readIn?.languageCode == 'fr',
+    );
     final aya = await ayaReading(widget.db, widget.ayahId, widget.letters);
     final keptId = await ayaKept(widget.db, widget.ayahId);
     final lit = aya == null ? null : _litWord(aya);

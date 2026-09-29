@@ -195,20 +195,27 @@ Widget wirdApp(
   recitation: recitation ?? Recitation(),
   child: Flushing(
     flusher: flusher,
-    child: MaterialApp(
-      title: 'Wird',
-      theme: nocturneTheme(),
-      // The reader's own language, taken from the device rather than asked for.
-      //
-      // ponytail: no stored override. A reader's language is what their phone
-      // already says it is, and `display_prefs` is the wrong home for one — its
-      // writer replaces the whole row, so a column added there is reset by the
-      // next change of Arabic size. Add a preference the day somebody wants
-      // French on an English device, and give it its own row when they do.
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      initialRoute: Routes.dashboard,
-      onGenerateRoute: (settings) => screenRoute(settings, db),
+    // Rebuilt when a preference moves, because one of them is now the language
+    // the whole tree is built in: Settings writes it and every screen has to
+    // come back in the new one, not just the screen that was open.
+    child: ListenableBuilder(
+      listenable: prefs,
+      builder: (context, _) => MaterialApp(
+        title: 'Wird',
+        theme: nocturneTheme(),
+        // The reader's own language: what they picked, and their phone's until
+        // they pick. Null is MaterialApp's own word for the second, so no
+        // choice stays one state rather than a stored word meaning "no word".
+        //
+        // It lives in `language_pref` and not on `display_prefs`, whose writer
+        // replaces the whole row — a column added there would be reset by the
+        // next change of Arabic size.
+        locale: prefs.locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        initialRoute: Routes.dashboard,
+        onGenerateRoute: (settings) => screenRoute(settings, db),
+      ),
     ),
   ),
 );

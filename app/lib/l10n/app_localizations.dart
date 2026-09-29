@@ -1061,6 +1061,36 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settingsTitle;
 
+  /// Section heading on the settings screen, over the choice of which language the app and the root senses are read in.
+  ///
+  /// In en, this message translates to:
+  /// **'LANGUAGE'**
+  String get settingsLanguage;
+
+  /// First option of the settings screen's language control: follow whatever language the device is set to, which is what the app does until the reader chooses.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phone\'s'**
+  String get settingsLanguagePhone;
+
+  /// Second option of the settings screen's language control. Written in English in both locales, because a language is named in itself.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get settingsLanguageEnglish;
+
+  /// Third option of the settings screen's language control. Written in French in both locales, because a language is named in itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Français'**
+  String get settingsLanguageFrench;
+
+  /// Caption under the settings screen's language control, saying what the choice reaches and why a sense can still come up in English.
+  ///
+  /// In en, this message translates to:
+  /// **'The screen and a root\'s sense. The senses were written in English and translated, so a root whose French never arrived is read in English.'**
+  String get settingsLanguageCaption;
+
   /// Section heading on the settings screen, over the word display and the reading order.
   ///
   /// In en, this message translates to:

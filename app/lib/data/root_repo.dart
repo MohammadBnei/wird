@@ -144,7 +144,15 @@ class RootReading {
   }
 }
 
-Future<RootReading?> rootReading(Database db, String letters) async {
+/// [inFrench] picks which of the two sentences a served sense carries. The
+/// screen knows the reader's language and this layer does not, so it is asked
+/// rather than read here — and it defaults to the English, which is the only
+/// one every sense is guaranteed to have.
+Future<RootReading?> rootReading(
+  Database db,
+  String letters, {
+  bool inFrench = false,
+}) async {
   final rows = await db.query(
     'roots',
     where: 'letters = ?',
@@ -209,7 +217,7 @@ Future<RootReading?> rootReading(Database db, String letters) async {
 
   final core = await db.query(
     'root_notes',
-    columns: ['note', 'source', 'basis', 'evidence'],
+    columns: ['note', 'note_fr', 'source', 'basis', 'evidence'],
     where: 'root_letters = ? AND word_id IS NULL',
     whereArgs: [letters],
     limit: 1,
@@ -227,7 +235,13 @@ Future<RootReading?> rootReading(Database db, String letters) async {
     occurrences: root['quran_occurrences']! as int,
     surahCount: surahs.length,
     sources: (jsonDecode(root['sources']! as String) as List).cast<String>(),
-    coreSense: sense['note'] as String?,
+    // The French when the reader is reading in French and the pack carried
+    // one, and the English otherwise. Falling back rather than drawing nothing:
+    // a root whose French never arrived is a root whose sense is still worth
+    // reading, and the notice for "no sense written" would be a lie about it.
+    coreSense:
+        (inFrench ? sense['note_fr'] as String? : null) ??
+        sense['note'] as String?,
     senseSource: sense['source'] as String?,
     senseBasis: sense['basis'] as String?,
     senseEvidence: _evidenceWords(sense['evidence'] as String?),

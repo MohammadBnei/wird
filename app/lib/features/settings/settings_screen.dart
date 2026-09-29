@@ -108,6 +108,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 l.settingsTitle,
                 style: Theme.of(context).textTheme.displaySmall,
               ),
+              _section(n, l.settingsLanguage),
+              NocturneSegmented(
+                options: [
+                  l.settingsLanguagePhone,
+                  l.settingsLanguageEnglish,
+                  l.settingsLanguageFrench,
+                ],
+                // Null is the phone's own, so the offer leads with it: a
+                // reader who has never opened this setting is already in that
+                // state and should see themselves in it.
+                selected: switch (prefs.locale?.languageCode) {
+                  'en' => 1,
+                  'fr' => 2,
+                  _ => 0,
+                },
+                onChanged: (i) => prefs.setLocale(
+                  switch (i) {
+                    1 => const Locale('en'),
+                    2 => const Locale('fr'),
+                    _ => null,
+                  },
+                ),
+              ),
+              SizedBox(height: n.space('1')),
+              _caption(n, l.settingsLanguageCaption),
+              SizedBox(height: n.space('3')),
               _section(n, l.settingsReading),
               NocturneSegmented(
                 options: [
