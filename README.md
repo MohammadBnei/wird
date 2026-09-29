@@ -229,6 +229,32 @@ text, every row and every payload flagged `"placeholder": true`, and an aya or
 root with nothing seeded answers 404. Inventing commentary in that gap would be
 the worst defect this project could ship.
 
+### Seeding the senses
+
+`server/cmd/senseseed` is how a root's sense reaches a reader. It replaces every
+row of `root_senses` from a drafting TSV in one transaction, so what the table
+holds afterwards is what the file says and a root the file has stopped carrying
+stops being served.
+
+```bash
+DATABASE_URL=... go run ./server/cmd/senseseed \
+  -tsv data/root_senses_draft.tsv -roots app/assets/corpus.db
+```
+
+The DSN goes in the environment and never in `-db`, because an argument is
+readable by any `ps` on the host. `-dry` reads and checks the file and opens no
+database connection at all.
+
+It never migrates. A correction is supposed to reach readers in minutes, and a
+tool that migrated whatever database it was aimed at would push the operator's
+working tree into production alongside the sense — so `api` migrates on start
+and this does not (`server/cmd/senseseed/main.go`, the comment above the pool).
+The seeder prints an md5 the server computes over the rows themselves, and the
+route answers that same hash with the hand-bumped provenance revision in front
+of it — `<revision>-<md5>`, both in the `ETag` and in the body's `version`. A
+seed that landed matches on everything after the dash, so compare that and not
+the whole string.
+
 ### The root engine
 
 `jidhr` needs nothing — no database, no network, no key:

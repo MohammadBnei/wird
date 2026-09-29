@@ -674,24 +674,42 @@ Corrections that cost a day each to find, kept here so they are not re-found.
   Wird's to state, and a duration derived from the last word's timing would be a
   number invented to fill a column nothing reads.
 
-## The root senses: Wird's own words, and what had to be true before they shipped
+## The root senses: Wird's own words, and who has read them
 
-`root_notes` holds one row per root, `word_id` NULL, carrying a plain English
-sense for that root, its French, the byline that says whose reading it is, and
-the root's own words the sense was checked against. It is the only prose in
-`corpus.db` Wird wrote itself. Nothing in it is quoted from, attributed to, or
-derived from any lexicon or scholar, and nothing in it is a claim about a verse.
+**What ships in `corpus.db` is no sense at all.** `root_notes` is created and
+left empty (`server/cmd/etl/write.go`, at the insert): the table stays because
+it is where a pack fetched from the server lands, not because the asset carries
+one. A fresh install is a whole Qur'an and no senses, and the app draws a notice
+saying so. `corpus.db` holds nothing Wird wrote.
+
+The senses a reader actually meets come from `GET /v1/senses` and are seeded by
+`server/cmd/senseseed` from `data/root_senses_draft.tsv`. ADR 0010 says why the
+server owns them: a sense is corrected by the reader's thumb, and freezing it
+into the asset put every correction behind a store release.
+
+**Those 1,642 drafts were written by a language model and no person has read
+them.** That sentence is not a caveat here; it is what the route itself tells
+every reader, in `sensesAttribution` (`server/internal/api/senses.go`), and the
+app draws it beside the prose. They were written from established Arabic
+lexicography with Lane's Lexicon consulted and never quoted, and checked against
+how each root's own words are glossed in the Qur'an. Nothing in them is copied
+from or attributable to any lexicon or scholar, and a sense is a claim about the
+word, never about a verse. They did not pass the gate described below.
 
 ```
-data/root_senses.tsv     what a person wrote: root, English, French
-data/root_senses.json    what survived the check, with the words that carried it
+data/root_senses_draft.tsv   the 1,642 drafts the server is seeded from
+data/root_senses.tsv         the 523 a person wrote: root, English, French
+data/root_senses.json        what survived the check, with the words that carried it
 ```
 
-Senses were written root by root from the root's own attested words — their
-glosses and their occurrence counts — and then tested rather than trusted.
-`server/cmd/rootcheck` buckets a root's glossed words by morphological shape,
-strips out the English the wazn itself contributes, and asks three questions a
-sense has to answer at once:
+### The gate the curated senses passed, and the drafts did not
+
+`data/root_senses.tsv` and `.json` are the earlier, smaller body of work: senses
+written root by root from the root's own attested words and then tested rather
+than trusted. They stay in the tree because a signed pass can promote them over
+the drafts later. `server/cmd/rootcheck` buckets a root's glossed words by
+morphological shape, strips out the English the wazn itself contributes, and
+asks four questions a sense has to answer at once:
 
 | Term | Floor | The failure it exists to catch |
 | --- | --- | --- |
@@ -712,7 +730,7 @@ it, and fails if the two populations stop parting around the majority line.
 | roots in the corpus | 1,642 | — |
 | roots that can be checked at all | 810 | the other 832 attest one morphological shape and ship nothing |
 | senses proposed | 789 | — |
-| senses shipped | 507 | — |
+| senses that passed | 507 | **not what is served today** |
 | refused: the glosses do not bear the sense out | 226 | — |
 | refused: a minority branch of the root | 43 | the reader would meet the word and not the sense |
 | refused: too general to name this root | 13 | — |
@@ -720,13 +738,16 @@ it, and fails if the two populations stop parting around the majority line.
 | other roots a known-right sense also fits | 11 of 24,615 pairs | 0.04%, and all of them true synonyms |
 | reach | 62.7% | the share of glossed word occurrences under a root that ships a sense |
 
-`server/cmd/etl` re-derives every one of those numbers from the corpus it is
-about to write, and stops the build rather than ship a sense the glosses no
-longer bear out, a sense with no provenance, a sense with no French, a sense
-with no byline, or a sense that names a sura or cites a verse. The French is a
-translation of the English that passed; the corpus carries no French gloss to
-check French against, so writing it independently would be a second guess with
-no evidence under it.
+Every number in that table describes the curated senses, and none of it is a
+statement about what `/v1/senses` serves. The build-time gate that enforced it
+is now inert: nothing outside the tests assigns `Corpus.Senses`, so `checkSenses`
+returns on its first line for every real ETL run. The seeder runs its own,
+narrower checks — every root must exist in the corpus, carry both languages, and
+cite no verse — and it does not score a sense against the glosses.
+
+The French is a translation of the English; the corpus carries no French gloss
+to check French against, so writing it independently would be a second guess
+with no evidence under it.
 
 ## Reconciliation, from `data/manifest.json`
 
@@ -740,5 +761,6 @@ no evidence under it.
 | segments ending before they start | 8 | the ETL clamps them |
 
 Built from these sources, `corpus.db` is 114 suras, 6,236 ayas, 77,429 words,
-1,642 roots, 507 root senses and 77,408 word segments, at 23.16 MB against a
-60 MB budget.
+1,642 roots and 77,408 word segments, at 30.00 MB against a 60 MB budget. It
+carries no root senses: `root_notes` ships empty, and a reader's senses arrive
+from `/v1/senses`.
