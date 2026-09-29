@@ -3,7 +3,8 @@
 Observations from using the app, collected before building, so the gaps get
 addressed as gaps rather than patched one at a time.
 
-Status: open — being filled during a walk of the app.
+Status: journal. Written during the walk; it is not kept current. Which findings
+shipped is in git history and the ADRs, not here.
 
 ## Findings
 

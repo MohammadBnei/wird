@@ -590,7 +590,7 @@ class _RootSpineViewState extends State<RootSpineView> {
         ),
         const NocturneRule(),
         // The lexicon section stood under this heading and is gone: Lane is
-        // ruled out twice over in docs/lane-lexicon.md, and CoreSense above
+        // ruled out twice over in docs/research/lane-lexicon.md, and CoreSense above
         // answers what the placeholder stood in for. What is left under Sources
         // is the provenance line, which is what the heading was always for.
         //

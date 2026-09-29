@@ -72,7 +72,7 @@ const _scopes = 'openid offline_access email profile';
 /// id. Against the local stub on 2026-09-24, with the API on its own port:
 /// the ID token was accepted with a 200, and the access token, whose `aud` is
 /// `default`, came back 401 with `expected audience "wird" got ["default"]`.
-/// docs/authentik-wiring.md carries the same check for the real issuer.
+/// docs/guides/authentik-wiring.md carries the same check for the real issuer.
 class Tokens {
   const Tokens({
     required this.subject,

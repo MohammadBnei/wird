@@ -112,7 +112,7 @@ Future<String?> _writePack(DatabaseExecutor txn, _SensePack pack) async {
       'root_letters': sense.root,
       'note': sense.en,
       // ponytail: stored, and drawn by nothing. `note_fr` is a shipped column
-      // no screen reads (docs/walkthrough.md:391); the locale read is its own
+      // no screen reads (docs/journal/walkthrough.md:391); the locale read is its own
       // change, and dropping the French on the floor here would mean fetching
       // it again the day that lands.
       'note_fr': sense.fr,

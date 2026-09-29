@@ -1,0 +1,38 @@
+# Docs are checked on every PR, not only PRs that touch markdown: a code change
+# is what moves the line a doc links to.
+name: docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Links and heading anchors
+        uses: lycheeverse/lychee-action@v2
+        with:
+          fail: true
+          args: >-
+            --offline --include-fragments --no-progress
+            --exclude '#L[0-9]'
+            --exclude-path docs/design
+            --exclude-path app/build
+            --exclude-path .dart_tool
+            --exclude-path node_modules
+            '**/*.md'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Line anchors, mermaid, and links into changed code
+        env:
+          DOCS_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
+        run: scripts/docs-check.sh

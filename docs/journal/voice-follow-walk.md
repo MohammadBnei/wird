@@ -2,8 +2,10 @@
 
 What a reader found by praying with the app, on the device, with the trail
 pulled off it afterwards. One entry per finding: what was seen, the trail that
-shows it, where it comes from in the code, and what would fix it. Nothing here
-is fixed yet — these are collected so they can be fixed in one pass.
+shows it, where it comes from in the code, and what would fix it. Walk one was
+written before any fix; walk two and
+[What happened to the eight](#what-happened-to-the-eight-as-of-the-merge) record
+what the merge closed. It is a journal and is not kept current.
 
 The phone is a 23117RA68G on Android 16, running the debug build. The trail is
 `/data/data/dev.bnei.wird/databases/prayer-trail.log`, read with
@@ -399,7 +401,7 @@ miséricorde`, and it says nothing of eleven occurrences:
 4:1 puts ٱلْأَرْحَامَ beside ٱللَّه in a single oath, and the womb is the concrete
 sense the moral one is derived from, so this is not a minor branch.
 
-`docs/root-meanings-research.md:148-152` already records رحم as one of the two
+`docs/research/root-meanings-research.md:148-152` already records رحم as one of the two
 closest calls — but for a **different** unnamed branch, *gracious* (Ar-Raḥmān, 34
 occurrences). Nobody had recorded the womb branch, and a reader found it in one
 sitting. Eleven of roughly 340 occurrences is under the branch ceiling, so the
@@ -450,7 +452,7 @@ Part 1 of the plan is merged (`voice-follow-walk`, four lanes, all gates green:
    `words.morphology` which was already in the bundle: an `irab` table plus a
    142-row `irab_roles` lookup, English and French, with the provenance line drawn
    inside `IrabSection` so all three mounts carry it. The lexicon section is
-   deleted — `CoreSense` answers what it stood in for, and `docs/lane-lexicon.md`
+   deleted — `CoreSense` answers what it stood in for, and `docs/research/lane-lexicon.md`
    had already ruled Lane out. **Tafsir keeps its notice**, and walk two's finding
    11 says that notice's wording is failing.
 6. **Closed, and there were three Keep controls rather than two.** The third was
