@@ -34,6 +34,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
@@ -66,11 +68,19 @@ func main() {
 	}
 
 	ctx := context.Background()
-	db, err := store.Open(ctx, *dsn)
+	// pgxpool.New and store.New rather than store.Open, because Open runs the
+	// goose migrations on the way in. This command exists so a correction does
+	// not need a deploy, and a tool that migrates whatever database it is aimed
+	// at would couple every correction to the operator's working tree — which
+	// can be ahead of the image actually serving. api and adminweb migrate on
+	// start because they are the deployed artefact; a one-shot run against
+	// production is not.
+	pool, err := pgxpool.New(ctx, *dsn)
 	if err != nil {
 		log.Fatalf("database unavailable: %v", err)
 	}
-	defer db.Close()
+	defer pool.Close()
+	db := store.New(pool)
 
 	if err := db.ReplaceSenses(ctx, senses); err != nil {
 		log.Fatalf("write the senses: %v", err)
@@ -81,7 +91,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("read the pack version back: %v", err)
 	}
-	fmt.Printf("  written, and /v1/senses now hashes to %s\n", version)
+	fmt.Printf("  written; /v1/senses now hashes to %s, and answers it as an\n"+
+		"  ETag of \"<revision>-%s\" — the revision is the provenance prose's,\n"+
+		"  bumped by hand in package api when that prose changes.\n", version, version)
 }
 
 // The columns of the drafting log, in the order it writes them. Only the first
@@ -134,11 +146,17 @@ func load(path string, known map[string]bool) ([]store.Sense, error) {
 		if strings.TrimSpace(text) == "" {
 			continue
 		}
+		// A byte-order mark makes the first column "\ufeffroot" rather than
+		// "root", which is not a root either and would refuse the run with a
+		// message about a root instead of about the file.
+		text = strings.TrimPrefix(text, "\ufeff")
 		col := strings.Split(text, "\t")
 		// The header, which rootcheck's own reader does not skip — and left in,
 		// the root check below would refuse the whole run over the literal
-		// word "root".
-		if line == 1 && col[colRoot] == "root" {
+		// word "root". Not anchored to line 1: a leading blank line moves it,
+		// and `root` is not an Arabic root wherever it sits, so the check below
+		// would refuse it from any line anyway.
+		if col[colRoot] == "root" {
 			continue
 		}
 		if len(col) < colsRead {

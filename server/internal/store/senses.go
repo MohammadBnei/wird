@@ -54,10 +54,20 @@ type SensePack struct {
 // The poetic columns are absent on purpose. A register that is never served
 // must not move the version a phone compares, or every device re-downloads the
 // pack over prose it will never see.
+//
+// COLLATE "C" is load-bearing, and this was measured too: the same rows hash
+// 5ca334668aff2198b96ef13e494cc12a under en_US.utf8 and ff432e09f4d8c05c8f11be679e43c46d
+// under C. Without it the digest is whatever the database's LC_COLLATE says, so
+// a glibc or ICU bump in a base image, a pg_upgrade, or a restore into a
+// differently-created database moves every phone's ETag with no data change and
+// nothing to tell an operator why. It also makes the hash comparable between a
+// laptop and production, which is what lets senseseed print a version worth
+// checking the route against. The body below sorts the same way for the same
+// reason: the ETag has to label the bytes it is served with.
 const sensesVersionSQL = `
 	SELECT md5(COALESCE(string_agg(
 	         root_letters || E'\x1f' || sense_en || E'\x1f' || sense_fr,
-	         E'\x1e' ORDER BY root_letters), ''))
+	         E'\x1e' ORDER BY root_letters COLLATE "C"), ''))
 	  FROM root_senses`
 
 // SensesVersion is what HEAD /v1/senses answers with. The check has to be
@@ -99,7 +109,7 @@ func (s *Store) Senses(ctx context.Context) (SensePack, error) {
 	}
 
 	rows, err := tx.Query(ctx,
-		`SELECT root_letters, sense_en, sense_fr FROM root_senses ORDER BY root_letters`)
+		`SELECT root_letters, sense_en, sense_fr FROM root_senses ORDER BY root_letters COLLATE "C"`)
 	if err != nil {
 		return SensePack{}, err
 	}

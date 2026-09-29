@@ -3,6 +3,7 @@ package api_test
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -124,9 +125,20 @@ func TestTheCheckMovesTheWholePackAndTheReaderNeverChose(t *testing.T) {
 	if etag != `"`+version+`"` {
 		t.Fatalf("the ETag is %q where the version is %q, so a phone cannot ask about what it holds", etag, version)
 	}
-	if !strings.HasPrefix(version, "1-") {
-		t.Errorf("the version is %q and does not lead with the provenance revision, so a corrected "+
+	// The shape, not the number. Asserting the literal "1-" would make bumping
+	// provenanceRevision — the one action the whole mechanism exists for, and
+	// what a corrected basis needs to reach a device that already fetched —
+	// fail the suite, with a message saying the prefix was broken when it was
+	// not. The cheapest way out of that red is to un-bump and ship a correction
+	// nobody learns, which is the failure this test is supposed to prevent.
+	revision, digest, found := strings.Cut(version, "-")
+	if n, err := strconv.Atoi(revision); !found || err != nil || n < 1 {
+		t.Errorf("the version is %q and does not lead with a provenance revision, so a corrected "+
 			"basis reaches no device that already fetched", version)
+	}
+	if len(digest) != 32 || strings.TrimLeft(digest, "0123456789abcdef") != "" {
+		t.Errorf("the version is %q, whose second half is not the content digest — so it cannot "+
+			"tell a changed pack from an unchanged one", version)
 	}
 
 	head := h.serve(h.request(t, http.MethodHead, sensesPath, ""))

@@ -9,8 +9,8 @@ import (
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
-// Where a phone fetches the root senses, and the fourth route besides
-// /healthz, /auth/callback, /.well-known/assetlinks.json and /models/ that
+// Where a phone fetches the root senses, and the fifth route — beside
+// /healthz, /auth/callback, /.well-known/assetlinks.json and /models/ — that
 // answers without a bearer token.
 //
 // It has to be open for the same reason those do: the app works with no
@@ -20,10 +20,18 @@ import (
 // registered on the outer mux, above the catch-all that wraps v1 in the
 // middleware — and not by any check inside the middleware.
 //
-// No rate limiting here, and none is missing. It is Traefik/Cloudflare at the
-// ingress, host-wide, bucketed on CF-Connecting-IP (helm/values.yaml:39-45), so
-// a new route under wird.bnei.dev inherits it by existing. There is no rate
-// limiter in this Go server at all.
+// There is no rate limiter in this Go server at all, and this route does not
+// add one. The ceiling is the ingress chain — host-wide, bucketed on
+// CF-Connecting-IP — which helm/values.yaml:39-45 says is left at the chart's
+// defaults on purpose. That chart is infra-bootstrap's common-app-chart and not
+// in this repo, so the ceiling is asserted here and verifiable there: grep this
+// tree for a limiter and you will find nothing.
+//
+// Worth saying plainly because ADR 0010 leaned on it to justify leaving the
+// route open, and leaned on the wrong precedent: /models/ answers 302 and the
+// bytes never come through this server, so whatever protects it transfers
+// nothing to an 805 KB body served from here. An unauthenticated request of
+// about a hundred bytes gets all of it.
 const sensesPath = "GET /v1/senses"
 
 // provenanceRevision is bumped BY HAND when any of the three prose strings
@@ -86,11 +94,16 @@ type sensesBody struct {
 // because "no senses are seeded here" is a true and actionable answer where
 // "this route does not exist" is not. store.Senses carries the same note
 // against the ErrNotFound convention it is breaking.
+//
+// Which is why the failures here do not go through h.fail: that helper answers
+// 404 on store.ErrNotFound, so the one rule this route has would be broken by a
+// store function some later change wraps an ErrNotFound in — silently, and one
+// layer away from the comment explaining why it must not.
 func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodHead {
 		digest, err := h.store.SensesVersion(r.Context())
 		if err != nil {
-			h.fail(w, "senses version", err)
+			h.unavailable(w, "senses version", err)
 			return
 		}
 		if unchanged(w, r, packVersion(digest)) {
@@ -103,7 +116,7 @@ func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {
 
 	pack, err := h.store.Senses(r.Context())
 	if err != nil {
-		h.fail(w, "senses", err)
+		h.unavailable(w, "senses", err)
 		return
 	}
 	if unchanged(w, r, packVersion(pack.Version)) {
@@ -143,4 +156,12 @@ func unchanged(w http.ResponseWriter, r *http.Request, version string) bool {
 		}
 	}
 	return false
+}
+
+// unavailable is h.fail without the 404 branch. The senses route promises it
+// never answers 404, and a promise that depends on no store function ever
+// wrapping ErrNotFound is not a promise.
+func (h *Handler) unavailable(w http.ResponseWriter, what string, err error) {
+	h.log.Error(what, "err", err)
+	httpx.Error(w, http.StatusInternalServerError, "unavailable")
 }

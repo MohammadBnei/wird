@@ -48,9 +48,23 @@ typedef _SensePack = ({
 Future<String?> sensesOnOffer(Database db, {Dio? over}) async {
   final answer = await (over ?? _wird()).head<void>(_route);
   final offered = _tag(answer.headers.value('etag'));
-  if (offered == null || offered.isEmpty) return null;
-  return offered == await _installedVersion(db) ? null : offered;
+  final installed = await _installedVersion(db);
+  if (offered == null || offered.isEmpty) {
+    // Something between here and the server dropped the header — nginx does it
+    // when it gzips, Apache rewrites it. For a device that already holds a pack
+    // that is a reason to do nothing. For one that holds none it would mean
+    // never being offered anything at all, which is the blank screen this whole
+    // path exists to avoid, so offer: [installSenses] takes the version from
+    // the body and never from the header.
+    return installed == null ? unknownSenseVersion : null;
+  }
+  return offered == installed ? null : offered;
 }
+
+/// What [sensesOnOffer] answers when the server did not say which version it
+/// has and this device has none. It is never stored: whatever is installed is
+/// named by the body.
+const unknownSenseVersion = 'unknown';
 
 /// Fetches the pack and replaces what this device holds, in one transaction.
 /// Returns the version installed, or null when nothing was.
@@ -65,7 +79,16 @@ Future<String?> sensesOnOffer(Database db, {Dio? over}) async {
 Future<String?> installSenses(Database db, {Dio? over}) async {
   final answer = await (over ?? _wird()).get<dynamic>(_route);
   final pack = _thePack(answer);
-  return db.transaction((txn) => _writePack(txn, pack));
+  try {
+    return await db.transaction((txn) => _writePack(txn, pack));
+  } on _SensesNotForThisCorpus {
+    // The transaction rolled back, so the reader still has what they had. This
+    // is the server and this corpus disagreeing about what a root is called,
+    // which no reader can act on and no retry can mend — so it answers null,
+    // the way a check that found nothing does, rather than throwing out of a
+    // foreground call.
+    return null;
+  }
 }
 
 const _route = '/v1/senses';
@@ -79,17 +102,6 @@ Dio _wird() => Dio(BaseOptions(baseUrl: syncOrigin));
 /// empties only the reader's own tables between tests, so a committed rewrite
 /// of it outlives the test that made it.
 Future<String?> _writePack(DatabaseExecutor txn, _SensePack pack) async {
-  // ponytail: an empty pack is not an error — the route never 404s, and
-  // `{"version":"1-0-0","senses":[]}` is what an unseeded environment answers —
-  // but it is nothing to install either. Applying it would delete every sense
-  // the reader has, with no bundled floor to fall back to and no recovery short
-  // of clearing the app's data; and recording the version would tell the screen
-  // a pack had been fetched, so 1,642 roots would say "nobody wrote a sense for
-  // this" about a server that has not been seeded. Nothing is written and the
-  // reader keeps what they have. The next HEAD offers the seeded version,
-  // because the version is a hash of the rows.
-  if (pack.senses.isEmpty) return null;
-
   // Scoped to the root-level rows. There are none of the other kind today, but
   // `word_id` and the join that reads it exist, and a per-word note is not the
   // server's to replace.
@@ -112,12 +124,46 @@ Future<String?> _writePack(DatabaseExecutor txn, _SensePack pack) async {
     });
   }
   await rows.commit(noResult: true);
+
+  // The invariant is that the reader ends up with senses they can SEE, not that
+  // the pack arrived non-empty. A pack of roots this corpus does not record
+  // installs cleanly, joins to nothing, and leaves every root saying "nobody
+  // wrote a sense for this" — with the version recorded, so the device believes
+  // it is current and never offers again. There is no bundled floor to fall back
+  // to and no recovery short of clearing the app's data.
+  //
+  // That is not hypothetical here: root letters are Arabic, this repo already
+  // keeps `foldArabic` because identity across pipelines has bitten it before,
+  // and nothing compares the server's root list to the corpus's. An empty pack
+  // fails the same check, so it needs no separate guard.
+  //
+  // Throwing rolls the transaction back, so nothing is deleted and no version is
+  // recorded: the next check offers the pack again.
+  final visible = Sqflite.firstIntValue(await txn.rawQuery(
+    'SELECT COUNT(*) FROM root_notes n JOIN roots r ON r.letters = n.root_letters '
+    'WHERE n.word_id IS NULL',
+  ));
+  if (visible == null || visible == 0) {
+    throw const _SensesNotForThisCorpus();
+  }
+
   await txn.insert('sense_pack', {
     'id': 1,
     'version': pack.version,
     'fetched_at': DateTime.now().toIso8601String(),
   }, conflictAlgorithm: ConflictAlgorithm.replace);
   return pack.version;
+}
+
+/// A pack whose roots this corpus does not record. Thrown from inside the
+/// transaction so the reader's senses survive it — see [_writePack].
+class _SensesNotForThisCorpus implements Exception {
+  const _SensesNotForThisCorpus();
+
+  @override
+  String toString() =>
+      'the senses that arrived name no root this corpus records, so none of '
+      'them could ever be read; the pack was not installed';
 }
 
 Future<String?> _installedVersion(DatabaseExecutor db) async {
@@ -159,7 +205,13 @@ _SensePack _thePack(Response<dynamic> answer) {
   if (version is! String || version.isEmpty || served is! List) {
     _notTheContract(answer);
   }
-  final senses = <_Sense>[];
+  // Keyed by root, last wins. `root_notes` has no primary key and the read at
+  // root_repo.dart takes `limit: 1` with no order, so two rows for one root
+  // would make which sense a reader sees unspecified. Deduping here rather than
+  // with a unique index because an index on a shipped table is checked when the
+  // database opens, and a corpus that failed it would take the whole app down
+  // rather than one pack.
+  final senses = <String, _Sense>{};
   for (final row in served) {
     if (row is! Map) _notTheContract(answer);
     final root = row['root'];
@@ -169,12 +221,20 @@ _SensePack _thePack(Response<dynamic> answer) {
       _notTheContract(answer);
     }
     if (fr != null && fr is! String) _notTheContract(answer);
-    senses.add((root: root, en: en, fr: fr as String?));
+    senses[root] = (root: root, en: en, fr: fr as String?);
   }
+  // Through the same gate as the rows, not a bare cast. `source` and `basis` are
+  // written into every row, so a number here threw a TypeError straight out of
+  // installSenses — past the one catch that knows the reader's senses are
+  // intact, which is the exact failure sync.dart's guard exists to prevent.
+  final source = body['source'];
+  final basis = body['basis'];
+  if (source != null && source is! String) _notTheContract(answer);
+  if (basis != null && basis is! String) _notTheContract(answer);
   return (
     version: version,
-    source: body['source'] as String?,
-    basis: body['basis'] as String?,
-    senses: senses,
+    source: source as String?,
+    basis: basis as String?,
+    senses: senses.values.toList(growable: false),
   );
 }

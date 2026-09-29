@@ -464,6 +464,11 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 	return err
 }
 
+// How long a sense version may be before the server stops believing it.
+// The served shape is a small int, a dash and 32 hex characters; 64 is that
+// with room, and it matches the column CHECK in migration 00009.
+const senseVersionMax = 64
+
 // The one apply that is not handed the reader, because a report has nowhere
 // to put one. It reaches a table an operator reads, so the reader it came from
 // must not be recoverable from it — and the column list is the smallest part
@@ -506,6 +511,16 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	}
 	if b.CreatedAt.IsZero() {
 		b.CreatedAt = time.Now().UTC()
+	}
+	// Capped here rather than left to the column's CHECK, and the difference is
+	// the reader's words. sense_version is entirely under the device's control,
+	// a CHECK violation is SQLSTATE 23514, classify turns every 23* into
+	// OpRefused, and a refusal is permanent — so one over-long version string
+	// would park the report forever and the text the reader wrote would be lost
+	// to say which prose they meant. A version too long to be one of ours is the
+	// device not having said, which is what an absent one already means.
+	if len(b.SenseVersion) > senseVersionMax {
+		b.SenseVersion = ""
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO report_inbox (kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)

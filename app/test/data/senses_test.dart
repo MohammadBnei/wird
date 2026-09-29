@@ -212,4 +212,52 @@ void main() {
     expect(await served(db), 1);
     expect(await installed(db), '9-9-9');
   });
+
+  // The failure the empty-pack guard was written for, arriving the way the guard
+  // does not see: a pack that is not empty, whose roots this corpus does not
+  // record. Every row installs, none of them joins to anything, and the version
+  // is recorded — so the device believes it is current, never offers again, and
+  // the reader is left with 1,642 roots all saying nobody wrote a sense for
+  // them, with no bundled floor and no way back short of clearing app data.
+  //
+  // Root letters are Arabic and this repo already keeps foldArabic because
+  // identity across pipelines has bitten it before, so a server and a corpus
+  // disagreeing about a spelling is the ordinary case, not the exotic one.
+  test('a pack of roots this corpus never heard of takes the senses it has '
+      'with it, and tells the reader they are up to date', () async {
+    final db = await testCorpus();
+    final server = await FakeWird.start();
+    addTearDown(server.stop);
+
+    // Seeded rather than leaning on the bundle: testCorpus caches its database
+    // for the whole file and root_notes is a shipped table, so an earlier test
+    // here has already replaced what the bundle shipped.
+    server.senses = pack('6-6-6', [sense('صبر', 'to bind oneself fast')]);
+    expect(await installSenses(db, over: server.dio), '6-6-6');
+    final before = await served(db);
+
+    server.senses = pack('7-7-7', [
+      sense('zzz', 'not a root in this corpus'),
+      sense('qqq', 'nor this one'),
+    ]);
+    expect(await installSenses(db, over: server.dio), isNull);
+
+    expect(await served(db), before, reason: 'the reader kept what they had');
+    expect(await installed(db), '6-6-6', reason: 'so the next check offers again');
+    expect((await rootReading(db, 'صبر'))?.coreSense, 'to bind oneself fast');
+  });
+
+  // The same invariant from the other side: a pack whose roots DO match lands,
+  // even though the bundle is replaced wholesale on the way.
+  test('a pack the corpus recognises replaces what the bundle shipped', () async {
+    final db = await testCorpus();
+    final server = await FakeWird.start();
+    addTearDown(server.stop);
+
+    server.senses = pack('8-8-8', [sense('صبر', 'to bind oneself fast')]);
+    expect(await installSenses(db, over: server.dio), '8-8-8');
+
+    expect(await served(db), 1);
+    expect((await rootReading(db, 'صبر'))?.coreSense, 'to bind oneself fast');
+  });
 }

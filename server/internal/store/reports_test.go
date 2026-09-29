@@ -150,6 +150,37 @@ func TestAVerdictLosesTheSenseItJudgedBetweenTheInboxAndTheReports(t *testing.T)
 	}
 }
 
+// The failure, measured on the first cut of this change: an 82-character
+// sense_version came back "refused" with "it does not fit what is already
+// recorded", and a refusal is permanent — so the report parked forever and the
+// words the reader wrote were lost to say which prose they meant.
+//
+// sense_version is entirely the device's to set. A CHECK violation is SQLSTATE
+// 23514 and classify turns every 23* into OpRefused, so a column constraint on
+// this field is a way for one bad string to throw away the only part of a
+// report that matters. It is capped in Go instead: a version too long to be
+// one of ours is the device not having said, which is what an absent one
+// already means.
+func TestAVersionTooLongToBeOursThrowsAwayTheReadersWords(t *testing.T) {
+	db, pool := testenv.Postgres(t)
+	user := reader(t, db, "sub-report-longversion")
+
+	long := strings.Repeat("f", 200)
+	land(t, db, user, store.Op{ClientOpID: opID(927), Kind: "report_written", Body: json.RawMessage(
+		`{"kind":"improvement","body":"this sense reads backwards",` +
+			`"app_version":"1.4.0","platform":"android","screen":"root",` +
+			`"corpus_version":4,"sense_version":"` + long + `",` +
+			`"created_at":"2026-09-28T07:20:00Z"}`)})
+
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox WHERE body = 'this sense reads backwards'`); n != 1 {
+		t.Fatalf("%d inbox rows carry the report: an over-long version the device chose "+
+			"refused the whole thing, and a refusal is permanent", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox WHERE sense_version = ''`); n != 1 {
+		t.Fatalf("%d rows read the over-long version as 'the device did not say'", n)
+	}
+}
+
 // The failure: a kind nobody triages, or an empty report, fills the list an
 // operator reads — and the reader believes they were heard.
 func TestAReportWithNoTextOrAKindNobodyTriagesIsRefused(t *testing.T) {
