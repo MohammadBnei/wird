@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
@@ -282,6 +283,22 @@ Future<void> setLanguagePref(Database db, String? locale) async {
     'locale': locale,
   }, conflictAlgorithm: ConflictAlgorithm.replace);
 }
+
+/// Whether a root's sense should be read in French.
+///
+/// The stored choice, and the phone's own language until there is one — the
+/// same two steps [MaterialApp.locale] takes, so the sense and the screen
+/// around it are never in different languages. A device set to neither answers
+/// false, which is English, the one sentence every sense has.
+///
+/// ponytail: those two steps are resolved twice, here and in [Prefs.locale],
+/// and the day they disagree the screen and the sense on it are in different
+/// languages. One resolver both read is the fix; it wants the data layer to be
+/// able to see the app's locale, which is a structural change, not this one.
+Future<bool> readingInFrench(Database db) async =>
+    (await languagePref(db) ??
+        PlatformDispatcher.instance.locale.languageCode) ==
+    'fr';
 
 Future<void> setReadingOrder(Database db, ReadingOrder order) =>
     db.transaction((txn) async {

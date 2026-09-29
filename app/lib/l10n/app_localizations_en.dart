@@ -601,9 +601,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguage => 'LANGUAGE';
 
   @override
-  String get settingsLanguagePhone => 'Your phone\'s';
-
-  @override
   String get settingsLanguageEnglish => 'English';
 
   @override

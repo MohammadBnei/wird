@@ -111,25 +111,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _section(n, l.settingsLanguage),
               NocturneSegmented(
                 options: [
-                  l.settingsLanguagePhone,
                   l.settingsLanguageEnglish,
                   l.settingsLanguageFrench,
                 ],
-                // Null is the phone's own, so the offer leads with it: a
-                // reader who has never opened this setting is already in that
-                // state and should see themselves in it.
-                selected: switch (prefs.locale?.languageCode) {
-                  'en' => 1,
-                  'fr' => 2,
-                  _ => 0,
-                },
-                onChanged: (i) => prefs.setLocale(
-                  switch (i) {
-                    1 => const Locale('en'),
-                    2 => const Locale('fr'),
-                    _ => null,
-                  },
-                ),
+                // The language being read, which is the reader's choice or
+                // their phone's until they make one. There is no third option
+                // for "my phone's": a reader picking their own language is not
+                // choosing between a language and a way of choosing one, and
+                // the phone's is already the one they can see selected.
+                selected:
+                    Localizations.localeOf(context).languageCode == 'fr' ? 1 : 0,
+                onChanged: (i) =>
+                    prefs.setLocale(Locale(i == 1 ? 'fr' : 'en')),
               ),
               SizedBox(height: n.space('1')),
               _caption(n, l.settingsLanguageCaption),

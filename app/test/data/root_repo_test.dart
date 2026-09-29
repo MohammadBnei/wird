@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/kept_repo.dart';
 import 'package:wird/data/root_repo.dart';
 
@@ -158,10 +159,10 @@ void main() {
       'note_fr': 'réussir, prospérer',
     });
 
-    expect(
-      (await rootReading(db, 'فلح', inFrench: true))!.coreSense,
-      'réussir, prospérer',
-    );
+    await setLanguagePref(db, 'fr');
+    expect((await rootReading(db, 'فلح'))!.coreSense, 'réussir, prospérer');
+
+    await setLanguagePref(db, 'en');
     expect((await rootReading(db, 'فلح'))!.coreSense, 'to succeed, to prosper');
   });
 
@@ -175,9 +176,23 @@ void main() {
       'note_fr': null,
     });
 
-    expect(
-      (await rootReading(db, 'فلح', inFrench: true))!.coreSense,
-      'to succeed, to prosper',
-    );
+    await setLanguagePref(db, 'fr');
+    expect((await rootReading(db, 'فلح'))!.coreSense, 'to succeed, to prosper');
+  });
+
+  // The failure: the sense came out English on the reading screen's root panel
+  // and in the kept list while the app was French, because those two reach this
+  // through rootDetail and only the two full root screens had been told the
+  // language. Whoever asks, the answer is in the reader's language.
+  test('every door onto a root reads it in the reader language', () async {
+    await db.insert('root_notes', {
+      'root_letters': 'فلح',
+      'word_id': null,
+      'note': 'to succeed, to prosper',
+      'note_fr': 'réussir, prospérer',
+    });
+    await setLanguagePref(db, 'fr');
+
+    expect((await rootDetail(db, 'فلح'))!.coreSense, 'réussir, prospérer');
   });
 }

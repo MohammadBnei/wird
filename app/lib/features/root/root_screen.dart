@@ -69,11 +69,7 @@ class _RootScreenState extends State<RootScreen> {
   }
 
   Future<void> _load() async {
-    final reading = await rootReading(
-      widget.db,
-      widget.letters,
-      inFrench: _readIn?.languageCode == 'fr',
-    );
+    final reading = await rootReading(widget.db, widget.letters);
     final keptId = await rootKept(widget.db, widget.letters);
     if (!mounted) return;
     setState(() {

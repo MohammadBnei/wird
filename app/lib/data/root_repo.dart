@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:sqflite/sqflite.dart';
 
+import 'db.dart';
+
 import 'kept_repo.dart';
 
 /// The most derivatives a dial can carry. Above this the root is read as a
@@ -144,15 +146,7 @@ class RootReading {
   }
 }
 
-/// [inFrench] picks which of the two sentences a served sense carries. The
-/// screen knows the reader's language and this layer does not, so it is asked
-/// rather than read here — and it defaults to the English, which is the only
-/// one every sense is guaranteed to have.
-Future<RootReading?> rootReading(
-  Database db,
-  String letters, {
-  bool inFrench = false,
-}) async {
+Future<RootReading?> rootReading(Database db, String letters) async {
   final rows = await db.query(
     'roots',
     where: 'letters = ?',
@@ -224,6 +218,14 @@ Future<RootReading?> rootReading(
   );
   final sense = core.isEmpty ? const <String, Object?>{} : core.first;
 
+  // Which of the two sentences to hand back, read here rather than passed in.
+  // A screen argument was the first shape of this and it was wrong: rootDetail
+  // is a second door onto this function, and the reading screen's root panel
+  // and the kept list come through it, so three callers went on drawing English
+  // in a French app. The language is already written down and this layer has
+  // the database it is written in, so there is nothing to forget to pass.
+  final french = await readingInFrench(db);
+
   // One row or none, and only its presence is read. The version itself belongs
   // to the report a thumb sends, not to the screen.
   final pack = await db.query('sense_pack', columns: ['version'], limit: 1);
@@ -240,7 +242,7 @@ Future<RootReading?> rootReading(
     // a root whose French never arrived is a root whose sense is still worth
     // reading, and the notice for "no sense written" would be a lie about it.
     coreSense:
-        (inFrench ? sense['note_fr'] as String? : null) ??
+        (french ? sense['note_fr'] as String? : null) ??
         sense['note'] as String?,
     senseSource: sense['source'] as String?,
     senseBasis: sense['basis'] as String?,

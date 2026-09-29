@@ -52,11 +52,11 @@
   },
   "kept_filter_notes": "Notes",
   "@kept_filter_notes": {
-    "description": "Third option of the segmented filter above the kept list's cards."
+    "description": "Second option of the segmented filter above the kept list's cards."
   },
   "kept_filter_roots": "Roots",
   "@kept_filter_roots": {
-    "description": "Second option of the segmented filter above the kept list's cards."
+    "description": "First option of the segmented filter above the kept list's cards."
   },
   "kept_kicker_revisit": "{at} · revisit",
   "@kept_kicker_revisit": {
@@ -521,11 +521,11 @@
   },
   "report_kind_request": "Request",
   "@report_kind_request": {
-    "description": "Second option of the kind chooser on the report screen: something is missing."
+    "description": "First option of the kind chooser on the report screen: something is missing."
   },
   "report_kind_improvement": "Improvement",
   "@report_kind_improvement": {
-    "description": "Third option of the kind chooser on the report screen: something could be better."
+    "description": "Second option of the kind chooser on the report screen: something could be better."
   },
   "report_words_heading": "IN YOUR OWN WORDS",
   "@report_words_heading": {
@@ -979,17 +979,13 @@
   "@settingsLanguage": {
     "description": "Section heading on the settings screen, over the choice of which language the app and the root senses are read in."
   },
-  "settingsLanguagePhone": "Your phone's",
-  "@settingsLanguagePhone": {
-    "description": "First option of the settings screen's language control: follow whatever language the device is set to, which is what the app does until the reader chooses."
-  },
   "settingsLanguageEnglish": "English",
   "@settingsLanguageEnglish": {
-    "description": "Second option of the settings screen's language control. Written in English in both locales, because a language is named in itself."
+    "description": "First option of the settings screen's language control. Written in English in both locales, because a language is named in itself."
   },
   "settingsLanguageFrench": "Français",
   "@settingsLanguageFrench": {
-    "description": "Third option of the settings screen's language control. Written in French in both locales, because a language is named in itself."
+    "description": "Second option of the settings screen's language control. Written in French in both locales, because a language is named in itself."
   },
   "settingsLanguageCaption": "The screen and a root's sense. The senses were written in English and translated, so a root whose French never arrived is read in English.",
   "@settingsLanguageCaption": {
@@ -1005,11 +1001,11 @@
   },
   "settingsWordTranslit": "Translit",
   "@settingsWordTranslit": {
-    "description": "Second option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control."
+    "description": "First option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control."
   },
   "settingsWordBoth": "Both",
   "@settingsWordBoth": {
-    "description": "Third option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word."
+    "description": "Second option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word."
   },
   "settingsWordNeither": "Neither",
   "@settingsWordNeither": {
@@ -1025,7 +1021,7 @@
   },
   "settingsOrderMushaf": "Muṣḥaf",
   "@settingsOrderMushaf": {
-    "description": "Second option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is."
+    "description": "First option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is."
   },
   "settingsOrderCaption": "The chronology orders sūras; ayas inside a sūra stay in written order.",
   "@settingsOrderCaption": {
