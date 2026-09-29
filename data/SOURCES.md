@@ -8,7 +8,7 @@ go run ./server/cmd/ingest                      # -suras 1,2,103,112 for a parti
 go run ./server/cmd/etl -in ./data/raw/ -out ./app/assets/corpus.db
 ```
 
-That command writes `corpus_version` 2, which is what the shipped asset carries:
+That command writes `corpus_version` 4, which is what the shipped asset carries:
 the number is the ETL's `-corpus-version` default so the documented rebuild
 cannot regress it, and the app asserts it in
 `app/test/features/report/report_screen_test.dart`. The API groups reports by
@@ -698,7 +698,7 @@ word, never about a verse. They did not pass the gate described below.
 
 ```
 data/root_senses_draft.tsv   the 1,642 drafts the server is seeded from
-data/root_senses.tsv         the 523 a person wrote: root, English, French
+data/root_senses.tsv         the 788 a person wrote: root, English, French
 data/root_senses.json        what survived the check, with the words that carried it
 ```
 
@@ -730,7 +730,7 @@ it, and fails if the two populations stop parting around the majority line.
 | roots in the corpus | 1,642 | — |
 | roots that can be checked at all | 810 | the other 832 attest one morphological shape and ship nothing |
 | senses proposed | 789 | — |
-| senses that passed | 507 | **not what is served today** |
+| senses that passed | 507 |  |
 | refused: the glosses do not bear the sense out | 226 | — |
 | refused: a minority branch of the root | 43 | the reader would meet the word and not the sense |
 | refused: too general to name this root | 13 | — |

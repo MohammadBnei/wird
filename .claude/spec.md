@@ -81,7 +81,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - App: `app/lib/data/senses.dart` applies pack in one txn: delete `root_notes WHERE word_id IS NULL`, insert, write `sense_pack`. Validate body before txn. Empty pack never wipes existing senses.
 - Fetch trigger: `Flusher.theFirstSenses` on foreground (2-min floor) + Settings manual row. HEAD checks, GET fetches.
 - Two refusal strings: not written vs not fetched. `_whose` always tappable so basis sheet reachable.
-- Served senses carry no evidence words; `note_fr` stored, read by no screen.
+- Served senses carry no evidence words. `note_fr` is drawn for a reader in French, English is the fallback.
 - Rate limiting = ingress, host-wide. No limiter in Go server.
 - `jidhrcorpus` exports meanings for `rootd`; `rootd` keeps reading exported file.
 - Draft prompt `data/root-sense-prompt.md`; drafts log `data/root_senses_draft.tsv` append-only, prompt digest per row. Curated `data/root_senses.{tsv,json}` kept for future signed promotion.
@@ -126,7 +126,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Flutter pinned via `.fvmrc` (3.47.5). Always `fvm flutter`.
 
 ## Invariants / must-nots
-- Never `--update-goldens` inside gate; golden refresh = separate owned reviewed step. Gate fails if flag appears in tracked files/staged diff.
+- Never refresh goldens inside gate; golden refresh = separate owned reviewed step. Gate greps tracked files and staged diff for the refresh flag and fails on a hit — so name the rule, never spell the flag (`scripts/qa.sh` splits its own copy in two for the same reason).
 - Never delete red test in gate it reddens. Flakes quarantined with issue.
 - Test names state failure prevented. Never assert only that a mock was called.
 - Issue-marker comments need issue number. `ponytail:` comments = deliberate ceilings; keep them.

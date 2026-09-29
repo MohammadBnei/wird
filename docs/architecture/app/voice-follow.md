@@ -129,7 +129,7 @@ A stopped download keeps its `.part` file. The resume sends a `Range` header, an
 
 [speech.dart:249](../../../app/lib/data/speech.dart#L249-L260)
 
-A failed fetch is reported to Settings as one of two things: `notServed` (the host answered, but not with the file) or `interrupted` (the bytes stopped) ([speech.dart:172](../../../app/lib/data/speech.dart#L172-L181)). Settings starts the fetch from its model panel ([settings_screen.dart:523](../../../app/lib/features/settings/settings_screen.dart#L523-L528)).
+A failed fetch is reported to Settings as one of two things: `notServed` (the host answered, but not with the file) or `interrupted` (the bytes stopped) ([speech.dart:172](../../../app/lib/data/speech.dart#L172-L181)). Settings starts the fetch from its model panel ([settings_screen.dart:523](../../../app/lib/features/settings/settings_screen.dart#L542-L547)).
 
 ### 3. Old models are swept away
 

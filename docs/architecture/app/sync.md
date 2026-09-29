@@ -103,18 +103,18 @@ Future<void> enqueue(
 }, conflictAlgorithm: ConflictAlgorithm.ignore);
 ```
 
-[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:131](../../../app/lib/data/db.dart#L131-L138)
+[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:131](../../../app/lib/data/db.dart#L142-L149)
 
 The callers, one per op kind:
 
 | Op kind | Written by |
 |---|---|
-| `ayah_understood` | [markSetUnderstood, db.dart:183](../../../app/lib/data/db.dart#L183-L191) |
-| `set_prayed` | [recordSetPrayed, db.dart:229](../../../app/lib/data/db.dart#L229) |
-| `prefs_set` | [setReadingOrder, db.dart:259](../../../app/lib/data/db.dart#L259-L264) |
+| `ayah_understood` | [markSetUnderstood, db.dart:183](../../../app/lib/data/db.dart#L194-L202) |
+| `set_prayed` | [recordSetPrayed, db.dart:229](../../../app/lib/data/db.dart#L240) |
+| `prefs_set` | [setReadingOrder, db.dart:259](../../../app/lib/data/db.dart#L311-L316) |
 | `kept_upsert` | [kept_repo.dart:99](../../../app/lib/data/kept_repo.dart#L99-L109) |
 | `kept_delete` | [kept_repo.dart:128](../../../app/lib/data/kept_repo.dart#L128-L133) |
-| `report_written` | [report.dart:76](../../../app/lib/features/report/report.dart#L76-L86) |
+| `report_written` | [report.dart:76](../../../app/lib/features/report/report.dart#L82-L92) |
 
 The server still accepts `set_recorded` from older phones. This build no longer writes it.
 
@@ -324,7 +324,7 @@ Future<void> discard(Database db, String opId) =>
     db.delete('outbox', where: 'client_op_id = ?', whereArgs: [opId]);
 ```
 
-[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:233](../../../app/lib/features/settings/settings_screen.dart#L233)
+[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:233](../../../app/lib/features/settings/settings_screen.dart#L252)
 
 ### 10. The contract both sides answer to
 

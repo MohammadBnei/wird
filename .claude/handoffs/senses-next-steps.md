@@ -45,7 +45,7 @@ fvm flutter run -d <android device id> --dart-define=WIRD_ORIGIN=https://wird.bn
 - Finding 9 open: matcher margin rule pins cursor (27/48 windows refused, median margin 0.158 vs `followMargin` 0.32). `docs/journal/voice-follow-walk.md`. Another session owns it.
 - `LoadSenses` in `server/cmd/etl/senses.go`: zero callers, not even own test (assigns `c.Senses` directly). Delete. Keep `checkSenses` in `server/cmd/etl/check.go` (`Corpus.Check` calls it) — inert while nothing assigns `c.Senses`; re-arms when a sense file loads.
 - Reviewer flag, NOT investigated: regenerated `data/root_senses.json` + `server/cmd/rootcheck/build.go` may leave ETL byline gate fatal. Verify: `go run ./server/cmd/etl -in <abs path>/data/raw/ -out /tmp/corpus.db -corpus-version 4`. `data/raw` gitignored, owner's machine only. Never overwrite `app/assets/corpus.db`.
-- Served senses carry no evidence words → "words this was read from" section never draws (test pins loss). Basis prose English only (no `basis_fr`). `note_fr` served + stored, no screen reads it.
+- Served senses carry no evidence words → "words this was read from" section never draws (test pins loss). Basis prose English only (no `basis_fr`). `note_fr` is drawn for a reader in French, with the English as the fallback.
 - ~15 wide roots draft long (عرف 36 clauses, حقق 33). 40 rows unequal en/fr clause counts. Seeder never reorders.
 - `data/root_senses.tsv` + `.json` stay → future signed pass promotes 523 curated senses.
 - Untracked `no-sleep.sh` in owner's repo root: not ours, leave it.
