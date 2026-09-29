@@ -941,11 +941,17 @@ abstract class AppLocalizations {
   /// **'Core sense'**
   String get root_coreSense;
 
-  /// Drawn under the core sense heading for the two roots in three that ship no sense, so the absence reads as a refusal to claim and not as a missing section.
+  /// Drawn under the core sense heading for a root the fetched pack of senses carries none for, so the absence reads as work not yet done and not as a missing section. Its old wording claimed the sense had been refused because the root's own words in the Qur'an did not bear one out, which was the corpus-derivation standard the served drafts were not written to (ADR 0010).
   ///
   /// In en, this message translates to:
-  /// **'Wird writes a root\'s sense only where that root\'s own words in the Qur\'an bear it out. These do not, so nothing is claimed here.'**
+  /// **'The senses are Wird\'s own and they are written one root at a time. None has been written for this root yet. When one is, it reaches this phone without waiting for a new version of the app.'**
   String get root_senseRefused;
+
+  /// The other half of root_senseRefused, drawn under the core sense heading when this device has never fetched a pack of senses at all. One string for both states told a reader who has never had a signal that nobody had written a sense, on every root in the corpus.
+  ///
+  /// In en, this message translates to:
+  /// **'The senses are not part of the download. They are fetched, so a sense can be corrected without a new version of the app — and this phone has not fetched any yet. Settings carries the button.'**
+  String get root_senseNotFetched;
 
   /// Under the core sense on screens 3a, 2b and 1c: whose reading the sentence above is, where it is the app's own. Ends in root_senseBorne, or in nothing.
   ///
@@ -1264,6 +1270,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A Qur\'an recogniser that runs on the phone, so nothing you recite is sent anywhere. Downloading it is what turns voice-follow on; the prayer screen advances on a tap until you do, and after you remove it.'**
   String get settingsRecogniserAbsent;
+
+  /// Section heading on the settings screen over the senses panel.
+  ///
+  /// In en, this message translates to:
+  /// **'SENSES'**
+  String get settingsSenses;
+
+  /// The button on the settings screen that fetches the senses the server is offering and writes them into this phone's database. No size on it: the button is pressed for a correction that is already on offer, and the number the reader would weigh is the one they cannot see.
+  ///
+  /// In en, this message translates to:
+  /// **'Download the senses'**
+  String get settingsDownloadSenses;
+
+  /// The button that repeats the check on the settings screen after the server could not be reached. Without it the only retry is leaving the screen and coming back, which nothing on the screen says.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask again'**
+  String get settingsSensesAskAgain;
+
+  /// Caption under the senses panel while the check is in flight.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking the server whether there is anything new.'**
+  String get settingsSensesAsking;
+
+  /// Caption under the senses panel when the server is offering a pack this device does not hold.
+  ///
+  /// In en, this message translates to:
+  /// **'There are senses on the server this phone does not have. They are a few hundred kilobytes; nothing downloads until you press.'**
+  String get settingsSensesOnOffer;
+
+  /// Caption under the senses panel while the pack is being fetched and written.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading. Nothing already on the phone is replaced until all of it has arrived.'**
+  String get settingsSensesInstalling;
+
+  /// Caption under the senses panel when there is nothing on offer, which is also what a reader sees straight after a download. It restates the provenance rather than saying only that the phone is up to date, because this screen is the one place the whole pack is talked about.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone has the senses the server is serving. A sense is Wird\'s own reading, written by a machine and read by no person; the line under each one says so, and the thumb beside it is how a wrong one gets corrected.'**
+  String get settingsSensesCurrent;
+
+  /// Caption under the senses panel when the check or the download failed to reach the server. It says "did not answer" rather than "could not be reached", which is settingsMicUnavailable's wording: the two captions are drawn on the same screen and a test looking for one found both.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not answer, so whether there are new senses is unknown. Every sense already on the phone is still here, and the app reads with no network.'**
+  String get settingsSensesUnreachable;
+
+  /// Caption under the senses panel when the pack was refused because it and the bundled corpus disagree about what a root is called. The install rolled back, so the reader still has whatever they had.
+  ///
+  /// In en, this message translates to:
+  /// **'The senses that arrived name no root this copy of the Qur\'an records, so none of them could ever be read. Nothing was changed on the phone.'**
+  String get settingsSensesNotThisCorpus;
 
   /// The app bar title of the recogniser check screen, opened from the settings screen.
   ///

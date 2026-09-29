@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../app.dart';
 import '../../data/db.dart';
 import '../../data/mic.dart';
+import '../../data/senses.dart';
 import '../../data/sets.dart';
 import '../../data/speech.dart';
 import '../../l10n/app_localizations.dart';
@@ -185,6 +186,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ? l.settingsNoReciter
                     : l.settingsRecitedBy(_reciter!),
               ),
+              // The senses sit with what a root means, not with the voice: the
+              // recogniser below is a feature a reader turns on, and this is
+              // the app's own content arriving. It is drawn unconditionally —
+              // a reader who never comes here still gets their first pack from
+              // `Flusher`, but a correction has nowhere else to be pressed.
+              _section(n, l.settingsSenses),
+              SensePanel(db: wird.db),
               _section(n, l.settingsMicrophone),
               // Voice-follow is a later phase and off by default. The
               // microphone is asked for here and only here: the in-prayer
@@ -304,6 +312,134 @@ class _SettingsScreenState extends State<SettingsScreen> {
     text,
     style: TextStyle(fontSize: 10.5, height: 1.4, color: n.textAt(0.5)),
   );
+}
+
+/// Which of the six things is true of the senses on this phone right now.
+///
+/// One enum rather than [VoiceModelPanel]'s four fields: that panel's states
+/// are a download's, and they overlap — partly arrived, arrived, cancelled.
+/// These six are exclusive, so the switch below is exhaustive and the compiler
+/// is what keeps a state from having no caption.
+enum _Senses {
+  asking,
+  onOffer,
+  installing,
+  current,
+  unreachable,
+  notThisCorpus,
+}
+
+/// The senses, which are fetched rather than bundled, and the one button that
+/// brings them down.
+///
+/// Modelled on [VoiceModelPanel]: one button, one caption saying why that is
+/// the button, no switch. What differs is who may act unasked. Nobody
+/// downloads 160 MB of weights on a reader's behalf, while a phone with no
+/// senses at all is an app whose screens describe content it does not have —
+/// so `Flusher` fetches the first pack itself, silently, and this panel is for
+/// everything after: ADR 0010's payoff is a wrong sense fixed in minutes, and
+/// this is where the reader takes the fix.
+///
+/// There is deliberately no percentage and no Stop. `installSenses` buffers
+/// and validates the whole body before it writes a row, which is what makes a
+/// truncated answer harmless; a cancel button over a few hundred kilobytes
+/// would be a control whose only effect is to make the reader press again.
+class SensePanel extends StatefulWidget {
+  const SensePanel({super.key, required this.db, this.over});
+
+  final Database db;
+
+  /// The senses route, for a test to stand in for. Null in the app, where
+  /// `senses.dart` builds its own against the origin the queue uses.
+  final Dio? over;
+
+  static const download = Key('download senses');
+  static const askAgain = Key('ask again for senses');
+
+  @override
+  State<SensePanel> createState() => _SensePanelState();
+}
+
+class _SensePanelState extends State<SensePanel> {
+  _Senses _state = _Senses.asking;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_ask());
+  }
+
+  /// The HEAD, which moves no bytes. It cannot be what the first frame waits
+  /// on, so until it answers the panel says it is asking.
+  Future<void> _ask() async {
+    if (mounted) setState(() => _state = _Senses.asking);
+    try {
+      final offered = await sensesOnOffer(widget.db, over: widget.over);
+      _settle(offered == null ? _Senses.current : _Senses.onOffer);
+    } on Object {
+      // Any failure to reach the server is one sentence to a reader: a
+      // timeout, a captive portal's sign-in page and a 500 differ in nothing
+      // they can act on.
+      _settle(_Senses.unreachable);
+    }
+  }
+
+  Future<void> _install() async {
+    setState(() => _state = _Senses.installing);
+    try {
+      // Null is the pack that named no root this corpus records. It rolled the
+      // transaction back, so the reader still has what they had, and the one
+      // thing the panel must not do is redraw Download over a press that can
+      // never succeed.
+      final installed = await installSenses(widget.db, over: widget.over);
+      _settle(installed == null ? _Senses.notThisCorpus : _Senses.current);
+    } on Object {
+      _settle(_Senses.unreachable);
+    }
+  }
+
+  void _settle(_Senses state) {
+    if (mounted) setState(() => _state = state);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: n.space('3')),
+        if (_state == _Senses.onOffer)
+          NocturneButton(
+            key: SensePanel.download,
+            onPressed: _install,
+            child: Text(l.settingsDownloadSenses),
+          )
+        else if (_state == _Senses.unreachable)
+          NocturneButton(
+            key: SensePanel.askAgain,
+            variant: NocturneButtonVariant.ghost,
+            onPressed: _ask,
+            child: Text(l.settingsSensesAskAgain),
+          ),
+        SizedBox(height: n.space('1')),
+        Text(
+          _whyThisButton(l),
+          style: TextStyle(fontSize: 10.5, height: 1.4, color: n.textAt(0.5)),
+        ),
+      ],
+    );
+  }
+
+  String _whyThisButton(AppLocalizations l) => switch (_state) {
+    _Senses.asking => l.settingsSensesAsking,
+    _Senses.onOffer => l.settingsSensesOnOffer,
+    _Senses.installing => l.settingsSensesInstalling,
+    _Senses.current => l.settingsSensesCurrent,
+    _Senses.unreachable => l.settingsSensesUnreachable,
+    _Senses.notThisCorpus => l.settingsSensesNotThisCorpus,
+  };
 }
 
 /// The recogniser voice-follow listens with: whether it is on the phone, and
