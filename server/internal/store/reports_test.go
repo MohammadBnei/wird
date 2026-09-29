@@ -72,8 +72,8 @@ func TestAReportCannotCarryAReadersNotesProgressOrCorpus(t *testing.T) {
 	// Both tables a report passes through, because the inbox holds the same
 	// text for a sweep interval and a column added there is the same column.
 	for table, want := range map[string][]string{
-		"reports":      {"app_version", "body", "corpus_version", "id", "kind", "platform", "screen", "written_on"},
-		"report_inbox": {"app_version", "body", "corpus_version", "kind", "platform", "screen", "written_on"},
+		"reports":      {"app_version", "body", "corpus_version", "id", "kind", "platform", "screen", "sense_version", "written_on"},
+		"report_inbox": {"app_version", "body", "corpus_version", "kind", "platform", "screen", "sense_version", "written_on"},
 	} {
 		var columns []string
 		rows, err := pool.Query(t.Context(),
@@ -103,6 +103,50 @@ func TestAReportCannotCarryAReadersNotesProgressOrCorpus(t *testing.T) {
 
 	if n := count(t, pool, `SELECT count(*) FROM report_inbox`); n != 0 {
 		t.Fatalf("%d reports stored from a body that was refused", n)
+	}
+}
+
+// The failure: a verdict cannot name the sense it judged. corpus_version used
+// to say it, and the moment senses arrive over HTTP it cannot — two readers on
+// one bundle can judge two different sentences and both report the same number
+// (docs/adr/0010). So a report carries sense_version.
+//
+// And the failure adding that column reintroduces: the report column list is
+// written out four times between applyReport and sweepReportsSQL. A
+// sense_version written into the inbox and forgotten in the sweep's two SELECTs
+// or its INSERT is dropped on the way to the table an operator reads, with no
+// error anywhere — the same unattributable verdict, with an extra step. So this
+// follows the value all the way through the sweep rather than stopping at the
+// inbox.
+//
+// The last assertion is the other direction: a report that does not mention a
+// sense is not refused. Every device shipping today sends the old body, the
+// app half of this lands after the deploy, and a refusal is permanent.
+func TestAVerdictLosesTheSenseItJudgedBetweenTheInboxAndTheReports(t *testing.T) {
+	db, pool := testenv.Postgres(t)
+	user := reader(t, db, "sub-report-sense")
+
+	const version = "1-047d1760906cf3723679bc6dd351c0a7"
+	land(t, db, user, store.Op{ClientOpID: opID(925), Kind: "report_written", Body: json.RawMessage(
+		`{"kind":"improvement","body":"womb is not in this root's sense",` +
+			`"app_version":"1.4.0","platform":"android","screen":"root",` +
+			`"corpus_version":4,"sense_version":"` + version + `",` +
+			`"created_at":"2026-09-28T07:20:00Z"}`)})
+
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox WHERE sense_version = '`+version+`'`); n != 1 {
+		t.Fatalf("%d inbox rows name the sense that was judged, so the flush never wrote it", n)
+	}
+	sweep(t, db)
+	if n := count(t, pool, `SELECT count(*) FROM reports WHERE sense_version = '`+version+`'`); n != 1 {
+		t.Fatalf("%d reports name the sense that was judged: the sweep moved the report and dropped "+
+			"the one field that says which prose the reader was judging", n)
+	}
+
+	land(t, db, user, reportOp(opID(926), "bug", "the audio stops at the end of the set"))
+	sweep(t, db)
+	if n := count(t, pool, `SELECT count(*) FROM reports WHERE sense_version = ''`); n != 1 {
+		t.Fatalf("%d reports carry no sense version: a device that does not send one must still "+
+			"be heard, and a refusal is permanent", n)
 	}
 }
 
@@ -353,8 +397,8 @@ func clockOf(t *testing.T, op store.Op) time.Time {
 func rewrittenIn(order string) string {
 	return `
 WITH gone AS (DELETE FROM reports RETURNING *)
-INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
-SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
+INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)
+SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
   FROM gone ORDER BY ` + order
 }
 

@@ -487,13 +487,19 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 // docs/adr/0004 says so in those words.
 func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	var b struct {
-		Kind          string    `json:"kind"`
-		Body          string    `json:"body"`
-		AppVersion    string    `json:"app_version"`
-		Platform      string    `json:"platform"`
-		Screen        string    `json:"screen"`
-		CorpusVersion int       `json:"corpus_version"`
-		CreatedAt     time.Time `json:"created_at"`
+		Kind          string `json:"kind"`
+		Body          string `json:"body"`
+		AppVersion    string `json:"app_version"`
+		Platform      string `json:"platform"`
+		Screen        string `json:"screen"`
+		CorpusVersion int    `json:"corpus_version"`
+		// Which sense the reader was judging. corpus_version cannot say it any
+		// more: senses arrive over HTTP now, so two readers on the same bundle
+		// can judge two different sentences and both report the same corpus.
+		// Absent is "the device did not say", the same reading zero gets above,
+		// because refusing the report over it would throw away the words.
+		SenseVersion string    `json:"sense_version"`
+		CreatedAt    time.Time `json:"created_at"`
 	}
 	if err := decode(op.Body, &b); err != nil {
 		return err
@@ -502,9 +508,9 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 		b.CreatedAt = time.Now().UTC()
 	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO report_inbox (kind, body, app_version, platform, screen, corpus_version, written_on)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.CreatedAt.UTC())
+		INSERT INTO report_inbox (kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.SenseVersion, b.CreatedAt.UTC())
 	return err
 }
 
@@ -514,18 +520,23 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 // own. Ids are minted here rather than on arrival, and the rows are laid down
 // in the order of those ids, because a heap appends and the order rows sit in
 // would otherwise be the order they arrived in.
+//
+// The column list is written out four times between applyReport and here, and
+// they are one list: a column added to the inbox and forgotten in the sweep is
+// written by the reader's flush and dropped on its way to the table an operator
+// reads, which is silent in both directions.
 const sweepReportsSQL = `
 WITH arrived AS (DELETE FROM report_inbox RETURNING *),
      held AS (DELETE FROM reports RETURNING *),
      all_of_them AS (
-       SELECT gen_random_uuid() AS id, kind, body, app_version, platform, screen, corpus_version, written_on
+       SELECT gen_random_uuid() AS id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
          FROM arrived
        UNION ALL
-       SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
+       SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
          FROM held
      )
-INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
-SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on FROM all_of_them ORDER BY id`
+INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)
+SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on FROM all_of_them ORDER BY id`
 
 // SweepReports is the write that belongs to the schedule rather than to a
 // reader. It runs on its tick whether or not anything arrived, and rewrites
