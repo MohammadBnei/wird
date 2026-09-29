@@ -114,7 +114,7 @@ they are readings and not copies:
   the fold leaves Arabic that is simply wrong — لؤلؤ comes back as لألأ, and هات as
   هأت. `jidhr` keys its own roots the same way, but a join between the two should
   fold rather than assume, and the fold a join needs is now measured rather than
-  guessed at: see *Lane's Lexicon* below and `docs/lane-lexicon.md`.
+  guessed at: see *Lane's Lexicon* below and `docs/research/lane-lexicon.md`.
 - **A verb with no form tag is Form I.** The file tags II to XII and never I.
   Taken as "no form", the label would go blank on 14,555 words. Participles of
   Form I verbs are left blank, because a participle is not itself a verb form —
@@ -470,7 +470,7 @@ is the documented second origin if it stops.
 ## Lane's Lexicon: read on 2026-09-23, and the answer is no
 
 The working, every quotation's URL, and the script behind every number are in
-`docs/lane-lexicon.md`. What it settles:
+`docs/research/lane-lexicon.md`. What it settles:
 
 **Perseus publishes Lane under CC BY-SA 3.0 United States.** Its page for the
 text (`perseus.tufts.edu/hopper/text?doc=Perseus:text:2002.02.0015`, read live

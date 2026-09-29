@@ -105,7 +105,7 @@ void main() {
     );
   });
 
-  // Trap 1 of docs/authentik-wiring.md. The issuer hands back an ID token and
+  // Trap 1 of docs/guides/authentik-wiring.md. The issuer hands back an ID token and
   // an access token; the obvious client code sends the access token, and the
   // Go server — which verifies an ID token, and so checks that `aud` carries
   // the client id — answers 401 to every write for ever.

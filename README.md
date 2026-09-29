@@ -5,17 +5,24 @@ prayer while the app follows along, and can open any word's Arabic root to read
 as deeply as they want — derivatives, lexicon, tafsir, iʿrāb. Progress is
 counted in ayas understood, not pages turned.
 
-The corpus is bundled and the sets are generated on the device, so the whole
-loop works with the radio off. A Go backend keeps user state and the root
-engine (`jidhr`) answers word → root for anyone who asks.
+The Quran text and its word-by-word data are bundled and the sets are generated
+on the device, so the whole loop works with the radio off. A Go backend keeps
+user state and serves what changes after release, such as the meanings of
+roots. The root engine (`jidhr`) answers word → root for anyone who asks.
 
 ```
-app/       Flutter client (iOS, Android, tablet)
-server/    wird-api — user state, tafsir, iʿrāb
+app/       Flutter client (iOS, Android, tablet, macOS)
+server/    wird-api, the admin view and the data pipelines
 jidhr/     the Arabic root engine, a product in its own right
 data/      ingest provenance; data/SOURCES.md is the per-table licence record
+docs/      how it all works — start at docs/README.md
+helm/      deployment values, bumped by CI
 scripts/   qa.sh is the gate — its exit code is the verdict
 ```
+
+**Documentation:** [docs/README.md](docs/README.md) is the map: an overview,
+guided tours, architecture pages from the big picture down to the code, and
+every decision in [docs/adr/](docs/adr/README.md).
 
 ## Licence
 
@@ -201,74 +208,9 @@ questions and not implementation ones:
 
 ```bash
 ./scripts/qa.sh                 # the gate; its exit code is the verdict
-
-cd app && fvm flutter pub get
-fvm flutter analyze && fvm flutter test
-
-go work sync
-go build ./server/... ./jidhr/... && go test -p 1 ./server/... ./jidhr/...
 ```
 
-### The API
-
-`server/cmd/api` needs Postgres and an OIDC issuer, both in `docker-compose.yml`:
-
-```bash
-docker compose up -d postgres oidc-stub
-go run ./server/cmd/api                      # migrations run at startup
-```
-
-It reads four variables, all with local-dev defaults: `DATABASE_URL`,
-`OIDC_ISSUER`, `OIDC_AUDIENCE` and `API_ADDR`. Moving off the stub onto
-`authentik.bnei.dev` is `OIDC_ISSUER`, and nothing else — we validate tokens
-against the issuer's JWKS and mint none of our own.
-
-Tafsir, iʿrāb and lexicon prose are the fetched half of the corpus split and
-**nobody has licensed any yet**. The tables hold the design's own placeholder
-text, every row and every payload flagged `"placeholder": true`, and an aya or
-root with nothing seeded answers 404. Inventing commentary in that gap would be
-the worst defect this project could ship.
-
-### Seeding the senses
-
-`server/cmd/senseseed` is how a root's sense reaches a reader. It replaces every
-row of `root_senses` from a drafting TSV in one transaction, so what the table
-holds afterwards is what the file says and a root the file has stopped carrying
-stops being served.
-
-```bash
-DATABASE_URL=... go run ./server/cmd/senseseed \
-  -tsv data/root_senses_draft.tsv -roots app/assets/corpus.db
-```
-
-The DSN goes in the environment and never in `-db`, because an argument is
-readable by any `ps` on the host. `-dry` reads and checks the file and opens no
-database connection at all.
-
-It never migrates. A correction is supposed to reach readers in minutes, and a
-tool that migrated whatever database it was aimed at would push the operator's
-working tree into production alongside the sense — so `api` migrates on start
-and this does not (`server/cmd/senseseed/main.go`, the comment above the pool).
-The seeder prints an md5 the server computes over the rows themselves, and the
-route answers that same hash with the hand-bumped provenance revision in front
-of it — `<revision>-<md5>`, both in the `ETag` and in the body's `version`. A
-seed that landed matches on everything after the dash, so compare that and not
-the whole string.
-
-### The root engine
-
-`jidhr` needs nothing — no database, no network, no key:
-
-```bash
-go run ./jidhr/cmd/rootd                     # :8081
-curl -sG localhost:8081/v1/root --data-urlencode 'word=صَبَرُوا'
-```
-
-It serves `jidhr/testdata/quran.json`: 1,642 roots, 19,805 attested forms and the
-523 root meanings in English and French. `go run ./server/cmd/jidhrcorpus` rebuilds
-that file from `app/assets/corpus.db`, the database the app bundles, so the engine
-and the app answer from one body of data. `jidhr/cmd/rootd/README.md` is the whole
-API.
-
-`CONTRIBUTING.md` carries the conventions — including what a `ponytail:`
-comment means and why a test's name has to state the failure it prevents.
+[Getting started](docs/guides/getting-started.md) covers the app, the API, the
+root engine and running everything locally. `CONTRIBUTING.md` carries the
+conventions — including what a `ponytail:` comment means and why a test's name
+has to state the failure it prevents.

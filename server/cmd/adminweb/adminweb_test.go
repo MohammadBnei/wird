@@ -282,7 +282,7 @@ func (h *harness) newPrayer(t *testing.T, userID string) {
 	}
 }
 
-// docs/gate-visual.md: the gate looks at the screens. This leaves the rendered
+// docs/guides/gate-visual.md: the gate looks at the screens. This leaves the rendered
 // page and its stylesheet somewhere a person can open them.
 func preview(t *testing.T, body string) {
 	t.Helper()

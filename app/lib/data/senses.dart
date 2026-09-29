@@ -111,10 +111,11 @@ Future<String?> _writePack(DatabaseExecutor txn, _SensePack pack) async {
     rows.insert('root_notes', {
       'root_letters': sense.root,
       'note': sense.en,
-      // ponytail: stored, and drawn by nothing. `note_fr` is a shipped column
-      // no screen reads (docs/walkthrough.md:391); the locale read is its own
-      // change, and dropping the French on the floor here would mean fetching
-      // it again the day that lands.
+      // Drawn now: a root read in French is read from this column, and the
+      // English beside it is what a root whose French never arrived falls back
+      // to. It was stored before anything read it, on the argument that
+      // dropping it here would mean fetching it again the day the locale read
+      // landed — which is the day this comment was rewritten.
       'note_fr': sense.fr,
       'source': pack.source,
       'basis': pack.basis,

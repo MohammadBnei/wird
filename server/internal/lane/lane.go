@@ -16,7 +16,7 @@ import (
 // derived from the corpus, so whoever writes it has to be able to read Lane's
 // article for that root. Nothing here ships: `data/raw/lane` is gitignored, the
 // text is consulted and never quoted, and only Wird's own sentences reach
-// corpus.db. docs/lane-lexicon.md settled why that line is where it is — facts
+// corpus.db. docs/research/lane-lexicon.md settled why that line is where it is — facts
 // about a word are not copyrightable and a sentence of Lane's is.
 //
 // **Do not key on `div2/@n`.** That index is incomplete and in places wrong, and
@@ -74,7 +74,7 @@ func Fold(root string) string { return hamza.Replace(root) }
 const rawKey = "@"
 
 // The eighteen roots whose article is real but filed under another division's
-// key, measured and listed in docs/lane-lexicon.md. Refusing these would throw
+// key, measured and listed in docs/research/lane-lexicon.md. Refusing these would throw
 // away knowledge this repository already has: دبر is a common root and its
 // article — dabarahu, duburN, Adbr, Astdbrhu and six more — sits inside دبخ's
 // division, which is two roots merged into one. نوم is filed under the vocalised
@@ -82,7 +82,7 @@ const rawKey = "@"
 // Arabic after the same fold.
 //
 // Hand-written because it was hand-measured. A rule that found these would have
-// to guess at Lane's filing, and the guess is what docs/lane-lexicon.md warns
+// to guess at Lane's filing, and the guess is what docs/research/lane-lexicon.md warns
 // against: do not key an implementation on the division index.
 var filedElsewhere = map[string]string{
 	"بقل": "baqala", "تيه": "tyn", "جحد": "Hd", "جحم": "jHfl", "جهز": "Hhz",
@@ -191,14 +191,14 @@ func Print(w io.Writer, dir, root string) error {
 	if key == "" {
 		return fmt.Errorf("%s reaches no Lane division. 31 roots do not, and 18 of "+
 			"those have their headword inside another root's division — "+
-			"docs/lane-lexicon.md names every one. Write this sense without Lane and "+
+			"docs/research/lane-lexicon.md names every one. Write this sense without Lane and "+
 			"say so", root)
 	}
 	prose := strings.TrimSpace(articles[key])
 	fmt.Fprintf(w, "%s → %s (%s, %d chars)\n\n", root, key, how, len(prose))
 	if len(prose) < 200 {
 		fmt.Fprintf(w, "STUB. Lane has effectively nothing here; 200 characters is the "+
-			"line docs/lane-lexicon.md measured everything against.\n\n")
+			"line docs/research/lane-lexicon.md measured everything against.\n\n")
 	}
 	fmt.Fprintln(w, prose)
 	return nil
