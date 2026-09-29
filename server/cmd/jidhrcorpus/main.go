@@ -1,10 +1,20 @@
-// Command jidhrcorpus writes the corpus jidhr serves out of the corpus.db the app
-// bundles. corpus.db is the checked artefact — the ETL refuses to write a sense the
-// root's own words no longer bear out — so the root engine and the app answer from
-// one body of data rather than from two that drift.
+// Command jidhrcorpus writes the corpus jidhr serves. The morphology — the roots,
+// the attested spellings, and the forms the corpus records under no root — comes out
+// of the app/assets/corpus.db the app bundles, because it is the Quranic Arabic
+// Corpus and Wird neither wrote it nor may correct it. The meanings come out of the
+// Wird server's Postgres, because Wird wrote them and a correction to one has to
+// reach a reader without a release (docs/adr/0010).
+//
+// So this command now needs a database. The paragraph that stood here argued that
+// corpus.db was the single checked artefact both the root engine and the app answer
+// from; that argument has moved to Postgres for the half of the data Wird authors,
+// and corpus.db keeps it for the half it does not. Point -pg at the same database
+// GET /v1/senses serves, or the exported meanings are whatever was last seeded
+// somewhere else and rootd answers with prose no reader is being shown.
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"flag"
@@ -14,21 +24,36 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/MohammadBnei/wird/jidhr/pkg/root"
+	"github.com/MohammadBnei/wird/server/internal/store"
 	_ "modernc.org/sqlite"
 )
 
-// note travels with the corpus because the prose in it is Wird's own reading of
-// each root, not a lexicon it is quoting, and a caller outside Wird has no other
-// place to learn that.
-const note = "The corpus rootd serves, written by server/cmd/jidhrcorpus from app/assets/corpus.db. " +
-	"The roots and the attested forms are the Quranic Arabic Corpus morphology; the meanings are Wird's own " +
-	"reading of each root, written from that root's own words in the Qur'an and kept only where their glosses " +
-	"bore it out. Roots with nothing written are the majority and ship with no meaning at all. Edit corpus.db " +
-	"and rebuild; editing this file by hand puts the two out of step."
+// note travels with the corpus because a caller outside Wird has no other place to
+// learn which half of the file came from where, or how much authority the prose in
+// it carries — which is none.
+//
+// It does not repeat the sentence a reader is shown under a sense. That sentence is
+// served with the senses by GET /v1/senses and has exactly one holder, beside that
+// handler; ADR 0010 exists to collapse three copies of it to one, and this file is
+// not going to be the fourth.
+const note = "The corpus rootd serves, written by server/cmd/jidhrcorpus. The roots, the attested " +
+	"forms and the forms recorded under no root are the Quranic Arabic Corpus morphology, read out of " +
+	"app/assets/corpus.db. The meanings are Wird's own, read out of the Wird server's database: drafts " +
+	"written by a language model from each root's own words in the Qur'an, checked by no person, quoted " +
+	"from no lexicon, and carrying nobody's authority. Rebuild from both sources; editing this file by " +
+	"hand puts it out of step with the corpus and with the server."
 
 func main() {
+	// -db keeps its name and its meaning: the corpus.db the morphology is read out
+	// of. The new flag is -pg, so a run that has not learnt about it fails on a
+	// database it cannot reach rather than quietly exporting a corpus with no
+	// meanings in it.
 	in := flag.String("db", "./app/assets/corpus.db", "the corpus.db the app bundles")
+	dsn := flag.String("pg", env("DATABASE_URL", "postgres://wird:wird@localhost:5432/wird"),
+		"the Wird database the root senses are read out of")
 	out := flag.String("out", "./jidhr/testdata/quran.json", "the jidhr corpus to write")
 	flag.Parse()
 
@@ -38,7 +63,29 @@ func main() {
 	}
 	defer db.Close()
 
-	c, err := build(db)
+	ctx := context.Background()
+	// pgxpool.New rather than store.Open, which migrates on the way in. This is a
+	// read, and a read-only tool that migrates the database it reads couples a
+	// corpus rebuild to whatever migrations the operator's tree happens to carry.
+	// senseseed makes the same choice for the same reason.
+	pool, err := pgxpool.New(ctx, *dsn)
+	if err != nil {
+		log.Fatalf("database unavailable: %v", err)
+	}
+	defer pool.Close()
+
+	// store.Senses rather than the SELECT written out a second time here. It is the
+	// same read GET /v1/senses answers from, in the same order, so the export and
+	// the route cannot hold different prose — which is the divergence ADR 0010
+	// exists to end, and writing the query again here would reopen it one refactor
+	// later. It also makes the poetic register absent rather than dropped: that read
+	// does not select those columns at all.
+	pack, err := store.New(pool).Senses(ctx)
+	if err != nil {
+		log.Fatalf("read the senses from %s: %v", *dsn, err)
+	}
+
+	c, err := build(db, pack.Senses)
 	if err != nil {
 		log.Fatalf("read %s: %v", *in, err)
 	}
@@ -61,7 +108,11 @@ type corpusFile struct {
 	root.Corpus
 }
 
-func build(db *sql.DB) (root.Corpus, error) {
+// build reads the morphology out of corpus.db and takes the meanings already read
+// out of Postgres. The senses come in as an argument rather than being fetched here
+// because the two halves have different owners and different failure modes, and
+// because it keeps every test below able to state a sense without a database.
+func build(db *sql.DB, senses []store.Sense) (root.Corpus, error) {
 	c := root.Corpus{Attested: map[string][]string{}, Meanings: map[string]map[string]root.Meaning{}}
 
 	known := map[string]bool{}
@@ -147,35 +198,42 @@ func build(db *sql.DB) (root.Corpus, error) {
 		return c, err
 	}
 
-	// word_id IS NULL is the root's own sense rather than a note about one word of
-	// it. Nothing in corpus.db authors a poetic register, so none is written here:
-	// an unwritten register is absent, never blank.
-	senses, err := db.Query(`SELECT root_letters, note, COALESCE(note_fr, '') FROM root_notes
-		WHERE word_id IS NULL ORDER BY root_letters`)
-	if err != nil {
-		return c, err
-	}
-	defer senses.Close()
-	for senses.Next() {
-		var letters, en, fr string
-		if err := senses.Scan(&letters, &en, &fr); err != nil {
-			return c, err
-		}
-		if !known[letters] {
-			return c, fmt.Errorf("a meaning is written for %q, which the roots table does not record, so no caller could ever reach it", letters)
+	// The senses come from the server, which is the only place they are written now.
+	// The check that every one of them names a root the morphology records is kept
+	// exactly as it was: the two halves of this file come from two databases that
+	// nothing joins, so this is the only place a sense written for a root no caller
+	// can look up gets caught. senseseed makes the same check on the way in, and
+	// this makes it again on the way out, because the two can be run against
+	// different corpus.db files.
+	//
+	// No poetic register is written: store.Sense carries the columns and the read
+	// above does not select them, so an unwritten register is absent, never blank —
+	// which jidhr/pkg/root/meaning_test.go fails the corpus over.
+	for _, sn := range senses {
+		if !known[sn.Root] {
+			return c, fmt.Errorf("a meaning is written for %q, which the roots table does not record, so no caller could ever reach it", sn.Root)
 		}
 		by := map[string]root.Meaning{}
-		if en != "" {
-			by["en"] = root.Meaning{Plain: en}
+		if sn.En != "" {
+			by["en"] = root.Meaning{Plain: sn.En}
 		}
-		if fr != "" {
-			by["fr"] = root.Meaning{Plain: fr}
+		if sn.Fr != "" {
+			by["fr"] = root.Meaning{Plain: sn.Fr}
 		}
 		if len(by) > 0 {
-			c.Meanings[letters] = by
+			c.Meanings[sn.Root] = by
 		}
 	}
-	return c, senses.Err()
+	return c, nil
+}
+
+// env reads the DSN default from the environment, so a run against a deployed
+// database is a variable rather than a password in a shell history.
+func env(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 func write(path string, c root.Corpus) error {

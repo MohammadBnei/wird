@@ -26,10 +26,35 @@ func quranCorpus(t *testing.T) *MemoryStore {
 	return s
 }
 
-const (
-	sensedWord = "صَبَرُوا۟" // attested, and somebody wrote its root's sense
-	silentRoot = "وصي"       // attested, and the sense check refused to write one
-)
+const sensedWord = "صَبَرُوا۟" // attested, and its root has a sense
+
+// threeAnswers is a corpus holding one of each answer Resolve can give about a
+// meaning: a root with one written, a root with none, and a spelling with no root at
+// all. A caller has to be able to tell the three apart, and the middle one no longer
+// exists in the Qur'anic corpus to point at.
+//
+// It is a fixture, and that is a loss worth naming. Every other test in this file
+// reads jidhr/testdata/quran.json on purpose, so it measures what a caller outside
+// Wird actually receives rather than a fixture written to agree with it. But the
+// server now holds a sense for all 1,642 roots the corpus records, and there is no
+// substitute value: the drafts cover the roots exactly. The invariant is real — it is
+// the difference between "nobody has written this yet" and "this word has no root",
+// and an engine that answers them alike invents one — so it moves to the smallest
+// store that can still state it rather than being deleted with the root that used to
+// carry it. Delete this and the day a root leaves the drafting log nothing notices.
+func threeAnswers(t *testing.T) *Resolver {
+	t.Helper()
+	return New(NewMemoryStore(Corpus{
+		Roots: []RootRecord{
+			{Root: Root{Letters: "صبر", Display: "ص ب ر", Translit: "ṣ-b-r"}},
+			{Root: Root{Letters: "وصي", Display: "و ص ي", Translit: "w-ṣ-y"}},
+		},
+		Attested: map[string][]string{sensedWord: {"صبر"}, "وَتَوَاصَوْا۟": {"وصي"}},
+		Meanings: map[string]map[string]Meaning{
+			"صبر": {"en": {Plain: "to bear"}, "fr": {Plain: "endurer"}},
+		},
+	}))
+}
 
 func TestTheCorpusOffersOnlyTheLanguagesItsMeaningsAreWrittenIn(t *testing.T) {
 	s := quranCorpus(t)
@@ -69,7 +94,10 @@ func TestNoMeaningInTheCorpusCarriesAPoeticRegisterNobodyWrote(t *testing.T) {
 	}
 }
 
-func TestARootWithNothingWrittenAnswersTheRootWhereAWordWithNoRootIsAMiss(t *testing.T) {
+// The corpus half: every root it records has a sense now, so what it can still
+// measure is that the sense reaches a caller in both languages and that a spelling
+// with no root does not come back wearing one.
+func TestTheCorpusAnswersEveryRootItRecordsWithASenseInBothLanguages(t *testing.T) {
 	r := New(quranCorpus(t))
 	langs := []string{"en", "fr"}
 
@@ -78,21 +106,38 @@ func TestARootWithNothingWrittenAnswersTheRootWhereAWordWithNoRootIsAMiss(t *tes
 		t.Fatalf("%s: %v", sensedWord, err)
 	}
 	if sensed.Meanings["en"].Plain == "" || sensed.Meanings["fr"].Plain == "" {
-		t.Errorf("%s resolved to %s with meanings %v, and the sense written for that root never reached the caller", sensedWord, sensed.Root.Letters, sensed.Meanings)
+		t.Errorf("%s resolved to %s with meanings %v, and the sense the server holds for that root never reached the caller", sensedWord, sensed.Root.Letters, sensed.Meanings)
 	}
 
-	// 1,119 of the 1,642 roots ship no sense on purpose. The word still resolves:
-	// the root is a corpus fact, the meaning is prose nobody has written, and a
-	// caller must be able to tell that from a word that has no root at all.
+	if _, err := r.Resolve(context.Background(), "إسطنبول", langs); !errors.Is(err, ErrNoRoot) {
+		t.Errorf("a word with no root answered %v, so a caller cannot tell it apart from a root the corpus records", err)
+	}
+}
+
+// The invariant half, against the fixture threeAnswers explains. A root with nothing
+// written still resolves: the root is a corpus fact and the meaning is prose nobody
+// has written, and those are two different absences.
+func TestARootWithNothingWrittenAnswersTheRootWhereAWordWithNoRootIsAMiss(t *testing.T) {
+	r := threeAnswers(t)
+	langs := []string{"en", "fr"}
+
+	sensed, err := r.Resolve(context.Background(), sensedWord, langs)
+	if err != nil {
+		t.Fatalf("%s: %v", sensedWord, err)
+	}
+	if sensed.Meanings["en"].Plain == "" {
+		t.Errorf("%s resolved to %s with meanings %v, and a written sense never reached the caller", sensedWord, sensed.Root.Letters, sensed.Meanings)
+	}
+
 	silent, err := r.Resolve(context.Background(), "وَتَوَاصَوْا۟", langs)
 	if err != nil {
 		t.Fatalf("a root with no sense written answered an error rather than the root: %v", err)
 	}
-	if silent.Root.Letters != silentRoot {
-		t.Fatalf("root = %q, want %q", silent.Root.Letters, silentRoot)
+	if silent.Root.Letters != "وصي" {
+		t.Fatalf("root = %q, want %q", silent.Root.Letters, "وصي")
 	}
 	if len(silent.Meanings) != 0 {
-		t.Errorf("meanings = %v, want none: nothing was written for %s and an invented one is the worst thing this could serve", silent.Meanings, silentRoot)
+		t.Errorf("meanings = %v, want none: nothing was written for %s and an invented one is the worst thing this could serve", silent.Meanings, silent.Root.Letters)
 	}
 
 	if _, err := r.Resolve(context.Background(), "إسطنبول", langs); !errors.Is(err, ErrNoRoot) {
