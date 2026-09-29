@@ -518,7 +518,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get root_coreSense => 'Core sense';
 
   @override
-  String get root_senseRefused => 'Wird writes a root\'s sense only where that root\'s own words in the Qur\'an bear it out. These do not, so nothing is claimed here.';
+  String get root_senseRefused => 'The senses are Wird\'s own and they are written one root at a time. None has been written for this root yet. When one is, it reaches this phone without waiting for a new version of the app.';
+
+  @override
+  String get root_senseNotFetched => 'The senses are not part of the download. They are fetched, so a sense can be corrected without a new version of the app — and this phone has not fetched any yet. Settings carries the button.';
 
   @override
   String root_senseByApp(String borne) {
@@ -712,6 +715,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRecogniserAbsent => 'A Qur\'an recogniser that runs on the phone, so nothing you recite is sent anywhere. Downloading it is what turns voice-follow on; the prayer screen advances on a tap until you do, and after you remove it.';
+
+  @override
+  String get settingsSenses => 'SENSES';
+
+  @override
+  String get settingsDownloadSenses => 'Download the senses';
+
+  @override
+  String get settingsSensesAskAgain => 'Ask again';
+
+  @override
+  String get settingsSensesAsking => 'Asking the server whether there is anything new.';
+
+  @override
+  String get settingsSensesOnOffer => 'There are senses on the server this phone does not have. They are a few hundred kilobytes; nothing downloads until you press.';
+
+  @override
+  String get settingsSensesInstalling => 'Downloading. Nothing already on the phone is replaced until all of it has arrived.';
+
+  @override
+  String get settingsSensesCurrent => 'This phone has the senses the server is serving. A sense is Wird\'s own reading, written by a machine and read by no person; the line under each one says so, and the thumb beside it is how a wrong one gets corrected.';
+
+  @override
+  String get settingsSensesUnreachable => 'The server did not answer, so whether there are new senses is unknown. Every sense already on the phone is still here, and the app reads with no network.';
+
+  @override
+  String get settingsSensesNotThisCorpus => 'The senses that arrived name no root this copy of the Qur\'an records, so none of them could ever be read. Nothing was changed on the phone.';
 
   @override
   String get settingsVoiceCheckTitle => 'Can this phone hear you?';

@@ -119,12 +119,18 @@ class PendingSection extends StatelessWidget {
 
 /// Core sense: what the root means, and whose reading that is.
 ///
-/// The sense is Wird's own — written from the root's own words in this corpus
-/// and kept only where their glosses bore it out. A reader cannot be left to
-/// guess whether it is that or a quotation from a lexicon, because a version
-/// of this feature was already reverted for shipping invented prose under two
-/// lexicographers' names. So the line saying whose reading it is sits under
-/// the sentence, and the words it rests on are one tap further.
+/// The sense is Wird's own, and it arrives from the server rather than in the
+/// binary (ADR 0010). A reader cannot be left to guess whether it is that or a
+/// quotation from a lexicon, because a version of this feature was already
+/// reverted for shipping invented prose under two lexicographers' names. So
+/// the line saying whose reading it is sits under the sentence, and what the
+/// sense rests on — including, for a served draft, the fact that no person has
+/// read it — is one tap further.
+///
+/// The old wording here said the sense was "written from the root's own words
+/// in this corpus and kept only where their glosses bore it out". That was the
+/// corpus-derivation standard, and it is not the standard the served drafts
+/// were written to; it is not repeated.
 class CoreSense extends StatelessWidget {
   const CoreSense({super.key, required this.reading, this.senseSize = 13.5});
 
@@ -139,9 +145,16 @@ class CoreSense extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final sense = reading.coreSense;
     if (sense == null) {
+      // Two facts, two sentences. "Nobody has written a sense for this root"
+      // and "this phone has fetched no senses at all" are different, and one
+      // string for both told a reader who has never had a signal 1,642 times
+      // that nobody had written anything — which is false, and blames the
+      // absence on the work rather than on the download. ADR 0010 names this.
       return PendingSection(
         heading: l.root_coreSense,
-        explanation: l.root_senseRefused,
+        explanation: reading.sensesFetched
+            ? l.root_senseRefused
+            : l.root_senseNotFetched,
       );
     }
     final n = Nocturne.of(context);
@@ -180,16 +193,19 @@ class CoreSense extends StatelessWidget {
         : l.root_senseBySource(source, borne);
   }
 
+  /// Always a door, and that is the fix rather than the polish.
+  ///
+  /// This drew a flat [Text] when the sense carried no evidence words, and
+  /// [showSenseEvidence] has exactly one caller — the [InkWell] below. Since
+  /// [SenseEvidence] is the only place [RootReading.senseBasis] is drawn
+  /// anywhere in the app, and a served sense carries no evidence words at all,
+  /// the sentence saying the sense is an unread machine draft was reachable on
+  /// no root in the corpus. ADR 0010's one named risk is that prose not
+  /// reaching the reader, so the tap is the mitigation.
   Widget _whose(BuildContext context, Nocturne n) {
     final l = AppLocalizations.of(context)!;
     final source = reading.senseSource;
     final words = reading.senseEvidence.length;
-    if (words == 0) {
-      return Text(
-        '${_whoseWords(l, source, 0)}.',
-        style: TextStyle(fontSize: 12, height: 1.5, color: n.textAt(0.62)),
-      );
-    }
     // Underlined rather than given a chevron. The line wraps at the width of
     // the deep dive's centre pane, and a trailing icon lands alone on the
     // second row; an underline follows the words however they break.
@@ -275,21 +291,34 @@ class SenseEvidence extends StatelessWidget {
           style: TextStyle(fontSize: 14, height: 1.5, color: n.text),
         ),
         const NocturneRule(),
+        // Unconditional, unlike the words below, and deliberately so. This is
+        // the sentence the tap exists to reach; a served pack always carries it
+        // — one Go const beside the handler, written into every row — and an
+        // `isNotEmpty` guard here is the exact shape of the defect this round
+        // fixed: a condition on served content that quietly closes the door.
+        // If this ever draws blank, the server stopped sending a basis, which
+        // is worth seeing rather than hiding.
         SectionHeading(l.root_whoseReading),
         SizedBox(height: n.space('2')),
         Text(
           reading.senseBasis ?? '',
           style: TextStyle(fontSize: 12.5, height: 1.55, color: n.textAt(0.7)),
         ),
-        const NocturneRule(),
-        SectionHeading(
-          l.root_wordsReadFrom,
-          trailing: l.root_wordCount(reading.senseEvidence.length),
-        ),
-        SizedBox(height: n.space('3')),
-        // The stored order is the bar's own, grouped by morphological shape,
-        // so it is kept rather than sorted: the grouping is the argument.
-        for (final word in reading.senseEvidence) _word(n, l, word),
+        // Dropped whole when there are none, rather than drawn as a heading
+        // over nothing and a count of zero. Every served sense is in that
+        // state — the drafts were not read off a word list — and the sheet's
+        // other half, the basis above, is the reason it opens at all.
+        if (reading.senseEvidence.isNotEmpty) ...[
+          const NocturneRule(),
+          SectionHeading(
+            l.root_wordsReadFrom,
+            trailing: l.root_wordCount(reading.senseEvidence.length),
+          ),
+          SizedBox(height: n.space('3')),
+          // The stored order is the bar's own, grouped by morphological shape,
+          // so it is kept rather than sorted: the grouping is the argument.
+          for (final word in reading.senseEvidence) _word(n, l, word),
+        ],
       ],
     );
   }

@@ -518,7 +518,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get root_coreSense => 'Sens fondamental';
 
   @override
-  String get root_senseRefused => 'Wird n’écrit le sens d’une racine que là où les mots de cette racine dans le Coran l’attestent. Ceux-ci ne l’attestent pas, donc rien n’est affirmé ici.';
+  String get root_senseRefused => 'Les sens sont ceux de Wird et ils sont écrits une racine à la fois. Aucun n’a encore été écrit pour cette racine. Quand ce sera fait, il atteindra ce téléphone sans attendre une nouvelle version de l’application.';
+
+  @override
+  String get root_senseNotFetched => 'Les sens ne font pas partie du téléchargement. Ils sont récupérés, afin qu’un sens puisse être corrigé sans nouvelle version de l’application — et ce téléphone n’en a encore récupéré aucun. Les réglages portent le bouton.';
 
   @override
   String root_senseByApp(String borne) {
@@ -712,6 +715,33 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsRecogniserAbsent => 'Un reconnaisseur du Coran qui fonctionne sur le téléphone : rien de ce que vous récitez n’est envoyé ailleurs. Le télécharger est ce qui active le suivi vocal ; jusque-là, et après l’avoir supprimé, l’écran de prière avance d’une touche.';
+
+  @override
+  String get settingsSenses => 'SENS';
+
+  @override
+  String get settingsDownloadSenses => 'Télécharger les sens';
+
+  @override
+  String get settingsSensesAskAgain => 'Redemander';
+
+  @override
+  String get settingsSensesAsking => 'Nous demandons au serveur s’il y a du nouveau.';
+
+  @override
+  String get settingsSensesOnOffer => 'Le serveur propose des sens que ce téléphone n’a pas. Ils pèsent quelques centaines de kilooctets ; rien ne se télécharge avant que vous n’appuyiez.';
+
+  @override
+  String get settingsSensesInstalling => 'Téléchargement en cours. Rien de ce qui est déjà sur le téléphone n’est remplacé avant que tout soit arrivé.';
+
+  @override
+  String get settingsSensesCurrent => 'Ce téléphone a les sens que le serveur sert. Un sens est la lecture propre à Wird, écrite par une machine et lue par personne ; la ligne sous chacun le dit, et le pouce à côté est ce qui permet de corriger un sens erroné.';
+
+  @override
+  String get settingsSensesUnreachable => 'Le serveur n’a pas répondu : on ne sait donc pas s’il y a de nouveaux sens. Tous les sens déjà sur le téléphone y sont toujours, et l’application se lit sans réseau.';
+
+  @override
+  String get settingsSensesNotThisCorpus => 'Les sens arrivés ne nomment aucune racine que cet exemplaire du Coran enregistre : aucun d’eux ne pourrait jamais être lu. Rien n’a été modifié sur le téléphone.';
 
   @override
   String get settingsVoiceCheckTitle => 'Ce téléphone vous entend-il ?';
