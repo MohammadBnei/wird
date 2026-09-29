@@ -40,8 +40,10 @@ void main() {
     // this root.
     expect(body['body'], 'sense bad: رحم');
     expect(body['kind'], 'improvement');
-    // corpus_version is what says WHICH sense was judged, so a rebuild does not
-    // make old verdicts look like judgements of the new prose.
+    // sense_version is what says WHICH sense was judged: the senses arrive over
+    // HTTP, so two readers on the same corpus can be shown two different
+    // sentences and both report the same corpus_version.
+    expect(body['sense_version'], isA<String>());
     expect(body['corpus_version'], isA<int>());
     expect(body['screen'], 'study');
   });
@@ -62,7 +64,7 @@ void main() {
     expect(
       body.keys.toSet(),
       {'kind', 'body', 'app_version', 'platform', 'screen', 'corpus_version',
-        'created_at'},
+        'sense_version', 'created_at'},
       reason: 'a new key here is reader data leaving the phone; add it on '
           'purpose or not at all',
     );

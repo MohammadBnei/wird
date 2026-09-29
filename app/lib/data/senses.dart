@@ -48,7 +48,7 @@ typedef _SensePack = ({
 Future<String?> sensesOnOffer(Database db, {Dio? over}) async {
   final answer = await (over ?? _wird()).head<void>(_route);
   final offered = _tag(answer.headers.value('etag'));
-  final installed = await _installedVersion(db);
+  final installed = await installedSenseVersion(db);
   if (offered == null || offered.isEmpty) {
     // Something between here and the server dropped the header — nginx does it
     // when it gzips, Apache rewrites it. For a device that already holds a pack
@@ -166,7 +166,14 @@ class _SensesNotForThisCorpus implements Exception {
       'them could ever be read; the pack was not installed';
 }
 
-Future<String?> _installedVersion(DatabaseExecutor db) async {
+/// Which pack of senses this device holds, or null when it holds none.
+///
+/// Null is the whole point and not an inconvenience: [sensesOnOffer] reads it
+/// to tell a device that has never fetched from one that is up to date, and a
+/// report reads it to say which prose a thumb was judging. A caller that wants
+/// a string for the wire writes `?? ''` at its own call site — collapsing it
+/// here would tell [sensesOnOffer] that every phone already has a pack.
+Future<String?> installedSenseVersion(DatabaseExecutor db) async {
   final rows = await db.query('sense_pack', columns: ['version'], limit: 1);
   return rows.isEmpty ? null : rows.first['version'] as String?;
 }

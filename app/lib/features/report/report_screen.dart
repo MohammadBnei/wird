@@ -41,9 +41,11 @@ class _ReportScreenState extends State<ReportScreen> {
   final _text = TextEditingController();
   ReportKind _kind = ReportKind.bug;
 
-  /// The four values that will be sent, read once. Null until the corpus
+  /// The five values that will be sent, read once. Null until the corpus
   /// answers, which is also how the send stays disabled until there is
-  /// something honest to show.
+  /// something honest to show. A value can be empty — a phone that has never
+  /// fetched a sense pack sends an empty sense_version — and it is drawn empty,
+  /// because what the reader is owed is the thing that leaves the phone.
   Map<String, Object?>? _context;
   bool _sent = false;
 
