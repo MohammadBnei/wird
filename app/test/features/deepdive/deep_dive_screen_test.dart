@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/kept_repo.dart';
@@ -6,6 +7,7 @@ import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/deepdive/constellation.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/root/root_sections.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
@@ -55,6 +57,7 @@ void main() {
     required Size size,
     int ayahId = ayaOfPatience,
     String letters = patience,
+    Locale? locale,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -62,6 +65,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // The delegates the app has: without them the screen reads a
+        // null AppLocalizations and throws under test but not in the app.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: locale,
         home: DeepDiveScreen(db: db, ayahId: ayahId, letters: letters),
       ),
     );
@@ -83,6 +91,10 @@ void main() {
   testWidgets('the deep dive prints a sense as a bare assertion, so the one '
       'screen that reads a root deepest is the one that says least about '
       'whose reading it is', (tester) async {
+    // Seeded, because the bundle carries no sense: the server owns them and
+    // the app fetches them (docs/adr/0010). A served sense has no evidence
+    // words, which is exactly the shape the sheet has to open for.
+    await seedSenses(db, {patience: 'to bind oneself fast; to endure'});
     final reading = (await rootReading(db, patience))!;
     for (final size in [tablet, phone]) {
       await open(tester, size: size);
@@ -101,7 +113,11 @@ void main() {
       'so the reader takes the machine’s restraint for a hole', (tester) async {
     await open(tester, size: phone, ayahId: ayaOfTheClot, letters: clot);
     expect(find.text('CORE SENSE'), findsOneWidget);
-    expect(find.textContaining('bear it out'), findsOneWidget);
+    // The bundle ships no sense and nothing has been fetched, so this is the
+    // second of the two absences: not 'nobody wrote one' but 'none has been
+    // downloaded'. Telling a reader the first when the truth is the second is
+    // what the two sentences exist to prevent.
+    expect(find.textContaining('has not fetched'), findsOneWidget);
   });
 
   testWidgets('a phone opening a constellation is handed the design’s three '
@@ -136,6 +152,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: nocturneTheme(),
+          // The delegates the app has: without them the screen reads a
+          // null AppLocalizations and throws under test but not in the app.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: TextButton(
@@ -255,7 +275,45 @@ void main() {
     final kept = await db.query('kept_items', where: 'deleted_at IS NULL');
     expect(kept.single['kind'], 'aya');
     expect(kept.single['ayah_id'], ayaOfPatience);
-    expect(find.text('Kept'), findsOneWidget);
+    expect(find.text('Kept · tap to undo'), findsOneWidget);
+  });
+
+  testWidgets('the button latches once pressed, so keeping an aya reads as '
+      'permanent and the only way back is a swipe nobody is shown', (
+    tester,
+  ) async {
+    await open(tester, size: tablet);
+
+    await tester.tap(find.text('Keep this aya'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kept · tap to undo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Keep this aya'), findsOneWidget);
+    expect(await db.query('kept_items', where: 'deleted_at IS NULL'), isEmpty);
+    // The row stays, tombstoned: a delete with nothing behind it is handed
+    // back by the next sync.
+    expect(await db.query('kept_items'), hasLength(1));
+  });
+
+  testWidgets('a double tap on Keep mints two kept rows for one aya, because '
+      'nothing guards the write in flight', (tester) async {
+    await open(tester, size: tablet);
+
+    // Both presses land while the write is in flight. sqflite serialises on the
+    // database, so an open transaction gives the test the window a phone's
+    // platform channel gives a reader: the first press is still waiting when
+    // the second arrives, and nothing has rebuilt in between.
+    await db.transaction((txn) async {
+      await tester.tap(find.text('Keep this aya'));
+      await tester.tap(find.text('Keep this aya'));
+    });
+    await tester.pumpAndSettle();
+
+    expect(
+      await db.query('kept_items', where: 'deleted_at IS NULL'),
+      hasLength(1),
+    );
   });
 
   testWidgets('the aya pane overflows on 2:282, the longest aya in the '
@@ -271,6 +329,57 @@ void main() {
 
     expect(find.textContaining('carries no aya 115:1'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a French reader is drawn an English constellation: its nodes '
+      'are painted onto a canvas, so the labels reach a screen reader from a '
+      'painter that has no context to read them from', (tester) async {
+    final semantics = tester.ensureSemantics();
+    // The clot, whose four forms are the ring. ṣ-b-r has thirty-eight and
+    // falls back to the spine, which draws no nodes to label.
+    await open(
+      tester,
+      size: tablet,
+      ayahId: ayaOfTheClot,
+      letters: clot,
+      locale: const Locale('fr'),
+    );
+    expect(find.byType(Constellation), findsOneWidget);
+
+    // The pane's own heading, which is a Text, and a node's screen-reader
+    // label, which is not. The second only reaches French if the painter was
+    // handed the strings the way it is handed its theme.
+    expect(find.text('CONSTELLATION DE LA RACINE'), findsOneWidget);
+    expect(find.text('Garder ce verset'), findsOneWidget);
+    expect(find.text('Liste'), findsOneWidget);
+
+    // `find.bySemanticsLabel` walks elements, and a node of the constellation
+    // is not one — it is a CustomPainterSemantics the painter publishes. The
+    // semantics tree is the only place it exists, so that is where it is read.
+    final labels = <String>[];
+    void walk(SemanticsNode node) {
+      if (node.label.isNotEmpty) labels.add(node.label);
+      node.visitChildren((child) {
+        walk(child);
+        return true;
+      });
+    }
+
+    walk(tester.semantics.find(find.byType(Constellation)));
+    semantics.dispose();
+
+    expect(
+      labels.where((l) => l.contains('ouvrir')),
+      isNotEmpty,
+      reason:
+          'the constellation nodes are the drawing’s whole screen-reader '
+          'surface, and they are still in English: $labels',
+    );
+    expect(
+      labels.where((l) => l.contains('open ')),
+      isEmpty,
+      reason: 'an English node label survived into a French drawing',
+    );
   });
 
   test('the constellation captions a form the aya does not contain as the one '

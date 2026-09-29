@@ -499,3 +499,28 @@ func TestNoProperNounBranchHidesEnoughMassToChangeAVerdict(t *testing.T) {
 		}
 	}
 }
+
+// A root the corpus does not bucket is a diagnostic, not a crash.
+//
+// checkSenses reads `known` from all 1,642 roots and `roots` from Bucket, which
+// holds only those with a glossed root-bearing word, so the two disagree the
+// moment a sense is written for a root the corpus barely evidences — which is
+// what writing for every root does. Before the guard moved above the struct
+// literal this panicked, and a build gate that panics reports nothing about
+// which sense did it.
+func TestASenseForARootTheCorpusDoesNotBucketIsRefusedAndNotAPanic(t *testing.T) {
+	res := Check(nil, "to be merciful; the womb")
+	if res.Root != "" {
+		t.Errorf("a nil root came back named %q", res.Root)
+	}
+	if res.Sense != "to be merciful; the womb" {
+		t.Errorf("the sense under test was lost: %q", res.Sense)
+	}
+	if res.Verified(Bar{}) {
+		t.Error("a sense checked against no root verified, so nothing was checked")
+	}
+	if got := res.Verdict(Bar{}); got != "cannot verify" {
+		t.Errorf("verdict %q, want \"cannot verify\": fewer than two slots is not\n"+
+			"the same answer as not borne out, and a reader's report needs the difference", got)
+	}
+}

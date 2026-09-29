@@ -30,6 +30,7 @@ Future<Database> testCorpus() async {
     // No isolate: a widget test runs in a fake-async zone, and a reply from a
     // background isolate never arrives there, so the screen would hang loading.
     databaseFactory = databaseFactoryFfiNoIsolate;
+    _sweepUpAfterOlderRuns();
     final dir = await Directory.systemTemp.createTemp('wird-corpus');
     final path = '${dir.path}/wird.db';
     await File('assets/corpus.db').copy(path);
@@ -42,7 +43,47 @@ Future<Database> testCorpus() async {
   for (final table in _userTables) {
     await _db!.delete(table);
   }
+  // root_notes is a SHIPPED table, so it is not in _userTables — but since the
+  // corpus stopped bundling senses it ships empty, and a test that seeds one
+  // would otherwise leak it into every later test in the same file, because
+  // this database is cached for the whole process. Emptying it costs nothing
+  // now and would have blanked 523 rows before.
+  await _db!.delete('root_notes');
   return _db!;
+}
+
+/// Puts senses where a fetched pack would put them, for the tests and goldens
+/// that need a root to have one.
+///
+/// The bundle carries none (docs/adr/0010), so without this every screen test
+/// draws the notice for a root nothing has been written for — and the goldens
+/// would raster that notice permanently and stop guarding the sense layout at
+/// the exact moment the prose grew from a 26-character median to 200.
+///
+/// `evidence` is null because a served sense has no evidence words, which is
+/// what the screen has to cope with.
+Future<void> seedSenses(
+  Database db,
+  Map<String, String> byRoot, {
+  String source = 'Wird',
+  String basis = 'A draft, written by a machine and read by no person.',
+}) async {
+  final rows = db.batch();
+  for (final entry in byRoot.entries) {
+    rows.insert('root_notes', {
+      'root_letters': entry.key,
+      'note': entry.value,
+      'source': source,
+      'basis': basis,
+      'evidence': null,
+    });
+  }
+  rows.insert('sense_pack', {
+    'id': 1,
+    'version': '1-test',
+    'fetched_at': DateTime.now().toIso8601String(),
+  }, conflictAlgorithm: ConflictAlgorithm.replace);
+  await rows.commit(noResult: true);
 }
 
 /// How screen 1a heads an aya: the sūra's name and the aya's number. What a
@@ -55,4 +96,47 @@ Future<String> surahAndAya(Database db, int ayahId) async {
     whereArgs: [ayahId ~/ 1000],
   );
   return '${rows.single['name_en']} ${ayahId % 1000}';
+}
+
+/// Throws away the corpus copies older runs left behind.
+///
+/// Each test PROCESS copies the 24 MB corpus into a temp directory of its own,
+/// and `flutter test` starts one per test file, so a full run leaks about a
+/// gigabyte. Left alone that reached 342 GB across 13,780 directories and took
+/// two runs down with `No space left on device` before anybody looked at
+/// $TMPDIR. No teardown can do this job: [_db] is cached per process rather
+/// than per test, so an `addTearDown` registered on the first test of a file
+/// would delete the corpus the rest of the file is still reading.
+///
+/// **Age, not ownership.** Sibling processes of this very run hold their own
+/// directories while this one sweeps, and a sweep that cannot tell them apart
+/// would delete a live corpus out from under a passing test. An hour is far
+/// longer than any test process lives and far shorter than the gap between
+/// runs that matters.
+///
+/// ponytail: swept on the way in, never on the way out, for the reason
+/// [VoiceModel.sweepUpAfterAnOlderModel] gives about the same shape — and it
+/// never throws, because a temp directory that cannot be tidied is not a reason
+/// to fail a suite.
+void _sweepUpAfterOlderRuns() {
+  final stale = DateTime.now().subtract(const Duration(hours: 1));
+  try {
+    for (final entry in Directory.systemTemp.listSync()) {
+      if (entry is! Directory) continue;
+      if (!entry.path.split(Platform.pathSeparator).last.startsWith(
+        'wird-corpus',
+      )) {
+        continue;
+      }
+      try {
+        if (entry.statSync().modified.isBefore(stale)) {
+          entry.deleteSync(recursive: true);
+        }
+      } on Object {
+        // Another run's, already gone, or not ours to remove.
+      }
+    }
+  } on Object {
+    // Nothing here is worth failing a suite over.
+  }
 }

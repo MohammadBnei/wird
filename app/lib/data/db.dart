@@ -115,6 +115,16 @@ Future<Database> openWirdAt(String path) async {
       start_ayah_id INTEGER PRIMARY KEY REFERENCES ayahs(id),
       ayas          INTEGER NOT NULL
     )''');
+  // Which pack of senses this device fetched. The senses themselves go into
+  // `root_notes`, which the corpus already ships; this is the one row that says
+  // which version those rows are — and, by existing at all, that a fetch has
+  // happened, which is a different thing from a root having no sense written.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS sense_pack (
+      id         INTEGER PRIMARY KEY CHECK (id = 1),
+      version    TEXT NOT NULL,
+      fetched_at TEXT NOT NULL
+    )''');
   // The op id is the primary key rather than a column, so a write that is
   // replayed — a flush that timed out after the server had already applied it,
   // a button pressed twice — lands on the same row instead of a second one.

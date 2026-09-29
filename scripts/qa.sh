@@ -79,6 +79,32 @@ toolchain_recorded() {
 	return 1
 }
 
+# Every string a reader sees exists in both locales.
+#
+# A key in app_en.arb and not in app_fr.arb is a French reader shown English,
+# and nothing else catches it: the analyzer sees a valid getter, the goldens are
+# English, and gen-l10n fills the gap from the template rather than complaining.
+# This is the cheap half of the job — the expensive half, hunting literals still
+# sitting in a widget, needs an AST walk and a named allowlist for the licence
+# notices corpus_meta.notice requires verbatim, so it is not attempted here.
+#
+# ponytail: key parity plus one French widget test. Reach for package:analyzer
+# the first time a missed literal actually ships.
+arb_locales_agree() {
+	local dir="$ROOT/app/lib/l10n" missing
+	missing=$(
+		jq -r --slurpfile fr "$dir/app_fr.arb" \
+			'keys - ($fr[0] | keys) | map(select(startswith("@") | not)) | .[]' \
+			"$dir/app_en.arb"
+		jq -r --slurpfile en "$dir/app_en.arb" \
+			'keys - ($en[0] | keys) | map(select(startswith("@") | not)) | .[]' \
+			"$dir/app_fr.arb"
+	)
+	[ -z "$missing" ] && return 0
+	printf 'these strings exist in one locale only, so a reader of the other is shown the wrong language:\n%s\n' "$missing"
+	return 1
+}
+
 corpus_under_budget() {
 	local bytes limit=$((60 * 1024 * 1024))
 	bytes=$(wc -c <"$ROOT/app/assets/corpus.db")
@@ -232,11 +258,11 @@ url_rows() {
 		https://wird.bnei.dev/auth/callback|200|?code=gate&state=gate|a reader who signs in is handed an error instead of the address they paste back into the app
 		https://wird.bnei.dev|200|/healthz|the API every queued write drains into is not there
 		https://wird.bnei.dev|401|/v1/changes|a second device never catches up, and a 404 reads to the app exactly like a day with nothing in it
-		https://wird.bnei.dev/models/base-ar-quran/38853d7df20b/|206|quran-encoder.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
-		https://wird.bnei.dev/models/base-ar-quran/38853d7df20b/|206|quran-decoder.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
-		https://wird.bnei.dev/models/base-ar-quran/38853d7df20b/|206|quran-tokens.txt|voice-follow can never be turned on: Settings offers a download that cannot arrive
+		https://wird.bnei.dev/models/ar-phoneme/54f7db6bdcff/|206|model.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
+		https://wird.bnei.dev/models/ar-phoneme/54f7db6bdcff/|206|tokens.txt|voice-follow can never be turned on: Settings offers a download that cannot arrive
 		-|200|https://wird.bnei.dev/.well-known/assetlinks.json|Android stops verifying the sign-in link as Wird's, so the browser keeps the finished sign-in and the reader copies a code out of a web page by hand
 		https://wird.bnei.dev/set|-||the namespace a set id is derived under, hashed and never requested
+		https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3|-||the recogniser's licence and model card, a credit on the About screen; gated, so it is never fetched here
 		https://corpus.quran.com|-||a credit on the About screen, handed to the reader's browser
 		https://tanzil.net|-||a credit on the About screen, handed to the reader's browser
 		https://quran.foundation|-||a credit on the About screen, handed to the reader's browser
@@ -488,6 +514,7 @@ fi
 
 if [ -f "$ROOT/app/assets/corpus.db" ]; then
 	check "corpus.db under budget" corpus_under_budget
+	check "both locales carry the same strings" arb_locales_agree
 else
 	skip "corpus.db under budget" "app/assets/corpus.db is built by the ETL phase; the 60 MB budget is checked from then on"
 fi

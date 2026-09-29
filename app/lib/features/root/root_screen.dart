@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/root_repo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
@@ -36,8 +37,22 @@ class RootScreen extends StatefulWidget {
 class _RootScreenState extends State<RootScreen> {
   RootReading? _reading;
   bool _loaded = false;
-  bool _kept = false;
+
+  /// The id this root is kept under, or null. Read once in [_load]; nothing
+  /// listens to `kept_items`, so a delete made on screen 1e while this screen
+  /// is open does not reach the two buttons until it is reopened.
+  String? _keptId;
+
+  /// Whether a keep or an undo is in flight. Two taps inside the `await` would
+  /// both read `_keptId` as null and both write: the latch this replaced was
+  /// also the only thing stopping that.
+  bool _busy = false;
   int _index = 0;
+
+  /// The strings this screen draws. A getter rather than a local threaded
+  /// through every builder: the card, the kicker and the headings are four
+  /// methods deep and none of them takes a context of its own.
+  AppLocalizations get _l => AppLocalizations.of(context)!;
 
   @override
   void initState() {
@@ -47,19 +62,33 @@ class _RootScreenState extends State<RootScreen> {
 
   Future<void> _load() async {
     final reading = await rootReading(widget.db, widget.letters);
-    final kept = await rootKept(widget.db, widget.letters);
+    final keptId = await rootKept(widget.db, widget.letters);
     if (!mounted) return;
     setState(() {
       _reading = reading;
-      _kept = kept;
+      _keptId = keptId;
       _loaded = true;
     });
   }
 
-  Future<void> _keep() async {
-    await keepRoot(widget.db, widget.letters);
-    if (!mounted) return;
-    setState(() => _kept = true);
+  /// Keeps the root, or takes it back off the list. Both controls on this
+  /// screen — the bookmark at the top and the button in the card — press it,
+  /// because a toggle beside a latched chip is the defect this replaced.
+  Future<void> _toggleKeep() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      String? keptId;
+      if (_keptId == null) {
+        keptId = await keepRoot(widget.db, widget.letters);
+      } else {
+        await forgetRoot(widget.db, widget.letters);
+      }
+      if (!mounted) return;
+      setState(() => _keptId = keptId);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -76,9 +105,9 @@ class _RootScreenState extends State<RootScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   RootChrome(
-                    kicker: spine ? 'Root spine' : 'Root',
-                    kept: _kept,
-                    onKeep: _keep,
+                    kicker: spine ? _l.root_kickerSpine : _l.root_kicker,
+                    kept: _keptId != null,
+                    onKeep: _busy ? null : _toggleKeep,
                   ),
                   if (reading == null)
                     Expanded(child: _unknown(n))
@@ -96,7 +125,7 @@ class _RootScreenState extends State<RootScreen> {
     child: Padding(
       padding: EdgeInsets.all(n.space('8')),
       child: Text(
-        'The corpus carries no root spelled ${widget.letters}.',
+        _l.root_unknownRoot(widget.letters),
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.headlineSmall,
       ),
@@ -131,10 +160,11 @@ class _RootScreenState extends State<RootScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionHeading(
-                "Its kin in the Qur'an",
-                trailing:
-                    '${reading.derivatives.length} forms · '
-                    '${reading.occurrences} occurrences',
+                _l.root_kinHeading,
+                trailing: _l.root_kinFormsAndOccurrences(
+                  reading.derivatives.length,
+                  reading.occurrences,
+                ),
               ),
               SizedBox(height: n.space('4')),
               KinSpine(
@@ -151,14 +181,6 @@ class _RootScreenState extends State<RootScreen> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: lexiconSection(context, reading),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 18),
-          child: NocturneRule(),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
           child: tafsirSection(ayahRef(selected.ayahId)),
         ),
         const Padding(
@@ -167,7 +189,15 @@ class _RootScreenState extends State<RootScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 44),
-          child: irabSection(selected.text),
+          // The dial's selected form is a spelling met many times over. The
+          // parsing is of its first occurrence, which is the aya the card above
+          // already names, and the section says so rather than leaving the
+          // reader to read one occurrence's case as the form's own.
+          child: IrabSection(
+            segments: reading.irab[selected.wordId] ?? const [],
+            word: selected.text,
+            where: ayahRef(selected.ayahId),
+          ),
         ),
       ],
     );
@@ -218,8 +248,11 @@ class _RootScreenState extends State<RootScreen> {
             ),
             Text(
               selected.form == null
-                  ? '${selected.occurrences}× IN THE QUR’AN'
-                  : 'FORM ${selected.form} · ${selected.occurrences}×',
+                  ? _l.root_cardWeight(selected.occurrences)
+                  : _l.root_cardWeightWithForm(
+                      selected.form!,
+                      selected.occurrences,
+                    ),
               style: TextStyle(
                 fontSize: 10,
                 height: 1.2,
@@ -247,14 +280,18 @@ class _RootScreenState extends State<RootScreen> {
                   // is already reachable from the word that led here.
                   child: NocturneButton(
                     onPressed: () => openAya(context, selected.ayahId),
-                    child: const Text('Read the aya'),
+                    child: Text(_l.root_readTheAya),
                   ),
                 ),
                 Expanded(
                   child: NocturneButton(
                     variant: NocturneButtonVariant.primary,
-                    onPressed: _kept ? null : _keep,
-                    child: Text(_kept ? 'Kept' : 'Keep this root'),
+                    onPressed: _busy ? null : _toggleKeep,
+                    child: Text(
+                      _keptId == null
+                          ? _l.root_keepThisRoot
+                          : _l.root_keptTapToUndo,
+                    ),
                   ),
                 ),
               ],

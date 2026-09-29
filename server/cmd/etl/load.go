@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,7 +34,27 @@ type Surah struct {
 type Ayah struct {
 	ID, SurahID, Number int
 	TextUthmani         string
+
+	// One translation, in French, as a reader meets it. Empty when the ingest
+	// was run without it; Check refuses a corpus where only some ayas carry one,
+	// because a reading that is French for a page and then English is worse than
+	// one that is honestly English throughout.
+	TextFr string
 }
+
+// The resource id of Rashid Maash's French, which is what quran.com identifies a
+// translation by. There is no French word-by-word gloss anywhere on quran.com —
+// `language=fr` answers English and says `language_name: "english"` while doing
+// it — so French reaches a reader one ayah at a time. data/SOURCES.md has the
+// provenance and the licence position.
+const frenchTranslation = 779
+
+// footnote is the markup quran.com wraps a translator's note in:
+// `<sup foot_note=203920>1</sup>`. The note itself is in no field of the
+// response, so the marker points at nothing a reader could open. It is dropped
+// rather than left to render as a stray digit mid-sentence, and SOURCES.md
+// records the drop because removing it is a modification of the text.
+var footnote = regexp.MustCompile(`<sup[^>]*>.*?</sup>`)
 
 type Word struct {
 	ID                                           int64
@@ -73,6 +94,10 @@ type Corpus struct {
 	Audio    []Audio
 	Segments []Segment
 
+	// One row per morphological segment: the parsing a reader is shown, derived
+	// from the same lines Words.Morphology keeps verbatim.
+	Irab []IrabRow
+
 	// The senses Wird wrote for its roots, checked once when they were written
 	// and checked again by Check before any of them reaches corpus.db.
 	Senses *Senses
@@ -94,10 +119,14 @@ type rawChapters struct {
 
 type rawVerses struct {
 	Verses []struct {
-		VerseKey    string `json:"verse_key"`
-		VerseNumber int    `json:"verse_number"`
-		TextUthmani string `json:"text_uthmani"`
-		Words       []struct {
+		VerseKey     string `json:"verse_key"`
+		VerseNumber  int    `json:"verse_number"`
+		TextUthmani  string `json:"text_uthmani"`
+		Translations []struct {
+			ResourceID int    `json:"resource_id"`
+			Text       string `json:"text"`
+		} `json:"translations"`
+		Words []struct {
 			Position     int    `json:"position"`
 			CharTypeName string `json:"char_type_name"`
 			TextUthmani  string `json:"text_uthmani"`
@@ -176,7 +205,16 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 				return nil, err
 			}
 			aid := ayahID(su, ay)
-			c.Ayahs = append(c.Ayahs, Ayah{ID: aid, SurahID: su, Number: ay, TextUthmani: v.TextUthmani})
+			fr := ""
+			for _, t := range v.Translations {
+				if t.ResourceID == frenchTranslation {
+					fr = strings.TrimSpace(footnote.ReplaceAllString(t.Text, ""))
+				}
+			}
+			c.Ayahs = append(c.Ayahs, Ayah{
+				ID: aid, SurahID: su, Number: ay,
+				TextUthmani: v.TextUthmani, TextFr: fr,
+			})
 			pos := 0
 			for _, w := range v.Words {
 				if w.CharTypeName != "word" { // the ayah-number glyph is not a word
@@ -191,11 +229,15 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 				if m.root != "" {
 					rootCount[m.root]++
 				}
+				wid := wordID(aid, pos)
 				c.Words = append(c.Words, Word{
-					ID: wordID(aid, pos), AyahID: aid, Position: pos,
+					ID: wid, AyahID: aid, Position: pos,
 					TextAr: w.TextUthmani, Translit: translit, GlossEn: w.Translation.Text,
 					RootLetters: m.root, Form: m.form, Morphology: m.json,
 				})
+				for i, seg := range m.segments {
+					c.Irab = append(c.Irab, irabRow(wid, i+1, seg))
+				}
 			}
 			wordsPerAyah[aid] = pos
 			if n := morph.counts[aid]; n != 0 && n != pos {
@@ -269,6 +311,10 @@ func normalizeSegments(spans []timings.Span, aid int) normalized {
 
 type wordMorph struct {
 	root, form, json string
+
+	// The segments the json above holds, kept in the file's own order so the
+	// iʿrāb table can be written without parsing back what was just written.
+	segments []morphSegment
 }
 
 type morphology struct {
@@ -377,6 +423,15 @@ func loadMorphology(path string) (morphology, error) {
 		key := [2]int{ayahID(su, ay), wd}
 		features := strings.Split(cols[3], "|")
 		segs[key] = append(segs[key], morphSegment{Form: cols[1], POS: cols[2], Features: features})
+		// The fourth part of the location is the segment's own number, and the
+		// iʿrāb table records a segment's place from its position in this list.
+		// A file that numbers them any other way would silently label a
+		// suffix's role as the stem's.
+		if sg, err := strconv.Atoi(loc[3]); err != nil || sg != len(segs[key]) {
+			return morphology{}, fmt.Errorf("segment %s is numbered %q but arrives at place %d of its "+
+				"word; read in order, its parsing would be shown against another segment",
+				cols[0], loc[3], len(segs[key]))
+		}
 		for _, ft := range features {
 			if r, ok := strings.CutPrefix(ft, "ROOT:"); ok && roots[key] == "" {
 				roots[key] = arabicRoot(r)
@@ -400,7 +455,7 @@ func loadMorphology(path string) (morphology, error) {
 		if err != nil {
 			return morphology{}, err
 		}
-		m.words[key] = wordMorph{root: roots[key], form: forms[key], json: string(b)}
+		m.words[key] = wordMorph{root: roots[key], form: forms[key], json: string(b), segments: list}
 		m.counts[key[0]]++
 	}
 	return m, nil

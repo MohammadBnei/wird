@@ -163,13 +163,17 @@ func TestASenseFileWithNoBylineStopsTheBuild(t *testing.T) {
 	}
 }
 
-// The byline and the evidence have to reach the database, not just the file: a
-// screen reads root_notes, and prose arriving there bare is prose a reader can
-// mistake for a lexicon entry.
-func TestAShippedSenseReachesTheDatabaseWithItsBylineAndTheWordsItWasCheckedAgainst(t *testing.T) {
+// The bundle must ship NO senses. A sense is Wird's own sentence, corrected by
+// the reader's thumb, so freezing it into this asset put every correction behind
+// a store release; the server owns them now and the app fetches them
+// (docs/adr/0010). The table stays because a fetched pack lands in it.
+//
+// This test replaced one asserting the opposite — that a sense reached
+// root_notes with its byline and the words it was checked against. That was the
+// right assertion under the old standard and is the wrong one now, so it is
+// rewritten rather than deleted: the file should say which way the rule runs.
+func TestTheBundleShipsNoSenseForAReaderToMistakeForOne(t *testing.T) {
 	c := load(t, fixtureDir)
-	root := c.Roots[0].Letters
-	c.Senses = sense(root, "to say; to speak", "dire ; parler")
 	out := filepath.Join(t.TempDir(), "corpus.db")
 	if e := Write(out, c, testRecitation, 1, time.Now()); e != nil {
 		t.Fatalf("write: %v", e)
@@ -179,21 +183,13 @@ func TestAShippedSenseReachesTheDatabaseWithItsBylineAndTheWordsItWasCheckedAgai
 		t.Fatal(e)
 	}
 	defer db.Close()
-	var note, fr, source, basis, evidence string
-	if e := db.QueryRow(`SELECT note, note_fr, source, basis, evidence FROM root_notes
-		WHERE root_letters = ? AND word_id IS NULL`, root).
-		Scan(&note, &fr, &source, &basis, &evidence); e != nil {
-		t.Fatalf("read back the sense: %v", e)
+
+	var rows int
+	if e := db.QueryRow(`SELECT COUNT(*) FROM root_notes`).Scan(&rows); e != nil {
+		t.Fatalf("root_notes is gone, and a fetched pack has nowhere to land: %v", e)
 	}
-	for _, want := range []struct{ name, got string }{
-		{"the sense", note}, {"the French", fr}, {"the source", source},
-		{"the basis", basis}, {"the evidence", evidence},
-	} {
-		if strings.TrimSpace(want.got) == "" {
-			t.Errorf("%s did not reach root_notes", want.name)
-		}
-	}
-	if !strings.Contains(evidence, "كَلِمَة") {
-		t.Errorf("evidence %q does not name the word the sense was checked against", evidence)
+	if rows != 0 {
+		t.Errorf("the bundle carries %d senses; every one of them is prose a correction "+
+			"cannot reach, because it ships inside the binary", rows)
 	}
 }

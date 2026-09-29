@@ -4,7 +4,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../app.dart';
+import '../report/report.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
 import '../../data/sets.dart';
@@ -37,7 +39,6 @@ class _StudyScreenState extends State<StudyScreen> {
   StudySet? _set;
   RootDetail? _root;
   StudyWord? _word;
-  String? _reciter;
   ReadingOrder _order = ReadingOrder.nuzul;
 
   /// The application's recitation, once it is carrying the set on screen.
@@ -89,6 +90,11 @@ class _StudyScreenState extends State<StudyScreen> {
   /// arrives as ayas alone and its words come a chunk at a time, because
   /// Al-Baqarah is 6116 of them and the screen shows twenty.
   Map<int, List<StudyWord>> _words = {};
+
+  /// The reader's own language rendering of each aya, by aya, as far as it has
+  /// been read. Empty in English: there is nothing to draw beside a reading that
+  /// is already in the reader's language, and nothing to read either.
+  final Map<int, String> _translated = {};
 
   /// Ayas whose words are on their way. Without it the list asks for the same
   /// chunk on every frame it draws a gap.
@@ -152,7 +158,6 @@ class _StudyScreenState extends State<StudyScreen> {
             at,
             ayas: step == null ? 1 : step.last - step.first + 1,
           );
-    final reciter = await reciterLabel(widget.db);
     // The width the reader reads in. On the walk the set already is it, the
     // width they pulled in settings and all. A step keeps the width it was
     // taken at rather than the width it got — a step into Al-Kawthar takes
@@ -203,14 +208,27 @@ class _StudyScreenState extends State<StudyScreen> {
       );
     }
     if (!mounted || generation != _generation) return;
+    // The set arrives with its words, so this is where its renderings belong
+    // too — _readWordsAround only fires for ayas the set did not bring.
+    final lang = Localizations.localeOf(context).languageCode;
+    final rendered = lang == 'en' || set == null
+        ? const <int, String>{}
+        : await translationsFor(
+            widget.db,
+            [for (final aya in set.reading) aya.id],
+            lang,
+          );
+    if (!mounted || generation != _generation) return;
     setState(() {
+      _translated
+        ..clear()
+        ..addAll(rendered);
       _order = order;
       _target = at;
       _before = before;
       _after = after;
       _width = width;
       _set = set;
-      _reciter = reciter;
       _word = first;
       _root = root;
       _audio = set == null ? null : recitation;
@@ -266,6 +284,22 @@ class _StudyScreenState extends State<StudyScreen> {
       _opId = newOpId();
       _bake();
     });
+  }
+
+  /// A reader's verdict on the sense drawn for a root, on its way to the people
+  /// who wrote it.
+  ///
+  /// Queued, never sent here: the outbox flushes when there is a signal, so a
+  /// reader judging a sense on a plane is not told their opinion failed. Nothing
+  /// is shown either way — `_JudgeSense` says thank you itself, and a screen that
+  /// raised a snackbar over the reading would charge the reader for helping.
+  Future<void> _judgeSense(String root, bool good) async {
+    await judgeSense(
+      widget.db,
+      root: root,
+      good: good,
+      context: await reportContext(widget.db, screen: screenName(Routes.study)),
+    );
   }
 
   /// Sounds one word. An aya that was never downloaded shows the word's
@@ -327,17 +361,50 @@ class _StudyScreenState extends State<StudyScreen> {
                   ),
                   Expanded(child: _reading(n, set)),
                   _footer(n, set),
-                  RootPanel(
-                    root: _root,
-                    word: _word,
-                    open: _prefs.rootOpen,
-                    onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
-                    onVisit: _visit,
-                    onKin: (ayahId) => _load(target: ayahId),
-                    allUnderstood: _allUnderstood(set),
-                    onMark: _allUnderstood(set)
-                        ? () => _load()
-                        : () => _markUnderstood(set),
+                  // ponytail: half the window, and the panel's body scrolls
+                  // past it. The Mark button does not scroll — RootPanel pins
+                  // it under the scrolled body, because it is the only way
+                  // through the Qur'an and a clipped one is worse than the
+                  // overflow this cap removes.
+                  //
+                  // The panel is the last child of this Column and the reading
+                  // above it is the Expanded, so the panel takes whatever
+                  // height it asks for and the reading pays. The transport in
+                  // the footer and the root's sense in the panel each added a
+                  // band, and the phone this was walked on rotates — nothing
+                  // sets a preferred orientation — so in landscape the fixed
+                  // chrome asked for 69px more than the window has and the
+                  // Column overflowed. The cap is the only thing standing
+                  // between that and a red screen over someone's prayer.
+                  //
+                  // The cap binds whenever the open panel wants more than two
+                  // fifths of the window, which is not landscape alone: it
+                  // binds on a 320pt-wide phone in portrait, and from roughly
+                  // 1.4x system text on a 402x874 one. Two fifths rather than
+                  // a half because a half left the reading 45px sideways —
+                  // less than one aya tile, so a reading screen with no
+                  // reading on it. The ceiling: where the cap binds the panel
+                  // gives up its body, and sideways the reading is still a
+                  // strip rather than a page. This buys a layout that does not
+                  // break, not one that reads well sideways. The fraction is
+                  // the knob, and study_screen_test holds the floor it buys.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+                    ),
+                    child: RootPanel(
+                      root: _root,
+                      word: _word,
+                      open: _prefs.rootOpen,
+                      onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
+                      onVisit: _visit,
+                      onKin: (ayahId) => _load(target: ayahId),
+                      allUnderstood: _allUnderstood(set),
+                      onMark: _allUnderstood(set)
+                          ? () => _load()
+                          : () => _markUnderstood(set),
+                      onJudge: _judgeSense,
+                    ),
                   ),
                 ],
               ),
@@ -345,14 +412,22 @@ class _StudyScreenState extends State<StudyScreen> {
     );
   }
 
-  /// What is sounding, and where the reader can go: one block at the foot of
-  /// the screen, under one edge.
+  /// What plays, what is sounding, and where the reader can go: one block at
+  /// the foot of the screen, under one edge.
   ///
   /// The transport used to sit under the top bar, a thumb's length from the
   /// controls it belongs with. It is first in the block rather than last
   /// because a [Column] hangs its tail off the bottom: everything below the
   /// transport keeps its place when a recitation starts, and the reading gives
   /// up the height instead. Nothing under the reader's thumb moves.
+  ///
+  /// The play button came here from inside the scrolling list, where starting
+  /// the recitation — and learning whether the recitation was even on the
+  /// phone — meant scrolling past the whole set first. It is always drawn,
+  /// which reverses the trade [SoundingNow] makes just below it: a reader who
+  /// never plays anything now pays for a band of chrome. The transport is the
+  /// reason the screen exists to be prayed from, so it is the one piece of
+  /// chrome that does not earn its place by being asked for.
   Widget _footer(Nocturne n, StudySet set) => Container(
     decoration: BoxDecoration(
       border: Border(top: BorderSide(color: n.divider)),
@@ -360,6 +435,15 @@ class _StudyScreenState extends State<StudyScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            n.space('6'),
+            n.space('2'),
+            n.space('6'),
+            0,
+          ),
+          child: _audioBar(n),
+        ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: n.space('6')),
           child: const SoundingNow(),
@@ -379,7 +463,7 @@ class _StudyScreenState extends State<StudyScreen> {
     child: Padding(
       padding: EdgeInsets.all(n.space('8')),
       child: Text(
-        'Every aya is understood. There is nothing left to serve.',
+        AppLocalizations.of(context)!.study_nothingLeftToServe,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.headlineSmall,
       ),
@@ -414,23 +498,20 @@ class _StudyScreenState extends State<StudyScreen> {
           const SliverToBoxAdapter(key: _anchor, child: SizedBox.shrink()),
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, i) => i == set.ayas.length
-                  // The recitation carries the acted set and nothing else, so
-                  // the bar sits where that set ends: under the last aya on
-                  // the walk, and under the visited aya rather than 285 ayas
-                  // below it while a sūra is being read.
-                  ? Padding(
-                      padding: EdgeInsets.symmetric(horizontal: n.space('6')),
-                      child: _audioBar(n),
-                    )
-                  : _ayaTile(
-                      n,
-                      ayas,
-                      focus + (i > set.ayas.length ? i - 1 : i),
-                      recited,
-                      lastBeforeBar: focus + set.ayas.length - 1,
-                    ),
-              childCount: ayas.length - focus + 1,
+              // The bar has left the list for the footer, but the gap under
+              // the acted set has not: `lastBeforeBar` is the last aya the
+              // play button will recite, and `ayas.length - 1` is the last aya
+              // of the whole reading. Opening 2:255 those are 31 ayas apart,
+              // so that gap is the only thing on screen saying where the span
+              // an always-visible play button covers ends.
+              (context, i) => _ayaTile(
+                n,
+                ayas,
+                focus + i,
+                recited,
+                lastBeforeBar: focus + set.ayas.length - 1,
+              ),
+              childCount: ayas.length - focus,
             ),
           ),
           SliverToBoxAdapter(child: SizedBox(height: n.space('6'))),
@@ -469,6 +550,15 @@ class _StudyScreenState extends State<StudyScreen> {
               padding: EdgeInsets.symmetric(vertical: n.space('2')),
               child: const DashedRule(),
             ),
+          if (index == 0 && _translated.isNotEmpty) ...[
+            SizedBox(height: n.space('2')),
+            // Once, above the reading, not under every aya: a reader learns this
+            // on the first screenful and does not need telling six more times.
+            Text(
+              AppLocalizations.of(context)!.study_glossesStayEnglish,
+              style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
+            ),
+          ],
           Wrap(
             textDirection: TextDirection.rtl,
             alignment: WrapAlignment.center,
@@ -495,6 +585,26 @@ class _StudyScreenState extends State<StudyScreen> {
               AyaMark(aya: face.aya, arabicSize: _arabicSize),
             ],
           ),
+          if (_translated[aya.id] case final rendered?) ...[
+            SizedBox(height: n.space('3')),
+            // Under the whole aya, because it renders the whole aya. The words
+            // above carry their own English glosses and this does not replace
+            // them — the reader is told so once, above the reading.
+            Text(
+              rendered,
+              textAlign: TextAlign.start,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.55,
+                color: n.textAt(0.78),
+              ),
+            ),
+            SizedBox(height: n.space('1')),
+            Text(
+              AppLocalizations.of(context)!.study_ayaTranslated,
+              style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
+            ),
+          ],
           if (index == lastBeforeBar || index == ayas.length - 1)
             SizedBox(height: n.space('6')),
         ],
@@ -519,9 +629,19 @@ class _StudyScreenState extends State<StudyScreen> {
       if (!_words.containsKey(id) && _pending.add(id)) want.add(id);
     }
     if (want.isEmpty) return;
+    // The reader's language, read before the first await: a BuildContext is not
+    // ours to touch once one has passed.
+    final lang = Localizations.localeOf(context).languageCode;
     final read = await wordsFor(widget.db, want);
+    // English asks for nothing, because the reading is already in it.
+    final rendered = lang == 'en'
+        ? const <int, String>{}
+        : await translationsFor(widget.db, want, lang);
     if (!mounted || generation != _generation) return;
-    setState(() => _words.addAll(read));
+    setState(() {
+      _words.addAll(read);
+      _translated.addAll(rendered);
+    });
   }
 
   Widget _audioBar(Nocturne n) => Container(
@@ -550,6 +670,11 @@ class _StudyScreenState extends State<StudyScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             spacing: n.space('1'),
             children: [
+              // ponytail: five fixed heights, not a level. Mid-scroll that was
+              // incidental; pinned beside a real transport it is a fake meter
+              // that is always on screen. Carried across unchanged — drawing
+              // the real amplitude is its own step, and deleting it leaves the
+              // row with a hole. Replace it, do not tune it.
               for (final (i, height) in const [
                 20.0,
                 14.0,
@@ -576,10 +701,25 @@ class _StudyScreenState extends State<StudyScreen> {
             ],
           ),
         ),
-        Text(
-          (_audio?.ready ?? false) ? (_reciter ?? '') : 'Not downloaded',
-          style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
-        ),
+        // Not the reciter's name — that is who is reciting, it never changes
+        // mid-set, and it reads as settled rather than as the state of this
+        // button. It is said once, in Settings. What stays here is the one
+        // thing that explains why the play button beside it is dark: a screen
+        // may not draw a dead control with nothing saying why.
+        //
+        // Two reasons, and they are not the same reason. `ready` is false both
+        // when the corpus ships no recitation for this set — `tracks` comes
+        // from ayah_audio, so no rows means nothing to fetch, ever — and when
+        // the files simply are not cached yet. Saying "Not downloaded" for the
+        // first offers a download that does not exist. Before `_audio` is
+        // loaded nothing is known, so nothing is said.
+        if (_audio case final audio? when !audio.ready)
+          Text(
+            audio.tracks.isEmpty
+                ? AppLocalizations.of(context)!.study_noRecitation
+                : AppLocalizations.of(context)!.notDownloaded,
+            style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
+          ),
       ],
     ),
   );

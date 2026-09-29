@@ -464,6 +464,11 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 	return err
 }
 
+// How long a sense version may be before the server stops believing it.
+// The served shape is a small int, a dash and 32 hex characters; 64 is that
+// with room, and it matches the column CHECK in migration 00009.
+const senseVersionMax = 64
+
 // The one apply that is not handed the reader, because a report has nowhere
 // to put one. It reaches a table an operator reads, so the reader it came from
 // must not be recoverable from it — and the column list is the smallest part
@@ -487,13 +492,19 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 // docs/adr/0004 says so in those words.
 func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	var b struct {
-		Kind          string    `json:"kind"`
-		Body          string    `json:"body"`
-		AppVersion    string    `json:"app_version"`
-		Platform      string    `json:"platform"`
-		Screen        string    `json:"screen"`
-		CorpusVersion int       `json:"corpus_version"`
-		CreatedAt     time.Time `json:"created_at"`
+		Kind          string `json:"kind"`
+		Body          string `json:"body"`
+		AppVersion    string `json:"app_version"`
+		Platform      string `json:"platform"`
+		Screen        string `json:"screen"`
+		CorpusVersion int    `json:"corpus_version"`
+		// Which sense the reader was judging. corpus_version cannot say it any
+		// more: senses arrive over HTTP now, so two readers on the same bundle
+		// can judge two different sentences and both report the same corpus.
+		// Absent is "the device did not say", the same reading zero gets above,
+		// because refusing the report over it would throw away the words.
+		SenseVersion string    `json:"sense_version"`
+		CreatedAt    time.Time `json:"created_at"`
 	}
 	if err := decode(op.Body, &b); err != nil {
 		return err
@@ -501,10 +512,20 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	if b.CreatedAt.IsZero() {
 		b.CreatedAt = time.Now().UTC()
 	}
+	// Capped here rather than left to the column's CHECK, and the difference is
+	// the reader's words. sense_version is entirely under the device's control,
+	// a CHECK violation is SQLSTATE 23514, classify turns every 23* into
+	// OpRefused, and a refusal is permanent — so one over-long version string
+	// would park the report forever and the text the reader wrote would be lost
+	// to say which prose they meant. A version too long to be one of ours is the
+	// device not having said, which is what an absent one already means.
+	if len(b.SenseVersion) > senseVersionMax {
+		b.SenseVersion = ""
+	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO report_inbox (kind, body, app_version, platform, screen, corpus_version, written_on)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.CreatedAt.UTC())
+		INSERT INTO report_inbox (kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.SenseVersion, b.CreatedAt.UTC())
 	return err
 }
 
@@ -514,18 +535,23 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 // own. Ids are minted here rather than on arrival, and the rows are laid down
 // in the order of those ids, because a heap appends and the order rows sit in
 // would otherwise be the order they arrived in.
+//
+// The column list is written out four times between applyReport and here, and
+// they are one list: a column added to the inbox and forgotten in the sweep is
+// written by the reader's flush and dropped on its way to the table an operator
+// reads, which is silent in both directions.
 const sweepReportsSQL = `
 WITH arrived AS (DELETE FROM report_inbox RETURNING *),
      held AS (DELETE FROM reports RETURNING *),
      all_of_them AS (
-       SELECT gen_random_uuid() AS id, kind, body, app_version, platform, screen, corpus_version, written_on
+       SELECT gen_random_uuid() AS id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
          FROM arrived
        UNION ALL
-       SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
+       SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
          FROM held
      )
-INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
-SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on FROM all_of_them ORDER BY id`
+INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)
+SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on FROM all_of_them ORDER BY id`
 
 // SweepReports is the write that belongs to the schedule rather than to a
 // reader. It runs on its tick whether or not anything arrived, and rewrites

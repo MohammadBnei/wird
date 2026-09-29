@@ -1,0 +1,87 @@
+0.0s  trail  2026-09-27T16:28:39.437630
+0.0s  set  17 words, 5 ayas
+0.3s  microphone  listening, 250ms after the prayer opened
+1.0s  recogniser  loaded, 994ms after the prayer opened
+1.0s  still here  1 batches of room, peak 0.010 to 0.010 | 
+1.1s  voice  the reader began, at 0.02
+2.2s  heard  بِ | too little heard | on 0 | peak 0.15
+2.6s  heard  بِسمِللَ | MOVE to word 0 at 0.75 | on 0 | peak 0.21
+3.1s  heard  بِسمِللَااهِررَ | MOVE to word 1 at 0.71 | on 0 | peak 0.22
+3.6s  heard  بِسمِللَااهِررَحمَ | stay: word 1 at 0.56 under 0.59 | on 1 | peak 0.13
+4.1s  still here  33 batches since the reader began, peak 0.008 to 0.294 | بِسمِللَااهِررَحمَ
+4.1s  heard  بِسمِللَااهِررَحمَاانِررَحِ | stay: word 2 at 0.69 but elsewhere 0.38 — said twice | on 1 | peak 0.08
+5.0s  heard  بِسمِللَااهِررَحمَاانِررَحِۦۦم | stay: word 3 at 0.73 but elsewhere 0.60 — said twice | on 1 | peak 0.01
+6.0s  utterance ended  بِسمِللَااهِررَحمَاانِررَحِۦۦم
+7.2s  still here  31 batches since the reader began, peak 0.007 to 0.090 | بِسمِللَااهِررَحمَاانِررَحِۦۦم
+8.9s  utterance ended  (nothing)
+9.8s  heard  بِسمِللَ | MOVE to word 0 at 0.75 | on 1 | peak 0.01
+10.3s  still here  31 batches since the reader began, peak 0.007 to 0.143 | بِسمِللَ
+10.3s  heard  بِسمِللَااه | MOVE to word 1 at 0.83 | on 0 | peak 0.01
+11.3s  utterance ended  بِسمِللَااه
+12.7s  heard  بِسمِللَااه هَااذَااءَح | stay: word 1 at 0.45 under 0.57 | on 1 | peak 0.18
+13.2s  heard  بِسمِللَااه هَااذَااءَحمَاانَ | stay: word 2 at 0.64 but elsewhere 0.36 — said twice | on 1 | peak 0.02
+13.4s  still here  31 batches since the reader began, peak 0.008 to 0.182 | بِسمِللَااه هَااذَااءَحمَاانَ
+13.7s  heard  بِسمِللَااه هَااذَااءَحمَاانَرَحِ | stay: word 2 at 0.56 but elsewhere 0.25 — said twice | on 1 | peak 0.07
+14.2s  heard  بِسمِللَااه هَااذَااءَحمَاانَرَحِۦۦ | stay: word 3 at 0.59 but elsewhere 0.35 — said twice | on 1 | peak 0.01
+14.6s  heard  بِسمِللَااه هَااذَااءَحمَاانَرَحِۦۦم | stay: word 3 at 0.67 but elsewhere 0.44 — said twice | on 1 | peak 0.01
+15.6s  utterance ended  هَااذَااءَحمَاانَرَحِۦۦم
+15.7s  heard  هَااذَااءَحمَاانَرَحِۦۦم | stay: word 3 at 0.67 but elsewhere 0.58 — said twice | on 1 | peak 0.01
+16.5s  still here  31 batches since the reader began, peak 0.007 to 0.178 | هَااذَااءَحمَاانَرَحِۦۦم
+17.5s  heard  هَااذَااءَحمَاانَرَحِۦۦم رَحمَ | stay: word 4 at 0.53 but elsewhere 0.40 — said twice | on 1 | peak 0.13
+18.0s  heard  هَااذَااءَحمَاانَرَحِۦۦم رَحمَاان | stay: word 4 at 0.53 but elsewhere 0.47 — said twice | on 1 | peak 0.01
+19.0s  heard  هَااذَااءَحمَاانَرَحِۦۦم رَحمَاانرَ | stay: word 5 at 0.56 but elsewhere 0.44 — said twice | on 1 | peak 0.08
+19.4s  heard  هَااذَااءَحمَاانَرَحِۦۦم رَحمَاانرَحِ | stay: word 5 at 0.47 under 0.49 | on 1 | peak 0.01
+19.6s  still here  31 batches since the reader began, peak 0.008 to 0.289 | هَااذَااءَحمَاانَرَحِۦۦم رَحمَاانرَحِ
+19.9s  heard  هَااذَااءَحمَاانَرَحِۦۦم رَحمَاانرَحِۦۦم | stay: word 3 at 0.43 under 0.47 | on 1 | peak 0.01
+20.9s  utterance ended  رَحمَاانرَحِۦۦم
+21.0s  heard  رَحمَاانرَحِۦۦم | stay: word 3 at 0.78 but elsewhere 0.78 — said twice | on 1 | peak 0.04
+21.4s  heard  رَحمَاانرَحِۦۦم ءَلحَ | stay: word 10 at 0.58 but elsewhere 0.50 — said twice | on 1 | peak 0.18
+21.8s  heard  رَحمَاانرَحِۦۦم ءَلحَمدُلِ | stay: word 4 at 0.73 but elsewhere 0.53 — said twice | on 1 | peak 0.30
+22.3s  heard  رَحمَاانرَحِۦۦم ءَلحَمدُلِللَااهِ | stay: word 5 at 0.76 but elsewhere 0.53 — said twice | on 1 | peak 0.13
+22.7s  still here  31 batches since the reader began, peak 0.007 to 0.304 | رَحمَاانرَحِۦۦم ءَلحَمدُلِللَااهِ
+22.8s  heard  مَاانرَحِۦۦم ءَلحَمدُلِللَااهِرَببِلءَاا | stay: word 6 at 0.62 but elsewhere 0.43 — said twice | on 1 | peak 0.12
+23.3s  heard  نرَحِۦۦم ءَلحَمدُلِللَااهِرَببِلءَاالَمِ | stay: word 7 at 0.65 but elsewhere 0.39 — said twice | on 1 | peak 0.07
+23.8s  heard  حِۦۦم ءَلحَمدُلِللَااهِرَببِلءَاالَمِۦۦن | MOVE to word 7 at 0.83 | on 1 | peak 0.01
+25.2s  utterance ended  ءَلحَمدُلِللَااهِرَببِلءَاالَمِۦۦن
+25.3s  heard  ءَلحَمدُلِللَااهِرَببِلءَاالَمِۦۦن | MOVE to word 7 at 0.81 | on 7 | peak 0.01
+25.8s  still here  31 batches since the reader began, peak 0.007 to 0.118 | ءَلحَمدُلِللَااهِرَببِلءَاالَمِۦۦن
+28.1s  heard  َلحَمدُلِللَااهِرَببِلءَاالَمِۦۦن ررَحمَ | stay: word 8 at 0.58 but elsewhere 0.37 — said twice | on 7 | peak 0.15
+28.6s  heard  لِللَااهِرَببِلءَاالَمِۦۦن ررَحمَاانِررَ | MOVE to word 8 at 0.77 | on 7 | peak 0.10
+28.9s  still here  31 batches since the reader began, peak 0.007 to 0.230 | لِللَااهِرَببِلءَاالَمِۦۦن ررَحمَاانِررَ
+29.0s  heard  للَااهِرَببِلءَاالَمِۦۦن ررَحمَاانِررَحِ | stay: word 8 at 0.70 but elsewhere 0.39 — said twice | on 8 | peak 0.05
+29.5s  heard  ااهِرَببِلءَاالَمِۦۦن ررَحمَاانِررَحِۦۦم | stay: word 9 at 0.75 but elsewhere 0.50 — said twice | on 8 | peak 0.02
+31.0s  utterance ended  ررَحمَاانِررَحِۦۦم
+31.1s  heard  ررَحمَاانِررَحِۦۦم | stay: word 3 at 0.78 but elsewhere 0.78 — said twice | on 8 | peak 0.01
+32.0s  still here  31 batches since the reader began, peak 0.007 to 0.055 | ررَحمَاانِررَحِۦۦم
+32.9s  heard  ررَحمَاانِررَحِۦۦم بَس | stay: word 3 at 0.64 but elsewhere 0.64 — said twice | on 8 | peak 0.24
+33.4s  heard  ررَحمَاانِررَحِۦۦم بَسمِللَااهِ | stay: word 5 at 0.60 but elsewhere 0.53 — said twice | on 8 | peak 0.02
+33.8s  heard  ررَحمَاانِررَحِۦۦم بَسمِللَااهِررَحمَ | stay: word 6 at 0.61 but elsewhere 0.50 — said twice | on 8 | peak 0.15
+34.3s  heard  حمَاانِررَحِۦۦم بَسمِللَااهِررَحمَاانِرَ | stay: word 2 at 0.43 under 0.47 | on 8 | peak 0.10
+34.8s  heard  نِررَحِۦۦم بَسمِللَااهِررَحمَاانِرَحِۦۦم | stay: word 3 at 0.50 but elsewhere 0.46 — said twice | on 8 | peak 0.01
+35.1s  still here  31 batches since the reader began, peak 0.007 to 0.249 | نِررَحِۦۦم بَسمِللَااهِررَحمَاانِرَحِۦۦم
+36.2s  utterance ended  بَسمِللَااهِررَحمَاانِرَحِۦۦم
+36.3s  heard  بَسمِللَااهِررَحمَاانِرَحِۦۦم | stay: word 3 at 0.73 but elsewhere 0.60 — said twice | on 8 | peak 0.01
+38.2s  still here  31 batches since the reader began, peak 0.007 to 0.019 | بَسمِللَااهِررَحمَاانِرَحِۦۦم
+39.1s  utterance ended  (nothing)
+41.0s  heard  ل | too little heard | on 8 | peak 0.14
+41.3s  still here  31 batches since the reader began, peak 0.008 to 0.192 | ل
+41.5s  heard  لحَمدُلِ | stay: word 4 at 0.60 under 0.63 | on 8 | peak 0.20
+42.0s  heard  لحَمدُلِللَااهِ | stay: word 5 at 0.71 but elsewhere 0.43 — said twice | on 8 | peak 0.01
+43.4s  utterance ended  لحَمدُلِللَااهِ
+44.4s  still here  31 batches since the reader began, peak 0.007 to 0.201 | لحَمدُلِللَااهِ
+46.3s  utterance ended  (nothing)
+46.8s  heard  هَل | too little heard | on 8 | peak 0.13
+47.3s  heard  هَلحَمدُلِ | MOVE to word 5 at 0.67 | on 8 | peak 0.19
+47.5s  still here  31 batches since the reader began, peak 0.008 to 0.207 | هَلحَمدُلِ
+47.8s  heard  هَلحَمدُلِللَااهِ | stay: word 5 at 0.63 but elsewhere 0.38 — said twice | on 5 | peak 0.01
+49.2s  utterance ended  هَلحَمدُلِللَااهِ
+50.6s  still here  31 batches since the reader began, peak 0.007 to 0.015 | هَلحَمدُلِللَااهِ
+52.1s  heard  هَلحَمدُلِللَااهِ رَب | MOVE to word 6 at 0.70 | on 5 | peak 0.17
+52.6s  heard  هَلحَمدُلِللَااهِ رَبلءَاالَ | stay: word 7 at 0.38 under 0.55 | on 6 | peak 0.09
+53.0s  heard  هَلحَمدُلِللَااهِ رَبلءَاالَمِ | stay: word 7 at 0.57 but elsewhere 0.29 — said twice | on 6 | peak 0.06
+53.5s  heard  هَلحَمدُلِللَااهِ رَبلءَاالَمِۦۦن | MOVE to word 7 at 0.81 | on 6 | peak 0.01
+53.7s  still here  31 batches since the reader began, peak 0.009 to 0.233 | هَلحَمدُلِللَااهِ رَبلءَاالَمِۦۦن
+55.0s  utterance ended  رَبلءَاالَمِۦۦن
+55.1s  heard  رَبلءَاالَمِۦۦن | MOVE to word 7 at 0.75 | on 7 | peak 0.01
+56.8s  still here  31 batches since the reader began, peak 0.008 to 0.031 | رَبلءَاالَمِۦۦن
+57.8s  utterance ended  (nothing)

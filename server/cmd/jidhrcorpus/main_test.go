@@ -7,11 +7,20 @@ import (
 	"testing"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
-// corpusDB is the shape jidhrcorpus reads out of app/assets/corpus.db, filled with
-// the cases the real corpus has 1,642 of: a root whose sense was written, a root
-// whose sense the check refused, and a form attested under two roots.
+// corpusDB is the shape jidhrcorpus reads out of app/assets/corpus.db: the roots,
+// the attested spellings and the forms recorded under no root, and nothing else.
+//
+// root_notes is gone from it, and that is the change rather than an omission. The
+// meanings no longer come from corpus.db — they come from the server's Postgres,
+// which is why build takes them as an argument. So the fixture for a sense is a Go
+// slice, and these tests need no database at all: the SQL read they used to exercise
+// is store.Senses now, and server/internal/store/senses_test.go tests it against a
+// real Postgres. Wiring testenv into server/cmd/ to re-test it here would buy a
+// second copy of that coverage and a docker dependency for eight table-shape tests.
 func corpusDB(t *testing.T, statements ...string) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "corpus.db"))
@@ -23,7 +32,6 @@ func corpusDB(t *testing.T, statements ...string) *sql.DB {
 	schema := []string{
 		`CREATE TABLE roots (letters TEXT PRIMARY KEY, display TEXT NOT NULL, translit TEXT NOT NULL, quran_occurrences INTEGER NOT NULL, sources TEXT NOT NULL DEFAULT '')`,
 		`CREATE TABLE words (id INTEGER PRIMARY KEY, text_ar TEXT NOT NULL, root_letters TEXT)`,
-		`CREATE TABLE root_notes (root_letters TEXT NOT NULL, word_id INTEGER, note TEXT NOT NULL, note_fr TEXT, source TEXT, basis TEXT, evidence TEXT)`,
 	}
 	for _, s := range append(schema, statements...) {
 		if _, err := db.Exec(s); err != nil {
@@ -33,14 +41,17 @@ func corpusDB(t *testing.T, statements ...string) *sql.DB {
 	return db
 }
 
-const (
-	written = `INSERT INTO roots VALUES ('وصي','و ص ي','w-ṣ-y',32,''), ('صبر','ص ب ر','ṣ-b-r',103,'')`
-	senses  = `INSERT INTO root_notes VALUES ('وصي',NULL,'to enjoin, to charge','enjoindre, charger','Wird','read from the root''s own words','وَتَوَاصَوْا')`
-)
+// written is two roots the morphology records; senses is what the server holds for
+// one of them. The pair is the case the real data has 1,642 of on one side and
+// however many the log carries on the other: the two halves come from two databases
+// and nothing makes them cover each other.
+const written = `INSERT INTO roots VALUES ('وصي','و ص ي','w-ṣ-y',32,''), ('صبر','ص ب ر','ṣ-b-r',103,'')`
 
-func built(t *testing.T, db *sql.DB) map[string]any {
+var senses = []store.Sense{{Root: "وصي", En: "to enjoin, to charge", Fr: "enjoindre, charger"}}
+
+func built(t *testing.T, db *sql.DB, senses ...store.Sense) map[string]any {
 	t.Helper()
-	c, err := build(db)
+	c, err := build(db, senses)
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -63,10 +74,10 @@ func meanings(t *testing.T, corpus map[string]any, letters string) map[string]an
 }
 
 func TestARootNobodyWroteASenseForIsCarriedWithNoMeaningAtAll(t *testing.T) {
-	corpus := built(t, corpusDB(t, written, senses))
+	corpus := built(t, corpusDB(t, written), senses...)
 
 	if _, present := meanings(t, corpus, "صبر")["en"]; present {
-		t.Error("a root whose sense the check refused is shipped with a meaning anyway, so a reader is taught prose nothing bore out")
+		t.Error("a root the server holds no sense for is shipped with a meaning anyway, so a reader is taught prose nobody wrote")
 	}
 	roots, _ := corpus["roots"].([]any)
 	if len(roots) != 2 {
@@ -75,7 +86,7 @@ func TestARootNobodyWroteASenseForIsCarriedWithNoMeaningAtAll(t *testing.T) {
 }
 
 func TestASenseWrittenInFrenchReachesTheCorpusAsFrench(t *testing.T) {
-	got := meanings(t, built(t, corpusDB(t, written, senses)), "وصي")
+	got := meanings(t, built(t, corpusDB(t, written), senses...), "وصي")
 
 	fr, ok := got["fr"].(map[string]any)
 	if !ok {
@@ -89,8 +100,14 @@ func TestASenseWrittenInFrenchReachesTheCorpusAsFrench(t *testing.T) {
 	}
 }
 
+// The poetic register is stored in Postgres and store.Sense carries both columns,
+// so "it is not exported" has to be measured rather than remembered: this is the
+// export side of the gate jidhr/pkg/root/meaning_test.go holds on the read side.
 func TestNoMeaningIsBuiltWithAPoeticRegisterNobodyWrote(t *testing.T) {
-	for lang, m := range meanings(t, built(t, corpusDB(t, written, senses)), "وصي") {
+	poetic := []store.Sense{{Root: "وصي", En: "to enjoin, to charge", Fr: "enjoindre, charger",
+		PoeticEn: "the charge laid on a departing tongue", PoeticFr: "la charge laissée par une langue qui s'en va"}}
+
+	for lang, m := range meanings(t, built(t, corpusDB(t, written), poetic...), "وصي") {
 		if _, poetic := m.(map[string]any)["poetic"]; poetic {
 			t.Errorf("%s carries a poetic register, so the screen renders a blank section instead of no section", lang)
 		}
@@ -107,11 +124,14 @@ func TestARootTheQuranNeverUsesCarriesNoOccurrenceCount(t *testing.T) {
 	}
 }
 
+// Two databases with nothing joining them: the morphology is in corpus.db and the
+// senses are in Postgres, so a root that leaves one and not the other is now a real
+// state rather than a foreign-key violation. This is the only thing that catches it.
 func TestAMeaningForARootTheTableNeverRecordsStopsTheBuildRatherThanShipping(t *testing.T) {
-	db := corpusDB(t, written, `INSERT INTO root_notes VALUES ('زبر',NULL,'to write down',NULL,'Wird','','')`)
+	db := corpusDB(t, written)
 
-	if _, err := build(db); err == nil {
-		t.Error("a meaning was written for a root no caller can look up, and the build said nothing")
+	if _, err := build(db, []store.Sense{{Root: "زبر", En: "to write down", Fr: "écrire"}}); err == nil {
+		t.Error("the server holds a sense for a root no caller can look up, and the build said nothing")
 	}
 }
 

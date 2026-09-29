@@ -17,7 +17,17 @@ import (
 
 const (
 	chaptersURL = "https://api.quran.com/api/v4/chapters?language=en"
-	versesURL   = "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&fields=text_uthmani&per_page=300"
+	// `translations=779` is Rashid Maash's French, arriving in the same response
+	// as the Arabic and keyed by verse. There is no French WORD-BY-WORD gloss
+	// anywhere on quran.com — `language=fr` silently answers English with
+	// `language_name: "english"`, which is a trap worth naming because a
+	// presence check cannot see it — so French reaches a reader one ayah at a
+	// time. data/SOURCES.md carries the provenance.
+	versesURL = "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&translations=" + frenchTranslation + "&fields=text_uthmani&per_page=300"
+
+	// The resource id, not the name: quran.com identifies a translation by
+	// number and two of them share an author's name.
+	frenchTranslation = "779"
 
 	// The morphology is not fetched. corpus.quran.com/download serves a form that
 	// asks for an email address and for the terms to be accepted before it hands

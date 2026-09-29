@@ -13,8 +13,23 @@ qa-report.json
 /etl
 /ingest
 /rootcheck
+/rootdraft
+/senseseed
 /adminweb
 /rootd
+# And beside the module they were built from, which is where `go build ./cmd/x`
+# run from inside `server/` or `jidhr/` puts them. Anchored one by one rather
+# than as a bare name: `api` unanchored would swallow `server/internal/api`.
+/server/api
+/server/adminweb
+/server/etl
+/server/ingest
+/server/jidhrcorpus
+/server/rootcheck
+/server/rootdraft
+/server/senseseed
+/jidhr/rootd
+/jidhr/rootcheck
 
 # Flutter / Dart
 .fvm/
@@ -39,3 +54,4 @@ app/test/failures/
 
 # Rendered screens a gate agent left behind while looking at its own work.
 app/gate-shots/
+__pycache__/

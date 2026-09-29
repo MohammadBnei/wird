@@ -1,56 +1,65 @@
 import 'package:flutter/foundation.dart';
 
-/// Where the reciter is in the set, counted in words straight through every
-/// repetition of it: the second reading of the first word is a later position
-/// than the first reading of it, never the same position arriving again. That
-/// is what lets the rule below be literal rather than nearly true.
+/// Which word of the set the reciter is on.
 ///
-/// Advance or freeze. Never rewind: a rewind mid-prayer reads as the app
-/// losing the reciter. Never throw: nothing on this screen may fail in front
-/// of someone praying.
+/// It moves in either direction, because a reciter does. Repeating an aya, or
+/// a phrase, or starting the set again for the next rakʿa is ordinary prayer,
+/// and the rule this class used to carry — *advance or freeze, never rewind* —
+/// made the app structurally unable to follow any of it.
+///
+/// That rule was written to protect a reader from a screen that jumps. It was
+/// resting on a fallback that does not exist: during ṣalāh the phone lies on
+/// the floor and the reader cannot touch it until the prayer ends. A screen
+/// that refuses to move is not being careful, it is failed for the rest of the
+/// prayer, and nobody can correct it. What replaced the rule is upstream, in
+/// `alignment.dart`: nothing moves the prayer unless one place in the set fits
+/// what was heard better than every other place by a clear margin.
+///
+/// Never throws: nothing on this screen may fail in front of someone praying.
 class PrayerCursor extends ChangeNotifier {
-  PrayerCursor(int words, {int position = 0})
+  /// A cursor built anywhere but the first word is a prayer already under
+  /// way — something put it there — so the word it names is worth pointing
+  /// at. One built at the first word is a prayer nobody has begun.
+  PrayerCursor(int words, {int at = 0})
     : words = words < 1 ? 1 : words,
-      _position = position < 0 ? 0 : position;
+      _at = at.clamp(0, (words < 1 ? 1 : words) - 1),
+      _sure = at != 0;
 
-  /// How many words one reading of the set has.
+  /// How many words the set has.
   final int words;
 
-  int _position;
-  int get position => _position;
+  int _at;
 
-  /// Which word of the set is being recited, and which time through it.
-  int get word => _position % words;
-  int get reading => _position ~/ words + 1;
+  /// Whether the word — rather than the aya it sits in — is worth pointing
+  /// at. A prayer opens on the first word without anybody having said it, so
+  /// nothing is singled out until something is heard or tapped: the aya
+  /// stands lit and the word inside it waits to be earned.
+  bool _sure;
 
-  /// Whatever drives the prayer says where it believes the reciter now is: a
-  /// tap today, a voice in phase 11. Anything that is not further on than
-  /// where the screen already stands leaves the screen exactly as it is.
-  /// A report further ahead than one whole reading is the driver being wrong
-  /// about the reciter rather than someone who recited a thousand words in a
-  /// second, so the cursor takes a reading's worth and lets the next report
-  /// carry it the rest of the way. That ceiling is also what keeps the
-  /// position out of the arithmetic that would otherwise wrap the reading
-  /// count negative.
-  void follow(int position) {
-    if (position <= _position) return;
-    final ceiling = _position + words;
-    _position = position < ceiling ? position : ceiling;
+  /// The word being recited, 0 to [words] - 1.
+  int get at => _at;
+
+  /// Whether the word — rather than the aya it sits in — is worth pointing at.
+  ///
+  /// The aya is always right enough to light: the screen shows one at a time
+  /// and a word either side of the truth is invisible at a metre. The word
+  /// inside it is only worth singling out when the recitation named one place
+  /// clearly, and saying so faintly is honest where saying so brightly would
+  /// be a claim the matcher did not make. A tap is always sure: the reader
+  /// knows where they are.
+  bool get sure => _sure;
+
+  /// Which aya of the set that word belongs to is the screen's business, not
+  /// this class's: it holds a place in the recitation, not a layout.
+  ///
+  /// Silent when nothing changes. A voice answers several times a second and
+  /// mostly answers the same place twice, and rebuilding the prayer on every
+  /// one of those would flicker a screen somebody is praying in front of.
+  void moveTo(int word, {bool sure = true}) {
+    final next = word.clamp(0, words - 1);
+    if (next == _at && sure == _sure) return;
+    _at = next;
+    _sure = sure;
     notifyListeners();
   }
-
-  void next() => follow(_position + 1);
-
-  /// Back to somewhere the reader has already been. This is the reader's own
-  /// hand rather than a driver's opinion about where the voice went, which is
-  /// why it is the one way the prayer moves backwards at all. It still never
-  /// moves the prayer on — that is [follow]'s to give — and never off the
-  /// start of the first reading.
-  void rewind(int position) {
-    if (position >= _position) return;
-    _position = position < 0 ? 0 : position;
-    notifyListeners();
-  }
-
-  void back() => rewind(_position - 1);
 }

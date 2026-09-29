@@ -346,6 +346,31 @@ Future<int?> ayaBeside(Database db, int ayahId, {required bool after}) async =>
       'WHERE id ${after ? '>' : '<'} ?',
       [ayahId],
     )).single['id'] as int?;
+/// The whole-ayah translation for each of [ayahIds], where there is one.
+///
+/// Read the way words are, an aya at a time as the reader approaches it, rather
+/// than joined onto the four queries that build a [StudyAya] — the reading
+/// screen already holds a lazy map per aya and this is the same shape.
+///
+/// Keyed by aya and language rather than by quran.com's resource id, because a
+/// screen asks what this is in the reader's language, not what 779 says. An aya
+/// with no row is one the ingest was run without, and the caller draws nothing
+/// rather than a gap.
+Future<Map<int, String>> translationsFor(
+  Database db,
+  List<int> ayahIds,
+  String lang,
+) async {
+  if (ayahIds.isEmpty) return const {};
+  final marks = List.filled(ayahIds.length, '?').join(',');
+  final rows = await db.rawQuery(
+    'SELECT ayah_id, text FROM ayah_translations '
+    'WHERE lang = ? AND ayah_id IN ($marks)',
+    [lang, ...ayahIds],
+  );
+  return {for (final r in rows) r['ayah_id']! as int: r['text']! as String};
+}
+
 
 /// The words of these ayas, keyed by aya, in one query.
 ///

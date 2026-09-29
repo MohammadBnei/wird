@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/about/about_screen.dart';
+import 'package:wird/l10n/app_localizations.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -60,21 +61,60 @@ void main() {
       'while the corpus is credited', (tester) async {
     await phone(tester, const AboutScreen());
 
+    // What each source provides is read from the ARB now, so the kicker is
+    // asserted too: a card pointed at the wrong key still compiles, and a
+    // French reader is the one who would find out.
+    final l = AppLocalizations.of(tester.element(find.byType(AboutScreen)))!;
+
     for (final source in sources) {
       await tester.scrollUntilVisible(find.text(source.name), 200);
       expect(
         find.text(source.name),
         findsOneWidget,
-        reason: '${source.name} provides ${source.provides} and is used under '
-            '${source.licence}',
+        reason:
+            '${source.name} provides ${source.provides(l)} and is used '
+            'under ${source.licence}',
       );
       expect(find.text(source.licence), findsWidgets);
+      // NocturneCard shouts its kicker.
+      expect(
+        find.text(source.provides(l).toUpperCase()),
+        findsOneWidget,
+        reason: 'the kicker over ${source.name}',
+      );
     }
   });
 
+  testWidgets('the recogniser is used without the warning its licence '
+      'requires an application built on it to carry', (tester) async {
+    // The Quran-Lab No-Profit License grants this model on three conditions,
+    // and the third is addressed to the person holding the phone rather than
+    // to whoever reads the repository: an application built on it must say
+    // plainly that automatic tajwīd feedback can be wrong and does not replace
+    // a qualified teacher. Iterating `sources` cannot catch an absent entry,
+    // so the words are named here.
+    await phone(tester, const AboutScreen());
+
+    await tester.scrollUntilVisible(
+      find.text('Quran-Lab zipformer_p-arabic-v3'),
+      200,
+    );
+    expect(find.text('Quran-Lab No-Profit License 1.2'), findsWidgets);
+    expect(
+      find.textContaining('automatic tajwīd feedback can be wrong'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('replaces a qualified teacher'),
+      findsOneWidget,
+      reason: 'the licence asks for the teacher, not only for the doubt',
+    );
+  });
+
   testWidgets('the word timings ship with no credit to the person who made '
-      'them, which is the only permission Wird has to bundle them',
-      (tester) async {
+      'them, which is the only permission Wird has to bundle them', (
+    tester,
+  ) async {
     // Iterating `sources` cannot catch an absent entry, and that is how this
     // screen once passed a green gate while crediting nobody for the timings.
     // CC BY 4.0 grants the bundle on four conditions, so name all four.
@@ -97,9 +137,13 @@ void main() {
 
     final timings = sources.firstWhere((s) => s.name == 'quran-align');
     expect(timings.url, 'https://creativecommons.org/licenses/by/4.0/');
-    expect(timings.terms, contains('zero-based'),
-        reason: 'CC BY 4.0 also requires that changes be indicated, and the '
-            'published timings were reindexed for this schema');
+    expect(
+      timings.terms,
+      contains('zero-based'),
+      reason:
+          'CC BY 4.0 also requires that changes be indicated, and the '
+          'published timings were reindexed for this schema',
+    );
   });
 
   testWidgets('the screen still tells a reader the recitation cannot be '

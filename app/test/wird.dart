@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/nav.dart';
@@ -26,6 +27,8 @@ Future<Widget> wirdAround(
   AudioCache? cache,
   Recitation? recitation,
   RouteFactory? onGenerateRoute,
+  /// The locale to draw in. Null follows the test binding's own, which is en.
+  Locale? locale,
 }) async => Wird(
   db: db,
   prefs: await Prefs.read(db),
@@ -35,6 +38,13 @@ Future<Widget> wirdAround(
   recitation: recitation ?? Recitation(cache: cache),
   child: MaterialApp(
     theme: nocturneTheme(),
+    // The delegates the app has, so a screen under test can read a string the
+    // way it will in the app. Without them `AppLocalizations.of(context)` is
+    // null and every localised screen throws under test but not in the app,
+    // which is the worst way round for this to break.
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: locale,
     onGenerateRoute:
         onGenerateRoute ?? (settings) => screenRoute(settings, db),
     home: route == null

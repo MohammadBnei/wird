@@ -19,6 +19,14 @@ Future<void> reportFrom(WidgetTester tester, String destination) async {
   await goTo(tester, 'Report something');
 }
 
+/// The version the shipped corpus carries, asked of the corpus rather than
+/// written down here. Written down, every rebuild of the asset reddens these
+/// tests over a number the ETL is supposed to bump.
+Future<int> shippedCorpusVersion(Database db) async =>
+    (await db.query('corpus_meta', columns: ['corpus_version'], limit: 1))
+            .single['corpus_version']!
+        as int;
+
 Future<Map<String, dynamic>?> queued(Database db) async {
   final rows = await db.query('outbox');
   if (rows.isEmpty) return null;
@@ -26,6 +34,13 @@ Future<Map<String, dynamic>?> queued(Database db) async {
   expect(row['kind'], 'report_written');
   return jsonDecode(row['body']! as String) as Map<String, dynamic>;
 }
+
+/// The version the asset in `app/assets/` is expected to carry, and the only
+/// place in the app's tests it is written down. `server/cmd/etl`'s
+/// `-corpus-version` default has to agree with it: the API groups reports by
+/// this number, so a rebuild that regresses it misattributes every report, and
+/// the report golden only bakes the digit as pixels.
+const expectedCorpusVersion = 4;
 
 void main() {
   late Database db;
@@ -35,6 +50,10 @@ void main() {
   setUp(() async {
     db = await testCorpus();
     silent = await emptyCache();
+  });
+
+  test('the shipped corpus carries the version the ETL writes', () async {
+    expect(await shippedCorpusVersion(db), expectedCorpusVersion);
   });
 
   // The failure: the report arrives saying "the audio stops" and nothing else
@@ -59,7 +78,7 @@ void main() {
       'app_version': appVersion,
       'platform': platformName,
       'screen': 'index',
-      'corpus_version': 1,
+      'corpus_version': await shippedCorpusVersion(db),
       'created_at': anything,
     });
   });
@@ -90,7 +109,8 @@ void main() {
     await pumpPhone(tester, await wholeApp(db, cache: silent));
     await reportFrom(tester, 'Sūra index');
 
-    for (final shown in [appVersion, platformName, 'index', '1']) {
+    final version = '${await shippedCorpusVersion(db)}';
+    for (final shown in [appVersion, platformName, 'index', version]) {
       expect(
         find.text(shown),
         findsOneWidget,

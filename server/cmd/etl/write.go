@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -28,6 +27,20 @@ CREATE TABLE ayahs (
   surah_id     INTEGER NOT NULL REFERENCES surahs(id),
   number       INTEGER NOT NULL,
   text_uthmani TEXT NOT NULL
+);
+-- One whole-ayah translation per row, in its own table rather than a column on
+-- ayahs. There is no French word-by-word gloss to be had, so this is the only
+-- shape French reaches a reader in; and the licence position on it is the one
+-- data/SOURCES.md rates "could not determine", so taking the French back out
+-- should be a DROP TABLE and not a schema migration. resource_id is quran.com's
+-- own number for the translation, kept so a row says which rendering it is
+-- rather than only which language.
+CREATE TABLE ayah_translations (
+  ayah_id     INTEGER NOT NULL REFERENCES ayahs(id),
+  resource_id INTEGER NOT NULL,
+  lang        TEXT NOT NULL,
+  text        TEXT NOT NULL,
+  PRIMARY KEY (ayah_id, resource_id)
 );
 CREATE TABLE words (
   id           INTEGER PRIMARY KEY,
@@ -79,6 +92,26 @@ CREATE TABLE word_segments (
   recitation_slug TEXT NOT NULL REFERENCES recitations(slug),
   start_ms        INTEGER NOT NULL,
   end_ms          INTEGER NOT NULL
+);
+-- The parsing vocabulary: one row per code the morphology file writes, named in
+-- both languages. A code per segment and a lookup, rather than two prose strings
+-- on each of 128,219 segments — which is the same words written 128,219 times,
+-- around 10 MB of them, and a both-languages rule nothing could check.
+CREATE TABLE irab_roles (
+  code    TEXT PRIMARY KEY,
+  role_en TEXT NOT NULL,
+  role_fr TEXT NOT NULL
+);
+-- One row per segment of one word, in the order the word is written. Case and
+-- mood are assigned by the syntax of the verse, so this is per occurrence and
+-- never per spelling: a screen showing it has to say which occurrence it means.
+CREATE TABLE irab (
+  word_id  INTEGER NOT NULL REFERENCES words(id),
+  position INTEGER NOT NULL,
+  code     TEXT NOT NULL REFERENCES irab_roles(code),
+  -- The segment's remaining codes, space-joined, each one a row of irab_roles.
+  features TEXT NOT NULL,
+  PRIMARY KEY (word_id, position)
 );
 CREATE TABLE corpus_meta (
   corpus_version INTEGER NOT NULL,
@@ -164,6 +197,19 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
+	fr := make([]Ayah, 0, len(c.Ayahs))
+	for _, a := range c.Ayahs {
+		if a.TextFr != "" {
+			fr = append(fr, a)
+		}
+	}
+	if err := insert(`INSERT INTO ayah_translations VALUES (?,?,?,?)`, len(fr), func(i int) []any {
+		a := fr[i]
+		return []any{a.ID, frenchTranslation, "fr", a.TextFr}
+	}); err != nil {
+		return err
+	}
+
 	if err := insert(`INSERT INTO words VALUES (?,?,?,?,?,?,?,?,?)`, len(c.Words), func(i int) []any {
 		w := c.Words[i]
 		return []any{w.ID, w.AyahID, w.Position, w.TextAr, w.Translit, w.GlossEn,
@@ -177,21 +223,33 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
-	// One row per root, word_id NULL: the authored-prose path the app already
-	// reads as RootReading.coreSense, now carrying its French, its byline and
-	// the words that bore it out beside it.
-	if c.Senses != nil {
-		if err := insert(`INSERT INTO root_notes VALUES (?,NULL,?,?,?,?,?)`, len(c.Senses.Senses), func(i int) []any {
-			n := c.Senses.Senses[i]
-			words := make([]string, 0, len(n.Support))
-			for _, sup := range n.Support {
-				words = append(words, sup.Word)
-			}
-			return []any{n.Root, n.SenseEn, n.SenseFr, c.Senses.Source, c.Senses.Basis,
-				strings.Join(words, " · ")}
-		}); err != nil {
-			return err
-		}
+	// root_notes is created and left EMPTY. The table stays because the app
+	// still reads it — it is where a fetched pack of senses lands — but nothing
+	// here fills it any more.
+	//
+	// A sense is Wird's own sentence and it is corrected by the reader's thumb,
+	// so freezing it into this asset put every correction behind a store
+	// release. The server owns the senses now and the app fetches them
+	// (docs/adr/0010). What ships in this file is what came from an upstream
+	// source and does not move: the Qur'an, Dukes's morphology, the timings and
+	// a licensed translation.
+	//
+	// So a fresh install has a whole Qur'an and no senses, which is a state the
+	// app was built for: CoreSense draws a notice for a root without one, and
+	// since ADR 0010 it draws a different notice for a device that has not
+	// fetched yet.
+	roles := IrabRoles()
+	if err := insert(`INSERT INTO irab_roles VALUES (?,?,?)`, len(roles), func(i int) []any {
+		r := roles[i]
+		return []any{r.Code, r.En, r.Fr}
+	}); err != nil {
+		return err
+	}
+	if err := insert(`INSERT INTO irab VALUES (?,?,?,?)`, len(c.Irab), func(i int) []any {
+		s := c.Irab[i]
+		return []any{s.WordID, s.Position, s.Code, s.Features}
+	}); err != nil {
+		return err
 	}
 	if err := insert(`INSERT INTO ayah_audio VALUES (?,?,?)`, len(c.Audio), func(i int) []any {
 		a := c.Audio[i]

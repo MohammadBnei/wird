@@ -1,0 +1,1395 @@
+{
+  "@@locale": "en",
+  "index_kicker": "THE WHOLE QUR’AN",
+  "@index_kicker": {
+    "description": "The kicker over the index screen's title, naming what the index covers."
+  },
+  "index_title": "All 114",
+  "@index_title": {
+    "description": "The index screen's title: every sūra of the Qur'an, in written order."
+  },
+  "index_hint": "A sūra opens at its first aya. The arrow picks one inside it.",
+  "@index_hint": {
+    "description": "Under the index screen's title: how the two taps on a sūra row differ."
+  },
+  "index_revealed_nth": "{order} to be revealed",
+  "@index_revealed_nth": {
+    "description": "Under each sūra row in the index: where that sūra falls in the order of revelation, which is the other order the Qur'an is read in. `order` arrives already spelled as an ordinal of this locale — \"83rd\", \"83e\" — because gen-l10n rejects ICU selectordinal.",
+    "placeholders": {
+      "order": {
+        "type": "String"
+      }
+    }
+  },
+  "index_pick_aya": "Pick an aya of {sura}",
+  "@index_pick_aya": {
+    "description": "Screen-reader label for the arrow at the end of a sūra row in the index, which unfolds that sūra's aya numbers.",
+    "placeholders": {
+      "sura": {
+        "type": "String"
+      }
+    }
+  },
+  "inThisAya": "IN THIS AYA",
+  "@inThisAya": {
+    "description": "Heading over the gloss of the selected word in the aya it was tapped in."
+  },
+  "kept_empty_ayas": "No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.",
+  "@kept_empty_ayas": {
+    "description": "Shown on the kept list in place of the cards when the reader has kept no aya; it names the control on the constellation screen that keeps one."
+  },
+  "kept_empty_notes": "No notes yet. Nothing in the app writes one yet; an aya and a root are kept without words.",
+  "@kept_empty_notes": {
+    "description": "Shown on the kept list in place of the cards when the reader has no note."
+  },
+  "kept_empty_roots": "No roots kept yet. The keep icon on a root keeps one here.",
+  "@kept_empty_roots": {
+    "description": "Shown on the kept list in place of the cards when the reader has kept no root."
+  },
+  "kept_filter_ayas": "Ayas",
+  "@kept_filter_ayas": {
+    "description": "First option of the segmented filter above the kept list's cards."
+  },
+  "kept_filter_notes": "Notes",
+  "@kept_filter_notes": {
+    "description": "Third option of the segmented filter above the kept list's cards."
+  },
+  "kept_filter_roots": "Roots",
+  "@kept_filter_roots": {
+    "description": "Second option of the segmented filter above the kept list's cards."
+  },
+  "kept_kicker_revisit": "{at} · revisit",
+  "@kept_kicker_revisit": {
+    "description": "Kicker line at the top of a kept card the reader flagged to come back to; the screen draws it uppercased.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_kicker_root": "Root · {letters}",
+  "@kept_kicker_root": {
+    "description": "Kicker line at the top of a kept root's card; the screen draws it uppercased.",
+    "placeholders": {
+      "letters": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_kind_aya": "Aya",
+  "@kept_kind_aya": {
+    "description": "Kicker line of a kept card whose aya reference is missing, where the kind stands in for it."
+  },
+  "kept_kind_note": "Note",
+  "@kept_kind_note": {
+    "description": "Kicker line of a kept note's card, which never carries an aya reference."
+  },
+  "kept_kind_root": "Root",
+  "@kept_kind_root": {
+    "description": "Kicker line of a kept root's card that carries neither letters nor an aya reference."
+  },
+  "kept_meta_days_ago": "{days} days ago",
+  "@kept_meta_days_ago": {
+    "description": "Right of a kept card's kicker: how long ago the item was kept, always two days or more.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "kept_meta_flagged": "flagged for {letters}",
+  "@kept_meta_flagged": {
+    "description": "Right of a kept card's kicker: the root whose constellation surfaced the aya the reader flagged.",
+    "placeholders": {
+      "letters": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_meta_kept_from": "kept from {reference}",
+  "@kept_meta_kept_from": {
+    "description": "Right of a kept root card's kicker: the aya the root was kept from, written surah:aya.",
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_meta_today": "today",
+  "@kept_meta_today": {
+    "description": "Right of a kept card's kicker: the item was kept today."
+  },
+  "kept_meta_yesterday": "yesterday",
+  "@kept_meta_yesterday": {
+    "description": "Right of a kept card's kicker: the item was kept yesterday."
+  },
+  "kept_no_match": "Nothing kept matches “{search}”.",
+  "@kept_no_match": {
+    "description": "Shown on the kept list in place of the cards when the reader's search matches nothing they kept.",
+    "placeholders": {
+      "search": {
+        "type": "String"
+      }
+    }
+  },
+  "kept_search_hint": "Search ayas, roots, your words",
+  "@kept_search_hint": {
+    "description": "Placeholder inside the kept list's search field, naming what the field searches."
+  },
+  "kept_title": "Kept",
+  "@kept_title": {
+    "description": "The kept list's own title, above its search field."
+  },
+  "markSetUnderstood": "Mark set understood",
+  "@markSetUnderstood": {
+    "description": "The reading screen's one action: it advances the reader through the Qur'an."
+  },
+  "nextSet": "Next set",
+  "@nextSet": {
+    "description": "What the same button says once every aya of the set is understood."
+  },
+  "notDownloaded": "Not downloaded",
+  "@notDownloaded": {
+    "description": "Why the play button is dark: the recitation for this set is not on the device."
+  },
+  "prayer_in_prayer": "IN PRAYER",
+  "@prayer_in_prayer": {
+    "description": "Kicker beside the dot at the top of the prayer screen, while nothing is following the reciter."
+  },
+  "prayer_following_your_voice": "FOLLOWING YOUR VOICE",
+  "@prayer_following_your_voice": {
+    "description": "The same kicker at the top of the prayer screen, but only once voice-follow is really running."
+  },
+  "prayer_exit": "Exit",
+  "@prayer_exit": {
+    "description": "The ghost button at the top right of the prayer screen, the one way out of the prayer."
+  },
+  "prayer_back_an_aya": "Back an aya",
+  "@prayer_back_an_aya": {
+    "description": "Screen-reader label for the narrow tap zone down the left edge of the prayer field, which steps back an aya."
+  },
+  "prayer_on_to_the_next_aya": "On to the next aya",
+  "@prayer_on_to_the_next_aya": {
+    "description": "Screen-reader label for the wide tap zone filling the rest of the prayer field, which moves on an aya."
+  },
+  "prayer_foot_taps_only": "Screen stays awake · tap to go on · left edge steps back",
+  "@prayer_foot_taps_only": {
+    "description": "The hint under the progress strip at the foot of the prayer screen, when the prayer answers taps only."
+  },
+  "prayer_foot_following": "Screen stays awake · tap any time · left edge steps back",
+  "@prayer_foot_following": {
+    "description": "The same hint at the foot of the prayer screen once voice-follow is running, where a tap is a correction rather than the only way on."
+  },
+  "progress_kicker": "UNDERSTOOD, NOT MERELY READ",
+  "@progress_kicker": {
+    "description": "The kicker over the title of the passage screen (1d), saying what the screen counts."
+  },
+  "progress_title": "Your passage",
+  "@progress_title": {
+    "description": "The title of the passage screen (1d): how far through the Qur'an the reader has come."
+  },
+  "progress_ayas": "{understood} of {total} ayas",
+  "@progress_ayas": {
+    "description": "The caption inside the juz ring on the passage screen (1d), under the percentage. Both counts arrive already grouped with thousands separators.",
+    "placeholders": {
+      "understood": {
+        "type": "String",
+        "example": "1,148"
+      },
+      "total": {
+        "type": "String",
+        "example": "6,236"
+      }
+    }
+  },
+  "progress_ringSemantics": "{percent} of the Qur'an understood, {ayas}. Juz {juz}, set {set}.",
+  "@progress_ringSemantics": {
+    "description": "The screen-reader label for the juz ring on the passage screen (1d). The ring's own figures are painted, so this is the only way they are ever spoken.",
+    "placeholders": {
+      "percent": {
+        "type": "String",
+        "example": "18.4%"
+      },
+      "ayas": {
+        "type": "String",
+        "example": "1,148 of 6,236 ayas"
+      },
+      "juz": {
+        "type": "int",
+        "example": "6"
+      },
+      "set": {
+        "type": "int",
+        "example": "42"
+      }
+    }
+  },
+  "progress_here": "JUZ {juz} · SET {set}",
+  "@progress_here": {
+    "description": "The line inside the juz ring on the passage screen (1d) naming where the reader stands.",
+    "placeholders": {
+      "juz": {
+        "type": "int",
+        "example": "6"
+      },
+      "set": {
+        "type": "int",
+        "example": "42"
+      }
+    }
+  },
+  "progress_setsUnderstood": "sets understood",
+  "@progress_setsUnderstood": {
+    "description": "The label under the first count tile on the passage screen (1d)."
+  },
+  "progress_prayersRecorded": "prayers recorded",
+  "@progress_prayersRecorded": {
+    "description": "The label under the second count tile on the passage screen (1d)."
+  },
+  "progress_whereYouAre": "WHERE YOU ARE",
+  "@progress_whereYouAre": {
+    "description": "The heading over the sūra rows on the passage screen (1d)."
+  },
+  "progress_allSuras": "All 114",
+  "@progress_allSuras": {
+    "description": "The button beside that heading on the passage screen (1d); it opens the index of all 114 sūras."
+  },
+  "progress_rootsKnown": "ROOTS YOU NOW KNOW",
+  "@progress_rootsKnown": {
+    "description": "The heading on the roots card at the foot of the passage screen (1d)."
+  },
+  "progress_rootsEmpty": "The roots of every set you understand are collected here.",
+  "@progress_rootsEmpty": {
+    "description": "What the roots card on the passage screen (1d) says while the reader has understood nothing yet."
+  },
+  "progress_rootsCoverage": "{roots} roots cover {percent}% of the words ahead of you.",
+  "@progress_rootsCoverage": {
+    "description": "What the roots card on the passage screen (1d) says once there are roots: what they are worth against the text still to come. The count arrives already grouped.",
+    "placeholders": {
+      "roots": {
+        "type": "String",
+        "example": "1,204"
+      },
+      "percent": {
+        "type": "int",
+        "example": "63"
+      }
+    }
+  },
+  "aboutBuiltOn": "BUILT ON",
+  "@aboutBuiltOn": {
+    "description": "The eyebrow over the heading of the sources screen, reached from the drawer's Sources row."
+  },
+  "aboutTitle": "Sources and licences",
+  "@aboutTitle": {
+    "description": "The heading of the sources screen, under the BUILT ON eyebrow."
+  },
+  "aboutThisApp": "This app",
+  "@aboutThisApp": {
+    "description": "The kicker on the first card of the sources screen, the one carrying Wird's own terms."
+  },
+  "aboutCopied": "Copied {url}",
+  "@aboutCopied": {
+    "description": "The snack bar shown on the sources screen once a source's address has been tapped and copied to the clipboard.",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "aboutProvidesMorphology": "Roots, word forms and morphology",
+  "@aboutProvidesMorphology": {
+    "description": "The kicker on the Quranic Arabic Corpus card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesText": "The Qurʼanic text",
+  "@aboutProvidesText": {
+    "description": "The kicker on the Tanzil Project card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesGloss": "Word-by-word gloss and transliteration",
+  "@aboutProvidesGloss": {
+    "description": "The kicker on the Quran Foundation card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesDesign": "Colour, space and type",
+  "@aboutProvidesDesign": {
+    "description": "The kicker on the Nocturne card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesArabicFace": "The Arabic face",
+  "@aboutProvidesArabicFace": {
+    "description": "The kicker on the Scheherazade New card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesLatinFace": "The Latin face",
+  "@aboutProvidesLatinFace": {
+    "description": "The kicker on the Inter card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesTimings": "Per-word recitation timings",
+  "@aboutProvidesTimings": {
+    "description": "The kicker on the quran-align card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesRecitation": "Recitation",
+  "@aboutProvidesRecitation": {
+    "description": "The kicker on the al-Ḥuṣarī recitation card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutProvidesVoice": "Following your voice in prayer",
+  "@aboutProvidesVoice": {
+    "description": "The kicker on the Quran-Lab recogniser card of the sources screen: what of the app would be missing without it."
+  },
+  "deepdive_aya_kicker": "{surah} · aya {number}",
+  "@deepdive_aya_kicker": {
+    "description": "The deep dive's aya pane kicker, drawn uppercased over the printed aya — the head of the screen in the three-pane layout. The surah name comes from the corpus and is not translated.",
+    "placeholders": {
+      "surah": {
+        "type": "String"
+      },
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "deepdive_back": "Back",
+  "@deepdive_back": {
+    "description": "Screen-reader label on the deep dive's back arrow, at the head of its first column."
+  },
+  "deepdive_form": "form {form}",
+  "@deepdive_form": {
+    "description": "Caption under a constellation node when the corpus glossed no occurrence of that form, so only its morphological form number is known. Shown inside the drawn constellation.",
+    "placeholders": {
+      "form": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_keep": "Keep this aya",
+  "@deepdive_keep": {
+    "description": "The deep dive's one action button, before the aya has been kept."
+  },
+  "deepdive_kept": "Kept · tap to undo",
+  "@deepdive_kept": {
+    "description": "What the same deep dive button says once the aya is kept: it stays live and carries its own undo."
+  },
+  "deepdive_kicker": "DEEP DIVE · {ref}",
+  "@deepdive_kicker": {
+    "description": "The kicker beside the back arrow at the top of the deep dive when its three panes are stacked into one column. {ref} is a surah:aya reference.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_occurrences": "{translit} · {count} occurrences",
+  "@deepdive_occurrences": {
+    "description": "Beside the root's Arabic spelling in the deep dive's centre pane: how the root is transliterated and how many times it occurs in the Qur'an.",
+    "placeholders": {
+      "translit": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deepdive_root_heading": "ROOT CONSTELLATION",
+  "@deepdive_root_heading": {
+    "description": "Heading over the root's spelling in the deep dive's centre pane, above the constellation or the list of its family."
+  },
+  "deepdive_star": "{form} · open {ref}",
+  "@deepdive_star": {
+    "description": "Screen-reader label on one node of the drawn constellation, which behaves as a button opening the aya it names. The nodes are painted onto a canvas, so this label is the whole screen-reader surface of the drawing.",
+    "placeholders": {
+      "form": {
+        "type": "String"
+      },
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_this_aya": "THIS AYA · {ref}",
+  "@deepdive_this_aya": {
+    "description": "Caption under the one constellation node that marks the form the reader has open, drawn inside the constellation.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_unknown": "The corpus carries no aya {ref} with a root spelled {letters}.",
+  "@deepdive_unknown": {
+    "description": "Shown in place of the whole deep dive when the corpus holds no such aya, or the aya holds no such root.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      },
+      "letters": {
+        "type": "String"
+      }
+    }
+  },
+  "deepdive_view_constellation": "Constellation",
+  "@deepdive_view_constellation": {
+    "description": "The drawing, as the deep dive's segmented control names it — offered only where the centre pane is wide enough to draw it."
+  },
+  "deepdive_view_list": "List",
+  "@deepdive_view_list": {
+    "description": "The root's family read as a list, the other option of the deep dive's segmented control."
+  },
+  "dashboard_setWaiting": "SET {number} · WAITING",
+  "@dashboard_setWaiting": {
+    "description": "Kicker over the waiting set on home, above its title. The number is how far along the walk the reader has come.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboard_ayaCount": "{count, plural, =1{1 aya} other{{count} ayas}}",
+  "@dashboard_ayaCount": {
+    "description": "How long the waiting set is, on the line under its Arabic name on home. Joined to the prayer count by a middle dot.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboard_prayerCount": "{count, plural, =0{no prayer on it yet} =1{prayed once} =2{prayed twice} other{prayed {count} times}}",
+  "@dashboard_prayerCount": {
+    "description": "How often the waiting set has been prayed, on the same line on home as the aya count.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboard_praySet": "Pray this set",
+  "@dashboard_praySet": {
+    "description": "Home's primary button: it opens the prayer on the waiting set."
+  },
+  "dashboard_readFirst": "Read it first",
+  "@dashboard_readFirst": {
+    "description": "Home's second button, under the prayer one: it opens the reading screen on the waiting set."
+  },
+  "dashboard_allUnderstood": "Every aya is understood.",
+  "@dashboard_allUnderstood": {
+    "description": "What home says in place of a waiting set once the reader has finished the whole walk."
+  },
+  "dashboard_allUnderstoodWhy": "There is nothing left to serve. The index opens any sūra again.",
+  "@dashboard_allUnderstoodWhy": {
+    "description": "The line under that on home, telling the finished reader where they can still go."
+  },
+  "dashboard_whereToGo": "WHERE TO GO",
+  "@dashboard_whereToGo": {
+    "description": "Kicker over the list of destinations at the bottom of home."
+  },
+  "dashboard_doorIndex": "Sūra index",
+  "@dashboard_doorIndex": {
+    "description": "Home's destination row for the sūra index."
+  },
+  "dashboard_doorIndexWhy": "Open any aya you want",
+  "@dashboard_doorIndexWhy": {
+    "description": "The subtitle under the sūra index row on home."
+  },
+  "dashboard_doorProgress": "Your passage",
+  "@dashboard_doorProgress": {
+    "description": "Home's destination row for the progress screen."
+  },
+  "dashboard_doorProgressWhy": "How much you have understood",
+  "@dashboard_doorProgressWhy": {
+    "description": "The subtitle under the progress row on home."
+  },
+  "dashboard_doorKept": "Kept",
+  "@dashboard_doorKept": {
+    "description": "Home's destination row for the ayas and roots the reader saved."
+  },
+  "dashboard_doorKeptWhy": "The ayas and roots you saved",
+  "@dashboard_doorKeptWhy": {
+    "description": "The subtitle under the kept row on home."
+  },
+  "report_title": "Report something",
+  "@report_title": {
+    "description": "The heading of the report screen, where a reader says what went wrong, what is missing, or what could be better."
+  },
+  "report_one_way": "This goes one way. It reaches whoever keeps Wird running, and nothing comes back — there is no inbox here to check.",
+  "@report_one_way": {
+    "description": "Caption under the report screen's heading, saying that no answer comes back."
+  },
+  "report_kind_heading": "WHAT KIND",
+  "@report_kind_heading": {
+    "description": "Section heading on the report screen, over the bug / request / improvement chooser."
+  },
+  "report_kind_bug": "Bug",
+  "@report_kind_bug": {
+    "description": "First option of the kind chooser on the report screen: something is broken."
+  },
+  "report_kind_request": "Request",
+  "@report_kind_request": {
+    "description": "Second option of the kind chooser on the report screen: something is missing."
+  },
+  "report_kind_improvement": "Improvement",
+  "@report_kind_improvement": {
+    "description": "Third option of the kind chooser on the report screen: something could be better."
+  },
+  "report_words_heading": "IN YOUR OWN WORDS",
+  "@report_words_heading": {
+    "description": "Section heading on the report screen, over the field the reader writes the report in."
+  },
+  "report_words_hint": "What happened, or what is missing.",
+  "@report_words_hint": {
+    "description": "Placeholder shown inside the empty report field on the report screen."
+  },
+  "report_chars_left": "{remaining} characters left of {max}. The server takes no more than that.",
+  "@report_chars_left": {
+    "description": "Caption under the report field, shown only once the reader is within a paragraph of the length the server accepts.",
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "report_context_heading": "SENT WITH IT",
+  "@report_context_heading": {
+    "description": "Section heading on the report screen, over the gathered build, platform, screen and corpus version printed as they will be sent."
+  },
+  "report_context_only": "Gathered so you do not have to type it. Nothing else travels: not what you were reading, not what you have kept, not your progress.",
+  "@report_context_only": {
+    "description": "Caption under the gathered context on the report screen, saying what does not leave the phone."
+  },
+  "report_context_loading": "Reading this build…",
+  "@report_context_loading": {
+    "description": "Stands in for the gathered context on the report screen while the corpus is still being asked for its version."
+  },
+  "report_send": "Send it",
+  "@report_send": {
+    "description": "The report screen's one button: it queues the report and returns."
+  },
+  "report_queued_heading": "QUEUED",
+  "@report_queued_heading": {
+    "description": "Section heading the report screen shows in place of the form once a report has been queued."
+  },
+  "report_queued_body": "It is written down on this phone and goes out with the next sync, even if you are offline now.",
+  "@report_queued_body": {
+    "description": "What the report screen says after a send: the report is written locally and flushes with the next sync."
+  },
+  "report_write_another": "Write another",
+  "@report_write_another": {
+    "description": "Button on the report screen after a send, which empties the form for a second report."
+  },
+  "study_backToTheWalk": "Back to the walk",
+  "@study_backToTheWalk": {
+    "description": "Reading screen header, shown only while the reader is visiting an aya they asked for: it puts them back on the walk's next set."
+  },
+  "study_constellation": "Constellation",
+  "@study_constellation": {
+    "description": "Reading screen, the unfolded root panel: opens the deep dive on this aya and this root."
+  },
+  "study_everyAyaUnderstood": "Every aya in this set is understood",
+  "@study_everyAyaUnderstood": {
+    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set is still open."
+  },
+  "study_goTo": "Go to…",
+  "@study_goTo": {
+    "description": "Reading screen footer, the middle control: it opens the sūra index, which answers with any aya of the Qur'an."
+  },
+  "study_goToAnyAya": "Go to any sūra or aya",
+  "@study_goToAnyAya": {
+    "description": "Screen-reader label for the reading screen footer's middle control, whose visible face says only \"Go to…\"."
+  },
+  "study_kinOpensItsAya": "A kin opens the aya it is first met in.",
+  "@study_kinOpensItsAya": {
+    "description": "Reading screen, the unfolded root panel: what pressing one of the kin tags above it does."
+  },
+  "study_noAyaUnderstoodYet": "No aya marked understood yet",
+  "@study_noAyaUnderstoodYet": {
+    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set has been marked."
+  },
+  "study_noRecitation": "No recitation for this set",
+  "@study_noRecitation": {
+    "description": "Reading screen transport: why the play button is dark when the corpus ships no recitation for these ayas at all, as against notDownloaded, which is one that could still arrive."
+  },
+  "study_noRootInSet": "No word in this set carries a root.",
+  "@study_noRootInSet": {
+    "description": "Reading screen, in place of the root panel's contents when not one word of the set on screen bears a root."
+  },
+  "study_nothingLeftToServe": "Every aya is understood. There is nothing left to serve.",
+  "@study_nothingLeftToServe": {
+    "description": "The whole of the reading screen once the reader has marked every aya of the Qur'an understood and the walk has no set left to hand them."
+  },
+  "study_numbersAnd": "{first} and {last}",
+  "@study_numbersAnd": {
+    "description": "How the last of a list of aya numbers is joined to the ones before it, inside the sentences under the reading screen's progress rule.",
+    "placeholders": {
+      "first": {
+        "example": "1, 2"
+      },
+      "last": {
+        "example": "3"
+      }
+    }
+  },
+  "study_previousSet": "Previous set",
+  "@study_previousSet": {
+    "description": "Reading screen footer, the up arrow: it steps to the set before this one. Also its screen-reader label, which the aya numbers are appended to."
+  },
+  "study_prayThisSet": "Pray this set",
+  "@study_prayThisSet": {
+    "description": "Reading screen header, the act the reading is for: it opens the prayer screen on this set."
+  },
+  "study_progressSplit": "Aya {done} marked understood · aya {open} open",
+  "@study_progressSplit": {
+    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when some ayas of the set are marked and some are still open.",
+    "placeholders": {
+      "done": {
+        "example": "1 and 2"
+      },
+      "open": {
+        "example": "3"
+      }
+    }
+  },
+  "study_revelationKicker": "Revelation {order} · {place}",
+  "@study_revelationKicker": {
+    "description": "Reading screen, the kicker in the unfolded header when the reader is in the order of revelation: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.",
+    "placeholders": {
+      "order": {
+        "example": "1"
+      },
+      "place": {
+        "example": "Makkah"
+      }
+    }
+  },
+  "study_surahKicker": "Sūra {surah} · {place}",
+  "@study_surahKicker": {
+    "description": "Reading screen, the kicker in the unfolded header when the reader is in the written order: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.",
+    "placeholders": {
+      "surah": {
+        "example": "96"
+      },
+      "place": {
+        "example": "Makkah"
+      }
+    }
+  },
+  "study_visiting": "Visiting",
+  "@study_visiting": {
+    "description": "Reading screen, the kicker before the set's title: the reader asked for this aya rather than being handed it by the walk."
+  },
+  "root_openAya": "Open {ref}",
+  "@root_openAya": {
+    "description": "Screen-reader label on an aya reference in a root's family — the panel under screen 1a's aya, screen 3a's spine and screen 1c's constellation all draw it.",
+    "placeholders": {
+      "ref": {
+        "type": "String",
+        "example": "2:153"
+      }
+    }
+  },
+  "root_thisAya": "THIS AYA",
+  "@root_thisAya": {
+    "description": "Mark on the one row of a root's spine whose form the aya on screen in front of the reader spells."
+  },
+  "root_weightWithForm": "Form {form} · {occurrences}×",
+  "@root_weightWithForm": {
+    "description": "The second line of every row of a root's spine: which shape the form is and how often it is read.",
+    "placeholders": {
+      "form": {
+        "type": "String",
+        "example": "I"
+      },
+      "occurrences": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_previousForm": "Previous",
+  "@root_previousForm": {
+    "description": "Screen-reader label on the left chevron under the root dial on screens 3a and 1c, which turns the ring back one form."
+  },
+  "root_nextForm": "Next",
+  "@root_nextForm": {
+    "description": "Screen-reader label on the right chevron under the root dial on screens 3a and 1c, which turns the ring on one form."
+  },
+  "root_dialPosition": "{index} of {count} · swipe the ring",
+  "@root_dialPosition": {
+    "description": "The line between the two chevrons under the root dial: where on the ring the reader stands, and the gesture that moves it.",
+    "placeholders": {
+      "index": {
+        "type": "int",
+        "example": "3"
+      },
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "root_kicker": "Root",
+  "@root_kicker": {
+    "description": "The kicker across the top of screen 3a, the root read on its dial."
+  },
+  "root_kickerSpine": "Root spine",
+  "@root_kickerSpine": {
+    "description": "The kicker across the top of screen 2b, the same root read as a spine with the dial taken away."
+  },
+  "root_unknownRoot": "The corpus carries no root spelled {letters}.",
+  "@root_unknownRoot": {
+    "description": "Drawn in the middle of screens 3a and 2b when the letters asked for name no root in the bundled corpus.",
+    "placeholders": {
+      "letters": {
+        "type": "String",
+        "example": "عقل"
+      }
+    }
+  },
+  "root_kinHeading": "Its kin in the Qur'an",
+  "@root_kinHeading": {
+    "description": "Heading over the spine of derivatives on screens 3a and 2b."
+  },
+  "root_kinFormsAndOccurrences": "{forms} forms · {occurrences} occurrences",
+  "@root_kinFormsAndOccurrences": {
+    "description": "Beside the kin heading on screen 3a: how many forms the root has and how often they are read in all.",
+    "placeholders": {
+      "forms": {
+        "type": "int",
+        "example": "5"
+      },
+      "occurrences": {
+        "type": "int",
+        "example": "49"
+      }
+    }
+  },
+  "root_formCount": "{forms} forms",
+  "@root_formCount": {
+    "description": "Beside the kin heading on screen 2b, which gives the count of forms and not the occurrences.",
+    "placeholders": {
+      "forms": {
+        "type": "int",
+        "example": "38"
+      }
+    }
+  },
+  "root_cardWeight": "{occurrences}× IN THE QUR’AN",
+  "@root_cardWeight": {
+    "description": "The kicker inside screen 3a's detail card for a form the corpus assigns no shape to.",
+    "placeholders": {
+      "occurrences": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_cardWeightWithForm": "FORM {form} · {occurrences}×",
+  "@root_cardWeightWithForm": {
+    "description": "The kicker inside screen 3a's detail card: the shape of the form on the dial and how often it is read.",
+    "placeholders": {
+      "form": {
+        "type": "String",
+        "example": "I"
+      },
+      "occurrences": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_readTheAya": "Read the aya",
+  "@root_readTheAya": {
+    "description": "The left button in screen 3a's detail card, which answers the reading screen with the aya the form is first met in."
+  },
+  "root_keepThisRoot": "Keep this root",
+  "@root_keepThisRoot": {
+    "description": "The right button in screen 3a's detail card while the root is not on the kept list."
+  },
+  "root_keptTapToUndo": "Kept · tap to undo",
+  "@root_keptTapToUndo": {
+    "description": "What that same button in screen 3a's detail card says once the root is kept."
+  },
+  "root_back": "Back",
+  "@root_back": {
+    "description": "Screen-reader label on the chevron at the top left of screens 3a and 2b."
+  },
+  "root_keep": "Keep",
+  "@root_keep": {
+    "description": "Screen-reader label on the bookmark at the top right of screens 3a and 2b while the root is not kept."
+  },
+  "root_keptTapToUndoLabel": "Kept, tap to undo",
+  "@root_keptTapToUndoLabel": {
+    "description": "Screen-reader label on that same bookmark once the root is kept; it presses the same handler, so it says the press undoes."
+  },
+  "root_coreSense": "Core sense",
+  "@root_coreSense": {
+    "description": "Heading over the sentence saying what a root means, on screens 3a, 2b, 1a's root panel and 1c."
+  },
+  "root_senseRefused": "The senses are Wird's own and they are written one root at a time. None has been written for this root yet. When one is, it reaches this phone without waiting for a new version of the app.",
+  "@root_senseRefused": {
+    "description": "Drawn under the core sense heading for a root the fetched pack of senses carries none for, so the absence reads as work not yet done and not as a missing section. Its old wording claimed the sense had been refused because the root's own words in the Qur'an did not bear one out, which was the corpus-derivation standard the served drafts were not written to (ADR 0010)."
+  },
+  "root_senseNotFetched": "The senses are not part of the download. They are fetched, so a sense can be corrected without a new version of the app — and this phone has not fetched any yet. Settings carries the button.",
+  "@root_senseNotFetched": {
+    "description": "The other half of root_senseRefused, drawn under the core sense heading when this device has never fetched a pack of senses at all. One string for both states told a reader who has never had a signal that nobody had written a sense, on every root in the corpus."
+  },
+  "root_senseByApp": "This app's own reading{borne}",
+  "@root_senseByApp": {
+    "description": "Under the core sense on screens 3a, 2b and 1c: whose reading the sentence above is, where it is the app's own. Ends in root_senseBorne, or in nothing.",
+    "placeholders": {
+      "borne": {
+        "type": "String",
+        "example": ", borne out by 11 of the root's own words"
+      }
+    }
+  },
+  "root_senseBySource": "{source}'s reading{borne}",
+  "@root_senseBySource": {
+    "description": "The same line where the sense does come from a named work. Ends in root_senseBorne, or in nothing.",
+    "placeholders": {
+      "source": {
+        "type": "String",
+        "example": "Al-Rāzī"
+      },
+      "borne": {
+        "type": "String",
+        "example": ", borne out by 11 of the root's own words"
+      }
+    }
+  },
+  "root_senseBorne": ", borne out by {words} of the root's own words",
+  "@root_senseBorne": {
+    "description": "The tail of that same line, naming how many of the root's own words the sense was read from. Tapping the line raises them.",
+    "placeholders": {
+      "words": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_whoseReading": "Whose reading this is",
+  "@root_whoseReading": {
+    "description": "Heading in the sheet of evidence behind a core sense, over the paragraph saying why the sense is kept."
+  },
+  "root_wordsReadFrom": "The words it was read from",
+  "@root_wordsReadFrom": {
+    "description": "Heading in that same sheet, over the root's own words the sense rests on."
+  },
+  "root_wordCount": "{words} words",
+  "@root_wordCount": {
+    "description": "Beside that heading in the sheet of evidence: how many words the sense was read from.",
+    "placeholders": {
+      "words": {
+        "type": "int",
+        "example": "11"
+      }
+    }
+  },
+  "root_formTag": "FORM {form}",
+  "@root_formTag": {
+    "description": "Under a word's gloss in the sheet of evidence, giving the shape that word is in.",
+    "placeholders": {
+      "form": {
+        "type": "String",
+        "example": "I"
+      }
+    }
+  },
+  "root_tafsir": "Tafsir",
+  "@root_tafsir": {
+    "description": "Heading over the tafsir section where it is drawn with no aya named."
+  },
+  "root_tafsirAt": "Tafsir · {ref}",
+  "@root_tafsirAt": {
+    "description": "Heading over the tafsir section on screens 3a and 1c, naming the aya the commentary would be fetched for.",
+    "placeholders": {
+      "ref": {
+        "type": "String",
+        "example": "2:153"
+      }
+    }
+  },
+  "root_tafsirPending": "Tafsir is fetched per aya. Nothing is downloaded yet, so nothing is attributed here.",
+  "@root_tafsirPending": {
+    "description": "Under the tafsir heading and the works it will quote, saying plainly that it quotes none of them on this build."
+  },
+  "root_irab": "Iʿrāb",
+  "@root_irab": {
+    "description": "Heading over the parsing of one word on screens 3a, 2b and 1c."
+  },
+  "root_irabAsReadAt": "as read at {where}",
+  "@root_irabAsReadAt": {
+    "description": "Beside the iʿrāb heading, naming the one occurrence being parsed — case and mood are the verse's, not the form's.",
+    "placeholders": {
+      "where": {
+        "type": "String",
+        "example": "2:153"
+      }
+    }
+  },
+  "root_noParsing": "The corpus carries no parsing for this word.",
+  "@root_noParsing": {
+    "description": "Drawn under the iʿrāb heading where the corpus has no segments for the word, rather than leaving a gap that reads as an oversight."
+  },
+  "root_irabProvenance": "Provenance: {work}; the role names are written for Wird",
+  "@root_irabProvenance": {
+    "description": "The last line of the iʿrāb section on screens 3a, 2b and 1c. {work} is the upstream corpus named and linked verbatim, which is what its licence asks for; the sentence around it is Wird's own.",
+    "placeholders": {
+      "work": {
+        "type": "String",
+        "example": "Quranic Arabic Corpus 0.4, corpus.quran.com"
+      }
+    }
+  },
+  "root_spineWeight": "{translit} · {occurrences} in {suras} sūras",
+  "@root_spineWeight": {
+    "description": "Beside the root's letters at the top of screen 2b: how it is read aloud, how often it occurs, and across how many sūras.",
+    "placeholders": {
+      "translit": {
+        "type": "String",
+        "example": "ṣ-b-r"
+      },
+      "occurrences": {
+        "type": "int",
+        "example": "103"
+      },
+      "suras": {
+        "type": "int",
+        "example": "45"
+      }
+    }
+  },
+  "root_sourcesHeading": "Sources",
+  "@root_sourcesHeading": {
+    "description": "Heading over the provenance line at the foot of screen 2b."
+  },
+  "root_provenance": "Provenance: {sources}",
+  "@root_provenance": {
+    "description": "The provenance line under that heading. {sources} is the corpus the row itself names, carried verbatim from the data.",
+    "placeholders": {
+      "sources": {
+        "type": "String",
+        "example": "Quranic Arabic Corpus 0.4"
+      }
+    }
+  },
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "The heading at the top of the settings screen."
+  },
+  "settingsReading": "READING",
+  "@settingsReading": {
+    "description": "Section heading on the settings screen, over the word display and the reading order."
+  },
+  "settingsWordGloss": "Gloss",
+  "@settingsWordGloss": {
+    "description": "First option of the settings screen's word-display segmented control: print the meaning under each Arabic word."
+  },
+  "settingsWordTranslit": "Translit",
+  "@settingsWordTranslit": {
+    "description": "Second option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control."
+  },
+  "settingsWordBoth": "Both",
+  "@settingsWordBoth": {
+    "description": "Third option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word."
+  },
+  "settingsWordNeither": "Neither",
+  "@settingsWordNeither": {
+    "description": "Fourth option of the settings screen's word-display segmented control: print nothing under the Arabic."
+  },
+  "settingsWordCaption": "What is printed under each Arabic word.",
+  "@settingsWordCaption": {
+    "description": "Caption under the word-display segmented control on the settings screen."
+  },
+  "settingsOrderChronological": "Chronological",
+  "@settingsOrderChronological": {
+    "description": "First option of the settings screen's reading-order segmented control: walk the suras in the order they were revealed."
+  },
+  "settingsOrderMushaf": "Muṣḥaf",
+  "@settingsOrderMushaf": {
+    "description": "Second option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is."
+  },
+  "settingsOrderCaption": "The chronology orders sūras; ayas inside a sūra stay in written order.",
+  "@settingsOrderCaption": {
+    "description": "Caption under the reading-order segmented control on the settings screen."
+  },
+  "settingsArabic": "Arabic",
+  "@settingsArabic": {
+    "description": "Label beside the Arabic-size slider on the settings screen."
+  },
+  "settingsArabicCaption": "How large the Arabic is set on the reading screen.",
+  "@settingsArabicCaption": {
+    "description": "Caption under the Arabic-size slider on the settings screen."
+  },
+  "settingsSetWidth": "HOW MUCH YOU TAKE AT ONCE",
+  "@settingsSetWidth": {
+    "description": "Section heading on the settings screen, over the control that widens or narrows the waiting set."
+  },
+  "settingsNoSetWaiting": "Every aya is understood, so no set is waiting.",
+  "@settingsNoSetWaiting": {
+    "description": "Stands in for the set-width control on the settings screen when the walk has no set left to propose."
+  },
+  "settingsSetAyas": "{count, plural, =1{1 aya} other{{count} ayas}}",
+  "@settingsSetAyas": {
+    "description": "How wide the waiting set is, printed between the narrow and widen buttons on the settings screen.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSetWidthCaption": "A wider set may cross an aya you already understood. It is recited with the rest and stays counted where it is.",
+  "@settingsSetWidthCaption": {
+    "description": "Caption under the set-width stepper on the settings screen."
+  },
+  "settingsRecitation": "RECITATION",
+  "@settingsRecitation": {
+    "description": "Section heading on the settings screen, over the name of who recites the audio."
+  },
+  "settingsNoReciter": "No reciter is named in this corpus.",
+  "@settingsNoReciter": {
+    "description": "Caption in the settings screen's recitation section when the bundled corpus names nobody."
+  },
+  "settingsRecitedBy": "Recited by {reciter}.",
+  "@settingsRecitedBy": {
+    "description": "Caption in the settings screen's recitation section naming who recites. The name is a person's, read out of the corpus, and is not translated.",
+    "placeholders": {
+      "reciter": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsMicrophone": "MICROPHONE",
+  "@settingsMicrophone": {
+    "description": "Section heading on the settings screen, over the microphone permission and the recogniser download."
+  },
+  "settingsAllowMicrophone": "Allow microphone",
+  "@settingsAllowMicrophone": {
+    "description": "The button on the settings screen that raises the system microphone prompt."
+  },
+  "settingsMicNotAsked": "Voice-follow needs the microphone. Off by default; never asked for during a prayer.",
+  "@settingsMicNotAsked": {
+    "description": "Caption under the Allow microphone button on the settings screen, before the reader has been asked."
+  },
+  "settingsMicGranted": "Microphone allowed.",
+  "@settingsMicGranted": {
+    "description": "Caption in the settings screen's microphone section once the reader has said yes."
+  },
+  "settingsMicDenied": "Microphone refused. The prayer screen advances on a tap, as it always does.",
+  "@settingsMicDenied": {
+    "description": "Caption in the settings screen's microphone section after the reader has said no."
+  },
+  "settingsMicUnavailable": "The microphone could not be reached last time it was asked for. Try again; the prayer screen advances on a tap either way.",
+  "@settingsMicUnavailable": {
+    "description": "Caption in the settings screen's microphone section after the request threw rather than being answered."
+  },
+  "settingsAccount": "ACCOUNT",
+  "@settingsAccount": {
+    "description": "Section heading at the foot of the settings screen, over the sign-in panel."
+  },
+  "settingsStopDownload": "Stop · {percent}%",
+  "@settingsStopDownload": {
+    "description": "The button that cancels the recogniser download in the settings screen's microphone section, carrying how much has arrived.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsCheckRecogniser": "Check the recogniser",
+  "@settingsCheckRecogniser": {
+    "description": "The button in the settings screen's microphone section that opens the screen where the reader recites and sees what was heard."
+  },
+  "settingsRemoveRecogniser": "Remove recogniser",
+  "@settingsRemoveRecogniser": {
+    "description": "The button in the settings screen's microphone section that deletes the downloaded recogniser, and so turns voice-follow off."
+  },
+  "settingsDownloadRecogniser": "Download recogniser · {megabytes} MB",
+  "@settingsDownloadRecogniser": {
+    "description": "The button in the settings screen's microphone section that fetches the recogniser, carrying its size in megabytes. Pressing it is what turns voice-follow on.",
+    "placeholders": {
+      "megabytes": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsRecogniserDownloading": "Downloading. Stopping keeps what has arrived, and pressing Download again carries on from there.",
+  "@settingsRecogniserDownloading": {
+    "description": "Caption under the recogniser button on the settings screen while the download is running."
+  },
+  "settingsRecogniserReady": "The prayer screen follows your voice. Your recitation is recognised on this phone and never leaves it.",
+  "@settingsRecogniserReady": {
+    "description": "Caption under the recogniser buttons on the settings screen once the model is on the phone."
+  },
+  "settingsRecogniserNotServed": "Wird is not serving the recogniser from here. Nothing on this phone changes that, so the button will not bring it either — voice-follow waits until it is published again.",
+  "@settingsRecogniserNotServed": {
+    "description": "Caption under the recogniser button on the settings screen after the host answered that it has no model to give."
+  },
+  "settingsRecogniserInterrupted": "The download stopped before it finished. What arrived is still on the phone, and pressing Download again carries on from there.",
+  "@settingsRecogniserInterrupted": {
+    "description": "Caption under the recogniser button on the settings screen after the download was cut off part way."
+  },
+  "settingsRecogniserPartial": "A stopped download is still on the phone. Downloading again carries on from where it stopped.",
+  "@settingsRecogniserPartial": {
+    "description": "Caption under the recogniser button on the settings screen when part of the model is already on disk from an earlier attempt."
+  },
+  "settingsRecogniserAbsent": "A Qur'an recogniser that runs on the phone, so nothing you recite is sent anywhere. Downloading it is what turns voice-follow on; the prayer screen advances on a tap until you do, and after you remove it.",
+  "@settingsRecogniserAbsent": {
+    "description": "Caption under the recogniser button on the settings screen on a phone that has never downloaded it."
+  },
+  "settingsSenses": "SENSES",
+  "@settingsSenses": {
+    "description": "Section heading on the settings screen over the senses panel."
+  },
+  "settingsDownloadSenses": "Download the senses",
+  "@settingsDownloadSenses": {
+    "description": "The button on the settings screen that fetches the senses the server is offering and writes them into this phone's database. No size on it: the button is pressed for a correction that is already on offer, and the number the reader would weigh is the one they cannot see."
+  },
+  "settingsSensesAskAgain": "Ask again",
+  "@settingsSensesAskAgain": {
+    "description": "The button that repeats the check on the settings screen after the server could not be reached. Without it the only retry is leaving the screen and coming back, which nothing on the screen says."
+  },
+  "settingsSensesAsking": "Asking the server whether there is anything new.",
+  "@settingsSensesAsking": {
+    "description": "Caption under the senses panel while the check is in flight."
+  },
+  "settingsSensesOnOffer": "There are senses on the server this phone does not have. They are a few hundred kilobytes; nothing downloads until you press.",
+  "@settingsSensesOnOffer": {
+    "description": "Caption under the senses panel when the server is offering a pack this device does not hold."
+  },
+  "settingsSensesInstalling": "Downloading. Nothing already on the phone is replaced until all of it has arrived.",
+  "@settingsSensesInstalling": {
+    "description": "Caption under the senses panel while the pack is being fetched and written."
+  },
+  "settingsSensesCurrent": "This phone has the senses the server is serving. A sense is Wird's own reading, written by a machine and read by no person; the line under each one says so, and the thumb beside it is how a wrong one gets corrected.",
+  "@settingsSensesCurrent": {
+    "description": "Caption under the senses panel when there is nothing on offer, which is also what a reader sees straight after a download. It restates the provenance rather than saying only that the phone is up to date, because this screen is the one place the whole pack is talked about."
+  },
+  "settingsSensesUnreachable": "The server did not answer, so whether there are new senses is unknown. Every sense already on the phone is still here, and the app reads with no network.",
+  "@settingsSensesUnreachable": {
+    "description": "Caption under the senses panel when the check or the download failed to reach the server. It says \"did not answer\" rather than \"could not be reached\", which is settingsMicUnavailable's wording: the two captions are drawn on the same screen and a test looking for one found both."
+  },
+  "settingsSensesNotThisCorpus": "The senses that arrived name no root this copy of the Qur'an records, so none of them could ever be read. Nothing was changed on the phone.",
+  "@settingsSensesNotThisCorpus": {
+    "description": "Caption under the senses panel when the pack was refused because it and the bundled corpus disagree about what a root is called. The install rolled back, so the reader still has whatever they had."
+  },
+  "settingsVoiceCheckTitle": "Can this phone hear you?",
+  "@settingsVoiceCheckTitle": {
+    "description": "The app bar title of the recogniser check screen, opened from the settings screen."
+  },
+  "settingsVoiceCheckSet": "the set: {words}…",
+  "@settingsVoiceCheckSet": {
+    "description": "On the recogniser check screen, the opening Arabic words of the set the prayer would be following.",
+    "placeholders": {
+      "words": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsVoiceCheckOpening": "Starting the recogniser…",
+  "@settingsVoiceCheckOpening": {
+    "description": "What the recogniser check screen says while the model is being loaded."
+  },
+  "settingsVoiceCheckListening": "Recite, and the words you say should appear below.",
+  "@settingsVoiceCheckListening": {
+    "description": "What the recogniser check screen says once the microphone is open."
+  },
+  "settingsVoiceCheckNoModel": "The recogniser did not start. The download may be incomplete, or this phone may not be able to load it. Voice-follow stays off and the prayer screen answers your tap, as it always has.",
+  "@settingsVoiceCheckNoModel": {
+    "description": "What the recogniser check screen says when the model would not open."
+  },
+  "settingsVoiceCheckNoMicrophone": "The microphone was refused, so there is nothing to hear.",
+  "@settingsVoiceCheckNoMicrophone": {
+    "description": "What the recogniser check screen says when the microphone was refused."
+  },
+  "settingsVoiceCheckCursor": "the prayer would be on word {word} of {total}, after {moves} moves",
+  "@settingsVoiceCheckCursor": {
+    "description": "On the recogniser check screen, where the matcher would have put a prayer on the set.",
+    "placeholders": {
+      "word": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "moves": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVoiceCheckAudio": "{seconds}s of voice, slowest answer {millis}ms",
+  "@settingsVoiceCheckAudio": {
+    "description": "The last line of the recogniser check screen: how much voice reached the model, and how slow its slowest answer was.",
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      },
+      "millis": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVoiceCheckTooLittle": "heard too little to place",
+  "@settingsVoiceCheckTooLittle": {
+    "description": "On the recogniser check screen, why the prayer would not have moved: not enough was heard to match anything."
+  },
+  "settingsVoiceCheckBelow": "best word {word} fits {score}%, needs {needed}%",
+  "@settingsVoiceCheckBelow": {
+    "description": "On the recogniser check screen, why the prayer would not have moved: the best place in the set is below the threshold.",
+    "placeholders": {
+      "word": {
+        "type": "int"
+      },
+      "score": {
+        "type": "int"
+      },
+      "needed": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVoiceCheckAmbiguous": "word {word} at {score}% but somewhere else fits {rival}% — the set says this twice",
+  "@settingsVoiceCheckAmbiguous": {
+    "description": "On the recogniser check screen, why the prayer would not have moved: two places in the set fit about equally well.",
+    "placeholders": {
+      "word": {
+        "type": "int"
+      },
+      "score": {
+        "type": "int"
+      },
+      "rival": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVoiceCheckPlaced": "word {word} at {score}%",
+  "@settingsVoiceCheckPlaced": {
+    "description": "On the recogniser check screen, where the matcher placed the reciter and how well it fitted.",
+    "placeholders": {
+      "word": {
+        "type": "int"
+      },
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSignedInAs": "Signed in as {subject}",
+  "@settingsSignedInAs": {
+    "description": "Who the phone is signed in as, in the settings screen's account panel. The subject comes from the identity server and is not translated.",
+    "placeholders": {
+      "subject": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSignOut": "Sign out",
+  "@settingsSignOut": {
+    "description": "The button in the settings screen's account panel that forgets the tokens."
+  },
+  "settingsSignOutCaption": "Signing out stops the sync. Everything you have read, kept and marked stays on this phone.",
+  "@settingsSignOutCaption": {
+    "description": "Caption under the Sign out button in the settings screen's account panel."
+  },
+  "settingsSignedOutCaption": "Wird works signed out. Signing in carries what you mark and keep to your other devices.",
+  "@settingsSignedOutCaption": {
+    "description": "Caption over the Sign in button in the settings screen's account panel."
+  },
+  "settingsSignIn": "Sign in",
+  "@settingsSignIn": {
+    "description": "The button in the settings screen's account panel that opens the identity server in the phone's own browser."
+  },
+  "settingsFinishInBrowser": "Finish signing in in your browser. This phone is waiting for it to send you back.",
+  "@settingsFinishInBrowser": {
+    "description": "Caption in the settings screen's account panel while a sign-in is waiting on the browser."
+  },
+  "settingsCancelSignIn": "Cancel",
+  "@settingsCancelSignIn": {
+    "description": "The button in the settings screen's account panel that drops a sign-in the browser never came back from."
+  },
+  "settingsNoBrowser": "no browser here would open the sign-in address",
+  "@settingsNoBrowser": {
+    "description": "The trouble line in the settings screen's account panel when no browser on the device would take the sign-in address."
+  },
+  "settingsSignInUnreachable": "The sign-in server could not be reached. Nothing changed.",
+  "@settingsSignInUnreachable": {
+    "description": "The trouble line in the settings screen's account panel when the identity server answered nothing."
+  },
+  "settingsParkedCount": "{count, plural, =1{1 change has not reached the server} other{{count} changes have not reached the server}}",
+  "@settingsParkedCount": {
+    "description": "Heading of the parked-writes panel on the settings screen: how many writes the server refused.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsParkedCaption": "They are still on this phone. Send them again, or let them go.",
+  "@settingsParkedCaption": {
+    "description": "Caption under the parked-writes heading on the settings screen."
+  },
+  "settingsSendAgain": "Send again",
+  "@settingsSendAgain": {
+    "description": "The button beside a parked write on the settings screen that puts it back on the next flush."
+  },
+  "settingsDiscard": "Discard",
+  "@settingsDiscard": {
+    "description": "The button beside a parked write on the settings screen that throws it away."
+  },
+  "settingsParkedUnderstood": "{count, plural, =1{An aya you marked understood} other{{count} ayas you marked understood}}",
+  "@settingsParkedUnderstood": {
+    "description": "A parked write named in the settings screen's parked-writes panel: ayas the reader marked understood.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsParkedKept": "Something you kept",
+  "@settingsParkedKept": {
+    "description": "A parked write named in the settings screen's parked-writes panel: an item the reader kept."
+  },
+  "settingsParkedUnkept": "Something you removed from Kept",
+  "@settingsParkedUnkept": {
+    "description": "A parked write named in the settings screen's parked-writes panel: an item the reader removed from the Kept screen, which the drawer still names in English."
+  },
+  "settingsParkedSetRead": "A set you read",
+  "@settingsParkedSetRead": {
+    "description": "A parked write named in the settings screen's parked-writes panel: a set the reader read."
+  },
+  "settingsParkedPrayer": "A prayer you counted",
+  "@settingsParkedPrayer": {
+    "description": "A parked write named in the settings screen's parked-writes panel: a prayer the reader counted."
+  },
+  "settingsParkedOrder": "Your reading order",
+  "@settingsParkedOrder": {
+    "description": "A parked write named in the settings screen's parked-writes panel: the reading order the reader chose."
+  },
+  "settingsParkedReport": "Something you reported",
+  "@settingsParkedReport": {
+    "description": "A parked write named in the settings screen's parked-writes panel: a bug or request the reader wrote."
+  },
+  "settingsParkedOther": "A change you made",
+  "@settingsParkedOther": {
+    "description": "A parked write named in the settings screen's parked-writes panel when its kind is one this build does not know."
+  },
+  "study_ayaTranslated": "Rashid Maash",
+  "@study_ayaTranslated": {
+    "description": "Who rendered the aya, shown under the translation."
+  },
+  "study_glossesStayEnglish": "The word meanings under each word are in English; no word-by-word rendering exists in your language.",
+  "@study_glossesStayEnglish": {
+    "description": "Said once above the reading, where the aya is translated but the per-word glosses are not."
+  },
+  "root_senseJudgeThanks": "Noted — thank you.",
+  "@root_senseJudgeThanks": {
+    "description": "Shown once a verdict has been recorded."
+  },
+  "root_senseJudgeGoodLabel": "This sense is right",
+  "@root_senseJudgeGoodLabel": {
+    "description": "Screen-reader label for the yes control."
+  },
+  "root_senseJudgeBadLabel": "This sense is wrong",
+  "@root_senseJudgeBadLabel": {
+    "description": "Screen-reader label for the no control."
+  }
+}

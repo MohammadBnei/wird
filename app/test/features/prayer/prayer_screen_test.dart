@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/data/sets.dart';
@@ -39,6 +40,10 @@ Future<void> pumpPrayer(
   await tester.pumpWidget(
     MaterialApp(
       theme: nocturneTheme(),
+      // The delegates the app has, so the prayer can read its strings the way
+      // it will in the app rather than throwing on a null AppLocalizations.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
@@ -63,6 +68,15 @@ Future<void> pumpPrayer(
 }
 
 /// The word the screen says is being recited: the one carrying the glow.
+/// Whether the screen is pointing at no word at all, which is how a prayer
+/// opens: the aya stands lit and the word inside it waits to be earned.
+bool noWordIsLit(WidgetTester tester) {
+  for (final text in tester.widgetList<Text>(find.byType(Text))) {
+    if (text.key is WordKey && text.style?.shadows != null) return false;
+  }
+  return true;
+}
+
 int litWord(WidgetTester tester) {
   for (final text in tester.widgetList<Text>(find.byType(Text))) {
     if (text.key is ValueKey<int> && text.style?.shadows != null) {
@@ -75,10 +89,17 @@ int litWord(WidgetTester tester) {
 double _opacityOf(WidgetTester tester, Finder finder) =>
     tester.widget<Text>(finder).style!.color!.a;
 
+/// A tap, and the turn it starts.
+///
+/// The aya arriving is animated now, and an AnimatedSwitcher holds both the
+/// one leaving and the one arriving while it runs — so a single pump finds
+/// the aya the reader has just left and reads it as the one they are on.
+/// Settling is not politeness here, it is the difference between asking what
+/// is on screen and asking what was.
 Future<void> tapOn(WidgetTester tester, Key zone, {int times = 1}) async {
   for (var i = 0; i < times; i++) {
     await tester.tap(find.byKey(zone));
-    await tester.pump();
+    await tester.pumpAndSettle();
   }
 }
 
@@ -119,7 +140,15 @@ void main() {
   testWidgets('a tap moves the prayer on by one word, so a reader with no '
       'microphone taps their way through a set word by word', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
-    expect(litWord(tester), 103001001);
+    // Nothing is singled out yet: a prayer opens on the first word of the set
+    // without anybody having said it, and pointing at a word nobody has
+    // recited is the screen claiming to know something.
+    expect(
+      noWordIsLit(tester),
+      isTrue,
+      reason: 'the screen pointed at a word before the reader had opened '
+          'their mouth',
+    );
     // 103:2 runs four words and 103:3 runs nine, so a tap that lands on the
     // first word of each of them is carrying an aya and not a word.
     await tapOn(tester, PrayerScreen.nextZone);
@@ -146,7 +175,7 @@ void main() {
       wakelock: Phone().keepAwake,
       // Where a voice being followed leaves the cursor: three words into
       // 103:3, which no tap of the reader's could have reached.
-      cursor: PrayerCursor(14, position: 7),
+      cursor: PrayerCursor(14, at: 7),
     );
     expect(litWord(tester), 103003003);
     await tapOn(tester, PrayerScreen.backZone);
@@ -171,10 +200,14 @@ void main() {
   testWidgets('the set recited a second time inside the same prayer runs off '
       'the end instead of starting again', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
-    expect(find.text('1st reading'), findsOneWidget);
+    expect(find.text("Al-'Asr · 1"), findsOneWidget);
     await tapOn(tester, PrayerScreen.nextZone, times: set.ayas.length);
     expect(litWord(tester), 103001001);
-    expect(find.text('2nd reading'), findsOneWidget);
+    // The footer says where in the sūra the reciter is, and on the second
+    // reading of the set that is the same sentence as on the first. A count of
+    // readings could only be derived from a cursor that never moved backward,
+    // and a reciter repeating an aya would have made it tick down.
+    expect(find.text("Al-'Asr · 1"), findsOneWidget);
   });
 
   testWidgets('the prayer stops to show a dialog, an error or a spinner, in '
@@ -217,9 +250,10 @@ void main() {
       set: await setOf(db, [2282]),
       wakelock: Phone().keepAwake,
     );
-    expect(find.text('1st reading'), findsOneWidget);
+    expect(find.text('Al-Baqarah · 282'), findsOneWidget);
     await tapOn(tester, PrayerScreen.nextZone);
-    expect(find.text('2nd reading'), findsOneWidget);
+    // One aya, so the only aya to go on to is itself.
+    expect(find.text('Al-Baqarah · 282'), findsOneWidget);
   });
 
   testWidgets('the prayer opens the microphone on a reader who never allowed '

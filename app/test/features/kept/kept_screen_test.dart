@@ -4,6 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/kept_repo.dart';
 import 'package:wird/features/kept/kept_screen.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 import 'package:wird/widgets/nocturne_segmented.dart';
 
@@ -30,6 +31,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // The screen reads its strings now, and without the delegates
+        // `AppLocalizations.of` is null under test but not in the app.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: KeptScreen(db: db),
       ),
     );

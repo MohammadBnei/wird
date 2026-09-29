@@ -331,10 +331,20 @@ func explained(gs []tested, stems []string) int {
 }
 
 // Check scores one candidate sense against one root.
+//
+// A nil root answers an empty Result rather than panicking. The guard used to sit
+// one line below the struct literal that dereferences it, which made it no guard
+// at all — and checkSenses is the caller with none of its own: its roots come
+// from Bucket, which holds only roots with a glossed root-bearing word, while the
+// known[] guard three lines earlier reads all 1,642. A build gate has to fail
+// with the diagnostic it was written to produce, not a stack trace.
 func Check(root *Root, sense string) Result {
+	if root == nil {
+		return Result{Sense: sense}
+	}
 	res := Result{Root: root.Letters, Sense: sense}
 	senseStems := tokens(sense)
-	if len(senseStems) == 0 || root == nil {
+	if len(senseStems) == 0 {
 		return res
 	}
 	used := map[string]bool{}

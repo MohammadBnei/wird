@@ -136,6 +136,52 @@ void main() {
 
   VoiceModel model() => VoiceModel(dir, origin: host.origin);
 
+  test('the recogniser this build replaced is left on the phone forever, '
+      'costing the reader disk they cannot see', () async {
+    // A phone that downloaded the 339 MB transducer keeps all four of its
+    // files after a build that asks for two differently-named ones: `ready`
+    // does not look at them, Settings never offers to remove them, and the
+    // reader has no way to find them. Downloading is the moment the directory
+    // is known to be this build's business, so it is where they go.
+    final stale = {
+      'encoder.int8.onnx': 4096,
+      'decoder.onnx': 512,
+      'joiner.int8.onnx': 256,
+      'joiner.int8.onnx.part': 128,
+    };
+    for (final MapEntry(key: name, value: size) in stale.entries) {
+      File('${dir.path}/$name').writeAsBytesSync(List.filled(size, 0));
+    }
+
+    final voice = model();
+    expect(await voice.fetch(), isNull);
+
+    expect(voice.ready, isTrue, reason: 'the sweep took the new model with it');
+    for (final name in stale.keys) {
+      expect(
+        File('${dir.path}/$name').existsSync(),
+        isFalse,
+        reason: '$name belongs to a recogniser this build cannot load',
+      );
+    }
+  });
+
+  test('a download interrupted mid-part is swept away as though it were an '
+      'older model, so the reader starts from nothing', () async {
+    // The sweep must not eat a resume. `.part` and `.etag` of a part this
+    // build does want are how a reader who lost signal on a train picks up
+    // where they stopped.
+    final held = File('${dir.path}/${voiceModelParts[0]}.part')
+      ..writeAsBytesSync(List.filled(100, 0));
+    File('${dir.path}/${voiceModelParts[0]}.etag').writeAsStringSync('"one"');
+
+    model().sweepUpAfterAnOlderModel();
+
+    expect(held.existsSync(), isTrue);
+    expect(held.lengthSync(), 100);
+    expect(File('${dir.path}/${voiceModelParts[0]}.etag').existsSync(), isTrue);
+  });
+
   test('the prayer never listens to half a model', () async {
     final voice = model();
     expect(voice.ready, isFalse);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'app.dart';
+import 'l10n/app_localizations.dart';
 import 'data/flush.dart';
 import 'data/sets.dart';
 import 'features/about/about_screen.dart';
@@ -197,6 +198,15 @@ Widget wirdApp(
     child: MaterialApp(
       title: 'Wird',
       theme: nocturneTheme(),
+      // The reader's own language, taken from the device rather than asked for.
+      //
+      // ponytail: no stored override. A reader's language is what their phone
+      // already says it is, and `display_prefs` is the wrong home for one — its
+      // writer replaces the whole row, so a column added there is reset by the
+      // next change of Arabic size. Add a preference the day somebody wants
+      // French on an English device, and give it its own row when they do.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       initialRoute: Routes.dashboard,
       onGenerateRoute: (settings) => screenRoute(settings, db),
     ),

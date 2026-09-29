@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -88,8 +89,106 @@ func (c *Corpus) Check(full bool) error {
 		lastStart[aid] = s.StartMS
 	}
 
+	errs = append(errs, c.checkIrab()...)
+	// All of the French or none of it. A reading that is French for a page and
+	// then English is worse than one that is honestly English throughout, and it
+	// is the failure a presence check cannot see: `language=fr` on the word gloss
+	// answers English and calls it english, so "the column is populated" proves
+	// nothing about what is in it. Counted rather than sampled.
+	if full {
+		var french int
+		for _, a := range c.Ayahs {
+			if a.TextFr != "" {
+				french++
+			}
+		}
+		if french != 0 && french != len(c.Ayahs) {
+			errs = append(errs, fmt.Errorf("%d of %d ayas carry a French translation, so a "+
+				"French reader would read some of the Qur'an in French and the rest in "+
+				"Arabic with an English gloss; ingest all of it or none of it",
+				french, len(c.Ayahs)))
+		}
+	}
+
 	errs = append(errs, c.checkSenses()...)
 	return errors.Join(errs...)
+}
+
+// checkIrab gates the parsing per SEGMENT.
+//
+// Per word it would be vacuous twice over. A word keeps the rows of its other
+// segments when one segment's tag is unmapped, so "every word carrying
+// morphology has iʿrāb rows" passes on a parsing with a hole in the middle of
+// it. And the word-count guard in Load (`n != 0 && n != pos`) lets `n == 0`
+// through, so an aya missing from the morphology file gets NULL morphology for
+// every word and no error at all — today closed only by luck, all 77,429 words
+// carrying morphology.
+//
+// So the count is taken from the JSON that ships in words.morphology, parsed
+// back here rather than trusted: the derived table and the provenance it was
+// derived from have to agree, or one of the two is lying to a reader.
+func (c *Corpus) checkIrab() []error {
+	var errs []error
+
+	roles := IrabRoles()
+	named := make(map[string]bool, len(roles))
+	for _, r := range roles {
+		named[r.Code] = true
+		if strings.TrimSpace(r.En) == "" || strings.TrimSpace(r.Fr) == "" {
+			errs = append(errs, fmt.Errorf("the role %q is named %q in English and %q in French; a "+
+				"parsing ships in both languages or neither, and an empty half reaches a reader as a "+
+				"blank where a word's role should be", r.Code, r.En, r.Fr))
+		}
+	}
+
+	rows := make(map[int64][]IrabRow, len(c.Words))
+	for _, s := range c.Irab {
+		rows[s.WordID] = append(rows[s.WordID], s)
+	}
+	// One unnamed code is the diagnosis; 128,219 of them is a wall of text.
+unnamed:
+	for _, s := range c.Irab {
+		for _, code := range append([]string{s.Code}, strings.Fields(s.Features)...) {
+			if !named[code] {
+				errs = append(errs, fmt.Errorf("word %d segment %d is coded %q, which the parsing "+
+					"vocabulary does not name, so that segment's role would be read as blank",
+					s.WordID, s.Position, code))
+				break unnamed
+			}
+		}
+	}
+
+	for _, w := range c.Words {
+		var segs []morphSegment
+		if w.Morphology != "" {
+			if err := json.Unmarshal([]byte(w.Morphology), &segs); err != nil {
+				errs = append(errs, fmt.Errorf("word %d: its morphology does not parse: %w", w.ID, err))
+				break
+			}
+		}
+		if len(segs) == 0 {
+			errs = append(errs, fmt.Errorf("word %d carries no morphology, so it has no parsing at "+
+				"all — an aya absent from the morphology file passes every other check here", w.ID))
+			break
+		}
+		if got := len(rows[w.ID]); got != len(segs) {
+			errs = append(errs, fmt.Errorf("word %d has %d segments and %d parsing rows; a word whose "+
+				"parsing is short of a segment shows a reader a role belonging to another one",
+				w.ID, len(segs), got))
+			break
+		}
+		place := make(map[int]bool, len(segs))
+		for _, s := range rows[w.ID] {
+			place[s.Position] = true
+		}
+		for i := range segs {
+			if !place[i+1] {
+				errs = append(errs, fmt.Errorf("word %d has no parsing for segment %d", w.ID, i+1))
+				break
+			}
+		}
+	}
+	return errs
 }
 
 // verseRef matches a verse citation in any shape a reference is written in. A

@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'auth.dart';
+import 'senses.dart';
 import 'sync.dart';
 
 /// The server this build carries the queue to. The define is how a debug run
@@ -22,11 +23,14 @@ const syncOrigin = String.fromEnvironment(
   defaultValue: 'https://wird.bnei.dev',
 );
 
-/// Who asks for a flush.
+/// Who asks for a flush, and for the senses.
 ///
 /// [syncNow] was built, certified and called by nothing: no understood aya, no
 /// kept note, no prayer and no report had ever left a phone, because a queue
-/// only moves when something calls it. This is the something.
+/// only moves when something calls it. This is the something. [installSenses]
+/// was one commit away from the same fate — a fetch reachable only from
+/// Settings is a fetch a reader who never opens Settings never makes, and the
+/// gate that catches the defect is satisfied by *a* caller.
 ///
 /// The moment is the app coming back to the foreground, and once at launch —
 /// which is the moment a phone that has spent the day in a pocket has a
@@ -38,10 +42,21 @@ const syncOrigin = String.fromEnvironment(
 /// awaits nothing and cannot be drawn over, so even the reader who leaves the
 /// app mid-prayer and comes back sees no sign of one.
 class Flusher with WidgetsBindingObserver {
-  Flusher(this.db, this.api, {this.gap = const Duration(minutes: 2)});
+  Flusher(
+    this.db,
+    this.api, {
+    this.gap = const Duration(minutes: 2),
+    this.over,
+  });
 
   final Database db;
   final SyncApi api;
+
+  /// The senses route, for a test to stand in for. Null in the app:
+  /// `senses.dart` builds its own Dio against [syncOrigin] with no token on
+  /// it, because that route asks for none — and it must not borrow [api]'s,
+  /// which carries one.
+  final Dio? over;
 
   /// The floor between two flushes. A phone is unlocked dozens of times an
   /// hour and each flush is a radio wake, a push and a pull.
@@ -53,6 +68,12 @@ class Flusher with WidgetsBindingObserver {
   final Duration gap;
 
   Future<SyncReport>? _running;
+
+  /// The senses fetch in flight, and when the last one was tried. Separate
+  /// from the queue's: they run on the same moment but one is kilobytes of the
+  /// reader's own writes and the other is most of a megabyte of content.
+  Future<void>? _fetchingSenses;
+  DateTime? _lastSenses;
   DateTime? _last;
 
   /// Watches for the foreground, and flushes once now: a launch is a return
@@ -69,10 +90,65 @@ class Flusher with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) _inTheBackground();
   }
 
-  /// A flush nobody is waiting for, which is every flush this class starts. A
-  /// throw must not become an unhandled error and take the app down over a
-  /// queue that a throw leaves exactly as it was.
-  void _inTheBackground() => unawaited(flush().catchError((Object _) => null));
+  /// A flush nobody is waiting for, which is every flush this class starts, and
+  /// beside it the senses. A throw must not become an unhandled error and take
+  /// the app down over a queue that a throw leaves exactly as it was.
+  ///
+  /// Two independent futures rather than one after the other: a device with
+  /// nobody signed in is answered 401 on every flush, and the senses are open
+  /// and owe that nothing.
+  void _inTheBackground() {
+    unawaited(flush().catchError((Object _) => null));
+    unawaited(theFirstSenses().catchError((Object _) => null));
+  }
+
+  /// The senses, once, for a phone that holds none.
+  ///
+  /// It draws nothing, and that is the whole reason it is allowed on this
+  /// moment. The argument above about the foreground being safe during prayer
+  /// holds for work that cannot be seen and for no other kind: a prompt here
+  /// would appear in front of someone praying. So there is no prompt, no
+  /// dialog and no route pushed — the reader learns a pack arrived by reading
+  /// a root.
+  ///
+  /// ponytail: the FIRST pack only, and a correction to a sense the reader
+  /// already has is Settings' business. ADR 0010 gives the reader the choice
+  /// of when bytes move, and this moment has nowhere to ask them. A phone
+  /// holding no senses is not that case, and since the corpus stopped
+  /// bundling them that is literally true: `root_notes` ships empty, so there
+  /// is nothing to replace and nothing to weigh, only an app missing the
+  /// content its own screens describe. The cost of this line is that a
+  /// correction reaches only a reader who opens Settings — close it by giving
+  /// the shell somewhere to show "senses waiting" that is not a dialog.
+  ///
+  /// ponytail: `sense_pack` is read here rather than asked of `senses.dart`.
+  /// [sensesOnOffer] answers what is offered and cannot say "this device holds
+  /// none", and one local query beats a second public door for the gate to
+  /// account for.
+  /// Guarded like [flush] and for the same two reasons, one of which is worse
+  /// here. Two `resumed` events inside one fetch window — routine on iOS, where
+  /// a control-centre pull and an app-switcher return both deliver one — would
+  /// start two 800 KB downloads and two delete-all-and-insert transactions over
+  /// one table. And a pack this corpus cannot use records no version, so
+  /// without a floor every single unlock would fetch the whole body again,
+  /// forever, on whatever connection the reader is paying for. A phone is
+  /// unlocked dozens of times an hour.
+  Future<void> theFirstSenses() async {
+    final running = _fetchingSenses;
+    if (running != null) return running;
+    final last = _lastSenses;
+    if (last != null && DateTime.now().difference(last) < gap) return;
+    if ((await db.query('sense_pack', limit: 1)).isNotEmpty) return;
+    _lastSenses = DateTime.now();
+    final run = _fetchTheFirstSenses();
+    _fetchingSenses = run;
+    return run.whenComplete(() => _fetchingSenses = null);
+  }
+
+  Future<void> _fetchTheFirstSenses() async {
+    if (await sensesOnOffer(db, over: over) == null) return;
+    await installSenses(db, over: over);
+  }
 
   /// One flush at a time, and not more often than [gap].
   ///

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/kept_repo.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import 'corpus.dart';
@@ -22,6 +23,10 @@ void main() {
   setUpAll(loadBundledFonts);
   setUp(() async {
     db = await testCorpus();
+    await seedSenses(db, {
+      patience: 'to bind oneself fast; to endure; to hold under load',
+      reason: 'to bind, to tie; to understand; to be of sound judgement',
+    });
     await ensureKeptTable(db);
     await db.delete('kept_items');
   });
@@ -38,6 +43,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // The delegates the app has: without them the screen reads a
+        // null AppLocalizations and throws under test but not in the app.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: DeepDiveScreen(
           db: db,
           ayahId: ayaOfPatience,
@@ -64,6 +73,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        // The delegates the app has: without them the screen reads a
+        // null AppLocalizations and throws under test but not in the app.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: DeepDiveScreen(
           db: db,
           // A family of five, so the ring is drawn rather than the spine a

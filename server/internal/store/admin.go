@@ -89,14 +89,19 @@ func (s *Store) Health(ctx context.Context) (Health, error) {
 // all came from the sweep. WrittenOn is a date, so there is no time of day to
 // hand back either.
 type Report struct {
-	ID            string    `json:"id"`
-	Kind          string    `json:"kind"`
-	Body          string    `json:"body"`
-	AppVersion    string    `json:"app_version"`
-	Platform      string    `json:"platform"`
-	Screen        string    `json:"screen"`
-	CorpusVersion int       `json:"corpus_version"`
-	WrittenOn     time.Time `json:"written_on"`
+	ID            string `json:"id"`
+	Kind          string `json:"kind"`
+	Body          string `json:"body"`
+	AppVersion    string `json:"app_version"`
+	Platform      string `json:"platform"`
+	Screen        string `json:"screen"`
+	CorpusVersion int    `json:"corpus_version"`
+	// Which pack of senses was on the phone. corpus_version cannot say it: the
+	// senses arrive over HTTP now, so two readers on one bundle can judge two
+	// different sentences. Empty is a device that did not say — every report
+	// written before the app learned to, and every report that is not a verdict.
+	SenseVersion string    `json:"sense_version"`
+	WrittenOn    time.Time `json:"written_on"`
 }
 
 // ReportPage is how many reports one list carries.
@@ -109,7 +114,7 @@ func (s *Store) Reports(ctx context.Context, limit int) ([]Report, error) {
 		limit = ReportPage
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
+		SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
 		  FROM reports ORDER BY written_on DESC, id LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
@@ -120,7 +125,7 @@ func (s *Store) Reports(ctx context.Context, limit int) ([]Report, error) {
 	for rows.Next() {
 		var r Report
 		if err := rows.Scan(&r.ID, &r.Kind, &r.Body, &r.AppVersion, &r.Platform,
-			&r.Screen, &r.CorpusVersion, &r.WrittenOn); err != nil {
+			&r.Screen, &r.CorpusVersion, &r.SenseVersion, &r.WrittenOn); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

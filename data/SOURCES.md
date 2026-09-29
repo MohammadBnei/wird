@@ -8,6 +8,12 @@ go run ./server/cmd/ingest                      # -suras 1,2,103,112 for a parti
 go run ./server/cmd/etl -in ./data/raw/ -out ./app/assets/corpus.db
 ```
 
+That command writes `corpus_version` 2, which is what the shipped asset carries:
+the number is the ETL's `-corpus-version` default so the documented rebuild
+cannot regress it, and the app asserts it in
+`app/test/features/report/report_screen_test.dart`. The API groups reports by
+it.
+
 ```
 data/raw/chapters.json                          surah metadata
 data/raw/verses/NNN.json                        one file per surah: ayas and their words
@@ -119,6 +125,82 @@ roots are decoded, because only roots are rendered. `roots.sources` carries the
 file's name; the corpus is named in full, with its copyright block, in
 `corpus_meta.notice`.
 
+### French reaches a reader one ayah at a time, and why
+
+**There is no French word-by-word gloss to be had.** `language=fr` on the verses
+endpoint answers **English**, with `language_name: "english"` in the payload while
+it does so. Measured 2026-09-27 against the repository's own parameters: `ur`
+returns Urdu, `id` returns Indonesian, `bn` returns Bengali, and `fr` and `ru`
+fall back silently. `fr` appears in `/resources/languages` because three
+*whole-ayah* French translations exist, not a word-by-word one, and
+`word_fields=transliteration` is not language-dependent under any parameter — it
+is `wal-ʿaṣri` for every language tested.
+
+That trap is worth naming because the obvious gate cannot see it: "the French
+column is populated" is true of 77,429 English strings sitting in it, and a build
+would have signed off on a French reader being shown `and do` as French.
+`Corpus.Check` therefore counts translations against ayas and refuses a corpus
+that is French for part of the Qurʼan and not the rest — a presence check would
+not have caught the thing that went wrong.
+
+**Which translation, and why it was a person's choice.** Three complete French
+translations are served: Hamidullah (31), Montada (136) and Rashid Maash (779).
+All three were measured complete — 6236 ayas, none empty — so nothing technical
+separated them and the owner chose **Rashid Maash, 779**. Changing it is a
+one-line change of id and a re-ingest, not a new investigation.
+
+**One modification, recorded because it is one.** quran.com wraps a translator's
+note as `<sup foot_note=203920>1</sup>` and the note's own text is in no field of
+the response, so the marker points at nothing a reader could open. The ETL strips
+it rather than rendering a stray digit mid-sentence. Nothing else about the text
+is touched.
+
+**What this does not change.** The QF Developer Terms position is the one this
+file already records for `words.gloss_en`: §3.1 forbids storing QF Content past a
+week except through Content Sync, `translations` is a listed Sync resource, and a
+shipped `corpus.db` is storage without end. Adding a translation puts more prose
+on that same unresolved term. It does not resolve it, and it is not a second
+question.
+
+### The parsing: the role names are written here, not copied
+
+`irab` and `irab_roles` are derived from the same file and are a different act
+from copying it. `irab` is one row per morphological segment — 128,219 of them —
+holding that segment's tag and its remaining feature codes exactly as upstream
+writes them. Nothing is authored there; it is `words.morphology` turned sideways
+so a screen can read one word's segments without parsing JSON on a phone.
+
+`irab_roles` is authored. It is 142 rows — 45 tags and 97 feature codes — each
+carrying an English and a French name for what the code means. **The file does
+not contain those names.** `AMD`, `AVR`, `EXL`, `INL`, `PREV`, `RSLT`, `EQ`,
+`SUR` and `RET` appear nowhere in
+`data/raw/quranic-corpus-morphology-0.4.txt`: its header is two copyright blocks
+and its body is codes. The glossary that explains them lives on
+corpus.quran.com's documentation pages, so:
+
+- the **English** half is a person reading that documentation against the forms
+  each code is actually attached to in the file — `INL` is named *Qur'anic
+  initials* because its 14 forms are حم, الم, الر and their kin; `SP:kaAn` is
+  named *of the kāna family* because its forms are كان, كانوا, كن, ليس;
+- the **French** half has no upstream at all. It is standard Arabic-grammar
+  French, and it is review work: nothing can check that `MOOD:JUS` is *mode
+  apocopé* rather than *mode jussif*.
+
+A translated vocabulary of Dukes's own annotation codes is a derivative of his
+annotation, so it travels under the same GPL row below as the morphology it is
+derived from, and `corpus_meta.notice` carries the notice for both.
+
+Two readings the ETL makes, recorded here for the same reason as the two above:
+
+- **The tag is the one part of speech; the `POS:` feature is dropped.** Measured
+  over all 128,219 segments the two never disagree, and 50,304 segments — the
+  prefixes and suffixes — carry no `POS:` feature at all. Shipping both would be
+  the same fact twice.
+- **The codes are namespaced under `POS:`, because the vocabulary collides with
+  itself otherwise.** The tag `P` is a preposition where the feature `P` is a
+  plural; the tag `ACC` is a particle where the feature is a case; the tag `IMPV`
+  is a prefixed lām where the feature is an aspect.
+
 ## Provenance and licence
 
 Every "reached how" below other than the morphology is an unauthenticated public
@@ -130,7 +212,10 @@ is given so the reading can be checked rather than believed.
 | `surahs` (incl. `revelation_order`) | `api.quran.com/api/v4/chapters` | [Quran Foundation Developer Terms](https://api-docs.quran.foundation/legal/developer-terms/) §2.2, §3.1 | **Yes, conditionally** — see *The one-week rule* |
 | `ayahs.text_uthmani`, `words.text_ar` | `api.quran.com/api/v4/verses/by_chapter`; the text is [Tanzil](https://tanzil.net/download/)'s, which quran.com credits | Tanzil: verbatim copies, attribution, a link to tanzil.net. Delivery is governed by the QF terms | **Yes** for the text, unmodified and attributed; the delivery path carries the QF conditions |
 | `words.gloss_en`, `words.translit` | same endpoint | QF terms treat it as QF Content; **no upstream author is named anywhere I could find** | **Could not determine** — conditionally yes under the QF terms, with an unnamed source underneath |
+| `ayah_translations` | `api.quran.com/api/v4/verses/by_chapter`, `translations=779` — Rashid Maash's French, arriving in the same response as the Arabic and keyed by verse | QF terms treat it as QF Content, and the translator is named where the word gloss's author is not | **Could not determine** — the same unresolved term as the row above, now carrying prose somebody is credited for |
 | `words.root_letters`, `words.form`, `words.morphology`, `roots` | [Quranic Arabic Corpus 0.4](https://corpus.quran.com/download/), the upstream file, placed by hand | GPL, verbatim copies only, attribution and a link; Tanzil underneath it | **Yes** — Wird is AGPL-3.0 and the notice ships in `corpus_meta.notice`; see above |
+| `irab` | the same file, one row per segment rather than one per word | as above — it is upstream's own tags and features, rearranged and not edited | **Yes**, under the same row above |
+| `irab_roles` | **written here.** A translation of the annotation vocabulary the file uses; the names themselves are documented only on [corpus.quran.com](https://corpus.quran.com/documentation/) | a derivative of Dukes's annotation, so the GPL row above governs it; the French has no upstream at all | **Yes** — see *The parsing* |
 | `word_segments` | [`cpfair/quran-align`](https://github.com/cpfair/quran-align), release `release-2016-11-24`, file `Husary_Muallim_128kbps.json` | **CC BY 4.0** — attribution, and nothing else | **Yes** — see *The word timings* |
 | `ayah_audio.rel_path` | derived from the sura and aya number; nothing is fetched to build it | not a licensable fact | **Yes** — it is a file name, not content |
 | the MP3s themselves | `everyayah.com/data/Husary_Muallim_128kbps/`, fetched by the device at playback | everyayah publishes no terms of any kind | **No, and Wird does not** — see *The recitation audio* |

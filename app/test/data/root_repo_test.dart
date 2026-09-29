@@ -67,42 +67,38 @@ void main() {
     expect(await rootReading(db, 'زززز'), isNull);
   });
 
-  test('a sense arrives with nothing saying whose reading it is or what it '
-      'rests on, so the screen cannot tell a claim from a quotation', () async {
+  test('the bundle ships a sense a correction can never reach', () async {
     final reading = (await rootReading(db, 'صبر'))!;
-    expect(reading.coreSense, isNotNull);
-    expect(reading.senseSource, 'Wird');
-    expect(reading.senseBasis, contains('Not quoted from any lexicon'));
-    // The words are split apart, not handed over as the one joined string
-    // the column stores them as.
-    expect(reading.senseEvidence.length, greaterThan(4));
-    expect(reading.senseEvidence.any((w) => w.contains('·')), isFalse);
-    // Every word it rests on is one of the root's own, so the screen can put
-    // the gloss the corpus carries beside it.
-    for (final word in reading.senseEvidence) {
-      expect(reading.spelled(word), isNotNull, reason: word);
-    }
-  });
-
-  test(
-    'a word the sense was read from carries a recitation mark inside it '
-    'that the family was stripped of, so its gloss cannot be found again',
-    () async {
-      final reading = (await rootReading(db, 'صبر'))!;
-      // صَبْرًۭا carries a small low meem between its last two letters.
-      final marked = reading.senseEvidence.firstWhere(
-        (w) => w.contains('\u06ed') && !w.endsWith('\u06ed'),
-      );
-      expect(reading.spelled(marked)?.gloss, isNotNull);
-    },
-  );
-
-  test('a root the bar refused ships a sense anyway, or ships the columns '
-      'that would attribute one', () async {
-    final reading = (await rootReading(db, 'جمع'))!;
+    // Not a gap. A sense is Wird's own sentence and the reader's thumb corrects
+    // it, so shipping it inside the binary put every correction behind a store
+    // release. The server owns them and senses.dart fetches them (ADR 0010).
     expect(reading.coreSense, isNull);
     expect(reading.senseSource, isNull);
     expect(reading.senseBasis, isNull);
+    expect(reading.senseEvidence, isEmpty);
+    // And the device says which of the two absences this is, because "nobody
+    // wrote a sense for this root" and "nothing has been downloaded" are
+    // different sentences to a reader.
+    expect(reading.sensesFetched, isFalse);
+  });
+
+  test('a fetched sense still carries the words it was read from, so the '
+      'screen can put the gloss beside each one', () async {
+    // It does not, and that is a real loss rather than an oversight. The
+    // bundled 523 each carried five to twelve evidence words; a served draft
+    // carries none, because it was not read off a word list. So senseEvidence
+    // is empty for every root a reader can reach, RootReading.spelled has
+    // nothing to match, and SenseEvidence draws no word list.
+    //
+    // This test pins the consequence rather than asserting the old behaviour,
+    // because the old behaviour is what is gone. The affordance comes back the
+    // day the served body grows an evidence field; until then, anything
+    // reading senseEvidence is reading an empty list.
+    //
+    // ponytail: RootReading.spelled and _evidenceWords are kept rather than
+    // deleted. Dead-code removal is its own commit in a later phase, and the
+    // evidence field is a live design question, not a decision already taken.
+    final reading = (await rootReading(db, 'صبر'))!;
     expect(reading.senseEvidence, isEmpty);
   });
 
@@ -112,7 +108,42 @@ void main() {
 
     final kept = await keptItems(db, kind: KeptKind.root);
     expect(kept.map((item) => item.rootLetters), ['\u0635\u0628\u0631']);
-    expect(await rootKept(db, '\u0635\u0628\u0631'), isTrue);
-    expect(await rootKept(db, '\u0639\u0642\u0644'), isFalse);
+    expect(await rootKept(db, '\u0635\u0628\u0631'), kept.single.id);
+    expect(await rootKept(db, '\u0639\u0642\u0644'), isNull);
+  });
+
+  test('an aya kept twice reaches the kept list as two entries, because only '
+      'the root path deduped', () async {
+    // The screen's own `_keptId` cannot answer this: it is read when the screen
+    // opens, so a row kept on screen 1e — or arriving from a sync — while the
+    // deep dive sits open is invisible to the button.
+    const aya = 112004;
+    Future<int> live() async => (await keptItems(db, kind: KeptKind.aya))
+        .where((item) => item.ayahId == aya)
+        .length;
+
+    expect(await keepAya(db, aya), await keepAya(db, aya));
+    expect(await live(), 1);
+    expect(await ayaKept(db, aya), isNotNull);
+  });
+
+  test('a root taken back off the list is still on it, because the undo '
+      'tombstoned one of the rows holding it there', () async {
+    // Two live rows for one root is reachable: the server keys kept_items on
+    // its id alone and kept_items_live is not unique, so two devices \u2014 one of
+    // them offline \u2014 each mint one. Undoing has to clear all of them.
+    const root = '\u062c\u0645\u0639';
+    Future<int> live() async => (await keptItems(db, kind: KeptKind.root))
+        .where((item) => item.rootLetters == root)
+        .length;
+
+    await keep(db, kind: KeptKind.root, rootLetters: root);
+    await keep(db, kind: KeptKind.root, rootLetters: root);
+    expect(await live(), 2);
+
+    await forgetRoot(db, root);
+
+    expect(await rootKept(db, root), isNull);
+    expect(await live(), 0);
   });
 }

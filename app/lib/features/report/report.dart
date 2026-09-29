@@ -84,3 +84,34 @@ Future<void> sendReport(
     'created_at': DateTime.now().toUtc().toIso8601String(),
   },
 );
+
+/// A reader's verdict on the sense drawn for one root.
+///
+/// The senses are written from lexicography and checked against the Qurʼan for
+/// contradiction, and neither of those can tell whether a sense is COMPLETE —
+/// ر ح م shipped without "womb" past a gate scoring six terms, and a reader
+/// found it in one sitting. So the reader is the reviewer, and this is how a
+/// verdict leaves the phone.
+///
+/// **This names the root, and [sendReport] above says what a reader was reading
+/// stays here.** The exception is narrow and it is the reader's own: they pressed
+/// a button about a root in front of them, which is them choosing to send it.
+/// Nothing else travels — not the aya they were in, not the word they tapped, not
+/// what they have understood. A judgement with no subject would be a number
+/// nobody could act on, which is the only reason the exception exists.
+///
+/// ponytail: `improvement` rather than a fourth [ReportKind], because the
+/// server's column constraint refuses an unknown word and a migration to carry
+/// one bit is not worth it. `corpus_version` in the context is what says WHICH
+/// sense was judged, so the body does not repeat it.
+Future<void> judgeSense(
+  Database db, {
+  required String root,
+  required bool good,
+  required Map<String, Object?> context,
+}) => sendReport(
+  db,
+  kind: ReportKind.improvement,
+  body: 'sense ${good ? 'good' : 'bad'}: $root',
+  context: context,
+);

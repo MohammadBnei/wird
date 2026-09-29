@@ -72,8 +72,8 @@ func TestAReportCannotCarryAReadersNotesProgressOrCorpus(t *testing.T) {
 	// Both tables a report passes through, because the inbox holds the same
 	// text for a sweep interval and a column added there is the same column.
 	for table, want := range map[string][]string{
-		"reports":      {"app_version", "body", "corpus_version", "id", "kind", "platform", "screen", "written_on"},
-		"report_inbox": {"app_version", "body", "corpus_version", "kind", "platform", "screen", "written_on"},
+		"reports":      {"app_version", "body", "corpus_version", "id", "kind", "platform", "screen", "sense_version", "written_on"},
+		"report_inbox": {"app_version", "body", "corpus_version", "kind", "platform", "screen", "sense_version", "written_on"},
 	} {
 		var columns []string
 		rows, err := pool.Query(t.Context(),
@@ -103,6 +103,81 @@ func TestAReportCannotCarryAReadersNotesProgressOrCorpus(t *testing.T) {
 
 	if n := count(t, pool, `SELECT count(*) FROM report_inbox`); n != 0 {
 		t.Fatalf("%d reports stored from a body that was refused", n)
+	}
+}
+
+// The failure: a verdict cannot name the sense it judged. corpus_version used
+// to say it, and the moment senses arrive over HTTP it cannot — two readers on
+// one bundle can judge two different sentences and both report the same number
+// (docs/adr/0010). So a report carries sense_version.
+//
+// And the failure adding that column reintroduces: the report column list is
+// written out four times between applyReport and sweepReportsSQL. A
+// sense_version written into the inbox and forgotten in the sweep's two SELECTs
+// or its INSERT is dropped on the way to the table an operator reads, with no
+// error anywhere — the same unattributable verdict, with an extra step. So this
+// follows the value all the way through the sweep rather than stopping at the
+// inbox.
+//
+// The last assertion is the other direction: a report that does not mention a
+// sense is not refused. Every device shipping today sends the old body, the
+// app half of this lands after the deploy, and a refusal is permanent.
+func TestAVerdictLosesTheSenseItJudgedBetweenTheInboxAndTheReports(t *testing.T) {
+	db, pool := testenv.Postgres(t)
+	user := reader(t, db, "sub-report-sense")
+
+	const version = "1-047d1760906cf3723679bc6dd351c0a7"
+	land(t, db, user, store.Op{ClientOpID: opID(925), Kind: "report_written", Body: json.RawMessage(
+		`{"kind":"improvement","body":"womb is not in this root's sense",` +
+			`"app_version":"1.4.0","platform":"android","screen":"root",` +
+			`"corpus_version":4,"sense_version":"` + version + `",` +
+			`"created_at":"2026-09-28T07:20:00Z"}`)})
+
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox WHERE sense_version = '`+version+`'`); n != 1 {
+		t.Fatalf("%d inbox rows name the sense that was judged, so the flush never wrote it", n)
+	}
+	sweep(t, db)
+	if n := count(t, pool, `SELECT count(*) FROM reports WHERE sense_version = '`+version+`'`); n != 1 {
+		t.Fatalf("%d reports name the sense that was judged: the sweep moved the report and dropped "+
+			"the one field that says which prose the reader was judging", n)
+	}
+
+	land(t, db, user, reportOp(opID(926), "bug", "the audio stops at the end of the set"))
+	sweep(t, db)
+	if n := count(t, pool, `SELECT count(*) FROM reports WHERE sense_version = ''`); n != 1 {
+		t.Fatalf("%d reports carry no sense version: a device that does not send one must still "+
+			"be heard, and a refusal is permanent", n)
+	}
+}
+
+// The failure, measured on the first cut of this change: an 82-character
+// sense_version came back "refused" with "it does not fit what is already
+// recorded", and a refusal is permanent — so the report parked forever and the
+// words the reader wrote were lost to say which prose they meant.
+//
+// sense_version is entirely the device's to set. A CHECK violation is SQLSTATE
+// 23514 and classify turns every 23* into OpRefused, so a column constraint on
+// this field is a way for one bad string to throw away the only part of a
+// report that matters. It is capped in Go instead: a version too long to be
+// one of ours is the device not having said, which is what an absent one
+// already means.
+func TestAVersionTooLongToBeOursThrowsAwayTheReadersWords(t *testing.T) {
+	db, pool := testenv.Postgres(t)
+	user := reader(t, db, "sub-report-longversion")
+
+	long := strings.Repeat("f", 200)
+	land(t, db, user, store.Op{ClientOpID: opID(927), Kind: "report_written", Body: json.RawMessage(
+		`{"kind":"improvement","body":"this sense reads backwards",` +
+			`"app_version":"1.4.0","platform":"android","screen":"root",` +
+			`"corpus_version":4,"sense_version":"` + long + `",` +
+			`"created_at":"2026-09-28T07:20:00Z"}`)})
+
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox WHERE body = 'this sense reads backwards'`); n != 1 {
+		t.Fatalf("%d inbox rows carry the report: an over-long version the device chose "+
+			"refused the whole thing, and a refusal is permanent", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM report_inbox WHERE sense_version = ''`); n != 1 {
+		t.Fatalf("%d rows read the over-long version as 'the device did not say'", n)
 	}
 }
 
@@ -353,8 +428,8 @@ func clockOf(t *testing.T, op store.Op) time.Time {
 func rewrittenIn(order string) string {
 	return `
 WITH gone AS (DELETE FROM reports RETURNING *)
-INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, written_on)
-SELECT id, kind, body, app_version, platform, screen, corpus_version, written_on
+INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)
+SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
   FROM gone ORDER BY ` + order
 }
 

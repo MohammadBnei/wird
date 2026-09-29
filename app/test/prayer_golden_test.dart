@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/theme/nocturne.dart';
@@ -30,13 +31,15 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: nocturneTheme(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: PrayerScreen(
           db: db,
           set: await alAsr(db),
           // The design's own frame: the third word of 103:2 being recited,
           // the second time through the set. Nothing on this screen animates,
           // and the cursor is pinned, so the frame is the same every run.
-          cursor: PrayerCursor(14, position: 17),
+          cursor: PrayerCursor(14, at: 3),
           wakelock: _heldOpen,
         ),
       ),

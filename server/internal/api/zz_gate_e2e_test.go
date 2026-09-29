@@ -15,6 +15,16 @@ import (
 // write needs goes away — so a "failed" verdict is the server's own answer to
 // a real fault rather than a string a fake was told to say.
 func TestGateEndToEndWithTheRealClient(t *testing.T) {
+	// This test shells out to `fvm flutter test`. Without a Flutter toolchain it
+	// does not fail its subject, it fails to find a binary — and it took the
+	// whole release with it, so .github/workflows/release.yml exempted it by
+	// name with a comment saying the better fix lives here. This is that fix:
+	// skipping loudly on every machine without fvm beats one hand-maintained
+	// exemption in one pipeline file.
+	if _, err := exec.LookPath("fvm"); err != nil {
+		t.Skip("no fvm on PATH, so the real Dart client cannot be driven: " + err.Error())
+	}
+
 	h := newHarness(t)
 	server := httptest.NewServer(h.routes)
 	defer server.Close()
