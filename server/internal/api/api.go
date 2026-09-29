@@ -55,6 +55,11 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	} else {
 		mux.HandleFunc(modelsPath, modelsNotConfigured)
 	}
+	// The senses, fetched by a phone that has never signed in. Open for the
+	// same reason as the recogniser, and registered here rather than on v1 so
+	// ServeMux specificity keeps it out of the middleware. senses.go carries
+	// the whole of why.
+	mux.HandleFunc(sensesPath, h.senses)
 	mux.Handle("/", a.Middleware(v1))
 	return mux
 }

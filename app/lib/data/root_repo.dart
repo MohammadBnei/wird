@@ -53,8 +53,10 @@ typedef IrabSegment = ({int position, String role, List<String> features});
 /// The sūra and aya an id names, written the way a reference is written.
 String ayahRef(int ayahId) => '${ayahId ~/ 1000}:${ayahId % 1000}';
 
-/// Everything the bundled corpus knows about one root. Tafsir is fetched rather
-/// than bundled, so it is not here.
+/// Everything this device knows about one root. The family and the parsing come
+/// from the bundled corpus; the sense comes from whatever pack was last fetched
+/// into it (`senses.dart`). Lexicon prose and tafsir are fetched per root and
+/// are not here.
 class RootReading {
   const RootReading({
     required this.letters,
@@ -67,6 +69,7 @@ class RootReading {
     required this.senseSource,
     required this.senseBasis,
     required this.senseEvidence,
+    required this.sensesFetched,
     required this.derivatives,
     required this.irab,
   });
@@ -98,6 +101,14 @@ class RootReading {
   /// which is grouped by morphological shape, so the order is information
   /// and not to be sorted away.
   final List<String> senseEvidence;
+
+  /// Whether this device has ever fetched a pack of senses. A root with no
+  /// [coreSense] is two different states and they need two different
+  /// sentences: nobody wrote a sense for this root, or nothing has been
+  /// downloaded yet. Without this the screen can only say the first, and on a
+  /// phone that has never had a signal it would be saying it 1,642 times and
+  /// wrongly.
+  final bool sensesFetched;
 
   final List<Derivative> derivatives;
 
@@ -205,6 +216,10 @@ Future<RootReading?> rootReading(Database db, String letters) async {
   );
   final sense = core.isEmpty ? const <String, Object?>{} : core.first;
 
+  // One row or none, and only its presence is read. The version itself belongs
+  // to the report a thumb sends, not to the screen.
+  final pack = await db.query('sense_pack', columns: ['version'], limit: 1);
+
   return RootReading(
     letters: letters,
     display: root['display']! as String,
@@ -216,6 +231,7 @@ Future<RootReading?> rootReading(Database db, String letters) async {
     senseSource: sense['source'] as String?,
     senseBasis: sense['basis'] as String?,
     senseEvidence: _evidenceWords(sense['evidence'] as String?),
+    sensesFetched: pack.isNotEmpty,
     derivatives: derivatives,
     irab: await _irab(db, [for (final d in derivatives) d.wordId]),
   );
