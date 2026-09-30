@@ -125,12 +125,11 @@ func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {
 	if unchanged(w, r, packVersion(pack.Version)) {
 		return
 	}
-	// The French travels with the English. Nothing in app/lib reads note_fr
-	// today (docs/journal/walkthrough.md:391 records it as a shipped column no screen
-	// draws), so this is ~330 KB per fetch into a column no reader can yet
-	// reach — said out loud here rather than shipped silently. It stays because
-	// both halves of this wave are built against one contract and a locale read
-	// is a smaller change than a second pack version.
+	// The French travels with the English, ~330 KB per fetch. It was sent
+	// before anything drew it, on the argument that a locale read was a smaller
+	// change than a second pack version — and the app now reads it: a reader in
+	// French is served the French sense, and falls back to the English for a
+	// root whose French never arrived.
 	httpx.JSON(w, http.StatusOK, sensesBody{
 		Version:     packVersion(pack.Version),
 		Source:      sensesSource,

@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:wird/data/audio.dart';
-import 'package:wird/data/db.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/root/family.dart';
 import 'package:wird/data/sets.dart';
@@ -144,7 +143,7 @@ void main() {
     ];
     final opened = rooted.first;
     final tapped = rooted.firstWhere((w) => w.root != opened.root);
-    final detail = (await rootDetail(db, tapped.root!))!;
+    final detail = (await rootReading(db, tapped.root!, readIn: const Locale('en')))!;
 
     await openTheSet(tester);
     // The tap is what opens a root; the press is what sounds the word.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/db.dart';
+import '../../data/root_repo.dart';
 import '../../data/kept_repo.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
@@ -37,19 +38,29 @@ class _KeptScreenState extends State<KeptScreen> {
   /// reaching for the context again.
   AppLocalizations get _l => AppLocalizations.of(context)!;
 
+  /// The language the cached readings were read in. A switch has to clear
+  /// them: [_kin] is keyed by root and would otherwise hand back the sentence
+  /// fetched in the language the reader has just left.
+  Locale? _readIn;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (locale == _readIn) return;
+    _readIn = locale;
+    _kin.clear();
     _load();
   }
 
   Future<void> _load() async {
+    final locale = _readIn ?? Localizations.localeOf(context);
     final items = await keptItems(widget.db, kind: _kind, search: _search);
     for (final item in items) {
       final letters = item.rootLetters;
       if (item.kind != KeptKind.root || letters == null) continue;
       if (_kin.containsKey(letters)) continue;
-      final detail = await rootDetail(widget.db, letters);
+      final detail = await rootReading(widget.db, letters, readIn: locale);
       if (detail != null) _kin[letters] = detail;
     }
     if (mounted) setState(() => _items = items);

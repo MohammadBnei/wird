@@ -76,7 +76,7 @@ On first launch the app copies the bundled **corpus** into a file called `wird.d
   }
 ```
 
-[db.dart:23-31](../../app/lib/data/db.dart#L23-L31)
+[db.dart:23-31](../../app/lib/data/db.dart#L24-L32)
 
 So after anyone rebuilds `app/assets/corpus.db`, your machine keeps running the old copy. Reads of any new column then throw. Delete the installed file and launch again:
 

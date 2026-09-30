@@ -48,7 +48,7 @@ typedef _SensePack = ({
 Future<String?> sensesOnOffer(Database db, {Dio? over}) async {
   final answer = await (over ?? _wird()).head<void>(_route);
   final offered = _tag(answer.headers.value('etag'));
-  final installed = await _installedVersion(db);
+  final installed = await installedSenseVersion(db);
   if (offered == null || offered.isEmpty) {
     // Something between here and the server dropped the header — nginx does it
     // when it gzips, Apache rewrites it. For a device that already holds a pack
@@ -111,10 +111,11 @@ Future<String?> _writePack(DatabaseExecutor txn, _SensePack pack) async {
     rows.insert('root_notes', {
       'root_letters': sense.root,
       'note': sense.en,
-      // ponytail: stored, and drawn by nothing. `note_fr` is a shipped column
-      // no screen reads (docs/journal/walkthrough.md:391); the locale read is its own
-      // change, and dropping the French on the floor here would mean fetching
-      // it again the day that lands.
+      // Drawn now: a root read in French is read from this column, and the
+      // English beside it is what a root whose French never arrived falls back
+      // to. It was stored before anything read it, on the argument that
+      // dropping it here would mean fetching it again the day the locale read
+      // landed — which is the day this comment was rewritten.
       'note_fr': sense.fr,
       'source': pack.source,
       'basis': pack.basis,
@@ -166,7 +167,14 @@ class _SensesNotForThisCorpus implements Exception {
       'them could ever be read; the pack was not installed';
 }
 
-Future<String?> _installedVersion(DatabaseExecutor db) async {
+/// Which pack of senses this device holds, or null when it holds none.
+///
+/// Null is the whole point and not an inconvenience: [sensesOnOffer] reads it
+/// to tell a device that has never fetched from one that is up to date, and a
+/// report reads it to say which prose a thumb was judging. A caller that wants
+/// a string for the wire writes `?? ''` at its own call site — collapsing it
+/// here would tell [sensesOnOffer] that every phone already has a pack.
+Future<String?> installedSenseVersion(DatabaseExecutor db) async {
   final rows = await db.query('sense_pack', columns: ['version'], limit: 1);
   return rows.isEmpty ? null : rows.first['version'] as String?;
 }

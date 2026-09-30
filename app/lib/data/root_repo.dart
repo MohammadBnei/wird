@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'kept_repo.dart';
@@ -85,8 +86,10 @@ class RootReading {
   final int surahCount;
   final List<String> sources;
 
-  /// Wird's own reading of what the root means, or null where the root's own
-  /// words did not bear one out. 523 of 1,642 roots carry it.
+  /// Wird's own reading of what the root means, in the language the screen
+  /// asked for, or null where the pack this device fetched has no row for the
+  /// root. The bundle carries none: [sensesFetched] is what tells "nobody has
+  /// written one" apart from "this phone has fetched none".
   final String? coreSense;
 
   /// Whose reading [coreSense] is. It is the difference between a claim and a
@@ -144,7 +147,15 @@ class RootReading {
   }
 }
 
-Future<RootReading?> rootReading(Database db, String letters) async {
+/// [readIn] is the locale the screen asking is drawn in — `Localizations.localeOf`,
+/// which IS the locale MaterialApp resolved, not a second reading of the same
+/// two steps. Required rather than defaulted: a sense drawn in the wrong
+/// language is silent, and a caller that forgets should not compile.
+Future<RootReading?> rootReading(
+  Database db,
+  String letters, {
+  required Locale readIn,
+}) async {
   final rows = await db.query(
     'roots',
     where: 'letters = ?',
@@ -209,12 +220,16 @@ Future<RootReading?> rootReading(Database db, String letters) async {
 
   final core = await db.query(
     'root_notes',
-    columns: ['note', 'source', 'basis', 'evidence'],
+    columns: ['note', 'note_fr', 'source', 'basis', 'evidence'],
     where: 'root_letters = ? AND word_id IS NULL',
     whereArgs: [letters],
     limit: 1,
   );
   final sense = core.isEmpty ? const <String, Object?>{} : core.first;
+
+  // ponytail: two locales, so one column and a fallback. A third language is a
+  // third column and a code-to-column map here, not a different shape.
+  final french = readIn.languageCode == 'fr';
 
   // One row or none, and only its presence is read. The version itself belongs
   // to the report a thumb sends, not to the screen.
@@ -227,7 +242,12 @@ Future<RootReading?> rootReading(Database db, String letters) async {
     occurrences: root['quran_occurrences']! as int,
     surahCount: surahs.length,
     sources: (jsonDecode(root['sources']! as String) as List).cast<String>(),
-    coreSense: sense['note'] as String?,
+    // Falling back to the English rather than drawing nothing: a root whose
+    // French never arrived is still worth reading, and the "no sense written"
+    // notice would be a lie about it.
+    coreSense:
+        (french ? sense['note_fr'] as String? : null) ??
+        sense['note'] as String?,
     senseSource: sense['source'] as String?,
     senseBasis: sense['basis'] as String?,
     senseEvidence: _evidenceWords(sense['evidence'] as String?),
@@ -249,9 +269,10 @@ Future<List<IrabSegment>> wordIrab(Database db, int wordId) async =>
 /// join can spread. The vocabulary is 142 rows, so it is read whole and looked
 /// up here.
 ///
-/// ponytail: `role_en`, because there is one locale. The row beside it is
-/// `role_fr`, and choosing between them is the locale layer's job, not this
-/// function's.
+/// ponytail: `role_en`, and a French reader reads these role names in English
+/// beside a French sense. `role_fr` is the row next to it and the locale now
+/// reaches this file, so the fix is one column expression — held back only
+/// because nobody has read the French role names to say they are right.
 Future<Map<int, List<IrabSegment>>> _irab(
   Database db,
   List<int> wordIds,

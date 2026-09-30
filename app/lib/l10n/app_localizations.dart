@@ -155,13 +155,13 @@ abstract class AppLocalizations {
   /// **'Ayas'**
   String get kept_filter_ayas;
 
-  /// Third option of the segmented filter above the kept list's cards.
+  /// Second option of the segmented filter above the kept list's cards.
   ///
   /// In en, this message translates to:
   /// **'Notes'**
   String get kept_filter_notes;
 
-  /// Second option of the segmented filter above the kept list's cards.
+  /// First option of the segmented filter above the kept list's cards.
   ///
   /// In en, this message translates to:
   /// **'Roots'**
@@ -641,13 +641,13 @@ abstract class AppLocalizations {
   /// **'Bug'**
   String get report_kind_bug;
 
-  /// Second option of the kind chooser on the report screen: something is missing.
+  /// First option of the kind chooser on the report screen: something is missing.
   ///
   /// In en, this message translates to:
   /// **'Request'**
   String get report_kind_request;
 
-  /// Third option of the kind chooser on the report screen: something could be better.
+  /// Second option of the kind chooser on the report screen: something could be better.
   ///
   /// In en, this message translates to:
   /// **'Improvement'**
@@ -1061,6 +1061,30 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settingsTitle;
 
+  /// Section heading on the settings screen, over the choice of which language the app and the root senses are read in.
+  ///
+  /// In en, this message translates to:
+  /// **'LANGUAGE'**
+  String get settingsLanguage;
+
+  /// First option of the settings screen's language control. Written in English in both locales, because a language is named in itself.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get settingsLanguageEnglish;
+
+  /// Second option of the settings screen's language control. Written in French in both locales, because a language is named in itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Français'**
+  String get settingsLanguageFrench;
+
+  /// Caption under the settings screen's language control, saying what the choice reaches and why a sense can still come up in English.
+  ///
+  /// In en, this message translates to:
+  /// **'The screen and a root\'s sense. The senses were written in English and translated, so a root whose French never arrived is read in English.'**
+  String get settingsLanguageCaption;
+
   /// Section heading on the settings screen, over the word display and the reading order.
   ///
   /// In en, this message translates to:
@@ -1073,13 +1097,13 @@ abstract class AppLocalizations {
   /// **'Gloss'**
   String get settingsWordGloss;
 
-  /// Second option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control.
+  /// First option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control.
   ///
   /// In en, this message translates to:
   /// **'Translit'**
   String get settingsWordTranslit;
 
-  /// Third option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word.
+  /// Second option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word.
   ///
   /// In en, this message translates to:
   /// **'Both'**
@@ -1103,7 +1127,7 @@ abstract class AppLocalizations {
   /// **'Chronological'**
   String get settingsOrderChronological;
 
-  /// Second option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is.
+  /// First option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is.
   ///
   /// In en, this message translates to:
   /// **'Muṣḥaf'**

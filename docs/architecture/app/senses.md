@@ -115,7 +115,7 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
 
 The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:148](../../../app/lib/data/flush.dart#L148-L151)).
 
-Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:374](../../../app/lib/features/settings/settings_screen.dart#L374-L399)).
+Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:374](../../../app/lib/features/settings/settings_screen.dart#L393-L418)).
 
 ### 2. HEAD asks, and moves no bytes
 
@@ -140,7 +140,7 @@ Future<String?> sensesOnOffer(Database db, {Dio? over}) async {
 ```
 [senses.dart:48](../../../app/lib/data/senses.dart#L48-L62)
 
-The Dio it builds carries no token ([senses.dart:96](../../../app/lib/data/senses.dart#L96)). `_tag` strips the quotes and the weak marker a proxy may add, so only the version is compared ([senses.dart:176](../../../app/lib/data/senses.dart#L176-L184)).
+The Dio it builds carries no token ([senses.dart:96](../../../app/lib/data/senses.dart#L96)). `_tag` strips the quotes and the weak marker a proxy may add, so only the version is compared ([senses.dart:176](../../../app/lib/data/senses.dart#L184-L192)).
 
 ### 3. GET, and check the whole body first
 
@@ -164,7 +164,7 @@ Future<String?> installSenses(Database db, {Dio? over}) async {
 ```
 [senses.dart:79](../../../app/lib/data/senses.dart#L79-L92)
 
-`_thePack` requires a non-empty `version` and a `senses` list, and each row needs a `root` and an English sense. French is optional. If a root appears twice, the last row wins ([senses.dart:200](../../../app/lib/data/senses.dart#L200-L240)).
+`_thePack` requires a non-empty `version` and a `senses` list, and each row needs a `root` and an English sense. French is optional. If a root appears twice, the last row wins ([senses.dart:200](../../../app/lib/data/senses.dart#L208-L248)).
 
 ### 4. Replace the rows in one transaction
 
@@ -177,17 +177,20 @@ The senses go into `root_notes`, a table the corpus already has and ships empty.
     rows.insert('root_notes', {
       'root_letters': sense.root,
       'note': sense.en,
-      // ponytail: stored, and drawn by nothing. `note_fr` is a shipped column
-      // no screen reads (docs/journal/walkthrough.md:391); the locale read is its own
-      // change, and dropping the French on the floor here would mean fetching
-      // it again the day that lands.
+      // Drawn now: a root read in French is read from this column, and the
+      // English beside it is what a root whose French never arrived falls back
+      // to. It was stored before anything read it, on the argument that
+      // dropping it here would mean fetching it again the day the locale read
+      // landed — which is the day this comment was rewritten.
       'note_fr': sense.fr,
       'source': pack.source,
       'basis': pack.basis,
 ```
 [senses.dart:108](../../../app/lib/data/senses.dart#L108-L120)
 
-The French sense is stored, but no screen reads it yet.
+Both sentences are stored, and which one a reader gets is settled when the root
+is read rather than when the pack lands — see [Which language a sense is read
+in](#7-which-language-a-sense-is-read-in) below.
 
 ### 5. Refuse a pack no reader could see
 
@@ -209,9 +212,9 @@ Before it records the version, the transaction counts the new senses whose root 
   }, conflictAlgorithm: ConflictAlgorithm.replace);
   return pack.version;
 ```
-[senses.dart:142](../../../app/lib/data/senses.dart#L142-L155)
+[senses.dart:142](../../../app/lib/data/senses.dart#L143-L156)
 
-`sense_pack` holds at most one row ([db.dart:122](../../../app/lib/data/db.dart#L122-L127)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
+`sense_pack` holds at most one row ([db.dart:122](../../../app/lib/data/db.dart#L133-L138)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
 
 ### 6. The root screen reads it back
 
@@ -244,6 +247,48 @@ flowchart TD
 [root_sections.dart:147](../../../app/lib/features/root/root_sections.dart#L147-L158)
 
 Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:210](../../../app/lib/features/root/root_sections.dart#L210-L240)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
+
+### 7. Which language a sense is read in
+
+`rootReading` takes the locale it should answer in, and it is **required**:
+
+```dart
+Future<RootReading?> rootReading(
+  Database db,
+  String letters, {
+  required Locale readIn,
+}) async {
+```
+[root_repo.dart](../../../app/lib/data/root_repo.dart)
+
+Callers pass `Localizations.localeOf(context)`, which **is** the locale
+MaterialApp resolved — the same value, not a second reading of the reader's
+choice and their phone's. The sense and the screen around it cannot disagree.
+
+Two earlier shapes were wrong and are worth recording, because both looked
+right:
+
+- **Passing it in, with a default.** `rootDetail` was a one-line alias for
+  `rootReading`, so adding an optional parameter to one left a second signature
+  standing: the reading screen's root panel and the kept list came through the
+  alias and went on drawing English in a French app. The alias is deleted, and
+  the parameter is required, so the compiler names every caller.
+- **Reading the preference in the data layer.** That removed the forgetting but
+  resolved the locale a second time — and the two resolvers disagreed.
+  `PlatformDispatcher.instance.locale` is the phone's *first* preferred
+  language; MaterialApp resolves over the whole `locales` list. A phone set to
+  Arabic first and French second — this app's likeliest reader — got a French
+  screen and English senses, with no choice to blame.
+
+The English is the fallback, not an error: a root whose French never arrived is
+still worth reading, and the "nobody has written one" notice would be a lie
+about it.
+
+A screen that caches a reading has to drop it when the language moves.
+`root_screen`, `deep_dive_screen`, `study_screen` and `kept_screen` each
+compare `Localizations.localeOf` against the locale they last read in, and
+reload when it differs — so a reader who switches language is handed the other
+sentence where they stand, not on the next visit.
 
 ## Why it is this way
 

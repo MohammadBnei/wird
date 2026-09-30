@@ -83,7 +83,7 @@ flowchart TB
 | `features/` | One folder per screen: `dashboard`, `study` (1a), `prayer` (1b), `root` (3a, 2b), `deepdive` (1c), `progress` (1d), `kept` (1e), `index`, `settings`, `report`, `about`. |
 | `shell/` | The bar and drawer drawn around each destination screen. |
 | `theme/`, `widgets/` | The Nocturne tokens and the few shared controls built on them. Dark only. |
-| `l10n/` | English and French strings. The phone's language decides. |
+| `l10n/` | English and French strings. The reader's choice decides, and their phone's until they make one. |
 
 ### 1. Startup opens the corpus before anything routes
 
@@ -113,9 +113,9 @@ Future<void> installCorpus(File target, Uint8List bytes) async {
 }
 ```
 
-[db.dart:48](../../app/lib/data/db.dart#L48-L53) · [openWird, db.dart:19](../../app/lib/data/db.dart#L19-L33)
+[db.dart:48](../../app/lib/data/db.dart#L49-L54) · [openWird, db.dart:19](../../app/lib/data/db.dart#L20-L34)
 
-Then [openWirdAt](../../app/lib/data/db.dart#L57) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
+Then [openWirdAt](../../app/lib/data/db.dart#L58) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
 
 The copy only happens when `wird.db` is missing. A later app update with a newer corpus does not replace it.
 
@@ -169,7 +169,7 @@ Future<void> prayTheSet(BuildContext context, StudySet set) async {
 }
 ```
 
-[app.dart:312](../../app/lib/app.dart#L312-L318)
+[app.dart:312](../../app/lib/app.dart#L328-L334)
 
 That write, like every other write, goes to the **outbox** inside the same transaction as the local rows. [Sync](app/sync.md) takes it from there.
 

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/kept_repo.dart';
@@ -8,7 +9,7 @@ import '../corpus.dart';
 /// How many derivatives the corpus gives a root, counted the way the screen
 /// counts them.
 Future<int> forms(Database db, String letters) async =>
-    (await rootReading(db, letters))!.derivatives.length;
+    (await rootReading(db, letters, readIn: const Locale('en')))!.derivatives.length;
 
 void main() {
   late Database db;
@@ -17,7 +18,7 @@ void main() {
 
   test('the same word is listed twice as two different derivatives because a '
       'pause mark rides along on one of them', () async {
-    final reading = (await rootReading(db, 'فلح'))!;
+    final reading = (await rootReading(db, 'فلح', readIn: const Locale('en')))!;
     final spellings = reading.derivatives.map((d) => d.text).toList();
     expect(spellings.toSet().length, spellings.length);
     // ٱلْمُفْلِحُونَ, تُفْلِحُونَ, يُفْلِحُ, أَفْلَحَ, يُفْلِحُونَ, تُفْلِحُوٓا۟
@@ -34,13 +35,13 @@ void main() {
     expect(await forms(db, 'هزأ'), 9);
     for (final letters in ['جحم', 'فلح', 'عسي']) {
       expect(
-        (await rootReading(db, letters))!.readsAsSpine,
+        (await rootReading(db, letters, readIn: const Locale('en')))!.readsAsSpine,
         isFalse,
         reason: '$letters fits on the ring',
       );
     }
-    expect((await rootReading(db, 'هزأ'))!.readsAsSpine, isTrue);
-    expect((await rootReading(db, 'صبر'))!.readsAsSpine, isTrue);
+    expect((await rootReading(db, 'هزأ', readIn: const Locale('en')))!.readsAsSpine, isTrue);
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.readsAsSpine, isTrue);
   });
 
   test('a derivative points at the wrong aya because the word id was printed '
@@ -49,14 +50,14 @@ void main() {
     // test cannot pass against a word the screen never shows.
     final rows = await db.query('words', where: 'id = ?', whereArgs: [2153010]);
     final spelling = rows.single['text_ar']! as String;
-    final reading = (await rootReading(db, 'صبر'))!;
+    final reading = (await rootReading(db, 'صبر', readIn: const Locale('en')))!;
     final patient = reading.derivatives.firstWhere((d) => d.text == spelling);
     expect(ayahRef(patient.ayahId), '2:153');
   });
 
   test('the most-read derivative is buried below rarer ones, so the dial '
       'opens on a word the reader will almost never meet', () async {
-    final reading = (await rootReading(db, 'صبر'))!;
+    final reading = (await rootReading(db, 'صبر', readIn: const Locale('en')))!;
     final counts = reading.derivatives.map((d) => d.occurrences).toList();
     expect(counts, orderedEquals(List.of(counts)..sort((a, b) => b - a)));
     expect(reading.derivatives.first.text, 'صَبَرُوا۟');
@@ -64,11 +65,11 @@ void main() {
 
   test('the root screen crashes on a word whose root the corpus does not '
       'carry', () async {
-    expect(await rootReading(db, 'زززز'), isNull);
+    expect(await rootReading(db, 'زززز', readIn: const Locale('en')), isNull);
   });
 
   test('the bundle ships a sense a correction can never reach', () async {
-    final reading = (await rootReading(db, 'صبر'))!;
+    final reading = (await rootReading(db, 'صبر', readIn: const Locale('en')))!;
     // Not a gap. A sense is Wird's own sentence and the reader's thumb corrects
     // it, so shipping it inside the binary put every correction behind a store
     // release. The server owns them and senses.dart fetches them (ADR 0010).
@@ -98,7 +99,7 @@ void main() {
     // ponytail: RootReading.spelled and _evidenceWords are kept rather than
     // deleted. Dead-code removal is its own commit in a later phase, and the
     // evidence field is a live design question, not a decision already taken.
-    final reading = (await rootReading(db, 'صبر'))!;
+    final reading = (await rootReading(db, 'صبر', readIn: const Locale('en')))!;
     expect(reading.senseEvidence, isEmpty);
   });
 
@@ -145,5 +146,42 @@ void main() {
 
     expect(await rootKept(db, root), isNull);
     expect(await live(), 0);
+  });
+
+  // The failure: a reader switches the app to French, opens a root, and reads
+  // the English sense — which is what shipped before the language setting, when
+  // note_fr was a column nothing drew.
+  test('a reader in French opens a root and is given the English sense',
+      () async {
+    await db.insert('root_notes', {
+      'root_letters': 'فلح',
+      'word_id': null,
+      'note': 'to succeed, to prosper',
+      'note_fr': 'réussir, prospérer',
+    });
+
+    expect(
+      (await rootReading(db, 'فلح', readIn: const Locale('fr')))!.coreSense,
+      'réussir, prospérer',
+    );
+    expect(
+      (await rootReading(db, 'فلح', readIn: const Locale('en')))!.coreSense,
+      'to succeed, to prosper',
+    );
+  });
+
+  test('a root whose French never arrived draws no sense at all, so a reader '
+      'in French is told none is written', () async {
+    await db.insert('root_notes', {
+      'root_letters': 'فلح',
+      'word_id': null,
+      'note': 'to succeed, to prosper',
+      'note_fr': null,
+    });
+
+    expect(
+      (await rootReading(db, 'فلح', readIn: const Locale('fr')))!.coreSense,
+      'to succeed, to prosper',
+    );
   });
 }

@@ -598,6 +598,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsTitle => 'Réglages';
 
   @override
+  String get settingsLanguage => 'LANGUE';
+
+  @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
+  String get settingsLanguageFrench => 'Français';
+
+  @override
+  String get settingsLanguageCaption => 'L\'écran et le sens d\'une racine. Les sens ont été écrits en anglais puis traduits : une racine dont le français n\'est pas arrivé se lit en anglais.';
+
+  @override
   String get settingsReading => 'LECTURE';
 
   @override

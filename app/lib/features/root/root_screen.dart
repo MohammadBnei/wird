@@ -54,14 +54,26 @@ class _RootScreenState extends State<RootScreen> {
   /// methods deep and none of them takes a context of its own.
   AppLocalizations get _l => AppLocalizations.of(context)!;
 
+  /// The language the sense on screen was read in, so a reader who switches
+  /// language is handed the other sentence where they are rather than on the
+  /// next visit. Null until the first load.
+  Locale? _readIn;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (locale == _readIn) return;
+    _readIn = locale;
     _load();
   }
 
   Future<void> _load() async {
-    final reading = await rootReading(widget.db, widget.letters);
+    final reading = await rootReading(
+      widget.db,
+      widget.letters,
+      readIn: _readIn ?? Localizations.localeOf(context),
+    );
     final keptId = await rootKept(widget.db, widget.letters);
     if (!mounted) return;
     setState(() {

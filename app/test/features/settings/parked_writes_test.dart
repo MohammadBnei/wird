@@ -76,6 +76,11 @@ void main() {
     final id = await parkAWrite(db, [96001]);
 
     await openSettings(tester);
+    // Scrolled to first: the parked-write panel is near the foot of a screen
+    // that grows every time a setting is added, and a tap on an offscreen
+    // widget is a miss rather than a failure that says so.
+    await tester.ensureVisible(find.text('Send again'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Send again'));
     await tester.pumpAndSettle();
 
@@ -93,6 +98,11 @@ void main() {
     await parkAWrite(db, [96001]);
 
     await openSettings(tester);
+    // Scrolled to first: the parked-write panel is near the foot of a screen
+    // that grows every time a setting is added, and a tap on an offscreen
+    // widget is a miss rather than a failure that says so.
+    await tester.ensureVisible(find.text('Discard'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Discard'));
     await tester.pumpAndSettle();
 

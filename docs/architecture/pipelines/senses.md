@@ -252,7 +252,7 @@ func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {
 ```
 [senses.go:105](../../../server/internal/api/senses.go#L105-L118)
 
-The body is `{version, source, attribution, basis, senses: [{root, en, fr}]}` ([senses.go:82](../../../server/internal/api/senses.go#L82-L88)). The route never answers 404: an empty table is a 200 with an empty list, and errors go through a helper that has no 404 branch ([senses.go:167](../../../server/internal/api/senses.go#L167-L170)). The Go server has no rate limiter; the ingress in front of it limits the whole host ([senses.go:23](../../../server/internal/api/senses.go#L23-L28)).
+The body is `{version, source, attribution, basis, senses: [{root, en, fr}]}` ([senses.go:82](../../../server/internal/api/senses.go#L82-L88)). The route never answers 404: an empty table is a 200 with an empty list, and errors go through a helper that has no 404 branch ([senses.go:167](../../../server/internal/api/senses.go#L166-L169)). The Go server has no rate limiter; the ingress in front of it limits the whole host ([senses.go:23](../../../server/internal/api/senses.go#L23-L28)).
 
 ### 9. The version carries the provenance prose
 
@@ -263,7 +263,7 @@ func packVersion(digest string) string {
 	return strconv.Itoa(provenanceRevision) + "-" + digest
 }
 ```
-[senses.go:145](../../../server/internal/api/senses.go#L145-L147)
+[senses.go:145](../../../server/internal/api/senses.go#L144-L146)
 
 Whoever edits `sensesSource`, `sensesAttribution` or `sensesBasis` must bump `provenanceRevision` in the same change ([senses.go:45](../../../server/internal/api/senses.go#L45)).
 

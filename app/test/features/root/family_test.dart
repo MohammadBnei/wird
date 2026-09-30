@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:wird/data/db.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/deepdive/constellation.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
@@ -74,7 +73,7 @@ void main() {
 
   testWidgets('the reference on a kin row is a caption: a reader looking at a '
       "root's family cannot reach the aya any of it is read in", (tester) async {
-    final reading = (await rootReading(db, onTheDial))!;
+    final reading = (await rootReading(db, onTheDial, readIn: const Locale('en')))!;
     final kin = reading.derivatives[2];
     // A tall phone, so the spine is laid out rather than below the fold.
     await open(
@@ -92,7 +91,7 @@ void main() {
 
   testWidgets('a constellation node is a drawing of a word: tapping the form '
       'the reader wants leads nowhere', (tester) async {
-    final reading = (await rootReading(db, patience))!;
+    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
     await open(
       tester,
       DeepDiveScreen(db: db, ayahId: ayaOfPatience, letters: patience),
@@ -117,7 +116,7 @@ void main() {
       "root's thirty-eight forms, at a size no caption survives", (
     tester,
   ) async {
-    final reading = (await rootReading(db, patience))!;
+    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
     expect(reading.derivatives, hasLength(greaterThan(5)));
 
     await open(
@@ -133,7 +132,7 @@ void main() {
 
   testWidgets('the form the aya in front of the reader spells is not the one '
       'its family opens on', (tester) async {
-    final reading = (await rootReading(db, patience))!;
+    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
     final aya = (await ayaReading(db, ayaOfPatience, patience))!;
     final here = reading.spelled(
       [for (final word in aya.words) if (word.lit) word.text].last,
@@ -158,7 +157,7 @@ void main() {
     );
 
     final dial = tester.widget<RootDial>(find.byType(RootDial));
-    final reading = (await rootReading(db, onTheDial))!;
+    final reading = (await rootReading(db, onTheDial, readIn: const Locale('en')))!;
     expect(
       reading.derivatives[dial.index],
       reading.spelled(
@@ -174,7 +173,7 @@ void main() {
   testWidgets('every row of the spine spends the same sentence on what two '
       'words say, so the form and the count are buried in it', (tester) async {
     await open(tester, RootScreen(db: db, letters: patience));
-    final spine = (await rootReading(db, patience))!.derivatives;
+    final spine = (await rootReading(db, patience, readIn: const Locale('en')))!.derivatives;
 
     // Thirty of ṣ-b-r's thirty-eight forms are Form I, so the sentence that
     // used to carry the form and the count was the same one thirty times over.
@@ -195,8 +194,8 @@ void main() {
   test('the panel under the aya and the drawing beside it are built by '
       'queries of their own, so one root reads three ways', () async {
     for (final letters in ['قرأ', onTheDial, 'عصر', patience]) {
-      final family = (await rootReading(db, letters))!;
-      final panel = (await rootDetail(db, letters))!.kin;
+      final family = (await rootReading(db, letters, readIn: const Locale('en')))!;
+      final panel = (await rootReading(db, letters, readIn: const Locale('en')))!.kin;
       final drawn = [
         for (final star in constellation(family, null)) star.derivative,
       ];

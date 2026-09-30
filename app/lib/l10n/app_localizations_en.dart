@@ -598,6 +598,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTitle => 'Settings';
 
   @override
+  String get settingsLanguage => 'LANGUAGE';
+
+  @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
+  String get settingsLanguageFrench => 'Français';
+
+  @override
+  String get settingsLanguageCaption => 'The screen and a root\'s sense. The senses were written in English and translated, so a root whose French never arrived is read in English.';
+
+  @override
   String get settingsReading => 'READING';
 
   @override

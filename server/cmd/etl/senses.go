@@ -1,19 +1,15 @@
 package main
 
-import (
-	"encoding/json"
-	"fmt"
-	"os"
+import "github.com/MohammadBnei/wird/server/internal/rootsense"
 
-	"github.com/MohammadBnei/wird/server/internal/rootsense"
-)
-
-// A root sense is the only prose in corpus.db that Wird wrote itself, so it
-// carries the hardest conditions in this ETL: it ships only if the corpus's own
-// glosses still bear it out at build time, and it reaches the database with the
-// words it was checked against and a line saying whose reading it is, because a
-// reader who cannot tell authored prose from a quoted lexicon has been told
-// something false about where the words came from.
+// These types describe the sense file the ETL used to read, and nothing reads
+// one any more: corpus.db carries no senses table, a reader gets every sense
+// from /v1/senses over HTTP, and the seeder in server/cmd/senseseed is what
+// writes them. Nothing outside the tests assigns Corpus.Senses, so checkSenses
+// in check.go returns on its first line for every real run — the build-time
+// gate over authored prose is inert, and its tests prove only that the gate
+// would work if something fed it. The shapes stay because the day a sense file
+// is loaded again is the day that gate has to come back.
 
 type Sense struct {
 	Root       string              `json:"root"`
@@ -40,23 +36,4 @@ type Senses struct {
 	} `json:"bar"`
 	SpecificBar int     `json:"specificity_bar"`
 	Senses      []Sense `json:"senses"`
-}
-
-// LoadSenses reads the checked sense file. A missing file is not an error: the
-// senses are a separate body of work from the corpus, and an ingest run without
-// them is a corpus with no Core sense section, not a broken build.
-func LoadSenses(path string) (*Senses, error) {
-	f, err := os.Open(path)
-	if os.IsNotExist(err) {
-		return &Senses{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	var s Senses
-	if err := json.NewDecoder(f).Decode(&s); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	return &s, nil
 }

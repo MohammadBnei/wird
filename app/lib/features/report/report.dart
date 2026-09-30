@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../data/db.dart';
 import '../../data/outbox.dart';
+import '../../data/senses.dart';
 
 /// The three kinds the server accepts. A fourth word is a body its column
 /// constraint refuses, and a refusal is permanent — so the words are an enum
@@ -51,6 +52,11 @@ Future<Map<String, Object?>> reportContext(
     'platform': platformName,
     'screen': screen,
     'corpus_version': meta.isEmpty ? 0 : meta.first['corpus_version']! as int,
+    // Which sense pack the reader was looking at. Last, because the screen
+    // draws this map in the order it is written here. Empty when no pack has
+    // been fetched: '' is the server's own word for a device that did not say
+    // (migration 00009), and a report is never worth refusing over it.
+    'sense_version': await installedSenseVersion(db) ?? '',
   };
 }
 
@@ -102,8 +108,9 @@ Future<void> sendReport(
 ///
 /// ponytail: `improvement` rather than a fourth [ReportKind], because the
 /// server's column constraint refuses an unknown word and a migration to carry
-/// one bit is not worth it. `corpus_version` in the context is what says WHICH
-/// sense was judged, so the body does not repeat it.
+/// one bit is not worth it. `sense_version` in the context is what says WHICH
+/// sense was judged — two readers on the same corpus can be shown two different
+/// sentences — so the body does not repeat it.
 Future<void> judgeSense(
   Database db, {
   required String root,

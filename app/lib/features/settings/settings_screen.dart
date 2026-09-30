@@ -108,6 +108,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 l.settingsTitle,
                 style: Theme.of(context).textTheme.displaySmall,
               ),
+              _section(n, l.settingsLanguage),
+              NocturneSegmented(
+                options: [
+                  l.settingsLanguageEnglish,
+                  l.settingsLanguageFrench,
+                ],
+                // The language being read, which is the reader's choice or
+                // their phone's until they make one. There is no third option
+                // for "my phone's": a reader picking their own language is not
+                // choosing between a language and a way of choosing one, and
+                // the phone's is already the one they can see selected.
+                selected:
+                    Localizations.localeOf(context).languageCode == 'fr' ? 1 : 0,
+                onChanged: (i) =>
+                    prefs.setLocale(Locale(i == 1 ? 'fr' : 'en')),
+              ),
+              SizedBox(height: n.space('1')),
+              _caption(n, l.settingsLanguageCaption),
+              SizedBox(height: n.space('3')),
               _section(n, l.settingsReading),
               NocturneSegmented(
                 options: [

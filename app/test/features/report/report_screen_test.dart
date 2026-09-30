@@ -79,6 +79,7 @@ void main() {
       'platform': platformName,
       'screen': 'index',
       'corpus_version': await shippedCorpusVersion(db),
+      'sense_version': '',
       'created_at': anything,
     });
   });
@@ -102,15 +103,29 @@ void main() {
   });
 
   // The failure: the app asks to transmit something and shows the reader the
-  // text but not the four values it has gathered around it. A devotional app
-  // owes the person a plain look at what is leaving their phone.
+  // text but not the values it has gathered around it. A devotional app owes
+  // the person a plain look at what is leaving their phone.
   testWidgets('the context is sent without the reader being shown it',
       (tester) async {
+    // A pack is installed first because an empty sense version is drawn as
+    // nothing, and nothing on a screen is not evidence that it is shown.
+    const senseVersion = '2-d41d8cd98f00b204e9800998ecf8427e';
+    await db.insert('sense_pack', {
+      'id': 1,
+      'version': senseVersion,
+      'fetched_at': DateTime.now().toIso8601String(),
+    });
     await pumpPhone(tester, await wholeApp(db, cache: silent));
     await reportFrom(tester, 'Sūra index');
 
     final version = '${await shippedCorpusVersion(db)}';
-    for (final shown in [appVersion, platformName, 'index', version]) {
+    for (final shown in [
+      appVersion,
+      platformName,
+      'index',
+      version,
+      senseVersion,
+    ]) {
       expect(
         find.text(shown),
         findsOneWidget,

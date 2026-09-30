@@ -443,6 +443,15 @@ literal in the widget that draws it. Reaching one French column would mean
 standing a localisation layer up for the whole app, which is a round of its
 own and was not this one. The column stays unread until that round happens.
 
+**Built 2026-09-29.** The localisation layer arrived in the round this walk
+asked for, and the French column is read now. Settings carries a two-option
+language control, the choice is kept in its own `language_pref` row, and
+`rootReading` reads it there rather than being handed it — a first attempt
+passed it down from the screen and missed `rootDetail`, which is how the
+reading screen's root panel and the kept list kept drawing English in a French
+app. The locale is a required parameter now, so the compiler names any caller
+that forgets. A root whose French never arrived falls back to the English.
+
 ### 17. Nothing says a root ships no sense, or why
 
 1,119 of 1,642 roots ship nothing — عود, جمع, كثر and طوي among them, each

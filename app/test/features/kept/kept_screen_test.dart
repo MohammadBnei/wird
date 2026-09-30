@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:wird/data/db.dart';
+import 'package:wird/data/root_repo.dart';
 import 'package:wird/data/kept_repo.dart';
 import 'package:wird/features/kept/kept_screen.dart';
 import 'package:wird/l10n/app_localizations.dart';
@@ -115,7 +115,7 @@ void main() {
     expect(find.text('kept from 103:1'), findsOneWidget);
     // The kin the root screen would show: a root card with no kin on it is
     // indistinguishable from a note.
-    final kin = (await rootDetail(db, 'عصر'))!.kin;
+    final kin = (await rootReading(db, 'عصر', readIn: const Locale('en')))!.kin;
     for (final word in kin) {
       expect(find.text(word.text), findsOneWidget, reason: word.text);
     }
