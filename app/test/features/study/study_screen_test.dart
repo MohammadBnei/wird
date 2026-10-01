@@ -99,12 +99,8 @@ void main() {
         StudyScreen(db: db),
         route: Routes.study,
         cache: audio,
-        // Screen 1b stands in as a bare page: what is under test is that the
-        // prayer is recorded when the reader gets back, whatever 1b did.
         onGenerateRoute: (settings) => MaterialPageRoute<void>(
-          builder: (_) => settings.name == Routes.prayer
-              ? const Scaffold(body: Text('praying'))
-              : screens[settings.name]!(db, settings.arguments),
+          builder: (_) => screens[settings.name]!(db, settings.arguments),
         ),
       ),
     );
@@ -715,10 +711,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('pray')));
     await tester.pumpAndSettle();
-    expect(find.text('praying'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('begin')));
+    await tester.pumpAndSettle();
+    expect(find.text('Exit'), findsOneWidget);
 
     // Not the Exit button: the gesture 1b cannot hear and must not have to.
-    Navigator.of(tester.element(find.text('praying'))).pop();
+    Navigator.of(tester.element(find.text('Exit'))).pop();
     await tester.pumpAndSettle();
 
     final prayers = await db.query('set_prayers');

@@ -8,6 +8,8 @@ New ADRs start from [TEMPLATE.md](TEMPLATE.md) and take the next free number. Tw
 flowchart LR
   A1[0001 stack] --> A2[0002 set identity]
   A3[0003 addressable reader] -. amended by .-> A6[0006 passage vs set]
+  A6 -. amended by .-> A20[0020 prayer prepared, one rakʿah at a time]
+  A20 -. amended by .-> A21[0021 margin per pair, repeats by order]
   A5v[0005 voice-follow on the phone] -. amended by .-> A9[0009 phoneme recogniser]
   A7[0007 model published upstream] -. superseded by .-> A8[0008 served from Wird's host]
   A8 -. amends .-> A5d[0005 deploying the API]
@@ -24,7 +26,7 @@ flowchart LR
 | [0004-the-operations-view-behind-authentiks-group.md](0004-the-operations-view-behind-authentiks-group.md) | The operations view sits behind Authentik's group and only sees totals | accepted |
 | [0005-deploying-the-api.md](0005-deploying-the-api.md) | One image, the API only, database credentials from Infisical | accepted, amended by 0008 and 0018 |
 | [0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md](0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md) | Voice-follow runs a Qur'an model on the phone | accepted, model choice superseded by 0009 |
-| [0006-a-passage-is-read-a-set-is-answered-for.md](0006-a-passage-is-read-a-set-is-answered-for.md) | A passage is read; a set is answered for | accepted, amended by 0014 |
+| [0006-a-passage-is-read-a-set-is-answered-for.md](0006-a-passage-is-read-a-set-is-answered-for.md) | A passage is read; a set is answered for | accepted, amended by 0014 and 0020 |
 | [0007-the-voice-model-is-published-where-its-weights-already-live.md](0007-the-voice-model-is-published-where-its-weights-already-live.md) | Publish the voice model where its weights live | superseded by 0008 |
 | [0008-the-recogniser-is-served-from-wirds-own-host.md](0008-the-recogniser-is-served-from-wirds-own-host.md) | The recogniser is served from Wird's own host | accepted |
 | [0009-the-recogniser-hears-quranic-phonemes-not-language.md](0009-the-recogniser-hears-quranic-phonemes-not-language.md) | The recogniser hears Qur'anic phonemes, not language | accepted |
@@ -38,3 +40,5 @@ flowchart LR
 | [0017-ayas-are-translated-into-english-from-pickthall.md](0017-ayas-are-translated-into-english-from-pickthall.md) | Ayas are translated into English from Pickthall | accepted |
 | [0018-the-public-site-is-served-by-the-api.md](0018-the-public-site-is-served-by-the-api.md) | The public page is embedded in wird-api, and its demos run on the corpus | accepted |
 | [0019-the-apk-is-built-on-a-tag-and-published-by-ci.md](0019-the-apk-is-built-on-a-tag-and-published-by-ci.md) | A version tag builds the APK and publishes it at /download/android | proposed |
+| [0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md](0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) | A prayer is prepared, then recited one rakʿah at a time | accepted, amended by 0021 |
+| [0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md](0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md) | The matcher's margin is asked per pair of places, and a repeated phrase is settled by order | accepted |

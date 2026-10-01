@@ -95,10 +95,10 @@ These words mean one thing each, everywhere in these docs.
 | **Aya** | One verse of the Quran. |
 | **Sūra** | One chapter of the Quran. |
 | **Muṣḥaf** | The written Quran, in its written order. |
-| **Rakʿa** | One cycle of the prayer. |
+| **Rakʿah** | One cycle of the prayer. Each opens with Al-Fātiḥa; the first two add a passage after it. |
 | **Reading order** | The order the walk follows: `nuzul` (order of revelation, the default) or `mushaf` (written order). |
 | **Walk** | Your position in the reading order: the next aya you have not yet understood. It is derived, never stored. |
-| **Set** | The few ayas the walk proposes for one prayer. You read it before the prayer and recite it during it. Its id is derived from the reading order and its first and last aya ([ADR 0002](adr/0002-set-identity.md)). |
+| **Set** | The few ayas the walk proposes for one prayer. You read it before the prayer and recite it during it, after Al-Fātiḥa. Its id is derived from the reading order and its first and last aya ([ADR 0002](adr/0002-set-identity.md)). |
 | **Visit** | Opening the reader on an aya you chose instead of on the walk ([ADR 0003](adr/0003-addressable-reader.md)). |
 | **Passage** | What the reader screen shows: a set, or a place in a sūra you opened ([ADR 0006](adr/0006-a-passage-is-read-a-set-is-answered-for.md)). |
 | **Understood** | The mark you put on an aya once you understand it. Progress counts these. |
@@ -140,7 +140,7 @@ These words mean one thing each, everywhere in these docs.
 | **Recogniser** | The on-device speech model that writes down the sounds it hears. |
 | **Voice model** | The recogniser's files, downloaded once from `/models/` and kept beside wird.db. |
 | **Matcher** | The part that finds where in the set those sounds are. |
-| **Prayer cursor** | The word of the set the matcher says you are on. |
+| **Prayer cursor** | The word of the rakʿah the matcher, the pace or your tap says you are on. |
 | **Prayer trail** | A log file of one prayer, written beside wird.db and cleared at the next prayer. |
 
 ### Operations

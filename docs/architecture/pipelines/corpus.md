@@ -139,7 +139,7 @@ if err := extractTimings(filepath.Join(dir, alignZip), dir, recitation); err != 
 }
 ```
 
-[ingest/main.go:70](../../../server/cmd/ingest/main.go#L70-L75) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
+[ingest/main.go:72](../../../server/cmd/ingest/main.go#L72-L77) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
 
 ### 3. Sūras and ayas, one file each
 
@@ -153,7 +153,7 @@ if len(suras) != 114 {
 }
 ```
 
-[ingest/main.go:89](../../../server/cmd/ingest/main.go#L89-L93) · [the refusal](../../../server/cmd/ingest/main.go#L141-L154)
+[ingest/main.go:91](../../../server/cmd/ingest/main.go#L91-L95) · [the refusal](../../../server/cmd/ingest/main.go#L143-L156)
 
 ### 3b. The French under each word, from The Last Dialogue
 
@@ -200,7 +200,7 @@ func ayahID(surah, ayah int) int   { return surah*1000 + ayah }
 func wordID(ayahID, pos int) int64 { return int64(ayahID)*1000 + int64(pos) }
 ```
 
-[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L256-L259)
+[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L267-L270)
 
 ### 6. Check: refuse a corpus that would mislead
 
@@ -221,7 +221,7 @@ if full {
 }
 ```
 
-[etl/check.go:37](../../../server/cmd/etl/check.go#L37-L48) · [the notice check](../../../server/cmd/etl/check.go#L23-L35) · [the whole check](../../../server/cmd/etl/check.go#L18-L117)
+[etl/check.go:37](../../../server/cmd/etl/check.go#L37-L48) · [the notice check](../../../server/cmd/etl/check.go#L23-L35) · [the whole check](../../../server/cmd/etl/check.go#L18-L125)
 
 ### 7. Write the tables and stamp the version
 
@@ -234,7 +234,7 @@ if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?,?)`,
 }
 ```
 
-[etl/write.go:192](../../../server/cmd/etl/write.go#L192-L195) · [the schema](../../../server/cmd/etl/write.go#L16-L134) · [why root_notes is empty](../../../server/cmd/etl/write.go#L235-L249)
+[etl/write.go:192](../../../server/cmd/etl/write.go#L192-L195) · [the schema](../../../server/cmd/etl/write.go#L16-L134) · [why root_notes is empty](../../../server/cmd/etl/write.go#L242-L256)
 
 `corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 6. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
 

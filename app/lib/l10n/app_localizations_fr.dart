@@ -100,10 +100,287 @@ class AppLocalizationsFr extends AppLocalizations {
   String get notDownloaded => 'Non téléchargé';
 
   @override
-  String get prayer_in_prayer => 'EN PRIÈRE';
+  String prayer_header(String prayer, int rakah, int count) {
+    return '$prayer · Rakʿa $rakah sur $count';
+  }
 
   @override
-  String get prayer_following_your_voice => 'SUIT VOTRE VOIX';
+  String prayer_part(String sura, String ref) {
+    return '$sura · $ref';
+  }
+
+  @override
+  String get prayer_generic => 'Prière';
+
+  @override
+  String get prayer_fajr => 'Fajr';
+
+  @override
+  String get prayer_zuhr => 'Ẓuhr';
+
+  @override
+  String get prayer_asr => 'ʿAṣr';
+
+  @override
+  String get prayer_maghrib => 'Maghrib';
+
+  @override
+  String get prayer_isha => 'ʿIshāʾ';
+
+  @override
+  String get prayer_mode_both => 'La voix, le rythme en relais';
+
+  @override
+  String get prayer_mode_voice => 'Suit votre voix';
+
+  @override
+  String prayer_mode_pace(int wpm) {
+    return 'Régulier · $wpm mots/min';
+  }
+
+  @override
+  String get prayer_mode_tap => 'Touchez pour avancer';
+
+  @override
+  String prayer_rakah_count(int rakah, int count) {
+    return '$rakah sur $count';
+  }
+
+  @override
+  String prayer_between(int rakah, int count) {
+    return 'Rakʿa $rakah sur $count';
+  }
+
+  @override
+  String get prayer_between_voice => 'Commence quand vous récitez · ou touchez';
+
+  @override
+  String get prayer_between_tap => 'Touchez pour commencer';
+
+  @override
+  String get prayer_complete => 'Prière terminée';
+
+  @override
+  String prayer_size_remembered(int size) {
+    return '$size px · retenu';
+  }
+
+  @override
+  String get prayer_on_a_word => 'Aller au mot suivant';
+
+  @override
+  String get prepare_title => 'Préparer la prière';
+
+  @override
+  String get prepare_kicker_prayer => 'Prière';
+
+  @override
+  String get prepare_rakahs => 'Rakʿas';
+
+  @override
+  String prepare_rakahs_set_by(String prayer) {
+    return 'Fixé par $prayer';
+  }
+
+  @override
+  String prepare_rakahs_usually(String prayer, int count) {
+    return '$prayer compte d’ordinaire $count';
+  }
+
+  @override
+  String get prepare_rakahs_any => 'Toute prière, sunna ou nafl';
+
+  @override
+  String get prepare_fewer_rakahs => 'Moins de rakʿas';
+
+  @override
+  String get prepare_more_rakahs => 'Plus de rakʿas';
+
+  @override
+  String get prepare_kicker_recite => 'Ce que vous récitez';
+
+  @override
+  String get prepare_fatiha => 'Al-Fātiḥa';
+
+  @override
+  String get prepare_add_passage => 'Ajouter un passage';
+
+  @override
+  String get prepare_fatiha_only_hint => 'Ou réciter Al-Fātiḥa seule';
+
+  @override
+  String prepare_ayas(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count versets',
+      one: '$count verset',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String prepare_about_seconds(int seconds) {
+    return 'environ $seconds s';
+  }
+
+  @override
+  String prepare_about_minutes(int minutes) {
+    return 'environ $minutes min';
+  }
+
+  @override
+  String get prepare_same_as_first => 'comme la rakʿa 1';
+
+  @override
+  String get prepare_kicker_moves => 'Comment le texte avance';
+
+  @override
+  String get prepare_follow_voice => 'Suivre ma voix';
+
+  @override
+  String get prepare_voice_ready => 'Reconnaissance prête sur ce téléphone';
+
+  @override
+  String get prepare_voice_setup => 'Autorisez le micro et téléchargez la reconnaissance, ci-dessous';
+
+  @override
+  String get prepare_steady_pace => 'Garder un rythme régulier';
+
+  @override
+  String prepare_wpm(int wpm) {
+    return '$wpm mots par minute';
+  }
+
+  @override
+  String get prepare_slower => 'Plus lent';
+
+  @override
+  String get prepare_faster => 'Plus rapide';
+
+  @override
+  String prepare_note_both(int wpm) {
+    return 'Votre voix mène. Si la reconnaissance vous perd, le texte avance à $wpm mots par minute jusqu’à vous retrouver.';
+  }
+
+  @override
+  String get prepare_note_voice => 'Le texte attend votre voix. Chaque rakʿa commence quand vous récitez.';
+
+  @override
+  String prepare_note_pace(int wpm) {
+    return 'Le texte avance à $wpm mots par minute. Chaque rakʿa commence d’un toucher.';
+  }
+
+  @override
+  String get prepare_note_neither => 'Ni l’un ni l’autre : touchez l’écran pour passer au mot suivant.';
+
+  @override
+  String get prepare_kicker_screen => 'À l’écran';
+
+  @override
+  String get prepare_gloss => 'Sens du mot en cours';
+
+  @override
+  String get prepare_around => 'Versets précédent et suivant, estompés';
+
+  @override
+  String get prepare_size => 'Taille de l’arabe';
+
+  @override
+  String get prepare_size_hint => 'Pincez l’écran de prière pour la changer';
+
+  @override
+  String prepare_size_px(int size) {
+    return '$size px';
+  }
+
+  @override
+  String get prepare_silence => 'Couper les notifications';
+
+  @override
+  String get prepare_silence_hint => 'Activez Ne pas déranger ou un mode Concentration avant de commencer';
+
+  @override
+  String get prepare_preview => 'Aperçu';
+
+  @override
+  String prepare_begin(String prayer) {
+    return 'Commencer $prayer';
+  }
+
+  @override
+  String get chooser_title => 'Choisir un passage';
+
+  @override
+  String chooser_rakah(int rakah) {
+    return 'Rakʿa $rakah · après Al-Fātiḥa';
+  }
+
+  @override
+  String get chooser_search => 'Chercher une sourate, ou taper 2:255';
+
+  @override
+  String chooser_go_to(String ref) {
+    return 'Aller à $ref';
+  }
+
+  @override
+  String get chooser_go_to_hint => 'Commence à ce verset ; vous pourrez l’élargir ensuite';
+
+  @override
+  String get chooser_suggested => 'Suggestions';
+
+  @override
+  String get chooser_same => 'Comme la rakʿa 1';
+
+  @override
+  String get chooser_continue => 'Reprendre là où vous en étiez';
+
+  @override
+  String get chooser_recent => 'Récité récemment';
+
+  @override
+  String get chooser_fatiha_only => 'Al-Fātiḥa seule';
+
+  @override
+  String get chooser_fatiha_only_hint => 'Pas de passage dans cette rakʿa';
+
+  @override
+  String get chooser_all => 'Toutes les sourates';
+
+  @override
+  String chooser_no_match(String query) {
+    return 'Aucune sourate ne correspond à « $query ».';
+  }
+
+  @override
+  String range_sura(int number, String name) {
+    return '$number · $name';
+  }
+
+  @override
+  String get range_change_sura => 'Changer';
+
+  @override
+  String get range_tap_hint => 'Touchez le premier aya, puis le dernier.';
+
+  @override
+  String get range_whole => 'Sourate entière';
+
+  @override
+  String range_in_sura(int count) {
+    return '$count versets dans la sourate';
+  }
+
+  @override
+  String range_recite(String title) {
+    return 'Réciter $title';
+  }
+
+  @override
+  String preview_rakah(int rakah) {
+    return 'R$rakah';
+  }
 
   @override
   String get prayer_exit => 'Quitter';
@@ -113,12 +390,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prayer_on_to_the_next_aya => 'Aller au verset suivant';
-
-  @override
-  String get prayer_foot_taps_only => 'Écran maintenu allumé · touchez pour avancer · le bord gauche revient en arrière';
-
-  @override
-  String get prayer_foot_following => 'Écran maintenu allumé · touchez à tout moment · le bord gauche revient en arrière';
 
   @override
   String get progress_kicker => 'COMPRIS, ET PAS SEULEMENT LU';
@@ -316,6 +587,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboard_doorKept => 'Gardés';
+
+  @override
+  String get dashboard_doorPray => 'Préparer une prière';
+
+  @override
+  String get dashboard_doorPrayWhy => 'N’importe quel passage, autant de rakʿas que voulu';
 
   @override
   String get dashboard_doorKeptWhy => 'Les versets et les racines que vous avez gardés';
@@ -751,7 +1028,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String settingsVoiceCheckAmbiguous(int word, int score, int rival) {
-    return 'mot $word à $score %, mais un autre endroit correspond à $rival % — le passage le dit deux fois';
+    return 'mot $word à $score %, mais un autre endroit correspond à $rival %';
+  }
+
+  @override
+  String settingsVoiceCheckRepeat(int word, int score) {
+    return 'mot $word à $score %, mais le passage le dit plusieurs fois et aucune occurrence n’est juste devant';
   }
 
   @override
@@ -1005,4 +1287,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get study_form => 'Forme';
+
+  @override
+  String get prepare_trouble => 'Le Coran n\'a pas pu être lu sur cet appareil. Réessayez ; si cela persiste, fermez Wird et rouvrez-le.';
+
+  @override
+  String get prepare_retry => 'Réessayer';
 }

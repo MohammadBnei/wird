@@ -204,6 +204,7 @@ excused_doors() {
 		setIdFor|sets.dart derives StudySet.id with it; the id is what everything else holds
 		setMicPermission|mic.dart records what the prompt answered; the screens ask, they do not set
 		retryIn|outbox.dart spaces its own attempts
+		movePosition|db.dart's PositionKeeper writes it once the reader settles on a word; the reading screen holds the keeper, not the write
 		dragSpan|sets.dart reads the drag it stored; a screen drags, it does not compute
 		stopIsolate|speech.dart tears down the recogniser it started
 		Change|the wire shape sync.dart parses; nothing above the data layer sees one

@@ -17,3 +17,6 @@ paths:
 - Corpus rebuild → bump `bundledCorpusVersion` (`lib/data/db.dart`) = `corpus_meta.corpus_version`, test enforces. Installed db upgraded on next launch, reader tables + `root_notes` carried (`upgradeCorpus`). Same version rebuild → no upgrade → delete `wird.db` by hand.
 - Voice weights in sibling `voice/` dir, survive db delete. Trail log: `…/Documents/prayer-trail.log`, truncated each prayer.
 - Android trail: `adb shell run-as dev.bnei.wird cat /data/data/dev.bnei.wird/databases/prayer-trail.log`.
+- Debug builds also write `prayer-audio.f32` beside trail: raw f32 @16 kHz, every sample handed to recogniser → replay off device.
+- Tree not `dart format`-clean (SDK formatter ≠ committed style). Never `dart format lib`/`test` whole → format only files you touched, or diff explodes.
+- Two Wird builds on one Mac share container `dev.bnei.wird` → same `wird.db` → `disk I/O error` (6922) in the other. Stop one by PID, never `pkill -f wird.app`.

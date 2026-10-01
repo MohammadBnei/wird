@@ -49,6 +49,16 @@ void main() {
       'note': 'mercy; the womb',
       'source': 'senses',
     });
+    await setPrayerPrefs(db, (
+      preset: null,
+      rakahs: 2,
+      voice: false,
+      pace: true,
+      wpm: 55,
+      gloss: false,
+      around: true,
+      arabicSize: 70,
+    ));
     await db.close();
   });
 
@@ -81,6 +91,11 @@ void main() {
       await count(db, 'root_notes'),
       1,
       reason: 'the senses this device fetched were dropped with the old corpus',
+    );
+    expect(
+      (await prayerPrefs(db)).arabicSize,
+      70,
+      reason: 'the prayer was set up afresh after the corpus moved on',
     );
     await db.close();
     expect(File('${target.path}.next').existsSync(), isFalse);

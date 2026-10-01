@@ -10,7 +10,7 @@ import 'features/dashboard/dashboard_screen.dart';
 import 'features/deepdive/deep_dive_screen.dart';
 import 'features/index/index_screen.dart';
 import 'features/kept/kept_screen.dart';
-import 'features/prayer/prayer_screen.dart';
+import 'features/prayer/prepare_screen.dart';
 import 'features/progress/progress_screen.dart';
 import 'features/report/report_screen.dart';
 import 'features/root/root_screen.dart';
@@ -25,7 +25,7 @@ import 'theme/nocturne.dart';
 abstract final class Routes {
   static const dashboard = '/';
   static const study = '/study';
-  static const prayer = '/prayer';
+  static const prepare = '/prepare';
   static const root = '/root';
   static const rootSpine = '/root-spine';
   static const deepDive = '/deep-dive';
@@ -58,7 +58,8 @@ typedef ScreenBuilder = Widget Function(Database db, Object? arguments);
 //   the root panel's identity row     -> root (3a), the root of the word just tapped
 //   "Constellation"                   -> deepDive (1c), on that aya and that root
 //   "Mark set understood"             -> stays on 1a
-//   "Pray this set"                   -> prayer (1b), and records it on the way back
+//   "Pray this set"                   -> prepare, which opens the prayer (1b) and
+//                                        records it on the way back
 // root (3a): back arrow -> back to whoever pushed it; keep icon -> keeps the root.
 //            A root with more than 8 derivatives is read as rootSpine (2b) instead;
 //            which one opens is the root screen's decision, not the caller's.
@@ -69,7 +70,8 @@ typedef ScreenBuilder = Widget Function(Database db, Object? arguments);
 // settings: what the reader sets and forgets. No navigation, and no prayer.
 // report: a bug, a request or an improvement, carrying the screen the reader
 //   opened it from. One way: it queues and nothing comes back.
-// kept (1e), deepDive (1c), prayer (1b): back -> back to whoever pushed them.
+// kept (1e), deepDive (1c), prepare: back -> back to whoever pushed them. The
+//   prayer (1b) is pushed by prepare alone, and pops back to it.
 final screens = <String, ScreenBuilder>{
   Routes.dashboard: (db, _) => const DashboardScreen(),
   // The target is how the screen is built on an aya the reader asked for,
@@ -77,7 +79,9 @@ final screens = <String, ScreenBuilder>{
   Routes.study: (db, args) => args is AtWord
       ? StudyScreen(db: db, word: args.wordId)
       : StudyScreen(db: db, target: args as int?),
-  Routes.prayer: (db, args) => PrayerScreen(db: db, set: args! as StudySet),
+  // The set the reader was holding, or nothing from the dashboard's door,
+  // where the next unread set takes its place.
+  Routes.prepare: (db, args) => PrepareScreen(db: db, from: args as StudySet?),
   Routes.root: (db, args) => RootScreen(db: db, letters: args! as String),
   Routes.rootSpine: (db, args) =>
       RootSpineScreen(db: db, letters: args! as String),

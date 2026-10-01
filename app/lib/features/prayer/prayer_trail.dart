@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 /// What happened during one prayer, and why, written down as it happens.
 ///
 /// A prayer cannot be watched. The phone is on the floor, the reader is
@@ -18,9 +20,15 @@ import 'dart:io';
 /// what it catches and carries on; a prayer is not interrupted so that its
 /// diary can be kept.
 class PrayerTrail {
-  PrayerTrail._(this._sink, this._began);
+  PrayerTrail._(this._sink, this._began, [this._tape]);
 
   final IOSink? _sink;
+
+  /// Debug builds only: every sample handed to the recogniser, as raw 32-bit
+  /// floats at its sample rate, beside the trail. What the recogniser was
+  /// given can then be replayed through it off the device, rather than
+  /// guessed at from what it answered.
+  final IOSink? _tape;
   final DateTime _began;
 
   /// The trail beside the database, truncated. Answers a trail that writes
@@ -29,7 +37,10 @@ class PrayerTrail {
     try {
       final file = File('$databasesPath/prayer-trail.log');
       final sink = file.openWrite();
-      final trail = PrayerTrail._(sink, DateTime.now());
+      final tape = kDebugMode
+          ? File('$databasesPath/prayer-audio.f32').openWrite()
+          : null;
+      final trail = PrayerTrail._(sink, DateTime.now(), tape);
       trail.note('trail', DateTime.now().toIso8601String());
       return trail;
     } on Object {
@@ -54,8 +65,30 @@ class PrayerTrail {
     }
   }
 
+  /// Twenty minutes of audio, about 77 MB: a prayer and its doubts. Past it
+  /// the tape stops rather than fill the phone.
+  static const _tapeBytes = 20 * 60 * 16000 * 4;
+  var _taped = 0;
+
+  void tape(Float32List samples) {
+    if (_taped + samples.lengthInBytes > _tapeBytes) return;
+    _taped += samples.lengthInBytes;
+    try {
+      _tape?.add(
+        samples.buffer.asUint8List(
+          samples.offsetInBytes,
+          samples.lengthInBytes,
+        ),
+      );
+    } on Object {
+      // As with the trail: never at the prayer's expense.
+    }
+  }
+
   Future<void> close() async {
     try {
+      await _tape?.flush();
+      await _tape?.close();
       await _sink?.flush();
       await _sink?.close();
     } on Object {

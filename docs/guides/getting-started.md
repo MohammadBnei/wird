@@ -42,7 +42,7 @@ cd app && fvm install && fvm flutter pub get
 ./scripts/qa.sh
 ```
 
-[scripts/qa.sh](../../scripts/qa.sh) is the gate. Its exit code is the verdict, and it writes `qa-report.json` with one entry per check. It runs the Go build and tests, the Flutter analyzer and tests, the end-to-end journeys on a device, and the shell checks: the toolchain record, the corpus size budget, and the rule that every marker comment names an issue. It starts Postgres for you if Docker is installed ([qa.sh:437-440](../../scripts/qa.sh#L437-L440)).
+[scripts/qa.sh](../../scripts/qa.sh) is the gate. Its exit code is the verdict, and it writes `qa-report.json` with one entry per check. It runs the Go build and tests, the Flutter analyzer and tests, the end-to-end journeys on a device, and the shell checks: the toolchain record, the corpus size budget, and the rule that every marker comment names an issue. It starts Postgres for you if Docker is installed ([qa.sh:442-445](../../scripts/qa.sh#L442-L445)).
 
 Run it before every push. CI only runs the Go half, as [Deploy](../architecture/deploy.md#2-the-checks-the-go-half-of-the-gate) explains, so a broken Flutter test is yours to catch.
 
@@ -70,7 +70,7 @@ On first launch the app copies the bundled **corpus** into a file called `wird.d
   } else if (await installedCorpusVersion(path) < bundledCorpusVersion) {
 ```
 
-[db.dart:30-32](../../app/lib/data/db.dart#L31-L33)
+[db.dart:31-33](../../app/lib/data/db.dart#L31-L33)
 
 So a rebuild of `app/assets/corpus.db` must bump the ETL's `-corpus-version` default and `bundledCorpusVersion` in `app/lib/data/db.dart` together; a test fails when they disagree. Your progress and kept items are carried across. A rebuild that keeps the same number is not picked up: delete the installed file and launch again.
 

@@ -1,6 +1,6 @@
 # 6. A passage is read; a set is answered for
 
-Date: 2026-09-24. Status: accepted, amended by ADR 0014. Amends ADR 0003.
+Date: 2026-09-24. Status: accepted, amended by ADR 0014 and ADR 0020. Amends ADR 0003.
 
 ## Context
 

@@ -94,7 +94,7 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
     unawaited(theFirstSenses().catchError((Object _) => null));
   }
 ```
-[flush.dart:100](../../../app/lib/data/flush.dart#L108-L111)
+[flush.dart:108](../../../app/lib/data/flush.dart#L108-L111)
 
 `theFirstSenses` only fetches for a phone that holds no pack at all. It joins a fetch already running, and waits at least two minutes between tries, so a pack that keeps failing does not download 800 KB on every unlock. It never draws anything, because this moment can come while the reader is praying.
 
@@ -111,11 +111,11 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
     return run.whenComplete(() => _fetchingSenses = null);
   }
 ```
-[flush.dart:136](../../../app/lib/data/flush.dart#L144-L154)
+[flush.dart:144](../../../app/lib/data/flush.dart#L144-L154)
 
-The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:148](../../../app/lib/data/flush.dart#L156-L159)).
+The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:156](../../../app/lib/data/flush.dart#L156-L159)).
 
-Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:374](../../../app/lib/features/settings/settings_screen.dart#L393-L418)).
+Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:393](../../../app/lib/features/settings/settings_screen.dart#L393-L418)).
 
 ### 2. HEAD asks, and moves no bytes
 
@@ -214,11 +214,11 @@ Before it records the version, the transaction counts the new senses whose root 
 ```
 [senses.dart:142](../../../app/lib/data/senses.dart#L143-L156)
 
-`sense_pack` holds at most one row ([db.dart:134](../../../app/lib/data/db.dart#L249-L263)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
+`sense_pack` holds at most one row ([db.dart:244](../../../app/lib/data/db.dart#L244-L253)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
 
 ### 6. The root screen reads it back
 
-`rootReading` takes the one root-level row for the root, and checks whether `sense_pack` has a row ([root_repo.dart:218](../../../app/lib/data/root_repo.dart#L236-L260)). `CoreSense` then picks one of three outcomes.
+`rootReading` takes the one root-level row for the root, and checks whether `sense_pack` has a row ([root_repo.dart:251](../../../app/lib/data/root_repo.dart#L251-L262)). `CoreSense` then picks one of three outcomes.
 
 ```mermaid
 flowchart TD
@@ -244,9 +244,9 @@ flowchart TD
       );
     }
 ```
-[root_sections.dart:147](../../../app/lib/features/root/root_sections.dart#L141-L152)
+[root_sections.dart:141](../../../app/lib/features/root/root_sections.dart#L141-L152)
 
-Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:210](../../../app/lib/features/root/root_sections.dart#L204-L234)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
+Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:204](../../../app/lib/features/root/root_sections.dart#L204-L234)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
 
 ### 7. Which language a sense is read in
 
@@ -293,7 +293,7 @@ sentence where they stand, not on the next visit.
 ## Why it is this way
 
 - [ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md) — Wird's own writing is served, upstream data is bundled. Senses are rows in the existing database, not a second file, so a correction reaches readers without a release.
-- The [ADR](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#silent-background-updates) says the app asks before bytes move. The code keeps that for every pack after the first. The first pack is fetched silently, because a phone with no senses has nothing to weigh, and the foreground moment has nowhere safe to ask ([flush.dart:114](../../../app/lib/data/flush.dart#L122-L131)).
+- The [ADR](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#silent-background-updates) says the app asks before bytes move. The code keeps that for every pack after the first. The first pack is fetched silently, because a phone with no senses has nothing to weigh, and the foreground moment has nowhere safe to ask ([flush.dart:122](../../../app/lib/data/flush.dart#L122-L131)).
 - The route is open, with no account. Needing to sign in to learn what a root means would cut off the readers likeliest to need it, and the verdict button with them ([senses.dart:19](../../../app/lib/data/senses.dart#L19-L21), [ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#senses-behind-the-bearer-token)).
 
 ## Go deeper

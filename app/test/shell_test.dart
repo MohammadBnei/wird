@@ -379,6 +379,9 @@ void main() {
     expect(pray, findsOneWidget);
     await tester.tap(pray);
     await tester.pumpAndSettle();
+    // Through its preparation, which is one tap from the prayer itself.
+    await tester.tap(find.byKey(const Key('begin')));
+    await tester.pumpAndSettle();
 
     expect(find.text('Exit'), findsOneWidget);
   });

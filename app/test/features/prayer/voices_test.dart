@@ -96,11 +96,15 @@ void main() {
       // al-Fātiḥa, as this recogniser wrote it, still lands where it should.
       expect(recitationKey('لِللَااهِ'), isNot(recitationKey('لِلَّهِ')));
       // And the repeat guard reads the new alphabet as it read the old one:
-      // بِسْمِ ٱللَّهِ names one place in this set and moves, while the same window
-      // grown as far as ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ names the basmala and the third aya
-      // equally well, and is refused rather than guessed at.
+      // بِسْمِ ٱللَّهِ names one place in this set and moves, and so does the
+      // same window grown as far as ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ — its opening is said
+      // nowhere else in the set. It used to be refused as naming the basmala
+      // and the third aya equally well, and the cursor pinned (ADR 0019).
       expect(locate(set, 'بِسمِللَااهِررَ')?.word, 1);
-      expect(locate(set, 'بِسمِللَااهِررَحمَاانِررَحِۦۦم'), isNull);
+      expect(locate(set, 'بِسمِللَااهِررَحمَاانِررَحِۦۦم')?.word, 3);
+      // The phrase alone is the third aya's as much as the basmala's, and is
+      // refused rather than guessed at.
+      expect(locate(set, 'ررَحمَاانِررَحِۦۦم'), isNull);
     });
 
     test('the set begun again for the next rakʿa runs off the end', () {

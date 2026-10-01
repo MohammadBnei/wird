@@ -125,7 +125,7 @@ There is no secure-storage plugin. The tokens live in one row of an `auth_tokens
 
 [auth.dart:315-324](../../../app/lib/data/auth.dart#L315-L324)
 
-`_handOver` compares the token's `sub` with the last reader this device knew. The same reader coming back keeps everything. A different reader clears the reader's own tables, including the outbox, so one person's notes never show on another's screen ([auth.dart:397-417](../../../app/lib/data/auth.dart#L398-L418)). Signing out deletes the tokens row and nothing else ([auth.dart:254-257](../../../app/lib/data/auth.dart#L254-L257)).
+`_handOver` compares the token's `sub` with the last reader this device knew. The same reader coming back keeps everything. A different reader clears the reader's own tables, including the outbox, so one person's notes never show on another's screen ([auth.dart:398-418](../../../app/lib/data/auth.dart#L398-L418)). Signing out deletes the tokens row and nothing else ([auth.dart:254-257](../../../app/lib/data/auth.dart#L254-L257)).
 
 ### 4. Every sync request carries the ID token
 
@@ -147,7 +147,7 @@ The token the device sends is the **ID token**, not the access token. This was s
 
 [auth.dart:188-198](../../../app/lib/data/auth.dart#L188-L198)
 
-A Dio interceptor is the only place a token is attached ([auth.dart:463-470](../../../app/lib/data/auth.dart#L464-L471)), and only the sync client has it ([flush.dart:185](../../../app/lib/data/flush.dart#L193)). On a 401 it refreshes once and retries on a plain client, so it cannot loop ([auth.dart:478-496](../../../app/lib/data/auth.dart#L479-L497)). Only a 400 on the refresh itself signs the reader out. A lost network leaves the account alone ([auth.dart:269-277](../../../app/lib/data/auth.dart#L269-L277)).
+A Dio interceptor is the only place a token is attached ([auth.dart:464-471](../../../app/lib/data/auth.dart#L464-L471)), and only the sync client has it ([flush.dart:193](../../../app/lib/data/flush.dart#L193)). On a 401 it refreshes once and retries on a plain client, so it cannot loop ([auth.dart:479-497](../../../app/lib/data/auth.dart#L479-L497)). Only a 400 on the refresh itself signs the reader out. A lost network leaves the account alone ([auth.dart:269-277](../../../app/lib/data/auth.dart#L269-L277)).
 
 ### 5. The API builds a verifier from the issuer
 

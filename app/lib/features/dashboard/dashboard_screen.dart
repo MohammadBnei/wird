@@ -111,6 +111,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final nav = Navigator.of(context);
     final chosen = await nav.pushNamed(route);
     if (chosen is int) await nav.pushNamed(Routes.study, arguments: chosen);
+    // A prayer prepared from a door may have answered for the waiting set.
+    if (mounted) await _load();
   }
 
   @override
@@ -278,6 +280,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             route: Routes.kept,
             label: l10n.dashboard_doorKept,
             why: l10n.dashboard_doorKeptWhy,
+          ),
+          (
+            route: Routes.prepare,
+            label: l10n.dashboard_doorPray,
+            why: l10n.dashboard_doorPrayWhy,
           ),
         ])
           GestureDetector(

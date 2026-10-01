@@ -24,9 +24,9 @@ sequenceDiagram
 
 ## 1. You finish a set
 
-You read the **set**, mark it understood, then pray it. The prayer screen itself writes nothing. The prayer is counted on your way back from it, so a prayer you never came back from is never invented.
+You read the **set**, mark it understood, then pray it: you prepare the prayer, and the set is the passage after Al-Fātiḥa. The prayer screen itself writes nothing. The prayer is counted on your way back from it, and only if you reached a rakʿah that recited the set, so a prayer you never came back from is never invented.
 
-→ [Sets and reader: praying a set](../architecture/app/sets-and-reader.md#9-praying-a-set) · [App: a prayer is recorded on the way back](../architecture/app.md#5-a-prayer-is-recorded-on-the-way-back-from-it)
+→ [Sets and reader: praying a set](../architecture/app/sets-and-reader.md#9-praying-a-set) · [App: a prayer is recorded on the way back](../architecture/app.md#5-a-prayer-is-prepared-then-recorded-on-the-way-back-from-it)
 
 ## 2. The write and its op land together
 

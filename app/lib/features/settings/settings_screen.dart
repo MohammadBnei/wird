@@ -481,7 +481,15 @@ class _SensePanelState extends State<SensePanel> {
 /// presses Download, and the prayer screen advances on a tap the way it has
 /// since before any of this existed.
 class VoiceModelPanel extends StatefulWidget {
-  const VoiceModelPanel({super.key, this.model, this.words = const []});
+  const VoiceModelPanel({
+    super.key,
+    this.model,
+    this.words = const [],
+    this.onReady,
+  });
+
+  /// Called once the recogniser is on disk, found there or just downloaded.
+  final VoidCallback? onReady;
 
   /// The one thing the phone supplies and a test stands in for: the model
   /// beside the database, and the host it is fetched from.
@@ -534,6 +542,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
           _ready = model.ready;
           _received = model.bytesOnDisk;
         });
+        if (model.ready) widget.onReady?.call();
       }
       return model;
     } on Object {
@@ -563,6 +572,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
         _ready = model.ready;
         _received = model.bytesOnDisk;
       });
+      if (model.ready) widget.onReady?.call();
     }
   }
 

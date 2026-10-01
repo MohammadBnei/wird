@@ -33,20 +33,19 @@ class PrayerCursor extends ChangeNotifier {
   /// Whether the word — rather than the aya it sits in — is worth pointing
   /// at. A prayer opens on the first word without anybody having said it, so
   /// nothing is singled out until something is heard or tapped: the aya
-  /// stands lit and the word inside it waits to be earned.
+  /// stands as still to come and the word inside it waits to be earned.
   bool _sure;
 
   /// The word being recited, 0 to [words] - 1.
   int get at => _at;
 
-  /// Whether the word — rather than the aya it sits in — is worth pointing at.
+  /// Whether a word has been named at all — by the voice, the pace or a tap —
+  /// rather than the cursor standing where a rakʿah put it before anything
+  /// was said. Until then the screen draws the aya as still to come.
   ///
-  /// The aya is always right enough to light: the screen shows one at a time
-  /// and a word either side of the truth is invisible at a metre. The word
-  /// inside it is only worth singling out when the recitation named one place
-  /// clearly, and saying so faintly is honest where saying so brightly would
-  /// be a claim the matcher did not make. A tap is always sure: the reader
-  /// knows where they are.
+  /// The voice used to name a word only above its sure score and leave the
+  /// rest unsure; a reader whose voice placed at 0.7 then saw their aya never
+  /// light. Every place the matcher moves to now names its word.
   bool get sure => _sure;
 
   /// Which aya of the set that word belongs to is the screen's business, not

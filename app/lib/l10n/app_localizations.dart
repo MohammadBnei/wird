@@ -245,17 +245,467 @@ abstract class AppLocalizations {
   /// **'Not downloaded'**
   String get notDownloaded;
 
-  /// Kicker beside the dot at the top of the prayer screen, while nothing is following the reciter.
+  /// Kicker at the top left of the prayer screen, drawn in capitals: which prayer, and which rakʿah of how many.
   ///
   /// In en, this message translates to:
-  /// **'IN PRAYER'**
-  String get prayer_in_prayer;
+  /// **'{prayer} · Rakʿah {rakah} of {count}'**
+  String prayer_header(String prayer, int rakah, int count);
 
-  /// The same kicker at the top of the prayer screen, but only once voice-follow is really running.
+  /// Under the kicker on the prayer screen: the sūra being recited and the aya, as in 'Al-Fatihah · 1:4'.
   ///
   /// In en, this message translates to:
-  /// **'FOLLOWING YOUR VOICE'**
-  String get prayer_following_your_voice;
+  /// **'{sura} · {ref}'**
+  String prayer_part(String sura, String ref);
+
+  /// The prayer's name when no preset was chosen: a sunna, a nafl, or a count the reader set.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer'**
+  String get prayer_generic;
+
+  /// The dawn prayer, two rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'Fajr'**
+  String get prayer_fajr;
+
+  /// The midday prayer, four rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'Ẓuhr'**
+  String get prayer_zuhr;
+
+  /// The afternoon prayer, four rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'ʿAṣr'**
+  String get prayer_asr;
+
+  /// The sunset prayer, three rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'Maghrib'**
+  String get prayer_maghrib;
+
+  /// The night prayer, four rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'ʿIshāʾ'**
+  String get prayer_isha;
+
+  /// Foot of the prayer screen: the voice is followed, and a steady pace takes over when it loses the reciter.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice, pace as fallback'**
+  String get prayer_mode_both;
+
+  /// Foot of the prayer screen, only once voice-follow is really running.
+  ///
+  /// In en, this message translates to:
+  /// **'Following your voice'**
+  String get prayer_mode_voice;
+
+  /// Foot of the prayer screen: the text moves on its own at this many words a minute.
+  ///
+  /// In en, this message translates to:
+  /// **'Steady · {wpm} wpm'**
+  String prayer_mode_pace(int wpm);
+
+  /// Foot of the prayer screen when nothing moves the text but the reader's own taps.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to advance'**
+  String get prayer_mode_tap;
+
+  /// Bottom right of the prayer screen: which rakʿah of how many.
+  ///
+  /// In en, this message translates to:
+  /// **'{rakah} of {count}'**
+  String prayer_rakah_count(int rakah, int count);
+
+  /// Over the screen between two rakʿahs, drawn in capitals: the rakʿah that comes next.
+  ///
+  /// In en, this message translates to:
+  /// **'Rakʿah {rakah} of {count}'**
+  String prayer_between(int rakah, int count);
+
+  /// Between two rakʿahs, while the voice is followed: the next one starts when the reader recites Al-Fātiḥa, or on a tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Begins when you recite · or tap'**
+  String get prayer_between_voice;
+
+  /// Between two rakʿahs, with no voice: the next one starts on a tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to begin'**
+  String get prayer_between_tap;
+
+  /// Over the screen for a moment after the last rakʿah, before the prayer closes.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer complete'**
+  String get prayer_complete;
+
+  /// A brief chip while the reader pinches the Arabic: its new size, kept for the next prayer.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} px · remembered'**
+  String prayer_size_remembered(int size);
+
+  /// Screen-reader label for the wide tap zone when nothing else moves the text, where a tap moves on one word.
+  ///
+  /// In en, this message translates to:
+  /// **'On to the next word'**
+  String get prayer_on_a_word;
+
+  /// Title of the screen where a prayer is set up before it begins.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare prayer'**
+  String get prepare_title;
+
+  /// Kicker above the five prayer presets, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer'**
+  String get prepare_kicker_prayer;
+
+  /// Label of the stepper for how many rakʿahs the prayer has.
+  ///
+  /// In en, this message translates to:
+  /// **'Rakʿahs'**
+  String get prepare_rakahs;
+
+  /// Under the rakʿah stepper, when the count is the preset's own.
+  ///
+  /// In en, this message translates to:
+  /// **'Set by {prayer}'**
+  String prepare_rakahs_set_by(String prayer);
+
+  /// Under the rakʿah stepper, when the reader changed the preset's count — a prayer shortened while travelling.
+  ///
+  /// In en, this message translates to:
+  /// **'{prayer} is usually {count}'**
+  String prepare_rakahs_usually(String prayer, int count);
+
+  /// Under the rakʿah stepper, when no preset is chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Any prayer, sunna or nafl'**
+  String get prepare_rakahs_any;
+
+  /// Screen-reader label for the minus of the rakʿah stepper.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer rakʿahs'**
+  String get prepare_fewer_rakahs;
+
+  /// Screen-reader label for the plus of the rakʿah stepper.
+  ///
+  /// In en, this message translates to:
+  /// **'More rakʿahs'**
+  String get prepare_more_rakahs;
+
+  /// Kicker above the rakʿah timeline, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'What you recite'**
+  String get prepare_kicker_recite;
+
+  /// The line at the head of every rakʿah in the timeline: Al-Fātiḥa is always recited.
+  ///
+  /// In en, this message translates to:
+  /// **'Al-Fātiḥa'**
+  String get prepare_fatiha;
+
+  /// The empty passage card of the first or second rakʿah.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a passage'**
+  String get prepare_add_passage;
+
+  /// Under 'Add a passage': leaving it empty is a choice too.
+  ///
+  /// In en, this message translates to:
+  /// **'Or recite Al-Fātiḥa only'**
+  String get prepare_fatiha_only_hint;
+
+  /// A number of ayas, as in a passage card's meta line.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} aya} other{{count} ayas}}'**
+  String prepare_ayas(int count);
+
+  /// How long a passage takes at the chosen pace, under a minute.
+  ///
+  /// In en, this message translates to:
+  /// **'about {seconds} s'**
+  String prepare_about_seconds(int seconds);
+
+  /// How long a passage takes at the chosen pace, a minute or more.
+  ///
+  /// In en, this message translates to:
+  /// **'about {minutes} min'**
+  String prepare_about_minutes(int minutes);
+
+  /// Appended to the second rakʿah's meta line when it repeats the first's passage.
+  ///
+  /// In en, this message translates to:
+  /// **'same as rakʿah 1'**
+  String get prepare_same_as_first;
+
+  /// Kicker above the voice and pace options, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'How the text moves'**
+  String get prepare_kicker_moves;
+
+  /// Checkbox: the prayer follows the reader's recitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow my voice'**
+  String get prepare_follow_voice;
+
+  /// Under 'Follow my voice' when the microphone is allowed and the model downloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Recogniser ready on this phone'**
+  String get prepare_voice_ready;
+
+  /// Under 'Follow my voice' when it cannot run yet; the checkbox is off and dark.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow the microphone and download the recogniser, below'**
+  String get prepare_voice_setup;
+
+  /// Checkbox: the text moves on by itself at a set number of words a minute.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep a steady pace'**
+  String get prepare_steady_pace;
+
+  /// Under 'Keep a steady pace': the pace.
+  ///
+  /// In en, this message translates to:
+  /// **'{wpm} words a minute'**
+  String prepare_wpm(int wpm);
+
+  /// Screen-reader label for the pace's minus.
+  ///
+  /// In en, this message translates to:
+  /// **'Slower'**
+  String get prepare_slower;
+
+  /// Screen-reader label for the pace's plus.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster'**
+  String get prepare_faster;
+
+  /// Note under the movement options when both are on.
+  ///
+  /// In en, this message translates to:
+  /// **'Your voice leads. If the recogniser loses you, the text moves on at {wpm} words a minute until it finds you again.'**
+  String prepare_note_both(int wpm);
+
+  /// Note under the movement options when only the voice is on.
+  ///
+  /// In en, this message translates to:
+  /// **'The text waits for your voice. Each rakʿah begins when you start reciting.'**
+  String get prepare_note_voice;
+
+  /// Note under the movement options when only the pace is on.
+  ///
+  /// In en, this message translates to:
+  /// **'The text moves at {wpm} words a minute. Each rakʿah begins on a tap.'**
+  String prepare_note_pace(int wpm);
+
+  /// Note under the movement options when both are off.
+  ///
+  /// In en, this message translates to:
+  /// **'Neither is on: tap the screen to move to the next word.'**
+  String get prepare_note_neither;
+
+  /// Kicker above the display options, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'On screen'**
+  String get prepare_kicker_screen;
+
+  /// Switch: the gloss of the word being recited, under the aya.
+  ///
+  /// In en, this message translates to:
+  /// **'Meaning of the current word'**
+  String get prepare_gloss;
+
+  /// Switch: the ayas either side of the one being recited.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous and next aya, faded'**
+  String get prepare_around;
+
+  /// Row showing the prayer screen's Arabic size.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic size'**
+  String get prepare_size;
+
+  /// Under 'Arabic size'.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinch on the prayer screen to change it'**
+  String get prepare_size_hint;
+
+  /// The Arabic size, in pixels.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} px'**
+  String prepare_size_px(int size);
+
+  /// Row reminding the reader to silence the phone; the app cannot do it for them.
+  ///
+  /// In en, this message translates to:
+  /// **'Silence notifications'**
+  String get prepare_silence;
+
+  /// Under 'Silence notifications'.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Do Not Disturb or a Focus before you begin'**
+  String get prepare_silence_hint;
+
+  /// Button opening a looping preview of a rakʿah before the prayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get prepare_preview;
+
+  /// The button that starts the prayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Begin {prayer}'**
+  String prepare_begin(String prayer);
+
+  /// Title of the passage chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a passage'**
+  String get chooser_title;
+
+  /// Under the chooser's title: which rakʿah the passage is for.
+  ///
+  /// In en, this message translates to:
+  /// **'Rakʿah {rakah} · after Al-Fātiḥa'**
+  String chooser_rakah(int rakah);
+
+  /// Placeholder of the chooser's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search a sūra, or type 2:255'**
+  String get chooser_search;
+
+  /// A row offered when the search is a reference like 2:255.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to {ref}'**
+  String chooser_go_to(String ref);
+
+  /// Under 'Go to …'.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts at this aya; you can widen it next'**
+  String get chooser_go_to_hint;
+
+  /// Kicker above the chooser's suggestions, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested'**
+  String get chooser_suggested;
+
+  /// Suggestion for the second rakʿah: repeat the first's passage.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as rakʿah 1'**
+  String get chooser_same;
+
+  /// Suggestion: the next unread passage.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue where you left off'**
+  String get chooser_continue;
+
+  /// Under a suggestion that was recited in an earlier prayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently recited'**
+  String get chooser_recent;
+
+  /// Suggestion: no passage in this rakʿah.
+  ///
+  /// In en, this message translates to:
+  /// **'Al-Fātiḥa only'**
+  String get chooser_fatiha_only;
+
+  /// Under 'Al-Fātiḥa only'.
+  ///
+  /// In en, this message translates to:
+  /// **'No passage in this rakʿah'**
+  String get chooser_fatiha_only_hint;
+
+  /// Kicker above the full sūra list, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'All sūras'**
+  String get chooser_all;
+
+  /// Shown when the search finds nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No sūra matches “{query}”.'**
+  String chooser_no_match(String query);
+
+  /// The sūra at the top of the range step, as its number and name.
+  ///
+  /// In en, this message translates to:
+  /// **'{number} · {name}'**
+  String range_sura(int number, String name);
+
+  /// On the sūra card at the top of the range: goes back to the list of sūras.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get range_change_sura;
+
+  /// Above the grid of aya numbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the first aya, then the last.'**
+  String get range_tap_hint;
+
+  /// Chip setting the range to the whole sūra.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole sūra'**
+  String get range_whole;
+
+  /// End of the range card's meta line.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} ayas in the sūra'**
+  String range_in_sura(int count);
+
+  /// Button choosing this range for the rakʿah.
+  ///
+  /// In en, this message translates to:
+  /// **'Recite {title}'**
+  String range_recite(String title);
+
+  /// Tab in the preview sheet choosing which rakʿah to preview.
+  ///
+  /// In en, this message translates to:
+  /// **'R{rakah}'**
+  String preview_rakah(int rakah);
 
   /// The ghost button at the top right of the prayer screen, the one way out of the prayer.
   ///
@@ -274,18 +724,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On to the next aya'**
   String get prayer_on_to_the_next_aya;
-
-  /// The hint under the progress strip at the foot of the prayer screen, when the prayer answers taps only.
-  ///
-  /// In en, this message translates to:
-  /// **'Screen stays awake · tap to go on · left edge steps back'**
-  String get prayer_foot_taps_only;
-
-  /// The same hint at the foot of the prayer screen once voice-follow is running, where a tap is a correction rather than the only way on.
-  ///
-  /// In en, this message translates to:
-  /// **'Screen stays awake · tap any time · left edge steps back'**
-  String get prayer_foot_following;
 
   /// The kicker over the title of the passage screen (1d), saying what the screen counts.
   ///
@@ -592,6 +1030,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Kept'**
   String get dashboard_doorKept;
+
+  /// A door on the dashboard to the prayer's preparation, without a set in hand.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare a prayer'**
+  String get dashboard_doorPray;
+
+  /// Under 'Prepare a prayer'.
+  ///
+  /// In en, this message translates to:
+  /// **'Any passage, any number of rakʿahs'**
+  String get dashboard_doorPrayWhy;
 
   /// The subtitle under the kept row on home.
   ///
@@ -1340,8 +1790,14 @@ abstract class AppLocalizations {
   /// On the recogniser check screen, why the prayer would not have moved: two places in the set fit about equally well.
   ///
   /// In en, this message translates to:
-  /// **'word {word} at {score}% but somewhere else fits {rival}% — the set says this twice'**
+  /// **'word {word} at {score}% but somewhere else fits {rival}%'**
   String settingsVoiceCheckAmbiguous(int word, int score, int rival);
+
+  /// Voice check: the phrase heard is repeated in the set and order cannot choose.
+  ///
+  /// In en, this message translates to:
+  /// **'word {word} at {score}%, but the set says this more than once and no copy is just ahead'**
+  String settingsVoiceCheckRepeat(int word, int score);
 
   /// On the recogniser check screen, where the matcher placed the reciter and how well it fitted.
   ///
@@ -1786,6 +2242,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Form'**
   String get study_form;
+
+  /// On the prepare screen when the database did not answer.
+  ///
+  /// In en, this message translates to:
+  /// **'The Qur\'an could not be read on this device. Try again; if it keeps failing, close Wird and open it again.'**
+  String get prepare_trouble;
+
+  /// Button under prepare_trouble.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get prepare_retry;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

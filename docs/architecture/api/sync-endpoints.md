@@ -116,17 +116,17 @@ The transaction only commits when the op was `applied`. So the `op_log` row and 
 	return tag.RowsAffected() == 1, nil
 ```
 
-The API prunes op log rows older than 90 days ([store.go:348](../../../server/internal/store/store.go#L348)). A replay older than that is still safe for most kinds, because the writes themselves are upserts or skip rows already there. A report is the exception: replayed that late, it would land twice. [store/sync.go:525-528](../../../server/internal/store/sync.go#L527-L530) A prayer with no id of its own takes the op id as its row id, so even that replay lands on the same row. [store/sync.go:453-458](../../../server/internal/store/sync.go#L455-L460)
+The API prunes op log rows older than 90 days ([store.go:348](../../../server/internal/store/store.go#L348)). A replay older than that is still safe for most kinds, because the writes themselves are upserts or skip rows already there. A report is the exception: replayed that late, it would land twice. [store/sync.go:527-530](../../../server/internal/store/sync.go#L527-L530) A prayer with no id of its own takes the op id as its row id, so even that replay lands on the same row. [store/sync.go:455-460](../../../server/internal/store/sync.go#L455-L460)
 
 ### 4. The reader lock keeps the cursor honest
 
 Before anything else, the transaction takes an advisory lock on the reader. A sequence number is handed out when a row is written, not when it commits. Without the lock, two writes in flight could commit in the opposite order to their numbers, and a device whose cursor had passed the lower number would never see that row. With it, one reader's writes land one at a time. [store/sync.go:121-141](../../../server/internal/store/sync.go#L121-L141)
 
-The same lock makes the server-assigned set `ordinal` safe: `MAX(ordinal) + 1` cannot race. [store/sync.go:359-388](../../../server/internal/store/sync.go#L361-L390)
+The same lock makes the server-assigned set `ordinal` safe: `MAX(ordinal) + 1` cannot race. [store/sync.go:361-390](../../../server/internal/store/sync.go#L361-L390)
 
 ### 5. Apply by kind
 
-`applyKind` dispatches on the op's kind. An unknown kind is refused. [store/sync.go:177-196](../../../server/internal/store/sync.go#L177-L198)
+`applyKind` dispatches on the op's kind. An unknown kind is refused. [store/sync.go:177-198](../../../server/internal/store/sync.go#L177-L198)
 
 | Kind | What it writes | Rule |
 |---|---|---|
@@ -139,7 +139,7 @@ The same lock makes the server-assigned set `ordinal` safe: `MAX(ordinal) + 1` c
 | `position_moved` | The reader's `reading_positions` row for that sūra | The word must belong to the sūra; the time must be set and no more than five minutes ahead of the server; last write wins. [L600](../../../server/internal/store/sync.go#L600) |
 | `report_written` | A row in `report_inbox`, with no reader attached | Swept into `reports` later, on a clock. [L493](../../../server/internal/store/sync.go#L495) |
 
-Every body is decoded strictly. One unknown field refuses the op. [store/sync.go:219-226](../../../server/internal/store/sync.go#L221-L228)
+Every body is decoded strictly. One unknown field refuses the op. [store/sync.go:221-228](../../../server/internal/store/sync.go#L221-L228)
 
 ```go
 func decode(body json.RawMessage, into any) error {
@@ -170,7 +170,7 @@ stateDiagram-v2
   failed --> [*]: device sends it again later
 ```
 
-The reason sent back never names a table or a statement. [store/sync.go:158-175](../../../server/internal/store/sync.go#L158-L175) Refused and failed ops are counted per day, kind and verdict in `sync_outcomes`, with no reader attached, so the operations view can see that syncs fail without seeing whose. [store/sync.go:210-217](../../../server/internal/store/sync.go#L212-L219)
+The reason sent back never names a table or a statement. [store/sync.go:158-175](../../../server/internal/store/sync.go#L158-L175) Refused and failed ops are counted per day, kind and verdict in `sync_outcomes`, with no reader attached, so the operations view can see that syncs fail without seeing whose. [store/sync.go:212-219](../../../server/internal/store/sync.go#L212-L219)
 
 ### 7. The pull: `GET /v1/changes`
 
@@ -183,11 +183,11 @@ flowchart LR
   q --> r["changes + cursor seq:last<br/>+ more if the page is full"]
 ```
 
-The six tables the pull reads each carry a `seq` column fed by one sequence, `change_seq`. Each insert takes the next number, and each update of a kept item, of preferences or of a reading position takes a fresh one. [00003_change_order.sql:11-17](../../../server/migrations/00003_change_order.sql#L11-L17), [store/sync.go:290](../../../server/internal/store/sync.go#L292), [store/sync.go:311](../../../server/internal/store/sync.go#L313), [store/sync.go:586](../../../server/internal/store/sync.go#L588) `root_known` has no `seq` and is not in the stream.
+The six tables the pull reads each carry a `seq` column fed by one sequence, `change_seq`. Each insert takes the next number, and each update of a kept item, of preferences or of a reading position takes a fresh one. [00003_change_order.sql:11-17](../../../server/migrations/00003_change_order.sql#L11-L17), [store/sync.go:292](../../../server/internal/store/sync.go#L292), [store/sync.go:313](../../../server/internal/store/sync.go#L313), [store/sync.go:588](../../../server/internal/store/sync.go#L588) `root_known` has no `seq` and is not in the stream.
 
-The query unions `ayah_understood`, `kept_items`, `sets`, `set_prayers`, `user_prefs` and `reading_positions`, orders by `seq`, and stops at 500 rows. A kept item with `deleted_at` set is sent like any other row: that row is the tombstone. [store/sync.go:613-642](../../../server/internal/store/sync.go#L656-L689)
+The query unions `ayah_understood`, `kept_items`, `sets`, `set_prayers`, `user_prefs` and `reading_positions`, orders by `seq`, and stops at 500 rows. A kept item with `deleted_at` set is sent like any other row: that row is the tombstone. [store/sync.go:656-689](../../../server/internal/store/sync.go#L656-L689)
 
-The cursor is the text `seq:` followed by the last number sent. A cursor without that prefix is refused with a 400 rather than read as some place in the stream. [store/sync.go:689-708](../../../server/internal/store/sync.go#L736-L755)
+The cursor is the text `seq:` followed by the last number sent. A cursor without that prefix is refused with a 400 rather than read as some place in the stream. [store/sync.go:736-755](../../../server/internal/store/sync.go#L736-L755)
 
 ```go
 func parseCursor(cursor string) (int64, error) {
@@ -206,7 +206,7 @@ func parseCursor(cursor string) (int64, error) {
 }
 ```
 
-When a page comes back empty, the cursor the device sent is returned unchanged. `more` is true only when the page is full. [store/sync.go:675-678](../../../server/internal/store/sync.go#L722-L725) The endpoint writes nothing.
+When a page comes back empty, the cursor the device sent is returned unchanged. `more` is true only when the page is full. [store/sync.go:722-725](../../../server/internal/store/sync.go#L722-L725) The endpoint writes nothing.
 
 ### 8. One file both sides answer to
 

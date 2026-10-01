@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/features/study/word_row.dart';
 
 import 'journey.dart';
@@ -98,6 +99,47 @@ void main() {
         expect(ayasOnScreen(tester), isNotEmpty);
         expectNoSpinnerAndNoApology(tester, 'on the second set, offline');
       });
+    },
+  );
+
+  journey(
+    'prepares a prayer and prays it with the network off',
+    body: (tester) async {
+      await launchFresh(tester);
+      await withNetworkDenied(() async {
+        await tester.tap(find.byKey(const Key('pray')));
+        await waitFor(
+          tester,
+          () => find.byKey(const Key('begin')).evaluate().isNotEmpty,
+          "the prayer's preparation, from the set in hand",
+        );
+        expectNoSpinnerAndNoApology(tester, 'while preparing the prayer');
+
+        await tester.tap(find.byKey(const Key('begin')));
+        await waitFor(
+          tester,
+          () => find.byKey(PrayerScreen.nextZone).evaluate().isNotEmpty,
+          'the prayer itself',
+        );
+        for (var i = 0; i < 3; i++) {
+          await tester.tap(find.byKey(PrayerScreen.nextZone));
+          await tester.pumpAndSettle();
+        }
+        expectNoSpinnerAndNoApology(tester, 'inside the prayer, offline');
+
+        await tester.tap(find.text('Exit'));
+        await waitFor(
+          tester,
+          () => find.byKey(const Key('pray')).evaluate().isNotEmpty,
+          'the set the reader prayed from, after the prayer',
+        );
+      });
+      final prayed = await (await openCorpusBeside()).query('set_prayers');
+      expect(
+        prayed,
+        hasLength(1),
+        reason: 'the prayer was not written down when the reader came back',
+      );
     },
   );
 

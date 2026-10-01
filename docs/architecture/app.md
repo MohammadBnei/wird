@@ -80,7 +80,7 @@ flowchart TB
 | Folder | What is in it |
 |---|---|
 | `data/` | Everything that touches the database or the network. Screens call into it; it never draws. |
-| `features/` | One folder per screen: `dashboard`, `study` (1a), `prayer` (1b), `root` (3a, 2b), `deepdive` (1c), `progress` (1d), `kept` (1e), `index`, `settings`, `report`, `about`. |
+| `features/` | One folder per screen: `dashboard`, `study` (1a), `prayer` (the preparation and 1b), `root` (3a, 2b), `deepdive` (1c), `progress` (1d), `kept` (1e), `index`, `settings`, `report`, `about`. |
 | `shell/` | The bar and drawer drawn around each destination screen. |
 | `theme/`, `widgets/` | The Nocturne tokens and the few shared controls built on them. Dark only. |
 | `l10n/` | English and French strings. The reader's choice decides, and their phone's until they make one. |
@@ -113,11 +113,11 @@ Future<void> installCorpus(File target, Uint8List bytes) async {
 }
 ```
 
-[db.dart:162](../../app/lib/data/db.dart#L163-L168) · [openWird, db.dart:20](../../app/lib/data/db.dart#L21-L45)
+[db.dart:163](../../app/lib/data/db.dart#L163-L168) · [openWird, db.dart:21](../../app/lib/data/db.dart#L21-L45)
 
 A phone that already holds an older corpus is upgraded on launch. When the app's `bundledCorpusVersion` is above the installed `corpus_meta.corpus_version`, [`upgradeCorpus`](../../app/lib/data/db.dart#L83-L105) fills the new corpus in `wird.db.next`, copies across every table the corpus does not ship and the senses fetched into `root_notes`, then swaps the files by rename. If anything fails before the swap, the old file is kept and the next launch tries again.
 
-Then [openWirdAt](../../app/lib/data/db.dart#L172) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
+Then [openWirdAt](../../app/lib/data/db.dart#L172) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, how the last prayer was prepared, the passages recited, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
 
 The copy only happens when `wird.db` is missing. A later app update with a newer corpus does not replace it.
 
@@ -132,10 +132,9 @@ The copy only happens when `wird.db` is missing. A later app update with a newer
   recitation: recitation ?? Recitation(),
   child: Flushing(
     flusher: flusher,
-    child: MaterialApp(
 ```
 
-[nav.dart:189](../../app/lib/nav.dart#L189-L216) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:202](../../app/lib/app.dart#L202)
+[nav.dart:202](../../app/lib/nav.dart#L202-L236) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:202](../../app/lib/app.dart#L202)
 
 ### 4. Routes: destinations get the shell, pushed screens do not
 
@@ -155,29 +154,52 @@ Every screen is registered by name in one map. The drawer lists the destinations
     },
 ```
 
-[nav.dart:169](../../app/lib/nav.dart#L169-L179) · [the route map, nav.dart:73](../../app/lib/nav.dart#L73-L99) · [the drawer list, nav.dart:109](../../app/lib/nav.dart#L109-L118) · [WirdShell](../../app/lib/shell/wird_shell.dart#L23)
+[nav.dart:168](../../app/lib/nav.dart#L168-L195) · [the route map, nav.dart:75](../../app/lib/nav.dart#L75-L105) · [the drawer list, nav.dart:115](../../app/lib/nav.dart#L115-L124) · [WirdShell](../../app/lib/shell/wird_shell.dart#L23)
 
-### 5. A prayer is recorded on the way back from it
+### 5. A prayer is prepared, then recorded on the way back from it
 
-Screen 1b writes nothing. The app stops any audio, pushes the prayer, and records it only when the reader comes back. A prayer the reader never returns from is not counted: the count may be short, never invented.
+A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:353](../../app/lib/app.dart#L353-L357)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
 
-```dart
-Future<void> prayTheSet(BuildContext context, StudySet set) async {
-  final db = Wird.of(context).db;
-  final navigator = Navigator.of(context);
-  await Wird.of(context).recitation.stop();
-  await navigator.pushNamed(Routes.prayer, arguments: set);
-  await recordSetPrayed(db, set);
-}
+```mermaid
+sequenceDiagram
+  actor R as Reader
+  participant A as prayTheSet or home's door
+  participant P as Prepare
+  participant B as Prayer 1b
+  participant D as wird.db
+  R->>A: Pray this set, or Prepare a prayer
+  A->>P: push /prepare, with the set or nothing
+  R->>P: Begin
+  P->>D: prayer_prefs
+  P->>B: plan, Al-Fātiḥa, prefs
+  B-->>P: back, with the rakʿah reached
+  P->>D: prayer_prefs, prayer_history
+  P->>D: recordSetPrayed, only if a reached rakʿah recited the set
 ```
 
-[app.dart:312](../../app/lib/app.dart#L328-L334)
+```dart
+    final recited = <String, StudySet>{};
+    for (var r = 1; r <= outcome.reached && r <= plan.rakahs; r++) {
+      final set = plan.passageFor(r);
+      if (set != null) recited[set.id] = set;
+    }
+    for (final set in recited.values) {
+      await notePassageRecited(db, set);
+    }
+    if (plan.credited case final set? when recited.containsKey(set.id)) {
+      await recordSetPrayed(db, set);
+    }
+```
+
+[prepare_screen.dart:289](../../app/lib/features/prayer/prepare_screen.dart#L289-L304)
+
+`prayer_prefs` and `prayer_history` stay on the phone. Only `recordSetPrayed` queues an op. [Sets and reader](app/sets-and-reader.md#9-praying-a-set) says which set is credited.
 
 That write, like every other write, goes to the **outbox** inside the same transaction as the local rows. [Sync](app/sync.md) takes it from there.
 
 ### 6. The network, and who calls it
 
-Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:136](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the recitation site and cached; it never reaches `wird-api`.
+Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:144](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the recitation site and cached; it never reaches `wird-api`.
 
 ```mermaid
 flowchart LR
@@ -208,6 +230,7 @@ flowchart LR
 - [ADR 0002](../adr/0002-set-identity.md) — a set's id is derived, and one op records a prayer.
 - [ADR 0003](../adr/0003-addressable-reader.md) — screen 1a is addressable and changes in place.
 - [ADR 0006](../adr/0006-a-passage-is-read-a-set-is-answered-for.md) — a passage is read; a set is answered for.
+- [ADR 0020](../adr/0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) — a prayer is prepared, then recited one rakʿah at a time; the set is credited only if a reached rakʿah recited it.
 - [ADR 0010](../adr/0010-the-server-owns-the-roots-and-their-senses.md) — senses come from the server, not the bundle.
 
 ## Go deeper
