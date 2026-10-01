@@ -1028,7 +1028,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String settingsVoiceCheckAmbiguous(int word, int score, int rival) {
-    return 'mot $word à $score %, mais un autre endroit correspond à $rival % — le passage le dit deux fois';
+    return 'mot $word à $score %, mais un autre endroit correspond à $rival %';
+  }
+
+  @override
+  String settingsVoiceCheckRepeat(int word, int score) {
+    return 'mot $word à $score %, mais le passage le dit plusieurs fois et aucune occurrence n’est juste devant';
   }
 
   @override

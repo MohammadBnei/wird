@@ -70,9 +70,9 @@ class PrayerPlan {
 /// muṣḥaf does not number it, so the screen never shows it — but left out of
 /// what the voice listens for, the only place it fits is Al-Fātiḥa's first
 /// aya, and a reciter starting their passage would be dragged back to the top
-/// of the prayer. Put in, it fits two places equally well, and the matcher
-/// refuses both (`followMargin` in alignment.dart): the screen waits a moment
-/// instead of jumping.
+/// of the prayer. Put in, it fits two places equally well: a repeat, which
+/// the matcher settles by order (`FollowTuning.repeat` in alignment.dart) —
+/// the copy just ahead of the cursor, the one before the passage.
 typedef Rakah = ({List<StudyAya> ayas, List<String> heard, int basmalaAt});
 
 /// Al-Fātiḥa and then [passage], for one rakʿah. [fatiha] is the seven ayas

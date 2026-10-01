@@ -36,8 +36,9 @@ class Condition {
     this.words,
     this.windows, {
     int? reach,
+    this.wrong = 0,
+    this.ahead = 0,
     this.behind = 0,
-    this.known,
   }) : reach = reach ?? words.length - 1;
 
   final String name;
@@ -48,32 +49,32 @@ class Condition {
   /// set, which must never move the cursor (R4).
   final int reach;
 
-  /// The most windows the cursor may spend behind the reciter (R5).
+  /// Ratchets: the most wrong places (R1), windows ahead of the reciter (R3)
+  /// and windows behind them (R5) this condition may show. Zero unless a
+  /// measured failure is pinned here with its reason; a change may lower one,
+  /// never raise it.
+  final int wrong;
+  final int ahead;
   final int behind;
-
-  /// A failure this condition is known to have, and why it is not fixed yet.
-  /// The bench fails when it stops failing, so the note cannot outlive it.
-  final String? known;
 }
 
 typedef Score = ({
   int windows,
   int moved,
-  int wrong,
   int ahead,
   int behind,
   int maxLag,
   int furthest,
-  int end,
   List<String> wrongs,
 });
 
-Score run(Condition c) {
-  final set = Recitation(c.words);
+/// [c] replayed through the matcher, tuned by [tuning].
+Score run(Condition c, [FollowTuning tuning = const FollowTuning()]) {
+  final set = Recitation(c.words, tuning);
   var at = 0, moved = 0, ahead = 0, behind = 0, maxLag = 0, furthest = 0;
   final wrongs = <String>[];
   for (final (i, w) in c.windows.indexed) {
-    final found = locate(set, w.heard, from: at);
+    final found = locate(set, w.heard, cursor: at);
     if (found != null && found.word != at) {
       moved++;
       if ((w.hi != null && found.word > w.hi!) ||
@@ -93,15 +94,29 @@ Score run(Condition c) {
   return (
     windows: c.windows.length,
     moved: moved,
-    wrong: wrongs.length,
     ahead: ahead,
     behind: behind,
     maxLag: maxLag,
     furthest: furthest,
-    end: at,
     wrongs: wrongs,
   );
 }
+
+/// Every requirement [s] breaks, for [c]; empty when it passes.
+List<String> grade(Condition c, Score s) => [
+  if (s.wrongs.length > c.wrong) ...[
+    for (final w in s.wrongs) '${c.name} R1: $w',
+  ],
+  if (c.reach == 0 && s.furthest != 0) '${c.name} R4: moved to ${s.furthest}',
+  // Within the last few words: a short last word may never be named.
+  if (s.furthest < c.reach - 3)
+    '${c.name} R2: got to ${s.furthest}, the reciter to ${c.reach}',
+  if (s.ahead > c.ahead)
+    '${c.name} R3: ${s.ahead} windows ahead of the reciter, at most ${c.ahead}',
+  if (s.behind > c.behind)
+    '${c.name} R5: ${s.behind} windows behind the reciter, at most '
+        '${c.behind}',
+];
 
 /// A recogniser that hears exactly the muṣḥaf, a few letters at a time, one
 /// utterance per aya with the previous aya carried in front, as `carry` does.
@@ -182,7 +197,6 @@ const _behindAtMost = {
   'al-ʿAsr slips 3': 1,
   'al-Kāfirūn slips 3': 3,
   'al-Ikhlāṣ slips 3': 1,
-  'al-Qāriʿah slips 3': 3,
 };
 
 Map<String, dynamic> _fixture(String name) =>
@@ -354,9 +368,10 @@ void main() {
           'repeat 1:2',
           r.heard,
           recite(r.heard, [...a.take(4), a[1], ...a.skip(4)]),
-          known:
-              'R1: the aya just finished is carried in front of the first '
-              'letters of the repeat, and the two read as the word after it',
+          // The cursor stands at 1:4 while the reader goes back to 1:2: ahead
+          // of them until the repeat is heard well enough to follow.
+          ahead: 6,
+          behind: 6,
         ),
       );
       // One word of 1:5 skipped.
@@ -404,29 +419,66 @@ void main() {
       final s = run(c);
       rows.add(
         '${c.name.padRight(20)} ${'${s.windows}'.padLeft(7)} '
-        '${'${s.moved}'.padLeft(6)} ${'${s.wrong}'.padLeft(6)} '
+        '${'${s.moved}'.padLeft(6)} ${'${s.wrongs.length}'.padLeft(6)} '
         '${'${s.ahead}'.padLeft(6)} ${'${s.behind}'.padLeft(6)} '
-        '${'${s.maxLag}'.padLeft(7)}  '
-        '${s.furthest}/${c.reach}${c.known == null ? '' : '  known'}',
+        '${'${s.maxLag}'.padLeft(7)}  ${s.furthest}/${c.reach}',
       );
-      final failed = [
-        for (final w in s.wrongs) 'R1: $w',
-        if (c.reach == 0 && s.furthest != 0) 'R4: moved to ${s.furthest}',
-        // Within the last few words: a short last word may never be named.
-        if (s.furthest < c.reach - 3)
-          'R2: got to ${s.furthest}, the reciter to ${c.reach}',
-        if (s.behind > c.behind)
-          'R5: ${s.behind} windows behind the reciter, at most ${c.behind}',
-      ];
-      if (c.known == null) {
-        failures.addAll([for (final f in failed) '${c.name} $f']);
-      } else if (failed.isEmpty) {
-        failures.add('${c.name} passes now: drop `known`');
-      }
+      failures.addAll(grade(c, s));
     }
     // ignore: avoid_print
     print(rows.join('\n'));
     expect(failures, isEmpty, reason: failures.join('\n'));
+  });
+
+  // The same conditions under other numbers, one knob at a time: the table a
+  // change to [FollowTuning] is argued from. Off in the suite; run with
+  // `SWEEP=1 fvm flutter test test/features/prayer/follow_bench_test.dart`.
+  test('the sweep', skip: Platform.environment['SWEEP'] == null, () {
+    void sweep(String knob, List<num> values, FollowTuning Function(num) at) {
+      for (final v in values) {
+        var wrong = 0, ahead = 0, behind = 0, failing = 0;
+        for (final c in conditions) {
+          final s = run(c, at(v));
+          wrong += s.wrongs.length;
+          ahead += s.ahead;
+          behind += s.behind;
+          if (grade(c, s).isNotEmpty) failing++;
+        }
+        // ignore: avoid_print
+        print(
+          '${'$knob=$v'.padRight(20)} wrong $wrong  ahead $ahead  '
+          'behind $behind  conditions failing $failing',
+        );
+      }
+    }
+
+    sweep('margin', [
+      0.2,
+      0.26,
+      0.32,
+      0.4,
+    ], (v) => FollowTuning(margin: v.toDouble()));
+    sweep('marginFloor', [0.05, 0.1, 0.15, 0.2], (v) {
+      return FollowTuning(marginFloor: v.toDouble());
+    });
+    sweep('repeat', [
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+    ], (v) => FollowTuning(repeat: v.toDouble()));
+    sweep('repeatReach', [4, 8, 12, 20], (v) {
+      return FollowTuning(repeatReach: v.toInt());
+    });
+    sweep('slack', [0, 3, 6, 9], (v) => FollowTuning(slack: v.toInt()));
+    sweep('threshold', [
+      0.3,
+      0.44,
+      0.6,
+    ], (v) => FollowTuning(threshold: v.toDouble()));
+    sweep('tailLetters', [16, 24, 32], (v) {
+      return FollowTuning(tailLetters: v.toInt());
+    });
   });
 
   // Three windows off the same trail, each a failure the owner saw.
@@ -443,13 +495,13 @@ void main() {
     // walaḍ-ḍāllīn: the last word, which a window as long as what was heard
     // could not name, and the reader said it over and over.
     expect(
-      locate(set, 'غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦن', from: 27)?.word,
+      locate(set, 'غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦن', cursor: 27)?.word,
       28,
     );
     // 1:3 and on into 1:4, which a near-copy in front of the passage took at
     // a margin of 0.07: the cursor jumped to word 33 and back.
-    expect(locate(set, 'رَحمَۥۥنرَحِۦۦۦۦم مَلَاا', from: 9)?.word, isNot(33));
+    expect(locate(set, 'رَحمَۥۥنرَحِۦۦۦۦم مَلَاا', cursor: 9)?.word, isNot(33));
     // The basmala opening the second rakʿah, placed at 0.73.
-    expect(locate(set, 'نِسمِللَااهِررَحمَاانِررَحِۦۦم', from: 0)?.word, 3);
+    expect(locate(set, 'نِسمِللَااهِررَحمَاانِررَحِۦۦم', cursor: 0)?.word, 3);
   });
 }

@@ -131,7 +131,7 @@ void main() {
   });
 
   test(
-    'a reader placed short of followSure sees their aya never light',
+    'a reader placed short of the sure score sees their aya never light',
     () async {
       // What the recogniser wrote for the owner on 2026-10-01, which `locate`
       // placed on word 1 at 0.71: a real place, below the 0.8 the pace counts

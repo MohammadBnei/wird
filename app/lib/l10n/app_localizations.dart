@@ -1790,8 +1790,14 @@ abstract class AppLocalizations {
   /// On the recogniser check screen, why the prayer would not have moved: two places in the set fit about equally well.
   ///
   /// In en, this message translates to:
-  /// **'word {word} at {score}% but somewhere else fits {rival}% — the set says this twice'**
+  /// **'word {word} at {score}% but somewhere else fits {rival}%'**
   String settingsVoiceCheckAmbiguous(int word, int score, int rival);
+
+  /// Voice check: the phrase heard is repeated in the set and order cannot choose.
+  ///
+  /// In en, this message translates to:
+  /// **'word {word} at {score}%, but the set says this more than once and no copy is just ahead'**
+  String settingsVoiceCheckRepeat(int word, int score);
 
   /// On the recogniser check screen, where the matcher placed the reciter and how well it fitted.
   ///

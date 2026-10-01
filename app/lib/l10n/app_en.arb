@@ -1365,7 +1365,7 @@
       }
     }
   },
-  "settingsVoiceCheckAmbiguous": "word {word} at {score}% but somewhere else fits {rival}% — the set says this twice",
+  "settingsVoiceCheckAmbiguous": "word {word} at {score}% but somewhere else fits {rival}%",
   "@settingsVoiceCheckAmbiguous": {
     "description": "On the recogniser check screen, why the prayer would not have moved: two places in the set fit about equally well.",
     "placeholders": {
@@ -1380,6 +1380,8 @@
       }
     }
   },
+  "settingsVoiceCheckRepeat": "word {word} at {score}%, but the set says this more than once and no copy is just ahead",
+  "@settingsVoiceCheckRepeat": {"description": "Voice check: the phrase heard is repeated in the set and order cannot choose.", "placeholders": {"word": {"type": "int"}, "score": {"type": "int"}}},
   "settingsVoiceCheckPlaced": "word {word} at {score}%",
   "@settingsVoiceCheckPlaced": {
     "description": "On the recogniser check screen, where the matcher placed the reciter and how well it fitted.",

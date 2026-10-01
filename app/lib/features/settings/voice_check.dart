@@ -133,32 +133,29 @@ class _VoiceCheckState extends State<VoiceCheck> {
         if (!mounted) return;
         if (heard.isNotEmpty && !_set.isEmpty) {
           final was = _cursor.at;
-          final at = locate(_set, heard, from: _cursor.at);
-          if (at != null) _cursor.moveTo(at.word);
+          // Decided once, so what it says is why it moved or did not: a stuck
+          // prayer looks the same whether the recogniser stopped, the best
+          // place was not good enough, or another fitted nearly as well.
+          final said = explain(_set, heard, cursor: _cursor.at);
+          if (said.verdict == Verdict.move) _cursor.moveTo(said.word);
           if (_cursor.at != was) _moves++;
-          // Why it did or did not move, which is the whole reason this screen
-          // exists: a stuck prayer looks the same whether the recogniser
-          // stopped, the best place was not good enough, or two places fitted
-          // equally well.
-          final said = explain(_set, heard, from: _cursor.at);
-          _why = said == null
-              ? l.settingsVoiceCheckTooLittle
-              : said.score < said.needed
-              ? l.settingsVoiceCheckBelow(
-                  said.word + 1,
-                  (said.score * 100).round(),
-                  (said.needed * 100).round(),
-                )
-              : said.score - said.rival < said.margin
-              ? l.settingsVoiceCheckAmbiguous(
-                  said.word + 1,
-                  (said.score * 100).round(),
-                  (said.rival * 100).round(),
-                )
-              : l.settingsVoiceCheckPlaced(
-                  said.word + 1,
-                  (said.score * 100).round(),
-                );
+          final word = said.word + 1;
+          final score = (said.score * 100).round();
+          _why = switch (said.verdict) {
+            Verdict.tooLittle => l.settingsVoiceCheckTooLittle,
+            Verdict.lowFit => l.settingsVoiceCheckBelow(
+              word,
+              score,
+              (said.needed * 100).round(),
+            ),
+            Verdict.unclear => l.settingsVoiceCheckAmbiguous(
+              word,
+              score,
+              (said.rival * 100).round(),
+            ),
+            Verdict.repeatNotAhead => l.settingsVoiceCheckRepeat(word, score),
+            Verdict.move => l.settingsVoiceCheckPlaced(word, score),
+          };
         }
         setState(() {
           if (took > _slowest) _slowest = took;

@@ -1028,7 +1028,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsVoiceCheckAmbiguous(int word, int score, int rival) {
-    return 'word $word at $score% but somewhere else fits $rival% — the set says this twice';
+    return 'word $word at $score% but somewhere else fits $rival%';
+  }
+
+  @override
+  String settingsVoiceCheckRepeat(int word, int score) {
+    return 'word $word at $score%, but the set says this more than once and no copy is just ahead';
   }
 
   @override

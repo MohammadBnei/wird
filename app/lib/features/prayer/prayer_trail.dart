@@ -65,7 +65,14 @@ class PrayerTrail {
     }
   }
 
+  /// Twenty minutes of audio, about 77 MB: a prayer and its doubts. Past it
+  /// the tape stops rather than fill the phone.
+  static const _tapeBytes = 20 * 60 * 16000 * 4;
+  var _taped = 0;
+
   void tape(Float32List samples) {
+    if (_taped + samples.lengthInBytes > _tapeBytes) return;
+    _taped += samples.lengthInBytes;
     try {
       _tape?.add(
         samples.buffer.asUint8List(

@@ -9,7 +9,6 @@ import '../../data/speech.dart';
 import 'alignment.dart';
 import 'prayer_cursor.dart';
 import 'prayer_trail.dart';
-import 'voice_follow.dart';
 
 /// The microphone, wired to the cursor.
 ///
@@ -501,23 +500,22 @@ class PrayerVoice {
             trail.note('held', 'the reader moved the prayer themselves');
             continue;
           }
-          final on = _inHeard(_cursor.at);
-          final why = explain(_set, heard, from: on);
-          final at = locate(_set, heard, from: on);
+          final placed = explain(_set, heard, cursor: _inHeard(_cursor.at));
           trail.note(
             'heard',
-            '${_tail(heard)} | ${_verdict(why, at)} | on ${_cursor.at} '
+            '${_tail(heard)} | ${_verdict(placed)} | on ${_cursor.at} '
                 '| peak ${peak.toStringAsFixed(2)}',
           );
-          // Above [followSure] the recognition counts as sure for the pace,
-          // which takes over when none has come for a while. The screen names
-          // the word on any place `locate` accepts: held back to the sure ones,
-          // a reader whose voice placed at 0.7 saw their aya never light and
-          // never turn.
-          _lastSure = at != null && at.score >= followSure;
-          if (at == null || (_opening && !_opens(at.word, heard))) continue;
+          final moves = placed.verdict == Verdict.move;
+          // Above [FollowTuning.sure] the recognition counts as sure for the
+          // pace, which takes over when none has come for a while. The screen
+          // names the word on any place the matcher moves to: held back to the
+          // sure ones, a reader whose voice placed at 0.7 saw their aya never
+          // light and never turn.
+          _lastSure = moves && placed.score >= _set.tuning.sure;
+          if (!moves || (_opening && !_opens(placed))) continue;
           _opening = false;
-          final word = _onScreen(at.word);
+          final word = _onScreen(placed.word);
           if (word != null) _cursor.moveTo(word);
           matched.value = _tail(heard);
           if (_lastSure) {
@@ -597,27 +595,23 @@ class PrayerVoice {
   /// voice would follow nothing for the rest of the rakʿah.
   void begun() => _opening = false;
 
-  /// Whether [word], placed from [heard], is the reader beginning Al-Fātiḥa:
-  /// a window as long as the basmala, landing inside its first two ayas.
-  /// Asked for a full window, heard surely, a reader whose basmala placed at
-  /// 0.73 had to recite two ayas before the rakʿah began.
-  bool _opens(int word, String heard) {
-    var letters = 0;
-    for (final w in heard.split(RegExp(r'\s+'))) {
-      letters += recitationKey(w).length;
-    }
-    return letters >= openingLetters && word < openingWords;
-  }
+  /// Whether [said] is the reader beginning Al-Fātiḥa: a window as long as
+  /// the basmala, landing inside its first two ayas. Asked for a full window,
+  /// heard surely, a reader whose basmala placed at 0.73 had to recite two
+  /// ayas before the rakʿah began.
+  bool _opens(Placing said) =>
+      said.letters >= openingLetters && said.word < openingWords;
 
-  /// Where [heard], a word of [_set], stands on the screen: the same place
-  /// before the unseen basmala, that many words earlier after it, and nowhere
-  /// inside it — the reciter is saying it, and there is nothing to light.
-  /// The other way: where the screen's word [word] stands in what is heard.
+  /// Where the screen's word [word] stands in what is heard: the same place
+  /// before the unseen basmala, that many words later after it.
   int _inHeard(int word) {
     if (_unseenAt < 0 || word < _unseenAt) return word;
     return word + _set.words.length - _cursor.words;
   }
 
+  /// Where [heard], a word of [_set], stands on the screen: the same place
+  /// before the unseen basmala, that many words earlier after it, and nowhere
+  /// inside it — the reciter is saying it, and there is nothing to light.
   int? _onScreen(int heard) {
     if (_unseenAt < 0 || heard < _unseenAt) return heard;
     final unseen = _set.words.length - _cursor.words;
@@ -631,30 +625,21 @@ class PrayerVoice {
   static String _tail(String heard) =>
       heard.length > 40 ? heard.substring(heard.length - 40) : heard;
 
-  static String _verdict(
-    ({
-      int word,
-      double score,
-      double needed,
-      double rival,
-      double margin,
-      int copies,
-    })?
-    said,
-    ({int word, double score})? at,
-  ) {
-    if (said == null) return 'too little heard';
+  /// The trail's line for [said]: the same decision the Settings check words
+  /// for the reader, in English for whoever reads the trail.
+  static String _verdict(Placing said) {
     final where = 'word ${said.word} at ${said.score.toStringAsFixed(2)}';
-    if (at != null) {
-      return said.copies > 1
-          ? 'MOVE to $where, the next of ${said.copies} copies'
-          : 'MOVE to $where';
-    }
-    if (said.score < said.needed) {
-      return 'stay: $where under ${said.needed.toStringAsFixed(2)}';
-    }
-    return 'stay: $where but elsewhere ${said.rival.toStringAsFixed(2)}, '
-        'margin ${said.margin.toStringAsFixed(2)} — said twice';
+    final repeats = said.repeats > 1 ? ', said ${said.repeats} times' : '';
+    return switch (said.verdict) {
+      Verdict.tooLittle => 'too little heard',
+      Verdict.move => 'MOVE to $where$repeats',
+      Verdict.lowFit => 'stay: $where under ${said.needed.toStringAsFixed(2)}',
+      Verdict.unclear =>
+        'stay: $where but elsewhere ${said.rival.toStringAsFixed(2)}, '
+            'margin ${said.margin.toStringAsFixed(2)}',
+      Verdict.repeatNotAhead =>
+        'stay: $where$repeats, none just ahead of the cursor',
+    };
   }
 
   /// Ends the listening. It cannot fail, and it cannot be run twice.
