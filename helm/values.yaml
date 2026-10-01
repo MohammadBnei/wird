@@ -136,7 +136,7 @@ env:
   # key and a download resumed across a release never mixes two builds.
   # Empty answers 503, which the page reads as "not published yet".
   - name: WIRD_APK_KEY
-    value: ""
+    value: "android/wird-87f0955e544c.apk"
   # Trailing slash deliberate: go-oidc compares the discovery document's
   # `issuer` claim against this string verbatim, and authentik publishes it
   # with the slash. app/lib/data/auth.dart carries the same value.
