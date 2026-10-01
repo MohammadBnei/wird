@@ -1,3 +1,8 @@
+// Rendered on macOS: other platforms draw a few pixels differently, so CI
+// excludes these (`--exclude-tags golden`) and the Mac gate runs them.
+@Tags(['golden'])
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -193,18 +192,11 @@ void main() {
     expect(const {'android', 'ios', 'macos'}, contains(platformName));
   });
 
-  // The failure: pubspec is bumped, every report keeps naming the version
-  // before it, and a fixed bug goes on being reported against the build that
-  // fixed it.
-  test('a report names a version this app is not', () {
-    final pubspec = File('pubspec.yaml').readAsLinesSync();
-    final declared = pubspec
-        .firstWhere((line) => line.startsWith('version:'))
-        .split(':')
-        .last
-        .trim()
-        .split('+')
-        .first;
-    expect(appVersion, declared);
+  // The failure: a build run from a laptop reports itself as the last
+  // release, and a bug seen on a walk build is filed against a version that
+  // never had it. Only the release build names a version (apk.yml passes the
+  // pubspec's); everything else is `dev`.
+  test('a build nobody released reports a released version', () {
+    expect(appVersion, 'dev');
   });
 }

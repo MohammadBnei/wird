@@ -1,0 +1,117 @@
+# The release button: Actions -> release-app -> Run workflow, on main, with
+# patch, minor or major. The one way an APK reaches /download/android.
+#
+#   app-checks (analyze + tests)
+#     -> next version from app/pubspec.yaml, the only place it is written
+#     -> commit "Release vX.Y.Z" on main, tag vX.Y.Z, push both atomically
+#     -> dispatch apk.yml on the tag: build, sign, upload, publish
+#
+# Nothing is typed by hand: the version is computed, the build number always
+# rises (Android refuses an update whose version code does not), and the tag
+# cannot disagree with the pubspec because both come from the same line.
+#
+# WHY A DISPATCH AND NOT THE TAG PUSH. A tag pushed with the built-in
+# GITHUB_TOKEN starts no workflow; a workflow_dispatch is the one event that
+# token may start. Run on the tag's ref, apk.yml sees ref_type == tag and
+# publishes, and the Infisical identity — bound to apk.yml from a tag or from
+# main — accepts it exactly as it accepted a tag push. ADR 0022.
+name: release-app
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Which part of the version to raise
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+# Two releases at once would compute the same next version.
+concurrency:
+  group: release-app
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Run from any other branch, the jobs below would be skipped and the run
+  # would end green having done nothing. Say so instead.
+  on-main:
+    runs-on: ubuntu-latest
+    steps:
+      - if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::release-app runs on main only, not ${GITHUB_REF_NAME}"
+          exit 1
+
+  checks:
+    needs: on-main
+    uses: ./.github/workflows/app-checks.yml
+
+  release:
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      # The commit the checks ran on, not whatever main is by now: if main has
+      # moved, the push below is refused and nothing is tagged.
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Next version
+        id: next
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          line=$(sed -n -E 's/^version: ([0-9]+\.[0-9]+\.[0-9]+\+[0-9]+)$/\1/p' app/pubspec.yaml)
+          [ -n "$line" ] || { echo "::error::app/pubspec.yaml has no 'version: X.Y.Z+N' line"; exit 1; }
+          IFS=. read -r major minor patch <<<"${line%%+*}"
+          build=$(( ${line##*+} + 1 ))
+          case "$BUMP" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          version="$major.$minor.$patch"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "::error::v$version is already tagged"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, tag and push
+        env:
+          VERSION: ${{ steps.next.outputs.version }}
+          BUILD: ${{ steps.next.outputs.build }}
+        run: |
+          set -euo pipefail
+          sed -i -E "s/^version: .*/version: $VERSION+$BUILD/" app/pubspec.yaml
+          grep -qx "version: $VERSION+$BUILD" app/pubspec.yaml
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git commit -q -m "Release v$VERSION" -- app/pubspec.yaml
+          git tag -a "v$VERSION" -m "Wird $VERSION"
+          # Both or neither: a tag without its commit on main, or a bump on
+          # main without its tag, is the drift this workflow exists to end.
+          git push -q --atomic origin "HEAD:refs/heads/main" "refs/tags/v$VERSION"
+
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.next.outputs.version }}
+        run: |
+          set -euo pipefail
+          {
+            echo "Tagged v$VERSION on main."
+            echo "If the build below fails, do not press this button again: that"
+            echo "releases the next version. Re-run **apk** by hand with the tag"
+            echo "\`v$VERSION\` as its ref."
+          } >> "$GITHUB_STEP_SUMMARY"
+          gh workflow run apk.yml --ref "v$VERSION"
+          echo "apk.yml is building it: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/apk.yml" >> "$GITHUB_STEP_SUMMARY"

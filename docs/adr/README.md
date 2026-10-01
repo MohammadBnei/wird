@@ -10,6 +10,7 @@ flowchart LR
   A3[0003 addressable reader] -. amended by .-> A6[0006 passage vs set]
   A6 -. amended by .-> A20[0020 prayer prepared, one rakʿah at a time]
   A20 -. amended by .-> A21[0021 margin per pair, repeats by order]
+  A19[0019 APK built on a tag] -. amended by .-> A22[0022 one release button]
   A5v[0005 voice-follow on the phone] -. amended by .-> A9[0009 phoneme recogniser]
   A7[0007 model published upstream] -. superseded by .-> A8[0008 served from Wird's host]
   A8 -. amends .-> A5d[0005 deploying the API]
@@ -39,6 +40,7 @@ flowchart LR
 | [0016-installed-corpora-upgrade-and-words-carry-their-lemma.md](0016-installed-corpora-upgrade-and-words-carry-their-lemma.md) | Installed corpora upgrade, and words carry their lemma | accepted |
 | [0017-ayas-are-translated-into-english-from-pickthall.md](0017-ayas-are-translated-into-english-from-pickthall.md) | Ayas are translated into English from Pickthall | accepted |
 | [0018-the-public-site-is-served-by-the-api.md](0018-the-public-site-is-served-by-the-api.md) | The public page is embedded in wird-api, and its demos run on the corpus | accepted |
-| [0019-the-apk-is-built-on-a-tag-and-published-by-ci.md](0019-the-apk-is-built-on-a-tag-and-published-by-ci.md) | A version tag builds the APK and publishes it at /download/android | proposed |
+| [0019-the-apk-is-built-on-a-tag-and-published-by-ci.md](0019-the-apk-is-built-on-a-tag-and-published-by-ci.md) | A version tag builds the APK and publishes it at /download/android | proposed, amended by 0022 |
 | [0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md](0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) | A prayer is prepared, then recited one rakʿah at a time | accepted, amended by 0021 |
 | [0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md](0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md) | The matcher's margin is asked per pair of places, and a repeated phrase is settled by order | accepted |
+| [0022-a-release-is-cut-by-one-button-from-the-pubspec.md](0022-a-release-is-cut-by-one-button-from-the-pubspec.md) | A release is cut by one button, and the pubspec holds the only version | accepted |

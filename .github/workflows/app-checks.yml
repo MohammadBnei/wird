@@ -1,0 +1,36 @@
+# The Flutter half of the gate that a Linux runner can honestly run:
+# `flutter analyze` and the app tests, minus the screenshot (golden) tests,
+# which are rendered on macOS and differ by a few pixels anywhere else.
+#
+# It runs on every PR that touches the app, and the release button
+# (release-app.yml) calls it before it tags anything: one definition of
+# "the app is fit to ship", used by both. The full gate — goldens, the e2e
+# journeys, the audits — is still `./scripts/qa.sh` on a Mac before merge.
+name: app-checks
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-checks.yml'
+  workflow_call:
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+
+      # The version app/.fvmrc pins, so CI checks what was tested locally.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test --exclude-tags golden
