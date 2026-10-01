@@ -103,16 +103,16 @@ Future<void> enqueue(
 }, conflictAlgorithm: ConflictAlgorithm.ignore);
 ```
 
-[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:143](../../../app/lib/data/db.dart#L267-L274)
+[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:292](../../../app/lib/data/db.dart#L292-L298)
 
 The callers, one per op kind:
 
 | Op kind | Written by |
 |---|---|
-| `ayah_understood` | [markSetUnderstood, db.dart:195](../../../app/lib/data/db.dart#L318-L326) |
-| `set_prayed` | [recordSetPrayed, db.dart:241](../../../app/lib/data/db.dart#L364) |
-| `position_moved` | [movePosition, db.dart:437](../../../app/lib/data/db.dart#L438-L457) |
-| `prefs_set` | [setReadingOrder, db.dart:312](../../../app/lib/data/db.dart#L511-L516) |
+| `ayah_understood` | [markSetUnderstood, db.dart:323](../../../app/lib/data/db.dart#L323-L351) |
+| `set_prayed` | [recordSetPrayed, db.dart:364](../../../app/lib/data/db.dart#L364) |
+| `position_moved` | [movePosition, db.dart:463](../../../app/lib/data/db.dart#L463-L482) |
+| `prefs_set` | [setReadingOrder, db.dart:440](../../../app/lib/data/db.dart#L440-L454) |
 | `kept_upsert` | [kept_repo.dart:99](../../../app/lib/data/kept_repo.dart#L99-L109) |
 | `kept_delete` | [kept_repo.dart:128](../../../app/lib/data/kept_repo.dart#L128-L133) |
 | `report_written` | [report.dart:76](../../../app/lib/features/report/report.dart#L82-L92) |
@@ -145,7 +145,7 @@ It also flushes when the app is paused, ignoring the two-minute floor. A reader 
   }
 ```
 
-[flush.dart:81](../../../app/lib/data/flush.dart#L81-L99) · the flush and the senses fetch start side by side and swallow their own errors: [flush.dart:100](../../../app/lib/data/flush.dart#L108-L111)
+[flush.dart:81](../../../app/lib/data/flush.dart#L81-L99) · the flush and the senses fetch start side by side and swallow their own errors: [flush.dart:108](../../../app/lib/data/flush.dart#L108-L111)
 
 Only one flush runs at a time, and not more than once every two minutes. A caller that arrives mid-flush joins the flush already running, so no op is sent twice in one round.
 
@@ -166,7 +166,7 @@ Only one flush runs at a time, and not more than once every two minutes. A calle
 
 [flush.dart:169](../../../app/lib/data/flush.dart#L169-L180)
 
-`Flushing`, a widget near the top of the tree, starts the flusher and stops it: [flush.dart:192](../../../app/lib/data/flush.dart#L200-L227).
+`Flushing`, a widget near the top of the tree, starts the flusher and stops it: [flush.dart:200](../../../app/lib/data/flush.dart#L200-L227).
 
 ### 3. The token is attached in one place
 
@@ -182,7 +182,7 @@ Flusher flusherFor(Database db) => Flusher(
 );
 ```
 
-[flush.dart:181](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:463](../../../app/lib/data/auth.dart#L464-L471)
+[flush.dart:189](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:464](../../../app/lib/data/auth.dart#L464-L471)
 
 ### 4. Which ops ride
 
@@ -267,7 +267,7 @@ The delay doubles from one minute and stops growing at 256 minutes: [retryIn, ou
 
 ### 7. No answer is not an attempt
 
-Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:478](../../../app/lib/data/auth.dart#L479-L497)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
+Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:479](../../../app/lib/data/auth.dart#L479-L497)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
 
 ```dart
   } on DioException {
@@ -308,12 +308,12 @@ Each page is applied in one transaction, with a rule per change kind: [_apply, s
 | Change kind | How it lands |
 |---|---|
 | `ayah_understood` | Insert only. Understood stays understood; the older row wins. |
-| `kept_items` | Last write wins on `updated_at`. A delete arrives as a row with `deleted_at` set, so it is never re-created: [sync.dart:261](../../../app/lib/data/sync.dart#L285-L316). |
+| `kept_items` | Last write wins on `updated_at`. A delete arrives as a row with `deleted_at` set, so it is never re-created: [sync.dart:285](../../../app/lib/data/sync.dart#L285-L316). |
 | `sets`, `set_prayers` | Insert only. A set's id is derived, so the same range is the same row everywhere. |
 | `user_prefs` | Last write wins on `updated_at`. |
 | `reading_positions` | Last write wins on `updated_at`, one row per sūra. |
 
-A kind this build does not know fails an assert in debug and tests. In a release build it is skipped and named in the report, so an older phone keeps syncing the kinds it does know: [sync.dart:245](../../../app/lib/data/sync.dart#L246-L254).
+A kind this build does not know fails an assert in debug and tests. In a release build it is skipped and named in the report, so an older phone keeps syncing the kinds it does know: [sync.dart:246](../../../app/lib/data/sync.dart#L246-L254).
 
 Skipping still moves the cursor past those rows, so an older build loses them for good. The cursor is therefore saved together with how many kinds the build applies. When a build that knows more kinds finds a cursor saved by one that knew fewer, it drops the cursor once and pulls the whole stream again. That is safe because every kind lands as an insert-or-ignore or a last-write-wins: [_changeKinds, sync.dart:380](../../../app/lib/data/sync.dart#L380-L406).
 
@@ -334,7 +334,7 @@ Future<void> discard(Database db, String opId) =>
     db.delete('outbox', where: 'client_op_id = ?', whereArgs: [opId]);
 ```
 
-[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:233](../../../app/lib/features/settings/settings_screen.dart#L252)
+[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:263](../../../app/lib/features/settings/settings_screen.dart#L263)
 
 ### 10. The contract both sides answer to
 

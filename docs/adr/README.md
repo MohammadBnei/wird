@@ -8,6 +8,7 @@ New ADRs start from [TEMPLATE.md](TEMPLATE.md) and take the next free number. Tw
 flowchart LR
   A1[0001 stack] --> A2[0002 set identity]
   A3[0003 addressable reader] -. amended by .-> A6[0006 passage vs set]
+  A6 -. amended by .-> A18[0018 prayer prepared, one rakʿah at a time]
   A5v[0005 voice-follow on the phone] -. amended by .-> A9[0009 phoneme recogniser]
   A7[0007 model published upstream] -. superseded by .-> A8[0008 served from Wird's host]
   A8 -. amends .-> A5d[0005 deploying the API]
@@ -23,7 +24,7 @@ flowchart LR
 | [0004-the-operations-view-behind-authentiks-group.md](0004-the-operations-view-behind-authentiks-group.md) | The operations view sits behind Authentik's group and only sees totals | accepted |
 | [0005-deploying-the-api.md](0005-deploying-the-api.md) | One image, the API only, database credentials from Infisical | accepted, amended by 0008 |
 | [0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md](0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md) | Voice-follow runs a Qur'an model on the phone | accepted, model choice superseded by 0009 |
-| [0006-a-passage-is-read-a-set-is-answered-for.md](0006-a-passage-is-read-a-set-is-answered-for.md) | A passage is read; a set is answered for | accepted, amended by 0014 |
+| [0006-a-passage-is-read-a-set-is-answered-for.md](0006-a-passage-is-read-a-set-is-answered-for.md) | A passage is read; a set is answered for | accepted, amended by 0014 and 0018 |
 | [0007-the-voice-model-is-published-where-its-weights-already-live.md](0007-the-voice-model-is-published-where-its-weights-already-live.md) | Publish the voice model where its weights live | superseded by 0008 |
 | [0008-the-recogniser-is-served-from-wirds-own-host.md](0008-the-recogniser-is-served-from-wirds-own-host.md) | The recogniser is served from Wird's own host | accepted |
 | [0009-the-recogniser-hears-quranic-phonemes-not-language.md](0009-the-recogniser-hears-quranic-phonemes-not-language.md) | The recogniser hears Qur'anic phonemes, not language | accepted |
@@ -35,3 +36,4 @@ flowchart LR
 | [0015-the-reading-position-is-kept-per-sura-and-synced.md](0015-the-reading-position-is-kept-per-sura-and-synced.md) | The reading position is kept per sūra and synced | accepted |
 | [0016-installed-corpora-upgrade-and-words-carry-their-lemma.md](0016-installed-corpora-upgrade-and-words-carry-their-lemma.md) | Installed corpora upgrade, and words carry their lemma | accepted |
 | [0017-ayas-are-translated-into-english-from-pickthall.md](0017-ayas-are-translated-into-english-from-pickthall.md) | Ayas are translated into English from Pickthall | accepted |
+| [0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md](0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) | A prayer is prepared, then recited one rakʿah at a time | accepted |

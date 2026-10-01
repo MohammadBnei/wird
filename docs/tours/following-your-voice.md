@@ -18,7 +18,7 @@ sequenceDiagram
   P->>Rec: microphone opens, then the model loads
   loop while you recite
     Rec->>M: the sounds heard so far
-    M-->>P: where in the set this fits, or nothing
+    M-->>P: where in the rakʿah this fits, or nothing
     P-->>R: the aya you are on lights up
   end
   R->>P: a tap, whenever the screen is wrong
@@ -50,17 +50,23 @@ A small model on the phone turns your recitation into Qurʼanic phonemes: letter
 
 ## 5. The matcher finds your place
 
-The matcher already knows the text of your **set**. It only asks where the last few sounds fit. Both sides are first folded down to the letters they agree on, and a place is chosen only when one clearly wins.
+The matcher already knows the text of the rakʿah you are reciting: Al-Fātiḥa, then the passage you prepared. It only asks where the last few sounds fit. Both sides are first folded down to the letters they agree on, and a place is chosen only when one clearly wins.
 
 → [Voice-follow: both sides are folded](../architecture/app/voice-follow.md#7-both-sides-are-folded-to-the-letters-they-agree-on) · [the matcher locates the reciter](../architecture/app/voice-follow.md#8-the-matcher-locates-the-reciter-in-the-set)
 
 ## 6. The aya lights up
 
-A match moves the cursor, and the screen turns to that aya. It can move back too, when you repeat an aya or start the next rakʿa. When nothing clearly fits, it stays put: late is better than wrong.
+A match moves the cursor, and the screen turns to that aya. It can move back too, when you repeat an aya. When nothing clearly fits, it stays put: late is better than wrong. If you also chose a pace, the pace carries the text after 3 seconds without a sure match, and stops as soon as the voice finds you.
 
-→ [Voice-follow: the cursor moves, and the screen turns the aya](../architecture/app/voice-follow.md#9-the-cursor-moves-and-the-screen-turns-the-aya)
+→ [Voice-follow: the cursor moves, and the screen turns the aya](../architecture/app/voice-follow.md#9-the-cursor-moves-and-the-screen-turns-the-aya) · [the pace covers for a lost voice](../architecture/app/voice-follow.md#15-the-pace-covers-for-a-lost-voice)
 
-## 7. The prayer ends quietly
+## 7. The next rakʿah begins when you recite Al-Fātiḥa
+
+When a rakʿah ends, the same microphone and model listen for the next one. What you say while bowing does not begin it. Only Al-Fātiḥa, clearly recited, does.
+
+→ [Voice-follow: one voice follows each rakʿah](../architecture/app/voice-follow.md#12-one-voice-follows-each-rakʿah-in-turn) · [a rakʿah begins only on Al-Fātiḥa](../architecture/app/voice-follow.md#13-a-rakʿah-begins-only-on-al-fātiḥa)
+
+## 8. The prayer ends quietly
 
 When you leave, everything stops once, and no error ever reaches you. A small log on the phone keeps what happened, so a prayer can be read back afterwards.
 

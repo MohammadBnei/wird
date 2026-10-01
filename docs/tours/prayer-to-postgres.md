@@ -24,9 +24,9 @@ sequenceDiagram
 
 ## 1. You finish a set
 
-You read the **set**, mark it understood, then pray it. The prayer screen itself writes nothing. The prayer is counted on your way back from it, so a prayer you never came back from is never invented.
+You read the **set**, mark it understood, then pray it: you prepare the prayer, and the set is the passage after Al-Fātiḥa. The prayer screen itself writes nothing. The prayer is counted on your way back from it, and only if you reached a rakʿah that recited the set, so a prayer you never came back from is never invented.
 
-→ [Sets and reader: praying a set](../architecture/app/sets-and-reader.md#9-praying-a-set) · [App: a prayer is recorded on the way back](../architecture/app.md#5-a-prayer-is-recorded-on-the-way-back-from-it)
+→ [Sets and reader: praying a set](../architecture/app/sets-and-reader.md#9-praying-a-set) · [App: a prayer is recorded on the way back](../architecture/app.md#5-a-prayer-is-prepared-then-recorded-on-the-way-back-from-it)
 
 ## 2. The write and its op land together
 
@@ -38,7 +38,7 @@ Your phone saves the new rows and queues an op in the **outbox** in one step. Bo
 
 The **outbox** does not move on every write. It moves when the app starts or comes back to the foreground, at most once every two minutes. If you are signed in, the bearer token is added at that moment, in one place.
 
-→ [Sync: the queue moves at launch and on return to the foreground](../architecture/app/sync.md#2-the-queue-moves-at-launch-and-on-return-to-the-foreground) · [the token is attached in one place](../architecture/app/sync.md#3-the-token-is-attached-in-one-place)
+→ [Sync: the queue moves at launch, on return to the foreground, and when the app is put away](../architecture/app/sync.md#2-the-queue-moves-at-launch-on-return-to-the-foreground-and-when-the-app-is-put-away) · [the token is attached in one place](../architecture/app/sync.md#3-the-token-is-attached-in-one-place)
 
 ## 4. The batch reaches the server
 

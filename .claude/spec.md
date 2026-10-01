@@ -34,7 +34,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 ### Device `wird.db`
 - One sqflite file = corpus copy + user tables (joins; no ATTACH). `openWird` (`app/lib/data/db.dart`) installs asset only when file absent; atomic via `.part` rename.
 - Old install (corpus < 5) lacks `words.gloss_fr` → `_ensureFrenchGlossColumn` (`app/lib/data/db.dart`) adds empty column at open → English fallback. Never query new corpus column without same guard.
-- User tables: `ayah_understood user_prefs display_prefs mic_consent sets set_prayers set_span sense_pack outbox auth_tokens`.
+- User tables: `ayah_understood user_prefs display_prefs mic_consent sets set_prayers set_span sense_pack outbox auth_tokens prayer_prefs prayer_history`. `prayer_*` device-local, never synced.
 - `sqflite_common_ffi` required under `flutter test`.
 ### Server Postgres (migrations `server/migrations/00001..00009`)
 - `users sets set_prayers ayah_understood root_known kept_items user_prefs op_log` + `change_seq` cursor, `lexicon_entries tafsir_entries irab_entries corpus_meta`, `reports report_inbox sync_outcomes`, `root_senses`.
@@ -49,7 +49,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Orders by sūra; ayas within sūra in muṣḥaf order.
 - Proposal: ≤ `setMaxAyas` 5, word budget `setWordBudget` 25; reader may drag to `setMaxDragAyas` 20. Set may cross sūra boundary. None left → null, completion state.
 - Set id = `uuidv5(ns, "<order>:<start>:<end>")`, ns = `uuidv5(NameSpace_URL, "https://wird.bnei.dev/set")`. Server recomputes + refuses mismatch. Server assigns `ordinal`. Vectors: `docs/adr/0002-set-identity-vectors.json`. ADR 0002.
-- `set_prayed` op upserts set + prayer together.
+- `set_prayed` op upserts set + prayer together. Written only by `PrepareScreen._keep` (`app/lib/features/prayer/prepare_screen.dart`) on return from `1b`, only if a reached rakʿah recited credited set (`from` ?? `nextSet`). ADR 0018.
 - Visiting an aya / reading a passage: ADR 0003, ADR 0006 (passage is read, set is answered for).
 
 ## Sync contract
@@ -89,7 +89,11 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 
 ## Voice-follow
 - `1b` baseline = manual next/prev taps. Voice-follow optional enhancement, off by default. No permission ever required to pray; mic consent never on path to `1b`.
-- Cursor invariant: advance or freeze. Never rewind, never throw. Property-tested.
+- `1b` reached only via `Routes.prepare` (`Routes.prayer` gone). `1b` writes nothing; reports via `PrayerOutcome`. ADR 0018.
+- Prayer = rakʿahs, each Al-Fātiḥa + passage (`rakahOf`, `prayer_plan.dart`). One `PrayerVoice` per prayer; `follow()` per rakʿah, generation counter drops in-flight decode. Next rakʿah begins only on sure full window (`heardTailLetters`) inside Fātiḥa words < `openingWords` 8 → bowing praise must not begin it.
+- Unseen basmala inserted into heard words before passage (not At-Tawba). Remove it → basmala snaps cursor to 1:1.
+- Pace (`prayer_pace.dart`): voice leads; pace steps after `lostAfter` 3 s with no sure match; pace's own moves never count as recognition.
+- Cursor invariant: never throw, never name word outside rakʿah. Moves both ways (repeat aya = rewind). Wrong move blocked upstream by `followMargin`. Property-tested.
 - `1b`: wakelock held (tested); no dialog, error, spinner, snackbar, ever.
 - Engine: on-device `sherpa_onnx`, Arabic-only Qurʼanic phoneme CTC model (ADR 0009, supersedes model choice in ADR 0005). Audio never leaves phone. Job = locating, not transcribing.
 - Model served from `https://wird.bnei.dev/models/...` → presigned redirect to object store (ADR 0008; ADR 0007 superseded). Origin `defaultVoiceModelOrigin` in `app/lib/data/speech.dart`. Weights in `voice/` dir beside `wird.db`.
@@ -105,7 +109,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Scheherazade New + Inter bundled.
 - Locales `en` + `fr` (`app/lib/l10n/app_{en,fr}.arb`); parity gated.
 - French ayah translation bundled (`ayah_translations`, resource 779).
-- Screens `app/lib/features/`: study (1a), prayer (1b), root (3a/2b), deepdive (1c tablet), progress (1d), kept (1e), index, report, settings, about (Sources and licences), dashboard.
+- Screens `app/lib/features/`: study (1a), prayer (prepare + 1b), root (3a/2b), deepdive (1c tablet), progress (1d), kept (1e), index, report, settings, about (Sources and licences), dashboard.
 - Lexicon section removed from app; iʿrāb real from bundled `irab`; tafsir shows honest notice.
 
 ## Deploy
