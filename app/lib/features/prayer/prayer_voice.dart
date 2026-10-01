@@ -444,6 +444,7 @@ class PrayerVoice {
           }
           _speaking = true;
           final generation = _generation;
+          trail.tape(samples);
           final said = await hear(samples);
           // The rakʿah changed while this was being decoded. What it says is
           // about the rakʿah just finished, and the next one starts clean.
@@ -505,13 +506,16 @@ class PrayerVoice {
             '${_tail(heard)} | ${_verdict(why, at)} | on ${_cursor.at} '
                 '| peak ${peak.toStringAsFixed(2)}',
           );
-          // Above the bar the word is named; at the bar the aya is as much as
-          // the recitation actually said.
+          // Above [followSure] the recognition counts as sure for the pace,
+          // which takes over when none has come for a while. The screen names
+          // the word on any place `locate` accepts: held back to the sure ones,
+          // a reader whose voice placed at 0.7 saw their aya never light and
+          // never turn.
           _lastSure = at != null && at.score >= followSure;
           if (at == null || (_opening && !_opens(at.word, heard))) continue;
           _opening = false;
           final word = _onScreen(at.word);
-          if (word != null) _cursor.moveTo(word, sure: _lastSure);
+          if (word != null) _cursor.moveTo(word);
           matched.value = _tail(heard);
           if (_lastSure) {
             _lastFound = DateTime.now();
