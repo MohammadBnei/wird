@@ -323,6 +323,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
   void _begin() {
     if (_phase != _Phase.between) return;
     widget.outcome?.reached = _r;
+    _voice?.begun();
     setState(() {
       _phase = _Phase.reading;
       _shown = _ayaOf(_cursor.at);
@@ -362,6 +363,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
     // it by the time the model has loaded.
     if (_r > 1) {
       voice.follow(_cursor, _rakah.heard, unseenAt: _rakah.basmalaAt);
+      if (_phase == _Phase.reading) voice.begun();
     }
     voice.onRecognised = () => _pace.recognised();
     setState(() => _voice = voice);

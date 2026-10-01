@@ -103,4 +103,30 @@ void main() {
     // Unmapped, the basmala's four words would put it at 33 or beyond.
     expect(cursor.at, inInclusiveRange(29, 31));
   });
+
+  test('a rakʿah tapped on goes unfollowed by the voice until its end', () async {
+    // Al-ʿAṣr, heard well into the rakʿah: nothing of Al-Fātiḥa's opening.
+    final r = await betweenRakahs([
+      'الرحيم والعصر إن الإنسان',
+      'والعصر إن الإنسان لفي خسر',
+    ]);
+    await r.voice.feed(loud(1));
+    expect(r.second.at, 0, reason: 'the opening gate let the passage through');
+    r.voice.begun();
+    await r.voice.feed(loud(1));
+    // Somewhere in Al-ʿAṣr 103:1–2, words 29 to 33 on screen.
+    expect(r.second.at, inInclusiveRange(29, 33));
+  });
+
+  test('a recogniser stuck on its last words in a loud room keeps the pace '
+      'from ever taking over', () {
+    const second = Duration(seconds: 1);
+    // A held madd: the same words, loud, a moment after they were found.
+    expect(stillHeard(sure: true, peak: 0.1, since: second * 2), isTrue);
+    // The same words, still loud, long past any vowel a reciter holds.
+    expect(stillHeard(sure: true, peak: 0.1, since: heldAtMost), isFalse);
+    // Quiet: the reader stopped.
+    expect(stillHeard(sure: true, peak: 0.001, since: second), isFalse);
+    expect(stillHeard(sure: false, peak: 0.1, since: second), isFalse);
+  });
 }

@@ -47,6 +47,24 @@ import 'voice_follow.dart';
 String carry(String previous, ({String text, bool ended}) said) =>
     said.ended ? said.text.trim() : previous;
 
+/// How long an unchanged window may go on counting as the reciter heard.
+///
+/// A madd is held for two to six counts, a few seconds at most. Past that,
+/// the same words standing in a loud room are not a vowel being held: they
+/// are a recogniser that has stopped writing anything new — it lost the
+/// reciter, or someone beside them is praying aloud — and that is the case
+/// the pace is there to cover.
+const heldAtMost = Duration(seconds: 6);
+
+/// Whether an answer unchanged since the last one is still the reciter being
+/// heard: the last answer named them surely, the room is loud, and not for
+/// longer than a held vowel lasts.
+bool stillHeard({
+  required bool sure,
+  required double peak,
+  required Duration since,
+}) => sure && peak >= heardQuiet && since < heldAtMost;
+
 /// How many words of Al-Fātiḥa a rakʿah may be begun inside: its first two
 /// ayas, the basmala and `al-ḥamdu lillāhi rabbi l-ʿālamīn`, four words each.
 const openingWords = 8;
@@ -86,6 +104,9 @@ class PrayerVoice {
 
   /// Whether the last answer judged named the reciter's word surely.
   var _lastSure = false;
+
+  /// When new words last named the reciter's place surely.
+  var _lastFound = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Called whenever the voice names the reciter's word surely, the same word
   /// again included, so the pace knows the reciter has not been lost.
@@ -463,10 +484,12 @@ class PrayerVoice {
           //
           // Except that a reciter holding a long vowel is still being heard,
           // and the pace must not take a held madd for a reciter it has lost.
-          // Loud and unchanged is that; quiet and unchanged is a reader who
-          // has stopped.
+          // See [stillHeard] for how long that is believed.
           if (heard == _lastHeard) {
-            if (_lastSure && peak >= heardQuiet) onRecognised?.call();
+            final since = DateTime.now().difference(_lastFound);
+            if (stillHeard(sure: _lastSure, peak: peak, since: since)) {
+              onRecognised?.call();
+            }
             continue;
           }
           _lastHeard = heard;
@@ -489,7 +512,10 @@ class PrayerVoice {
           final word = _onScreen(at.word);
           if (word != null) _cursor.moveTo(word, sure: _lastSure);
           matched.value = _tail(heard);
-          if (_lastSure) onRecognised?.call();
+          if (_lastSure) {
+            _lastFound = DateTime.now();
+            onRecognised?.call();
+          }
         }
       }
     } on Object {
@@ -553,8 +579,15 @@ class PrayerVoice {
     _carried = '';
     _lastHeard = '';
     _lastSure = false;
+    _lastFound = DateTime.fromMillisecondsSinceEpoch(0);
     _theirs = DateTime.fromMillisecondsSinceEpoch(0);
   }
+
+  /// The rakʿah is under way without the voice having heard it begin: the
+  /// reader tapped it on, or the model loaded after it had started. Waiting
+  /// for Al-Fātiḥa's opening then would wait for words already said, and the
+  /// voice would follow nothing for the rest of the rakʿah.
+  void begun() => _opening = false;
 
   /// Whether [word], heard surely in [heard], is the reader beginning
   /// Al-Fātiḥa: a full window, landing inside its first two ayas.
