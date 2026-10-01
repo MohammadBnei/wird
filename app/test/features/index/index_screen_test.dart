@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
+import 'package:wird/data/sets.dart';
 import 'package:wird/features/index/index_screen.dart';
 import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
@@ -19,6 +20,9 @@ void main() {
   setUpAll(loadBundledFonts);
   setUp(() async {
     db = await testCorpus();
+    // The rows below are asserted in written order; a stored order of none
+    // reads as revelation order, which the order test sets for itself.
+    await setReadingOrder(db, ReadingOrder.mushaf);
     chosen = null;
   });
 
@@ -145,5 +149,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('1re sourate révélée'), findsOneWidget);
     expect(find.text('1e sourate révélée'), findsNothing);
+  });
+
+  testWidgets('a reader who reads by revelation finds the index in written '
+      'order, with the first sūra revealed buried at 96', (tester) async {
+    await setReadingOrder(db, ReadingOrder.nuzul);
+    await open(tester);
+
+    double top(int sura) =>
+        tester.getTopLeft(find.byKey(ValueKey('sura-$sura'))).dy;
+    // Al-'Alaq, Al-Qalam, then Al-Fatihah fifth.
+    expect(top(96), lessThan(top(68)));
+    expect(top(68), lessThan(top(1)));
+  });
+
+  testWidgets('the index cannot be searched, so a reader after 2:255 scrolls '
+      'past a hundred sūras and then unfolds 286 numbers', (tester) async {
+    await open(tester);
+    await tester.enterText(find.byType(TextField), '2:255');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Go to Al-Baqarah 2:255'));
+    await tester.pumpAndSettle();
+
+    expect(chosen, 2255);
   });
 }
