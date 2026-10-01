@@ -28,9 +28,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get inThisAya => 'IN THIS AYA';
-
-  @override
   String get kept_empty_ayas => 'No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.';
 
   @override
@@ -98,12 +95,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kept_title => 'Kept';
-
-  @override
-  String get markSetUnderstood => 'Mark set understood';
-
-  @override
-  String get nextSet => 'Next set';
 
   @override
   String get notDownloaded => 'Not downloaded';
@@ -380,72 +371,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_write_another => 'Write another';
 
   @override
-  String get study_backToTheWalk => 'Back to the walk';
-
-  @override
   String get study_constellation => 'Constellation';
-
-  @override
-  String get study_everyAyaUnderstood => 'Every aya in this set is understood';
-
-  @override
-  String get study_goTo => 'Go to…';
-
-  @override
-  String get study_goToAnyAya => 'Go to any sūra or aya';
-
-  @override
-  String get study_kinOpensItsAya => 'A kin opens the aya it is first met in.';
 
   @override
   String get study_nextWord => 'Next word';
 
   @override
-  String get study_noAyaUnderstoodYet => 'No aya marked understood yet';
-
-  @override
   String get study_noRecitation => 'No recitation for this set';
-
-  @override
-  String get study_noRootInSet => 'No word in this set carries a root.';
-
-  @override
-  String get study_nothingLeftToServe => 'Every aya is understood. There is nothing left to serve.';
-
-  @override
-  String study_numbersAnd(Object first, Object last) {
-    return '$first and $last';
-  }
-
-  @override
-  String get study_previousSet => 'Previous set';
 
   @override
   String get study_previousWord => 'Previous word';
 
   @override
-  String get study_prayThisSet => 'Pray this set';
-
-  @override
-  String study_progressSplit(Object done, Object open) {
-    return 'Aya $done marked understood · aya $open open';
-  }
-
-  @override
-  String study_revelationKicker(Object order, Object place) {
-    return 'Revelation $order · $place';
-  }
-
-  @override
-  String study_surahKicker(Object surah, Object place) {
-    return 'Sūra $surah · $place';
-  }
-
-  @override
   String get study_wordHasNoRoot => 'No root';
-
-  @override
-  String get study_visiting => 'Visiting';
 
   @override
   String root_openAya(String ref) {
@@ -632,6 +570,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsWordNeither => 'Neither';
+
+  @override
+  String get settingsAyaTranslationShown => 'Aya translated';
+
+  @override
+  String get settingsAyaTranslationHidden => 'Arabic only';
+
+  @override
+  String get settingsAyaTranslationCaption => 'Pickthall\'s English or Rashid Maash\'s French, under each aya.';
 
   @override
   String get settingsWordCaption => 'What is printed under each Arabic word.';
@@ -888,13 +835,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsParkedOrder => 'Your reading order';
 
   @override
+  String get settingsParkedPosition => 'Where you are in a sūra';
+
+  @override
   String get settingsParkedReport => 'Something you reported';
 
   @override
   String get settingsParkedOther => 'A change you made';
 
   @override
-  String get study_ayaTranslated => 'Rashid Maash';
+  String get study_ayaTranslated => 'Pickthall';
 
   @override
   String get study_glossesSource => 'The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.';
@@ -984,4 +934,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutSelfTerms => 'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.';
+
+  @override
+  String get study_expandSheet => 'Show counts, forms and other ayas';
+
+  @override
+  String get study_collapseSheet => 'Show the whole sūra again';
+
+  @override
+  String get study_senses => 'Senses';
+
+  @override
+  String get study_particleNote => 'Particles and pronouns have no three-letter root. Swipe on to the next word.';
+
+  @override
+  String get study_moreRow => 'Counts, forms, other ayas';
+
+  @override
+  String get study_acrossQuran => 'Across the Qur\'an';
+
+  @override
+  String get study_countRoot => 'this root';
+
+  @override
+  String get study_countLemma => 'as';
+
+  @override
+  String get study_countSurah => 'in this sūra';
+
+  @override
+  String get study_ringCaption => 'Its forms, and how often each is read';
+
+  @override
+  String get study_otherAyas => 'Other ayas';
+
+  @override
+  String study_position(String ref, int n, int total) {
+    return '$ref · word $n/$total';
+  }
+
+  @override
+  String study_backTo(String ref) {
+    return 'Back to $ref';
+  }
+
+  @override
+  String get study_readFromHere => 'Read this sūra from here';
+
+  @override
+  String get study_pray => 'Pray';
+
+  @override
+  String get study_recite => 'Recite';
+
+  @override
+  String get study_pauseRecitation => 'Pause the recitation';
+
+  @override
+  String study_markUnderstood(String ref) {
+    return 'Mark aya $ref understood';
+  }
+
+  @override
+  String study_openRoot(String root) {
+    return 'Open the root $root';
+  }
+
+  @override
+  String get dashboard_continueReading => 'CONTINUE READING';
+
+  @override
+  String get study_form => 'Form';
 }

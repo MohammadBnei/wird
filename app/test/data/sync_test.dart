@@ -315,6 +315,51 @@ void main() {
     expect(await keptItems(db), isEmpty);
   });
 
+  // The failure: the tablet's move was made before the phone's but reaches the
+  // phone after it, and the phone opens the sūra where the reader used to be.
+  test('a position the tablet moved earlier sends the phone back when it '
+      'arrives later', () async {
+    await movePosition(db, 2260001);
+    final earlier = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(hours: 1))
+        .toIso8601String();
+    server.pages = [
+      {
+        'changes': [
+          {
+            'kind': 'reading_positions',
+            'id': '9b7c1d2e-0000-4000-8000-000000000002',
+            'at': earlier,
+            'row': {'surah_id': 2, 'word_id': 2255003, 'updated_at': earlier},
+          },
+        ],
+        'cursor': 'cursor-1',
+        'more': false,
+      },
+    ];
+    await syncNow(db, SyncApi(server.dio));
+
+    expect((await readingPositions(db)).single.wordId, 2260001);
+  });
+
+  // The failure: a build that did not know positions walked its cursor past
+  // them, so once updated the phone never pulls the positions the reader set
+  // on the tablet before the update.
+  test('a phone updated past a build that skipped positions never pulls the '
+      'positions it skipped', () async {
+    server.pages = [
+      {'changes': <dynamic>[], 'cursor': 'cursor-1', 'more': false},
+    ];
+    await syncNow(db, SyncApi(server.dio));
+    // What the older build left: a cursor and no record of the kinds it knew.
+    await db.update('sync_state', {'kinds': 0});
+
+    await syncNow(db, SyncApi(server.dio));
+
+    expect(server.cursorsAsked, ['', '']);
+  });
+
   // The failure: the cursor never moves, so every reconnect re-applies the
   // reader's whole history — years of it, over a phone connection.
   test('the second pull asks from the cursor and does not re-apply the whole '

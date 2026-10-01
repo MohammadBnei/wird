@@ -221,4 +221,29 @@ void main() {
       'through patience',
     );
   });
+
+  // The failure: the forms are counted by spelling, so وَرَحْمَتِى and
+  // رَحْمَةً are two forms and the reading screen's "as rahma" tile says 1.
+  test('a form is counted once per spelling, so the count under a form is a '
+      'handful where the Qur\'an has a hundred', () async {
+    final lemmas = await lemmasOf(db, 'رحم');
+    expect(
+      [for (final l in lemmas.take(3)) (l.key, l.occurrences)],
+      [('r~aHiym', 116), ('raHomap', 114), ('r~aHoma`n', 57)],
+    );
+  });
+
+  test('a word in Al-Fatiha reads its root as found in the whole Qur\'an '
+      'rather than in the sura it is in', () async {
+    // The basmala and 1:3 each name ar-rahman and ar-rahim.
+    expect(await rootCountInSurah(db, 'رحم', 1), 4);
+  });
+
+  test('the other ayas of a root list the aya the reader is already in, and '
+      'a French reader is given them without their French', () async {
+    final ayas = await rootAyas(db, 'رحم', lang: 'fr', except: 1001);
+    expect(ayas.map((a) => a.ayahId), isNot(contains(1001)));
+    expect(ayas, hasLength(20));
+    expect(ayas.first.translation, isNotNull);
+  });
 }

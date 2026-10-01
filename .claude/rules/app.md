@@ -13,7 +13,7 @@ paths:
 
 ## Run locally (macOS)
 - `cd app && fvm flutter run -d macos`. Only local target exercising voice-follow (mic + sherpa_onnx resolve). Simulator mic useless.
-- `scripts/device.sh` picks iPhone → iPhone 16 sim → macOS. Never picks Mac while sim exists.
-- After ANY corpus rebuild: `rm ~/Library/Containers/dev.bnei.wird/Data/Documents/wird.db`. `openWird` (`lib/data/db.dart`) installs asset only when file absent → stale db → new-column reads throw.
+- `scripts/device.sh` picks `$WIRD_E2E_DEVICE` → cabled iPhone → iPhone 16 sim → macOS. Gate on Mac: `WIRD_E2E_DEVICE=macos ./scripts/qa.sh` (user wants macOS, not sim).
+- Corpus rebuild → bump `bundledCorpusVersion` (`lib/data/db.dart`) = `corpus_meta.corpus_version`, test enforces. Installed db upgraded on next launch, reader tables + `root_notes` carried (`upgradeCorpus`). Same version rebuild → no upgrade → delete `wird.db` by hand.
 - Voice weights in sibling `voice/` dir, survive db delete. Trail log: `…/Documents/prayer-trail.log`, truncated each prayer.
 - Android trail: `adb shell run-as dev.bnei.wird cat /data/data/dev.bnei.wird/databases/prayer-trail.log`.

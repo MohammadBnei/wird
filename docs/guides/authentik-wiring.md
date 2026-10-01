@@ -253,7 +253,7 @@ it. Ten lines of shell and one browser tab.
    app instead of showing you an address to copy. The default stays
    `dev.bnei.wird://`, which is what the deep-link implementation will want.
 
-6. Last, the thing this was all for: mark a set understood while signed in, put
+6. Last, the thing this was all for: mark an aya understood (tap its number on the reading screen) while signed in, put
    the app in the background and bring it back, and confirm the write arrives.
    From the server side that is one query.
 

@@ -188,6 +188,8 @@ func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 		return applySetPrayed(ctx, tx, userID, op)
 	case "prefs_set":
 		return applyPrefsSet(ctx, tx, userID, op.Body)
+	case "position_moved":
+		return applyPositionMoved(ctx, tx, userID, op.Body)
 	case "report_written":
 		return applyReport(ctx, tx, op)
 	default:
@@ -201,7 +203,7 @@ func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 // bound, so anything not in this list is counted as "unknown".
 var opKinds = []string{
 	"ayah_understood", "kept_upsert", "kept_delete",
-	"set_recorded", "set_prayed", "prefs_set", "report_written",
+	"set_recorded", "set_prayed", "prefs_set", "position_moved", "report_written",
 }
 
 // countOutcome is best effort on purpose: a counter that cannot be incremented
@@ -589,6 +591,47 @@ func applyPrefsSet(ctx context.Context, tx pgx.Tx, userID string, body json.RawM
 	return err
 }
 
+// clockSkew is how far ahead of the server a device's clock may run before a
+// position it dates is refused. Positions are last-write-wins on the device's
+// own time, so one phone set days ahead would otherwise win every later move
+// from a phone with the right time, until its future instant had passed.
+const clockSkew = 5 * time.Minute
+
+func applyPositionMoved(ctx context.Context, tx pgx.Tx, userID string, body json.RawMessage) error {
+	var b struct {
+		SurahID   int       `json:"surah_id"`
+		WordID    int64     `json:"word_id"`
+		UpdatedAt time.Time `json:"updated_at"`
+	}
+	if err := decode(body, &b); err != nil {
+		return err
+	}
+	if b.SurahID < 1 || b.SurahID > 114 {
+		return refuse("%d is not a sūra", b.SurahID)
+	}
+	// Word ids are aya*1000 + position, and aya ids are sūra*1000 + number.
+	if b.WordID/1_000_000 != int64(b.SurahID) || !isAya(int(b.WordID/1000)) || b.WordID%1000 < 1 {
+		return refuse("%d is not a word of sūra %d", b.WordID, b.SurahID)
+	}
+	// Unlike an understood aya, a position with no time is not given the
+	// flush's: last-write-wins would let a stale move beat a newer one.
+	if b.UpdatedAt.IsZero() {
+		return refuse("a position needs the time it was moved")
+	}
+	if b.UpdatedAt.After(time.Now().Add(clockSkew)) {
+		return refuse("a position moved at %s is in the future", b.UpdatedAt.UTC().Format(time.RFC3339))
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO reading_positions (user_id, surah_id, word_id, updated_at)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (user_id, surah_id) DO UPDATE
+		   SET word_id = EXCLUDED.word_id, updated_at = EXCLUDED.updated_at,
+		       seq = nextval('change_seq')
+		 WHERE reading_positions.updated_at < EXCLUDED.updated_at`,
+		userID, b.SurahID, b.WordID, b.UpdatedAt)
+	return err
+}
+
 // A Change is one row as the other device should now hold it. A kept item
 // with deleted_at set is the tombstone: it is the row, not its absence, that
 // stops the second device handing a deleted note back.
@@ -637,6 +680,10 @@ SELECT kind, id, at, row, seq FROM (
 	SELECT 'user_prefs', user_id, updated_at,
 	       jsonb_build_object('reading_order', reading_order, 'updated_at', updated_at), seq
 	  FROM user_prefs WHERE user_id = $1 AND seq > $2
+	UNION ALL
+	SELECT 'reading_positions', id, updated_at,
+	       jsonb_build_object('surah_id', surah_id, 'word_id', word_id, 'updated_at', updated_at), seq
+	  FROM reading_positions WHERE user_id = $1 AND seq > $2
 ) changed
  ORDER BY seq
  LIMIT $3`

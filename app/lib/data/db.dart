@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -18,23 +20,136 @@ const _fileName = 'wird.db';
 /// across platforms.
 Future<Database> openWird() async {
   // ponytail: sqflite's own databases directory, so the app needs no
-  // path_provider. Move to the app support directory if the 24 MB corpus
-  // showing up in a device backup ever becomes a complaint.
+  // path_provider. Move to the app support directory if the corpus showing up
+  // in a device backup ever becomes a complaint.
   final path = '${await getDatabasesPath()}/$_fileName';
   final file = File(path);
+  final kept = File('$path.bak');
+  // A launch killed between the two renames of an upgrade leaves the reader's
+  // file under its backup name and nothing at the real one.
+  if (!file.existsSync() && kept.existsSync()) await kept.rename(path);
   if (!file.existsSync()) {
-    final asset = await rootBundle.load(_corpusAsset);
-    await installCorpus(
-      file,
-      asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes),
-    );
+    await installCorpus(file, await _bundledCorpus());
+  } else if (await installedCorpusVersion(path) < bundledCorpusVersion) {
+    try {
+      await upgradeCorpus(file, await _bundledCorpus());
+    } catch (e) {
+      // The old corpus still opens and still holds every row the reader wrote;
+      // the next launch tries again.
+      debugPrint('corpus upgrade failed, keeping the installed one: $e');
+    }
   }
-  return openWirdAt(path);
+  final db = await openWirdAt(path);
+  if (kept.existsSync()) await kept.delete();
+  return db;
+}
+
+/// The `corpus_meta.corpus_version` of `assets/corpus.db`. A constant rather
+/// than read from the asset, so a launch need not copy the whole corpus out of
+/// the bundle to learn it; a test holds the two equal.
+const bundledCorpusVersion = 6;
+
+Future<Uint8List> _bundledCorpus() async {
+  final asset = await rootBundle.load(_corpusAsset);
+  return asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes);
+}
+
+/// The corpus version of the file at [path], or 0 when it has none.
+Future<int> installedCorpusVersion(String path) async {
+  final db = await openDatabase(path, readOnly: true, singleInstance: false);
+  try {
+    final rows = await db.rawQuery('SELECT corpus_version FROM corpus_meta');
+    return rows.isEmpty ? 0 : rows.first['corpus_version']! as int;
+  } on DatabaseException {
+    return 0;
+  } finally {
+    await db.close();
+  }
+}
+
+/// Replaces the corpus at [target] with [bytes] and carries the reader's own
+/// rows across: every table the new corpus does not ship, and the senses this
+/// device fetched into `root_notes`.
+///
+/// Before this, a corpus was installed only when no file was there, so no
+/// install ever received a newer one (corpus 5's French never reached a phone
+/// that had 4). The reader's tables share the file with the corpus, so the
+/// file cannot simply be overwritten.
+///
+/// Nothing is lost at any point. The new corpus is filled in `wird.db.next`;
+/// the reader's file becomes `wird.db.bak` only once that is whole, and
+/// `openWird` puts it back if the second rename never happened. A failure
+/// before the renames deletes `.next` and leaves the old file untouched.
+Future<void> upgradeCorpus(File target, Uint8List bytes) async {
+  final next = File('${target.path}.next');
+  await installCorpus(next, bytes);
+  try {
+    final old = await openDatabase(
+      target.path,
+      readOnly: true,
+      singleInstance: false,
+    );
+    final fresh = await openDatabase(next.path, singleInstance: false);
+    try {
+      await _carryReaderRows(old, fresh);
+    } finally {
+      await old.close();
+      await fresh.close();
+    }
+  } catch (_) {
+    if (next.existsSync()) await next.delete();
+    rethrow;
+  }
+  await target.rename('${target.path}.bak');
+  await next.rename(target.path);
+}
+
+Future<void> _carryReaderRows(Database old, Database fresh) async {
+  final shipped = {
+    for (final r in await fresh.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    ))
+      r['name']! as String,
+  };
+  final schema = await old.rawQuery(
+    "SELECT type, name, tbl_name, sql FROM sqlite_master "
+    "WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' "
+    "ORDER BY type = 'index'",
+  );
+  final ours = [
+    for (final r in schema)
+      if (r['type'] == 'table' && !shipped.contains(r['name']))
+        r['name']! as String,
+  ];
+  await fresh.transaction((txn) async {
+    for (final r in schema) {
+      if (ours.contains(r['tbl_name'])) await txn.execute(r['sql']! as String);
+    }
+    for (final table in ours) {
+      await _copyRows(old, txn, table);
+    }
+    if (shipped.contains('root_notes')) await _copyRows(old, txn, 'root_notes');
+  });
+}
+
+/// Copies [table]'s rows by the columns both sides have, so a corpus table
+/// whose shape moved between versions still takes what it can hold.
+Future<void> _copyRows(Database from, Transaction to, String table) async {
+  Future<Set<String>> columns(DatabaseExecutor db) async => {
+    for (final c in await db.rawQuery('PRAGMA table_info($table)'))
+      c['name']! as String,
+  };
+  final shared = (await columns(from)).intersection(await columns(to));
+  if (shared.isEmpty) return;
+  final names = shared.join(', ');
+  for (final row in await from.rawQuery('SELECT $names FROM $table')) {
+    await to.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
 }
 
 /// Puts the corpus at [target] in one step, or leaves nothing there.
 ///
-/// Writing 24 MB straight to the destination takes long enough on a phone to
+/// Writing the corpus straight to the destination takes long enough on a phone to
 /// be interrupted — the reader backgrounds the app, the system reclaims it,
 /// the battery goes. What that left behind was a truncated file at the
 /// destination, and `openWird` asks only whether the destination exists, so
@@ -136,6 +251,15 @@ Future<Database> openWirdAt(String path) async {
       version    TEXT NOT NULL,
       fetched_at TEXT NOT NULL
     )''');
+  // Where the reader stands in each sūra: the word the reading screen last
+  // stood on. Synced, last write wins on updated_at. Not progress — what the
+  // reader understood is ayah_understood (ADR 0015).
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS reading_positions (
+      surah_id   INTEGER PRIMARY KEY,
+      word_id    INTEGER NOT NULL,
+      updated_at TEXT NOT NULL
+    )''');
   // The op id is the primary key rather than a column, so a write that is
   // replayed — a flush that timed out after the server had already applied it,
   // a button pressed twice — lands on the same row instead of a second one.
@@ -185,11 +309,10 @@ Future<void> markSetUnderstood(
   if (seen.isNotEmpty) return;
   final at = DateTime.now().toIso8601String();
   for (final ayahId in ayahIds) {
-    await txn.insert(
-      'ayah_understood',
-      {'ayah_id': ayahId, 'understood_at': at},
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    await txn.insert('ayah_understood', {
+      'ayah_id': ayahId,
+      'understood_at': at,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
   await enqueue(
     txn,
@@ -244,10 +367,9 @@ Future<void> recordSetPrayed(Database db, StudySet set) =>
 /// say "the fourth prayer on this set".
 Future<int> prayersOnSet(Database db, String setId) async =>
     Sqflite.firstIntValue(
-      await db.rawQuery(
-        'SELECT COUNT(*) FROM set_prayers WHERE set_id = ?',
-        [setId],
-      ),
+      await db.rawQuery('SELECT COUNT(*) FROM set_prayers WHERE set_id = ?', [
+        setId,
+      ]),
     )!;
 
 Future<ReadingOrder> readingOrder(Database db) async {
@@ -306,6 +428,83 @@ Future<void> setReadingOrder(Database db, ReadingOrder order) =>
       );
     });
 
+/// Records that the reader stands on [wordId], and queues it for their other
+/// devices, in one transaction.
+///
+/// ponytail: one op per call and no coalescing in the outbox. The reading
+/// screen calls this once the reader has settled on a word, not per swipe, so
+/// a sitting sends a handful. Drop older unsent moves of the same sūra if the
+/// queue ever grows with them.
+Future<void> movePosition(Database db, int wordId, {DateTime? at}) =>
+    db.transaction((txn) async {
+      final when = (at ?? DateTime.now()).toIso8601String();
+      final surah = surahOfWord(wordId);
+      await txn.insert('reading_positions', {
+        'surah_id': surah,
+        'word_id': wordId,
+        'updated_at': when,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await enqueue(
+        txn,
+        opId: newOpId(),
+        kind: 'position_moved',
+        body: {
+          'surah_id': surah,
+          'word_id': wordId,
+          'updated_at': wireTime(when),
+        },
+      );
+    });
+
+/// Keeps the reader's position: written once they have settled on a word,
+/// not on every step, so a sitting sends a handful of moves to their other
+/// devices; and written at once by [flush] when the screen goes away.
+///
+/// Nobody waits for the write. A database closed under it (a reader signing
+/// out, a test tearing down) leaves nothing to write to and is not an error;
+/// any other failure still surfaces.
+class PositionKeeper {
+  PositionKeeper(this.db, {this.settle = const Duration(seconds: 2)});
+
+  final Database db;
+  final Duration settle;
+  Timer? _timer;
+  int? _wordId;
+
+  void move(int wordId) {
+    _timer?.cancel();
+    _wordId = wordId;
+    _timer = Timer(settle, flush);
+  }
+
+  void flush() {
+    final wordId = _wordId;
+    _timer?.cancel();
+    _wordId = null;
+    if (wordId == null) return;
+    unawaited(
+      movePosition(db, wordId).catchError(
+        (_) {},
+        test: (e) => e is DatabaseException && e.isDatabaseClosedError(),
+      ),
+    );
+  }
+}
+
+/// Where the reader stands in each sūra they have opened, the most recent
+/// first.
+Future<List<({int surah, int wordId})>> readingPositions(
+  Database db, {
+  int? limit,
+}) async => [
+  for (final r in await db.query(
+    'reading_positions',
+    orderBy: 'updated_at DESC',
+    limit: limit,
+  ))
+    (surah: r['surah_id']! as int, wordId: r['word_id']! as int),
+];
+
 /// The default annotation is the gloss, and the design draws the Arabic at
 /// 31px.
 const defaultDisplay = 0;
@@ -318,11 +517,15 @@ const defaultArabicSize = 31.0;
 const defaultHeaderOpen = false;
 const defaultRootOpen = true;
 
+/// Each aya's translation is shown under it until the reader turns it off.
+const defaultAyaTranslation = true;
+
 typedef DisplayPrefs = ({
   int display,
   double arabicSize,
   bool headerOpen,
   bool rootOpen,
+  bool ayaTranslation,
 });
 
 /// Adds the columns a `display_prefs` written before either end of screen 1a
@@ -333,6 +536,7 @@ Future<void> ensureChromeColumns(Database db) async {
   for (final (column, byDefault) in [
     ('header_open', defaultHeaderOpen),
     ('root_open', defaultRootOpen),
+    ('aya_translation', defaultAyaTranslation),
   ]) {
     if (have.contains(column)) continue;
     await db.execute(
@@ -350,6 +554,7 @@ Future<DisplayPrefs> displayPrefs(Database db) async {
       arabicSize: defaultArabicSize,
       headerOpen: defaultHeaderOpen,
       rootOpen: defaultRootOpen,
+      ayaTranslation: defaultAyaTranslation,
     );
   }
   return (
@@ -357,6 +562,7 @@ Future<DisplayPrefs> displayPrefs(Database db) async {
     arabicSize: rows.first['arabic_size']! as double,
     headerOpen: rows.first['header_open'] == 1,
     rootOpen: rows.first['root_open'] == 1,
+    ayaTranslation: rows.first['aya_translation'] == 1,
   );
 }
 
@@ -368,12 +574,14 @@ Future<void> setDisplayPrefs(
   required double arabicSize,
   required bool headerOpen,
   required bool rootOpen,
+  required bool ayaTranslation,
 }) => db.insert('display_prefs', {
   'id': 1,
   'display': display,
   'arabic_size': arabicSize,
   'header_open': headerOpen ? 1 : 0,
   'root_open': rootOpen ? 1 : 0,
+  'aya_translation': ayaTranslation ? 1 : 0,
 }, conflictAlgorithm: ConflictAlgorithm.replace);
 
 /// A root's family, as screen 1a's root panel reads it.
@@ -387,7 +595,6 @@ Future<void> setDisplayPrefs(
 typedef Kin = Derivative;
 typedef RootDetail = RootReading;
 
-
 /// The reciter whose audio the corpus carries paths for.
 Future<String?> reciterLabel(Database db) async {
   final rows = await db.query('recitations', limit: 1);
@@ -400,10 +607,8 @@ Future<String?> reciterLabel(Database db) async {
 /// Gives a corpus installed before the French word glosses a `gloss_fr` column,
 /// empty, so every query can name it and every word falls back to its English.
 ///
-/// ponytail: `openWird` installs the corpus only when no file is there, so an
-/// install from before corpus 5 never receives the French itself. The upgrade
-/// is replacing the corpus tables when `corpus_meta.corpus_version` moves while
-/// keeping the reader's own tables, which share this file.
+/// `upgradeCorpus` now brings an older install the French itself; this stays
+/// for the launch where that upgrade failed and the old corpus was kept.
 Future<void> _ensureFrenchGlossColumn(Database db) async {
   final columns = await db.rawQuery('PRAGMA table_info(words)');
   // No words table is a database the corpus was never copied into, which only

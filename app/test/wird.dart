@@ -73,9 +73,22 @@ Future<void> pumpPhone(WidgetTester tester, Widget app) async {
   tester.view.physicalSize = const Size(402, 874);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+  unmountAtTearDown(tester);
   await tester.pumpWidget(app);
   await tester.pumpAndSettle();
 }
+
+/// Takes the app down before the test ends, so what a screen writes as it is
+/// disposed lands in this test.
+///
+/// The reading screen saves where the reader stood when it is disposed. Left
+/// to the framework, the screen is disposed after the test body and the write
+/// lands in whichever test runs next — after that test's setUp emptied the
+/// database — so the next reader opens where the last test left off.
+void unmountAtTearDown(WidgetTester tester) => addTearDown(() async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump();
+});
 
 /// Opens a destination the way a reader does: the burger, then the drawer's
 /// own row for it. Scoped to the drawer, because home names the same places

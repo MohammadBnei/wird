@@ -227,6 +227,7 @@ Future<int> _apply(
         'sets' => await _applySet(txn, change.row),
         'set_prayers' => await _applySetPrayer(txn, change.row),
         'user_prefs' => await _applyPrefs(txn, change.row),
+        'reading_positions' => await _applyPosition(txn, change.row),
         _ => _unknownKind(change.kind, unknownKinds),
       };
     }
@@ -252,11 +253,34 @@ int _unknownKind(String kind, Set<String> seen) {
   return 0;
 }
 
-Future<int> _applyUnderstood(Transaction txn, Map<String, dynamic> row) =>
-    txn.insert('ayah_understood', {
+Future<int> _applyPosition(Transaction txn, Map<String, dynamic> row) async {
+  final surah = row['surah_id'] as int;
+  final remote = DateTime.parse(row['updated_at'] as String);
+  final mine = await txn.query(
+    'reading_positions',
+    columns: ['updated_at'],
+    where: 'surah_id = ?',
+    whereArgs: [surah],
+    limit: 1,
+  );
+  if (mine.isNotEmpty &&
+      !remote.isAfter(DateTime.parse(mine.first['updated_at']! as String))) {
+    return 0;
+  }
+  await txn.insert('reading_positions', {
+    'surah_id': surah,
+    'word_id': row['word_id'],
+    'updated_at': _local(row['updated_at'] as String),
+  }, conflictAlgorithm: ConflictAlgorithm.replace);
+  return 1;
+}
+
+Future<int> _applyUnderstood(Transaction txn, Map<String, dynamic> row) => txn
+    .insert('ayah_understood', {
       'ayah_id': row['ayah_id'],
       'understood_at': _local(row['understood_at'] as String),
-    }, conflictAlgorithm: ConflictAlgorithm.ignore).then((_) => 1);
+    }, conflictAlgorithm: ConflictAlgorithm.ignore)
+    .then((_) => 1);
 
 Future<int> _applyKept(Transaction txn, Map<String, dynamic> row) async {
   final id = row['id'] as String;
@@ -298,23 +322,25 @@ Future<int> _applyKept(Transaction txn, Map<String, dynamic> row) async {
 /// A prayer can only arrive after the set it names, because the server writes
 /// both in one transaction and the stream is ordered by that, so the local
 /// foreign key is never reached before its row exists.
-Future<int> _applySet(Transaction txn, Map<String, dynamic> row) =>
-    txn.insert('sets', {
+Future<int> _applySet(Transaction txn, Map<String, dynamic> row) => txn
+    .insert('sets', {
       'id': row['id'],
       'start_ayah_id': row['start_ayah_id'],
       'end_ayah_id': row['end_ayah_id'],
       'reading_order': row['reading_order'],
       'created_at': _local(row['created_at'] as String),
-    }, conflictAlgorithm: ConflictAlgorithm.ignore).then((_) => 1);
+    }, conflictAlgorithm: ConflictAlgorithm.ignore)
+    .then((_) => 1);
 
 /// One prayer, which is what "the fourth prayer on this set" counts. There is
 /// no `prayer_name` column: the app has never asked which of the five it was.
-Future<int> _applySetPrayer(Transaction txn, Map<String, dynamic> row) =>
-    txn.insert('set_prayers', {
+Future<int> _applySetPrayer(Transaction txn, Map<String, dynamic> row) => txn
+    .insert('set_prayers', {
       'id': row['id'],
       'set_id': row['set_id'],
       'prayed_at': _local(row['prayed_at'] as String),
-    }, conflictAlgorithm: ConflictAlgorithm.ignore).then((_) => 1);
+    }, conflictAlgorithm: ConflictAlgorithm.ignore)
+    .then((_) => 1);
 
 Future<int> _applyPrefs(Transaction txn, Map<String, dynamic> row) async {
   final remote = DateTime.parse(row['updated_at'] as String);
@@ -340,22 +366,41 @@ String _tags(Object? tags) {
 
 /// The wire speaks RFC 3339 in UTC; local rows are written in local time
 /// without a zone, which is what the kept list and the progress ring parse.
-String _local(String wire) =>
-    DateTime.parse(wire).toLocal().toIso8601String();
+String _local(String wire) => DateTime.parse(wire).toLocal().toIso8601String();
 
-Future<void> _ensureSyncState(Database db) => db.execute('''
-  CREATE TABLE IF NOT EXISTS sync_state (
-    id     INTEGER PRIMARY KEY CHECK (id = 1),
-    cursor TEXT NOT NULL
-  )''');
+/// How many change kinds [_apply] writes. The cursor is saved with it.
+///
+/// A build that did not know a kind still walked its cursor past that kind's
+/// rows (see [_unknownKind]), so after the update that teaches it the kind,
+/// those rows would never be pulled again: the positions a reader set on the
+/// tablet before this phone updated would be lost to the phone for good. A
+/// cursor saved by a build that knew fewer kinds is therefore dropped once and
+/// the stream replayed from the start, which is safe because every apply is an
+/// insert-or-ignore or a last-write-wins.
+const _changeKinds = 6;
+
+Future<void> _ensureSyncState(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS sync_state (
+      id     INTEGER PRIMARY KEY CHECK (id = 1),
+      cursor TEXT NOT NULL
+    )''');
+  final columns = await db.rawQuery('PRAGMA table_info(sync_state)');
+  if (!columns.any((c) => c['name'] == 'kinds')) {
+    await db.execute(
+      'ALTER TABLE sync_state ADD COLUMN kinds INTEGER NOT NULL DEFAULT 0',
+    );
+  }
+}
 
 Future<String> _cursor(Database db) async {
-  final rows = await db.query('sync_state', columns: ['cursor']);
-  return rows.isEmpty ? '' : rows.first['cursor']! as String;
+  final rows = await db.query('sync_state', columns: ['cursor', 'kinds']);
+  if (rows.isEmpty || (rows.first['kinds']! as int) < _changeKinds) return '';
+  return rows.first['cursor']! as String;
 }
 
 Future<void> _saveCursor(Database db, String cursor) => db.insert(
   'sync_state',
-  {'id': 1, 'cursor': cursor},
+  {'id': 1, 'cursor': cursor, 'kinds': _changeKinds},
   conflictAlgorithm: ConflictAlgorithm.replace,
 );

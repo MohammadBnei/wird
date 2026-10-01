@@ -54,7 +54,12 @@ CREATE TABLE words (
   morphology   TEXT,
   -- The Last Dialogue's French for this word, used by permission (data/SOURCES.md).
   -- NULL where their pages have no card for the word; the app then shows gloss_en.
-  gloss_fr     TEXT
+  gloss_fr     TEXT,
+  -- The lemma of the word's root segment, from the Quranic Arabic Corpus:
+  -- lemma_key as published (Buckwalter, with the digit that tells apart two
+  -- lemmas spelled alike), lemma decoded for display. NULL where there is no root.
+  lemma_key    TEXT,
+  lemma        TEXT
 );
 CREATE TABLE roots (
   letters           TEXT PRIMARY KEY,
@@ -122,7 +127,7 @@ CREATE TABLE corpus_meta (
   notice         TEXT NOT NULL
 );
 CREATE INDEX words_ayah ON words(ayah_id);
-CREATE INDEX words_root ON words(root_letters);
+CREATE INDEX words_root ON words(root_letters, lemma_key);
 CREATE INDEX ayahs_surah ON ayahs(surah_id);
 CREATE INDEX segments_word ON word_segments(word_id, recitation_slug);
 CREATE INDEX root_notes_root ON root_notes(root_letters);
@@ -200,23 +205,31 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
-	fr := make([]Ayah, 0, len(c.Ayahs))
+	type translation struct {
+		ayah, resource int
+		lang, text     string
+	}
+	var rendered []translation
 	for _, a := range c.Ayahs {
 		if a.TextFr != "" {
-			fr = append(fr, a)
+			rendered = append(rendered, translation{a.ID, frenchTranslation, "fr", a.TextFr})
+		}
+		if a.TextEn != "" {
+			rendered = append(rendered, translation{a.ID, englishTranslation, "en", a.TextEn})
 		}
 	}
-	if err := insert(`INSERT INTO ayah_translations VALUES (?,?,?,?)`, len(fr), func(i int) []any {
-		a := fr[i]
-		return []any{a.ID, frenchTranslation, "fr", a.TextFr}
+	if err := insert(`INSERT INTO ayah_translations VALUES (?,?,?,?)`, len(rendered), func(i int) []any {
+		t := rendered[i]
+		return []any{t.ayah, t.resource, t.lang, t.text}
 	}); err != nil {
 		return err
 	}
 
-	if err := insert(`INSERT INTO words VALUES (?,?,?,?,?,?,?,?,?,?)`, len(c.Words), func(i int) []any {
+	if err := insert(`INSERT INTO words VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, len(c.Words), func(i int) []any {
 		w := c.Words[i]
 		return []any{w.ID, w.AyahID, w.Position, w.TextAr, w.Translit, w.GlossEn,
-			nullable(w.RootLetters), nullable(w.Form), nullable(w.Morphology), nullable(w.GlossFr)}
+			nullable(w.RootLetters), nullable(w.Form), nullable(w.Morphology), nullable(w.GlossFr),
+			nullable(w.LemmaKey), nullable(w.Lemma)}
 	}); err != nil {
 		return err
 	}

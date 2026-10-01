@@ -116,29 +116,30 @@ The transaction only commits when the op was `applied`. So the `op_log` row and 
 	return tag.RowsAffected() == 1, nil
 ```
 
-The API prunes op log rows older than 90 days ([store.go:348](../../../server/internal/store/store.go#L348)). A replay older than that is still safe for most kinds, because the writes themselves are upserts or skip rows already there. A report is the exception: replayed that late, it would land twice. [store/sync.go:525-528](../../../server/internal/store/sync.go#L525-L528) A prayer with no id of its own takes the op id as its row id, so even that replay lands on the same row. [store/sync.go:453-458](../../../server/internal/store/sync.go#L453-L458)
+The API prunes op log rows older than 90 days ([store.go:348](../../../server/internal/store/store.go#L348)). A replay older than that is still safe for most kinds, because the writes themselves are upserts or skip rows already there. A report is the exception: replayed that late, it would land twice. [store/sync.go:525-528](../../../server/internal/store/sync.go#L527-L530) A prayer with no id of its own takes the op id as its row id, so even that replay lands on the same row. [store/sync.go:453-458](../../../server/internal/store/sync.go#L455-L460)
 
 ### 4. The reader lock keeps the cursor honest
 
 Before anything else, the transaction takes an advisory lock on the reader. A sequence number is handed out when a row is written, not when it commits. Without the lock, two writes in flight could commit in the opposite order to their numbers, and a device whose cursor had passed the lower number would never see that row. With it, one reader's writes land one at a time. [store/sync.go:121-141](../../../server/internal/store/sync.go#L121-L141)
 
-The same lock makes the server-assigned set `ordinal` safe: `MAX(ordinal) + 1` cannot race. [store/sync.go:359-388](../../../server/internal/store/sync.go#L359-L388)
+The same lock makes the server-assigned set `ordinal` safe: `MAX(ordinal) + 1` cannot race. [store/sync.go:359-388](../../../server/internal/store/sync.go#L361-L390)
 
 ### 5. Apply by kind
 
-`applyKind` dispatches on the op's kind. An unknown kind is refused. [store/sync.go:177-196](../../../server/internal/store/sync.go#L177-L196)
+`applyKind` dispatches on the op's kind. An unknown kind is refused. [store/sync.go:177-196](../../../server/internal/store/sync.go#L177-L198)
 
 | Kind | What it writes | Rule |
 |---|---|---|
-| `ayah_understood` | One row per aya in `ayah_understood` | Each aya id must fold into a sūra from 1 to 114; already-understood ayas are skipped. [L228](../../../server/internal/store/sync.go#L228) |
-| `kept_upsert` | A `kept_items` row | Last write wins on `updated_at`; another reader's item never moves. [L275](../../../server/internal/store/sync.go#L275) |
-| `kept_delete` | Sets `deleted_at` on a `kept_items` row | A tombstone, never a delete. [L299](../../../server/internal/store/sync.go#L299) |
-| `set_prayed` | The set, if the body carries its range, and the prayer | With a range, the set id is recomputed and must match. Either way the set must exist. [L425](../../../server/internal/store/sync.go#L425) |
-| `set_recorded` | A set | Old shape, kept so old phones can drain their queue. [L396](../../../server/internal/store/sync.go#L396) |
-| `prefs_set` | The reader's `user_prefs` | Reading order must be `mushaf` or `nuzul`; last write wins. [L570](../../../server/internal/store/sync.go#L570) |
-| `report_written` | A row in `report_inbox`, with no reader attached | Swept into `reports` later, on a clock. [L493](../../../server/internal/store/sync.go#L493) |
+| `ayah_understood` | One row per aya in `ayah_understood` | Each aya id must fold into a sūra from 1 to 114; already-understood ayas are skipped. [L228](../../../server/internal/store/sync.go#L230) |
+| `kept_upsert` | A `kept_items` row | Last write wins on `updated_at`; another reader's item never moves. [L275](../../../server/internal/store/sync.go#L277) |
+| `kept_delete` | Sets `deleted_at` on a `kept_items` row | A tombstone, never a delete. [L299](../../../server/internal/store/sync.go#L301) |
+| `set_prayed` | The set, if the body carries its range, and the prayer | With a range, the set id is recomputed and must match. Either way the set must exist. [L425](../../../server/internal/store/sync.go#L427) |
+| `set_recorded` | A set | Old shape, kept so old phones can drain their queue. [L396](../../../server/internal/store/sync.go#L398) |
+| `prefs_set` | The reader's `user_prefs` | Reading order must be `mushaf` or `nuzul`; last write wins. [L570](../../../server/internal/store/sync.go#L572) |
+| `position_moved` | The reader's `reading_positions` row for that sūra | The word must belong to the sūra; the time must be set and no more than five minutes ahead of the server; last write wins. [L600](../../../server/internal/store/sync.go#L600) |
+| `report_written` | A row in `report_inbox`, with no reader attached | Swept into `reports` later, on a clock. [L493](../../../server/internal/store/sync.go#L495) |
 
-Every body is decoded strictly. One unknown field refuses the op. [store/sync.go:219-226](../../../server/internal/store/sync.go#L219-L226)
+Every body is decoded strictly. One unknown field refuses the op. [store/sync.go:219-226](../../../server/internal/store/sync.go#L221-L228)
 
 ```go
 func decode(body json.RawMessage, into any) error {
@@ -169,7 +170,7 @@ stateDiagram-v2
   failed --> [*]: device sends it again later
 ```
 
-The reason sent back never names a table or a statement. [store/sync.go:158-175](../../../server/internal/store/sync.go#L158-L175) Refused and failed ops are counted per day, kind and verdict in `sync_outcomes`, with no reader attached, so the operations view can see that syncs fail without seeing whose. [store/sync.go:210-217](../../../server/internal/store/sync.go#L210-L217)
+The reason sent back never names a table or a statement. [store/sync.go:158-175](../../../server/internal/store/sync.go#L158-L175) Refused and failed ops are counted per day, kind and verdict in `sync_outcomes`, with no reader attached, so the operations view can see that syncs fail without seeing whose. [store/sync.go:210-217](../../../server/internal/store/sync.go#L212-L219)
 
 ### 7. The pull: `GET /v1/changes`
 
@@ -178,15 +179,15 @@ flowchart LR
   c["since cursor"] --> p{"empty, or seq:N?"}
   p -->|neither| e["400: not a cursor<br/>this server issued"]
   p -->|"empty = 0"| q
-  p -->|"seq:N"| q["rows from five tables<br/>with seq above N,<br/>ordered by seq, first 500"]
+  p -->|"seq:N"| q["rows from six tables<br/>with seq above N,<br/>ordered by seq, first 500"]
   q --> r["changes + cursor seq:last<br/>+ more if the page is full"]
 ```
 
-The five tables the pull reads each carry a `seq` column fed by one sequence, `change_seq`. Each insert takes the next number, and each update of a kept item or of preferences takes a fresh one. [00003_change_order.sql:11-17](../../../server/migrations/00003_change_order.sql#L11-L17), [store/sync.go:290](../../../server/internal/store/sync.go#L290), [store/sync.go:311](../../../server/internal/store/sync.go#L311), [store/sync.go:586](../../../server/internal/store/sync.go#L586) `root_known` has no `seq` and is not in the stream.
+The six tables the pull reads each carry a `seq` column fed by one sequence, `change_seq`. Each insert takes the next number, and each update of a kept item, of preferences or of a reading position takes a fresh one. [00003_change_order.sql:11-17](../../../server/migrations/00003_change_order.sql#L11-L17), [store/sync.go:290](../../../server/internal/store/sync.go#L292), [store/sync.go:311](../../../server/internal/store/sync.go#L313), [store/sync.go:586](../../../server/internal/store/sync.go#L588) `root_known` has no `seq` and is not in the stream.
 
-The query unions `ayah_understood`, `kept_items`, `sets`, `set_prayers` and `user_prefs`, orders by `seq`, and stops at 500 rows. A kept item with `deleted_at` set is sent like any other row: that row is the tombstone. [store/sync.go:613-642](../../../server/internal/store/sync.go#L613-L642)
+The query unions `ayah_understood`, `kept_items`, `sets`, `set_prayers`, `user_prefs` and `reading_positions`, orders by `seq`, and stops at 500 rows. A kept item with `deleted_at` set is sent like any other row: that row is the tombstone. [store/sync.go:613-642](../../../server/internal/store/sync.go#L656-L689)
 
-The cursor is the text `seq:` followed by the last number sent. A cursor without that prefix is refused with a 400 rather than read as some place in the stream. [store/sync.go:689-708](../../../server/internal/store/sync.go#L689-L708)
+The cursor is the text `seq:` followed by the last number sent. A cursor without that prefix is refused with a 400 rather than read as some place in the stream. [store/sync.go:689-708](../../../server/internal/store/sync.go#L736-L755)
 
 ```go
 func parseCursor(cursor string) (int64, error) {
@@ -205,11 +206,11 @@ func parseCursor(cursor string) (int64, error) {
 }
 ```
 
-When a page comes back empty, the cursor the device sent is returned unchanged. `more` is true only when the page is full. [store/sync.go:675-678](../../../server/internal/store/sync.go#L675-L678) The endpoint writes nothing.
+When a page comes back empty, the cursor the device sent is returned unchanged. `more` is true only when the page is full. [store/sync.go:675-678](../../../server/internal/store/sync.go#L722-L725) The endpoint writes nothing.
 
 ### 8. One file both sides answer to
 
-Four things cross the device and server boundary with no compiler to check them: the op body field names, the four result words, the five change kinds with their row keys, and the two reading-order words. They are written once, in [0002-sync-contract-vectors.json](../../adr/0002-sync-contract-vectors.json). The Go suite lands every op body against a real Postgres and requires `applied`, and checks the stream emits exactly those kinds and keys. [sync_contract_vectors_test.go:79](../../../server/internal/store/sync_contract_vectors_test.go#L79), [sync_contract_vectors_test.go:144](../../../server/internal/store/sync_contract_vectors_test.go#L144) The Dart suite reads the same file. [sync_contract_vectors_test.dart](../../../app/test/data/sync_contract_vectors_test.dart)
+Four things cross the device and server boundary with no compiler to check them: the op body field names, the four result words, the six change kinds with their row keys, and the two reading-order words. They are written once, in [0002-sync-contract-vectors.json](../../adr/0002-sync-contract-vectors.json). The Go suite lands every op body against a real Postgres and requires `applied`, and checks the stream emits exactly those kinds and keys. [sync_contract_vectors_test.go:79](../../../server/internal/store/sync_contract_vectors_test.go#L79), [sync_contract_vectors_test.go:144](../../../server/internal/store/sync_contract_vectors_test.go#L144) The Dart suite reads the same file. [sync_contract_vectors_test.dart](../../../app/test/data/sync_contract_vectors_test.dart)
 
 ```mermaid
 flowchart LR

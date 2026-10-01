@@ -143,6 +143,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SizedBox(height: n.space('3')),
               NocturneSegmented(
                 options: [
+                  l.settingsAyaTranslationShown,
+                  l.settingsAyaTranslationHidden,
+                ],
+                selected: prefs.ayaTranslation ? 0 : 1,
+                onChanged: (i) => prefs.setAyaTranslation(i == 0),
+              ),
+              SizedBox(height: n.space('1')),
+              _caption(n, l.settingsAyaTranslationCaption),
+              SizedBox(height: n.space('3')),
+              NocturneSegmented(
+                options: [
                   l.settingsOrderChronological,
                   l.settingsOrderMushaf,
                 ],

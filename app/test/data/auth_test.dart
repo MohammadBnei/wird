@@ -223,15 +223,17 @@ void main() {
   // The household tablet. Two people, one device, and nothing in the sign-in
   // that notices the reader changed: every table below is keyed by aya or by
   // op id, never by who wrote the row.
-  test("a second reader on the tablet is handed the first one's notes and "
+  test("a second reader on the tablet is handed the first one's notes, places and "
       'prayers', () async {
     await signInAs('aisha@bnei.dev');
     await aMonthOfReading();
     await recordSetPrayed(db, (await nextSet(db, ReadingOrder.nuzul))!);
+    await movePosition(db, 2255003);
     await theAccount().signOut();
 
     await signInAs('bilal@bnei.dev');
 
+    expect(await db.query('reading_positions'), isEmpty);
     expect(await db.query('kept_items'), isEmpty);
     expect(await understood(db), 0);
     expect(await db.query('set_prayers'), isEmpty);

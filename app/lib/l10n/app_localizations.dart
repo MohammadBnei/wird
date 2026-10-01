@@ -125,12 +125,6 @@ abstract class AppLocalizations {
   /// **'Pick an aya of {sura}'**
   String index_pick_aya(String sura);
 
-  /// Heading over the gloss of the selected word in the aya it was tapped in.
-  ///
-  /// In en, this message translates to:
-  /// **'IN THIS AYA'**
-  String get inThisAya;
-
   /// Shown on the kept list in place of the cards when the reader has kept no aya; it names the control on the constellation screen that keeps one.
   ///
   /// In en, this message translates to:
@@ -244,18 +238,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Kept'**
   String get kept_title;
-
-  /// The reading screen's one action: it advances the reader through the Qur'an.
-  ///
-  /// In en, this message translates to:
-  /// **'Mark set understood'**
-  String get markSetUnderstood;
-
-  /// What the same button says once every aya of the set is understood.
-  ///
-  /// In en, this message translates to:
-  /// **'Next set'**
-  String get nextSet;
 
   /// Why the play button is dark: the recitation for this set is not on the device.
   ///
@@ -713,41 +695,11 @@ abstract class AppLocalizations {
   /// **'Write another'**
   String get report_write_another;
 
-  /// Reading screen header, shown only while the reader is visiting an aya they asked for: it puts them back on the walk's next set.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to the walk'**
-  String get study_backToTheWalk;
-
   /// Reading screen, the unfolded root panel: opens the deep dive on this aya and this root.
   ///
   /// In en, this message translates to:
   /// **'Constellation'**
   String get study_constellation;
-
-  /// Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set is still open.
-  ///
-  /// In en, this message translates to:
-  /// **'Every aya in this set is understood'**
-  String get study_everyAyaUnderstood;
-
-  /// Reading screen footer, the middle control: it opens the sūra index, which answers with any aya of the Qur'an.
-  ///
-  /// In en, this message translates to:
-  /// **'Go to…'**
-  String get study_goTo;
-
-  /// Screen-reader label for the reading screen footer's middle control, whose visible face says only "Go to…".
-  ///
-  /// In en, this message translates to:
-  /// **'Go to any sūra or aya'**
-  String get study_goToAnyAya;
-
-  /// Reading screen, the unfolded root panel: what pressing one of the kin tags above it does.
-  ///
-  /// In en, this message translates to:
-  /// **'A kin opens the aya it is first met in.'**
-  String get study_kinOpensItsAya;
 
   /// Reading screen, the right chevron in the root panel: it opens the word after the one the panel is showing. Screen-reader label.
   ///
@@ -755,41 +707,11 @@ abstract class AppLocalizations {
   /// **'Next word'**
   String get study_nextWord;
 
-  /// Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set has been marked.
-  ///
-  /// In en, this message translates to:
-  /// **'No aya marked understood yet'**
-  String get study_noAyaUnderstoodYet;
-
   /// Reading screen transport: why the play button is dark when the corpus ships no recitation for these ayas at all, as against notDownloaded, which is one that could still arrive.
   ///
   /// In en, this message translates to:
   /// **'No recitation for this set'**
   String get study_noRecitation;
-
-  /// Reading screen, in place of the root panel's contents when not one word of the set on screen bears a root.
-  ///
-  /// In en, this message translates to:
-  /// **'No word in this set carries a root.'**
-  String get study_noRootInSet;
-
-  /// The whole of the reading screen once the reader has marked every aya of the Qur'an understood and the walk has no set left to hand them.
-  ///
-  /// In en, this message translates to:
-  /// **'Every aya is understood. There is nothing left to serve.'**
-  String get study_nothingLeftToServe;
-
-  /// How the last of a list of aya numbers is joined to the ones before it, inside the sentences under the reading screen's progress rule.
-  ///
-  /// In en, this message translates to:
-  /// **'{first} and {last}'**
-  String study_numbersAnd(Object first, Object last);
-
-  /// Reading screen footer, the up arrow: it steps to the set before this one. Also its screen-reader label, which the aya numbers are appended to.
-  ///
-  /// In en, this message translates to:
-  /// **'Previous set'**
-  String get study_previousSet;
 
   /// Reading screen, the left chevron in the root panel: it opens the word before the one the panel is showing. Screen-reader label. It says word rather than set because the footer a band below steps by the set.
   ///
@@ -797,41 +719,11 @@ abstract class AppLocalizations {
   /// **'Previous word'**
   String get study_previousWord;
 
-  /// Reading screen header, the act the reading is for: it opens the prayer screen on this set.
-  ///
-  /// In en, this message translates to:
-  /// **'Pray this set'**
-  String get study_prayThisSet;
-
-  /// Reading screen, the sentence under the progress rule in the unfolded header, when some ayas of the set are marked and some are still open.
-  ///
-  /// In en, this message translates to:
-  /// **'Aya {done} marked understood · aya {open} open'**
-  String study_progressSplit(Object done, Object open);
-
-  /// Reading screen, the kicker in the unfolded header when the reader is in the order of revelation: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.
-  ///
-  /// In en, this message translates to:
-  /// **'Revelation {order} · {place}'**
-  String study_revelationKicker(Object order, Object place);
-
-  /// Reading screen, the kicker in the unfolded header when the reader is in the written order: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.
-  ///
-  /// In en, this message translates to:
-  /// **'Sūra {surah} · {place}'**
-  String study_surahKicker(Object surah, Object place);
-
   /// Reading screen root panel, under a word the arrows walked onto that has no root — a particle or a proper noun. It names this one word, unlike study_noRootInSet, which is about the whole set.
   ///
   /// In en, this message translates to:
   /// **'No root'**
   String get study_wordHasNoRoot;
-
-  /// Reading screen, the kicker before the set's title: the reader asked for this aya rather than being handed it by the walk.
-  ///
-  /// In en, this message translates to:
-  /// **'Visiting'**
-  String get study_visiting;
 
   /// Screen-reader label on an aya reference in a root's family — the panel under screen 1a's aya, screen 3a's spine and screen 1c's constellation all draw it.
   ///
@@ -1132,6 +1024,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Neither'**
   String get settingsWordNeither;
+
+  /// Settings: show each aya's translation under it on the reading screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Aya translated'**
+  String get settingsAyaTranslationShown;
+
+  /// Settings: draw no translation under the ayas, only the words and their glosses.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic only'**
+  String get settingsAyaTranslationHidden;
+
+  /// Caption under the aya translation setting: whose translation is shown, by language.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickthall\'s English or Rashid Maash\'s French, under each aya.'**
+  String get settingsAyaTranslationCaption;
 
   /// Caption under the word-display segmented control on the settings screen.
   ///
@@ -1553,6 +1463,12 @@ abstract class AppLocalizations {
   /// **'Your reading order'**
   String get settingsParkedOrder;
 
+  /// A parked write: the reading position in one sūra, sent to the reader's other devices.
+  ///
+  /// In en, this message translates to:
+  /// **'Where you are in a sūra'**
+  String get settingsParkedPosition;
+
   /// A parked write named in the settings screen's parked-writes panel: a bug or request the reader wrote.
   ///
   /// In en, this message translates to:
@@ -1565,10 +1481,10 @@ abstract class AppLocalizations {
   /// **'A change you made'**
   String get settingsParkedOther;
 
-  /// Who rendered the aya, shown under the translation.
+  /// Who rendered the aya, shown under the translation: Pickthall in English, Rashid Maash in French.
   ///
   /// In en, this message translates to:
-  /// **'Rashid Maash'**
+  /// **'Pickthall'**
   String get study_ayaTranslated;
 
   /// Said once above the reading, where the aya is translated: whose the per-word glosses are, and that a few stay English.
@@ -1744,6 +1660,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.'**
   String get aboutSelfTerms;
+
+  /// Screen-reader label of the root sheet's handle while the sūra fills the top half.
+  ///
+  /// In en, this message translates to:
+  /// **'Show counts, forms and other ayas'**
+  String get study_expandSheet;
+
+  /// Screen-reader label of the root sheet's handle while it fills the screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the whole sūra again'**
+  String get study_collapseSheet;
+
+  /// Small heading over the numbered senses of the root.
+  ///
+  /// In en, this message translates to:
+  /// **'Senses'**
+  String get study_senses;
+
+  /// Under a word that has no root, at the foot of the root sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Particles and pronouns have no three-letter root. Swipe on to the next word.'**
+  String get study_particleNote;
+
+  /// The row that opens the lower part of the root sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts, forms, other ayas'**
+  String get study_moreRow;
+
+  /// Heading over the three count tiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Across the Qur\'an'**
+  String get study_acrossQuran;
+
+  /// Under the number of words in the Qur'an built on this root.
+  ///
+  /// In en, this message translates to:
+  /// **'this root'**
+  String get study_countRoot;
+
+  /// Before the Arabic of the word's lemma, under the number of times that lemma is read.
+  ///
+  /// In en, this message translates to:
+  /// **'as'**
+  String get study_countLemma;
+
+  /// Under the number of words of the sūra on screen built on this root.
+  ///
+  /// In en, this message translates to:
+  /// **'in this sūra'**
+  String get study_countSurah;
+
+  /// Caption under the ring of the root's lemmas.
+  ///
+  /// In en, this message translates to:
+  /// **'Its forms, and how often each is read'**
+  String get study_ringCaption;
+
+  /// Heading over the list of other ayas the root is read in.
+  ///
+  /// In en, this message translates to:
+  /// **'Other ayas'**
+  String get study_otherAyas;
+
+  /// Top right of the reading screen: the aya and word open, and where that word falls in the sūra.
+  ///
+  /// In en, this message translates to:
+  /// **'{ref} · word {n}/{total}'**
+  String study_position(String ref, int n, int total);
+
+  /// Button that leaves another aya and returns to the reading position.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {ref}'**
+  String study_backTo(String ref);
+
+  /// Under another aya: opens that aya's sūra at that aya.
+  ///
+  /// In en, this message translates to:
+  /// **'Read this sūra from here'**
+  String get study_readFromHere;
+
+  /// App bar action on the reading screen: pray the ayas around the one open.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray'**
+  String get study_pray;
+
+  /// Screen-reader label of the play button in the reading screen's app bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Recite'**
+  String get study_recite;
+
+  /// Screen-reader label of the play button while it is reciting.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause the recitation'**
+  String get study_pauseRecitation;
+
+  /// Screen-reader label of an aya's number circle, which marks the aya understood.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark aya {ref} understood'**
+  String study_markUnderstood(String ref);
+
+  /// Screen-reader label of the root letters in the reading screen's sheet, which open the root's own screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the root {root}'**
+  String study_openRoot(String root);
+
+  /// Home: heading over the sūras the reader is part-way through, each opening where they stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'CONTINUE READING'**
+  String get dashboard_continueReading;
+
+  /// Small heading in the reading screen's sheet over the word's parsing: its part of speech and features, as the corpus reads this occurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'Form'**
+  String get study_form;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

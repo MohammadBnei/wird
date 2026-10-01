@@ -140,8 +140,13 @@ void main() {
       'around it cannot be read on', (tester) async {
     await openStudy(tester, target: _kursi);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
-    await tester.pumpAndSettle();
+    // Scrolled until it shows rather than by a fixed distance: how far 2:256
+    // is depends on how long 2:255's translation runs.
+    await tester.scrollUntilVisible(
+      find.byKey(WordKey(_word(2256, 1))),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
 
     expect(find.byKey(WordKey(_word(2256, 1))), findsOneWidget);
   });
@@ -151,13 +156,25 @@ void main() {
     await openStudy(tester, target: _kursi);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mark set understood'));
+
+    expect(
+      await db.query('ayah_understood'),
+      isEmpty,
+      reason: 'scrolling is reading, not a claim to have understood',
+    );
+
+    final mark = find.byWidgetPredicate(
+      (w) => w is AyaMark && w.aya.id == _kursi,
+    );
+    await tester.ensureVisible(mark);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: mark, matching: find.byType(Text)));
     await tester.pumpAndSettle();
 
     expect(
       (await db.query('ayah_understood')).map((r) => r['ayah_id']),
       [_kursi],
-      reason: 'the aya the reader asked for, not the sūra they read',
+      reason: 'the aya the reader marked, not the sūra they read',
     );
   });
 
