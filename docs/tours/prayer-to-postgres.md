@@ -38,7 +38,7 @@ Your phone saves the new rows and queues an op in the **outbox** in one step. Bo
 
 The **outbox** does not move on every write. It moves when the app starts or comes back to the foreground, at most once every two minutes. If you are signed in, the bearer token is added at that moment, in one place.
 
-→ [Sync: the queue moves at launch and on return to the foreground](../architecture/app/sync.md#2-the-queue-moves-at-launch-and-on-return-to-the-foreground) · [the token is attached in one place](../architecture/app/sync.md#3-the-token-is-attached-in-one-place)
+→ [Sync: the queue moves at launch, on return to the foreground, and when the app is put away](../architecture/app/sync.md#2-the-queue-moves-at-launch-on-return-to-the-foreground-and-when-the-app-is-put-away) · [the token is attached in one place](../architecture/app/sync.md#3-the-token-is-attached-in-one-place)
 
 ## 4. The batch reaches the server
 
