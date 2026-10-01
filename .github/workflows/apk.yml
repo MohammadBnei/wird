@@ -165,7 +165,9 @@ jobs:
           for v in WIRD_ANDROID_KEYSTORE_P12 WIRD_ANDROID_KEYSTORE_PASSWORD WIRD_ANDROID_KEY_ALIAS \
                    WIRD_ANDROID_KEY_PASSWORD WIRD_MODELS_S3_ACCESS_KEY WIRD_MODELS_S3_SECRET; do
             [ -n "${!v:-}" ] || { echo "::error::Infisical returned no $v"; exit 1; }
-            echo "::add-mask::${!v}"
+            # The alias is not secret, and masking it ("wird") would blank the
+            # bucket name and every URL in the logs and the summary.
+            [ "$v" = WIRD_ANDROID_KEY_ALIAS ] || echo "::add-mask::${!v}"
           done
           printf '%s' "$WIRD_ANDROID_KEYSTORE_P12" | base64 -d > "$RUNNER_TEMP/release.p12"
           # key.properties is read by java.util.Properties: in a value, a
