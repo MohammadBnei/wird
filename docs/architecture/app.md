@@ -191,7 +191,7 @@ sequenceDiagram
     }
 ```
 
-[prepare_screen.dart:224](../../app/lib/features/prayer/prepare_screen.dart#L224-L239)
+[prepare_screen.dart:289](../../app/lib/features/prayer/prepare_screen.dart#L289-L304)
 
 `prayer_prefs` and `prayer_history` stay on the phone. Only `recordSetPrayed` queues an op. [Sets and reader](app/sets-and-reader.md#9-praying-a-set) says which set is credited.
 

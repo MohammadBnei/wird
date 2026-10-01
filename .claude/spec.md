@@ -90,14 +90,15 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 ## Voice-follow
 - `1b` baseline = manual next/prev taps. Voice-follow optional enhancement, off by default. No permission ever required to pray; mic consent never on path to `1b`.
 - `1b` reached only via `Routes.prepare` (`Routes.prayer` gone). `1b` writes nothing; reports via `PrayerOutcome`. ADR 0018.
-- Prayer = rakʿahs, each Al-Fātiḥa + passage (`rakahOf`, `prayer_plan.dart`). One `PrayerVoice` per prayer; `follow()` per rakʿah, generation counter drops in-flight decode. Next rakʿah begins only on sure full window (`heardTailLetters`) inside Fātiḥa words < `openingWords` 8 → bowing praise must not begin it.
-- Unseen basmala inserted into heard words before passage (not At-Tawba). Remove it → basmala snaps cursor to 1:1.
+- Prayer = rakʿahs, each Al-Fātiḥa + passage (`rakahOf`, `prayer_plan.dart`). One `PrayerVoice` per prayer; `follow()` per rakʿah, generation counter drops in-flight decode. Next rakʿah begins on window ≥ `openingLetters` 12 (a basmala) placed inside Fātiḥa words < `openingWords` 8 → bowing praise must not begin it.
+- Unseen basmala inserted into heard words before passage (not At-Tawba). Remove it → basmala snaps cursor to 1:1. With it = repeat of 1:1, settled by order from cursor.
 - Pace (`prayer_pace.dart`): voice leads; pace steps after `lostAfter` 3 s with no sure match; pace's own moves never count as recognition.
-- Cursor invariant: never throw, never name word outside rakʿah. Moves both ways (repeat aya = rewind). Wrong move blocked upstream by `followMargin`. Property-tested.
+- Cursor invariant: never throw, never name word outside rakʿah. Moves both ways (repeat aya = rewind). Wrong move blocked upstream by matcher margin (per pair, floor). Property-tested.
 - `1b`: wakelock held (tested); no dialog, error, spinner, snackbar, ever.
 - Engine: on-device `sherpa_onnx`, Arabic-only Qurʼanic phoneme CTC model (ADR 0009, supersedes model choice in ADR 0005). Audio never leaves phone. Job = locating, not transcribing.
 - Model served from `https://wird.bnei.dev/models/...` → presigned redirect to object store (ADR 0008; ADR 0007 superseded). Origin `defaultVoiceModelOrigin` in `app/lib/data/speech.dart`. Weights in `voice/` dir beside `wird.db`.
-- Matcher: `app/lib/features/prayer/alignment.dart`, `followMargin = 0.32`.
+- Matcher: `app/lib/features/prayer/alignment.dart`. All knobs = `FollowTuning` fields, carried by `Recitation`. `explain` → `Placing` + `Verdict`; `locate` = move only. Repeats (`sameText` ≥ `repeat`) settled by order: nearest copy ≥ cursor within `repeatReach`. ADR 0020.
+- Bench: `app/test/features/prayer/follow_bench_test.dart` = gate for any matcher change. Ratchets wrong/ahead/behind per condition, never raise. `SWEEP=1` → per-knob table. New field trail → copy to `test/fixtures/`, add condition.
 - Field log: `docs/journal/voice-follow-walk.md` (findings 1–11).
 
 ## Audio

@@ -1,6 +1,6 @@
 # 18. A prayer is prepared, then recited one rakʿah at a time
 
-Date: 2026-10-01. Status: accepted. Amends ADR 0006.
+Date: 2026-10-01. Status: accepted, amended by ADR 0020. Amends ADR 0006.
 
 ## Context
 

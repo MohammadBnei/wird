@@ -9,6 +9,7 @@ flowchart LR
   A1[0001 stack] --> A2[0002 set identity]
   A3[0003 addressable reader] -. amended by .-> A6[0006 passage vs set]
   A6 -. amended by .-> A18[0018 prayer prepared, one rakʿah at a time]
+  A18 -. amended by .-> A20[0020 margin per pair, repeats by order]
   A5v[0005 voice-follow on the phone] -. amended by .-> A9[0009 phoneme recogniser]
   A7[0007 model published upstream] -. superseded by .-> A8[0008 served from Wird's host]
   A8 -. amends .-> A5d[0005 deploying the API]
@@ -36,4 +37,5 @@ flowchart LR
 | [0015-the-reading-position-is-kept-per-sura-and-synced.md](0015-the-reading-position-is-kept-per-sura-and-synced.md) | The reading position is kept per sūra and synced | accepted |
 | [0016-installed-corpora-upgrade-and-words-carry-their-lemma.md](0016-installed-corpora-upgrade-and-words-carry-their-lemma.md) | Installed corpora upgrade, and words carry their lemma | accepted |
 | [0017-ayas-are-translated-into-english-from-pickthall.md](0017-ayas-are-translated-into-english-from-pickthall.md) | Ayas are translated into English from Pickthall | accepted |
-| [0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md](0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) | A prayer is prepared, then recited one rakʿah at a time | accepted |
+| [0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md](0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) | A prayer is prepared, then recited one rakʿah at a time | accepted, amended by 0020 |
+| [0020-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md](0020-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md) | The matcher's margin is asked per pair of places, and a repeated phrase is settled by order | accepted |

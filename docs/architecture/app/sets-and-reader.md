@@ -286,27 +286,43 @@ flowchart TB
   passages --> movement["Voice, pace, words a minute"]
   movement --> display["Gloss, faded neighbours, Arabic size"]
   display --> begin(["Begin"])
-  passages -.-> chooser["Passage chooser"]
+  passages -.-> chooser["Passage chooser<br/>opens on the current range"]
+  movement -.-> setup["Allow microphone,<br/>download the model"]
   display -.-> preview(["Preview: one rakʿah, looping"])
 ```
 
-The screen opens where the reader left it last time, from `prayer_prefs`, except the first passage: the set it was opened on, or else the walk's next set ([prepare_screen.dart:79](../../../app/lib/features/prayer/prepare_screen.dart#L79-L118)).
+The screen opens where the reader left it last time, from `prayer_prefs`, except the passages ([prepare_screen.dart:108](../../../app/lib/features/prayer/prepare_screen.dart#L108-L160)). The first is the set it was opened on, or else the walk's next set, but never a set of Al-Fātiḥa: Al-Fātiḥa is already recited in every rakʿah, and as the passage every word would stand in two places ([prepare_screen.dart:129](../../../app/lib/features/prayer/prepare_screen.dart#L129-L134)). The second is the first's continuation: as many ayas as the first holds, straight after it, going on into the next sūra when the first ends one ([prepare_screen.dart:162](../../../app/lib/features/prayer/prepare_screen.dart#L162-L183)).
 
-- A preset sets the rakʿah count; tapping the chosen preset again clears it, and the count stays ([prepare_screen.dart:152](../../../app/lib/features/prayer/prepare_screen.dart#L152-L159), [prayer_plan.dart:10](../../../app/lib/features/prayer/prayer_plan.dart#L10-L25)).
-- Only the first two rakʿahs carry a passage after Al-Fātiḥa. The second can be "same as the first". The rest are Al-Fātiḥa alone ([prayer_plan.dart:60](../../../app/lib/features/prayer/prayer_plan.dart#L60-L64)).
-- The pace runs from 15 to 90 words a minute, in steps of 5 ([prepare_screen.dart:664](../../../app/lib/features/prayer/prepare_screen.dart#L664-L667)). Voice is only offered once the microphone is granted and the model is on the phone, and the reader's wish is kept for the day it is.
-- "Silence notifications" is a reminder, not a switch. Android only lets an app silence the phone after a permission granted in system settings, and iOS has no way at all, so the reader does it ([prepare_screen.dart:707](../../../app/lib/features/prayer/prepare_screen.dart#L707-L715)).
-- The preview sheet runs one rakʿah from its passage, round and round, at the pace when voice or pace is chosen, and never opens the microphone ([prepare_screen.dart:241](../../../app/lib/features/prayer/prepare_screen.dart#L241-L312)).
+If the database does not answer, the screen says so and offers "Try again" rather than staying blank. One read runs at a time, so a second tap cannot race the first ([prepare_screen.dart:93](../../../app/lib/features/prayer/prepare_screen.dart#L93-L106), [prepare_screen.dart:697](../../../app/lib/features/prayer/prepare_screen.dart#L697-L711)).
 
-The passage chooser searches sūras by number or by name, in English or Arabic, with the marks folded away so `fatiha` finds Al-Fātiḥa, and takes a reference such as `2:255` ([prayer_plan.dart:118](../../../app/lib/features/prayer/prayer_plan.dart#L118-L169)). With nothing typed it suggests the first rakʿah's passage again (for the second), the walk's next set, the passages recently recited, and Al-Fātiḥa only ([passage_chooser.dart:177](../../../app/lib/features/prayer/passage_chooser.dart#L177-L210)). Choosing a sūra opens a range step for the ayas inside it.
+- A preset sets the rakʿah count; tapping the chosen preset again clears it, and the count stays ([prepare_screen.dart:217](../../../app/lib/features/prayer/prepare_screen.dart#L217-L224), [prayer_plan.dart:10](../../../app/lib/features/prayer/prayer_plan.dart#L10-L25)).
+- Only the first two rakʿahs carry a passage after Al-Fātiḥa. The second can still be set to "same as the first". The rest are Al-Fātiḥa alone ([prayer_plan.dart:60](../../../app/lib/features/prayer/prayer_plan.dart#L60-L64)).
+- The pace runs from 15 to 90 words a minute, in steps of 5 ([prepare_screen.dart:771](../../../app/lib/features/prayer/prepare_screen.dart#L771-L774)). Voice is only ticked once the microphone is granted and the model is on the phone, and the reader's wish is kept for the day it is. Until then, "Follow my voice" carries what is missing right under it: an "Allow microphone" button, then the model's download panel from Settings. When both are done the row ticks itself ([prepare_screen.dart:739](../../../app/lib/features/prayer/prepare_screen.dart#L739-L758)), as described in [voice-follow](voice-follow.md#1-the-microphone-is-asked-for-before-the-prayer-never-in-it).
+- "Silence notifications" is a reminder, not a switch. Android only lets an app silence the phone after a permission granted in system settings, and iOS has no way at all, so the reader does it ([prepare_screen.dart:814](../../../app/lib/features/prayer/prepare_screen.dart#L814-L822)).
+- The preview sheet runs one rakʿah from its passage, round and round, at the pace when voice or pace is chosen, and never opens the microphone ([prepare_screen.dart:306](../../../app/lib/features/prayer/prepare_screen.dart#L306-L377)).
+
+The passage chooser searches sūras by number or by name, in English or Arabic, with the marks folded away so `kafirun` finds al-Kāfirūn, and takes a reference such as `2:255` ([prayer_plan.dart:118](../../../app/lib/features/prayer/prayer_plan.dart#L118-L169)). With nothing typed it suggests the first rakʿah's passage again (for the second), the walk's next set, the passages recently recited, and Al-Fātiḥa only ([passage_chooser.dart:209](../../../app/lib/features/prayer/passage_chooser.dart#L209-L242)). Al-Fātiḥa is never offered in the list, for the same reason it is never the default ([passage_chooser.dart:188](../../../app/lib/features/prayer/passage_chooser.dart#L188-L193)).
+
+Choosing a sūra opens the range step. A rakʿah that already has a passage in one sūra opens the chooser straight on that range, because changing how many ayas it recites is the common change ([passage_chooser.dart:95](../../../app/lib/features/prayer/passage_chooser.dart#L95-L109)). The range step pins a card for the sūra at the top, with "Change" leading back to the list, and below it the range's first aya in Arabic, two lines at most. Under them is a grid of aya numbers: tap the first aya, then the last ([passage_chooser.dart:406](../../../app/lib/features/prayer/passage_chooser.dart#L406-L415), [passage_chooser.dart:417](../../../app/lib/features/prayer/passage_chooser.dart#L417-L564)). The grid scrolls to the range when the step opens, so a long sūra does not hide it a few hundred numbers down ([passage_chooser.dart:395](../../../app/lib/features/prayer/passage_chooser.dart#L395-L404)).
+
+```mermaid
+flowchart LR
+  open(["Chooser opens"]) --> has{"Rakʿah has a passage<br/>in one sūra?"}
+  has -->|yes| range["Range step,<br/>scrolled to the range"]
+  has -->|no| list["Suggestions + sūra list<br/>Al-Fātiḥa not offered"]
+  list -->|choose a sūra| range
+  range -->|Change| list
+  range -->|tap first, then last| range
+  range -->|Recite| done(["Back to the preparation"])
+```
 
 #### What is written, and when
 
-The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:20](../../../app/lib/features/prayer/prayer_screen.dart#L20-L33)). It reports the furthest rakʿah reached and any pinched Arabic size through a `PrayerOutcome`. The preparation writes when the reader comes back, however they left, then closes ([prepare_screen.dart:194](../../../app/lib/features/prayer/prepare_screen.dart#L194-L239)):
+The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:20](../../../app/lib/features/prayer/prayer_screen.dart#L20-L33)). It reports the furthest rakʿah reached and any pinched Arabic size through a `PrayerOutcome`. The preparation writes when the reader comes back, however they left, then closes ([prepare_screen.dart:259](../../../app/lib/features/prayer/prepare_screen.dart#L259-L304)):
 
 - `prayer_prefs`: how this prayer was prepared, so the next starts the same way. Written before the prayer too. Device-local ([db.dart:654](../../../app/lib/data/db.dart#L654-L665)).
 - `prayer_history`: one row for each passage a reached rakʿah recited, for "recently recited". Device-local ([db.dart:672](../../../app/lib/data/db.dart#L672-L677)).
-- [`recordSetPrayed`](../../../app/lib/data/db.dart#L364) for the credited set, only if a reached rakʿah recited it. The credited set is the one Prepare was opened on, or else the walk's next set ([prepare_screen.dart:126](../../../app/lib/features/prayer/prepare_screen.dart#L126)). It inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
+- [`recordSetPrayed`](../../../app/lib/data/db.dart#L364) for the credited set, only if a reached rakʿah recited it. The credited set is the one Prepare was opened on, or else the walk's next set ([prepare_screen.dart:191](../../../app/lib/features/prayer/prepare_screen.dart#L191)). It inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
 
 A prayer that recites some other passage leaves only the history behind. A prayer the reader never returns from is not counted, and a preparation left before Begin is no prayer at all. The count may be short; it is never invented.
 
