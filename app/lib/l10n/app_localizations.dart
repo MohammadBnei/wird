@@ -665,6 +665,12 @@ abstract class AppLocalizations {
   /// **'No sūra matches “{query}”.'**
   String chooser_no_match(String query);
 
+  /// The sūra at the top of the range step, as its number and name.
+  ///
+  /// In en, this message translates to:
+  /// **'{number} · {name}'**
+  String range_sura(int number, String name);
+
   /// On the sūra card at the top of the range: goes back to the list of sūras.
   ///
   /// In en, this message translates to:

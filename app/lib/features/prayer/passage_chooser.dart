@@ -74,7 +74,12 @@ class _PassageChooserState extends State<PassageChooser> {
     final f = from.clamp(1, count);
     final t = to.clamp(f, count);
     final opening = _range?.sura != sura;
-    setState(() => _range = (sura: sura, from: f, to: t));
+    // The old range's set goes with it: until the new one is read, neither
+    // its first aya nor the Recite button may stand for a range not chosen.
+    setState(() {
+      _range = (sura: sura, from: f, to: t);
+      _ranged = null;
+    });
     if (opening) _showFirst();
     final set = await ayaSet(
       widget.db,
@@ -449,7 +454,7 @@ class _PassageChooserState extends State<PassageChooser> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${sura.id} · ${sura.nameEn}',
+                              l.range_sura(sura.id, sura.nameEn),
                               style: const TextStyle(fontSize: 16),
                             ),
                             const SizedBox(height: 2),
@@ -505,8 +510,6 @@ class _PassageChooserState extends State<PassageChooser> {
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
             children: [
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
                 children: [
                   for (var aya = 1; aya <= count; aya++)
                     _ayaCell(
@@ -571,27 +574,34 @@ class _PassageChooserState extends State<PassageChooser> {
     key: key,
     button: true,
     selected: inRange,
+    // 48 to the finger, 40 to the eye: the gap between cells is the margin.
     child: GestureDetector(
       key: PassageChooser.aya(aya),
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: end
-              ? n.accent
-              : inRange
-              ? n.color('accent-900')
-              : n.surface,
-          border: Border.all(color: inRange ? n.accent : n.divider),
-          borderRadius: BorderRadius.circular(n.radius('md')),
-        ),
-        child: Text(
-          '$aya',
-          style: TextStyle(
-            fontSize: 13,
-            color: end ? n.bg : (inRange ? n.color('accent-100') : n.text),
+      child: SizedBox.square(
+        dimension: 48,
+        child: Center(
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: end
+                  ? n.accent
+                  : inRange
+                  ? n.color('accent-900')
+                  : n.surface,
+              border: Border.all(color: inRange ? n.accent : n.divider),
+              borderRadius: BorderRadius.circular(n.radius('md')),
+            ),
+            child: Text(
+              '$aya',
+              style: TextStyle(
+                fontSize: 13,
+                color: end ? n.bg : (inRange ? n.color('accent-100') : n.text),
+              ),
+            ),
           ),
         ),
       ),

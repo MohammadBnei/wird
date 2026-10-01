@@ -115,7 +115,10 @@ void main() {
       'every rakʿah', (tester) async {
     final fatiha = await setOf(db, [1001, 1002, 1003, 1004, 1005]);
     await pumpPrepare(tester, db: db, from: fatiha);
+    // The screen loaded, with a passage of its own: the walk's next set.
+    expect(find.text('Begin Maghrib'), findsOneWidget);
     expect(find.text('Al-Fatihah'), findsNothing);
+    expect(find.textContaining('Al-Fātiḥa only'), findsNothing);
   });
 
   testWidgets('a prayer left by its Exit button goes unrecorded', (

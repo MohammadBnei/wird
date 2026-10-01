@@ -356,6 +356,7 @@
   "study_form": "Forme",
   "prepare_trouble": "Le Coran n'a pas pu être lu sur cet appareil. Réessayez ; si cela persiste, fermez Wird et rouvrez-le.",
   "prepare_retry": "Réessayer",
+  "range_sura": "{number} · {name}",
   "range_change_sura": "Changer",
   "range_tap_hint": "Touchez le premier aya, puis le dernier."
 }

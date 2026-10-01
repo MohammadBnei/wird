@@ -165,4 +165,18 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('a cursor that steps back off the last word still turns the '
+      'aya', (tester) async {
+    final cursor = await pump(tester);
+    // 103:2's last word, then — before the breath is up — back inside it:
+    // the matcher was sure too early, and the reader is still in 103:2.
+    cursor.moveTo(4, sure: true);
+    await tester.pump(const Duration(milliseconds: 200));
+    cursor.moveTo(3, sure: true);
+    await tester.pump(_dwellInTests);
+    await tester.pumpAndSettle();
+    expect(litWord(tester), 103002003);
+    expect(drawn(tester, 103003001), isFalse);
+  });
 }

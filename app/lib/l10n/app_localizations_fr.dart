@@ -354,6 +354,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String range_sura(int number, String name) {
+    return '$number · $name';
+  }
+
+  @override
   String get range_change_sura => 'Changer';
 
   @override

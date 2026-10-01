@@ -321,6 +321,8 @@
   "@chooser_all": {"description": "Kicker above the full sūra list, drawn in capitals."},
   "chooser_no_match": "No sūra matches “{query}”.",
   "@chooser_no_match": {"description": "Shown when the search finds nothing.", "placeholders": {"query": {"type": "String"}}},
+  "range_sura": "{number} · {name}",
+  "@range_sura": {"description": "The sūra at the top of the range step, as its number and name.", "placeholders": {"number": {"type": "int"}, "name": {"type": "String"}}},
   "range_change_sura": "Change",
   "@range_change_sura": {"description": "On the sūra card at the top of the range: goes back to the list of sūras."},
   "range_tap_hint": "Tap the first aya, then the last.",

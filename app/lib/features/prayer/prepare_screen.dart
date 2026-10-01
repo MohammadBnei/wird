@@ -58,6 +58,7 @@ class _PrepareScreenState extends State<PrepareScreen> {
   /// of the app replaced the file under this one; a reader must be told, not
   /// left on an empty screen.
   var _trouble = false;
+  var _loading = false;
 
   PrayerPreset? _preset;
   int _rakahs = defaultPrayerPrefs.rakahs;
@@ -90,11 +91,17 @@ class _PrepareScreenState extends State<PrepareScreen> {
   }
 
   Future<void> _load() async {
+    // One read at a time: a second tap on Try again would race the first and
+    // could write over what the reader changed in between.
+    if (_loading) return;
+    _loading = true;
     if (_trouble) setState(() => _trouble = false);
     try {
       await _read();
     } on Object {
       if (mounted) setState(() => _trouble = true);
+    } finally {
+      _loading = false;
     }
   }
 
