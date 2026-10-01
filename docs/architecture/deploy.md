@@ -91,7 +91,7 @@ flowchart LR
 
 ### 1. What triggers a release
 
-The workflow runs on pull requests, on pushes to `main`, and by hand. Pushes that only touch markdown or `helm/` are ignored. That stops the deploy job's own commit from starting another release. Two releases in flight cancel the older one, so the newest tag always wins.
+The workflow runs on pull requests, on pushes to `main`, and by hand. Pushes that only touch markdown or `helm/` are ignored. That stops the deploy job's own commit from starting another release. Two releases in flight cancel the older one, so the newest tag always wins. A pull request runs in a group of its own, so a push to `main` no longer cancels its checks.
 
 ```yaml
 on:
@@ -110,7 +110,7 @@ on:
       - '*'
 ```
 
-[release.yml:34-47](../../.github/workflows/release.yml#L34-L47) · concurrency at [release.yml:51-53](../../.github/workflows/release.yml#L51-L53)
+[release.yml:34-47](../../.github/workflows/release.yml#L34-L47) · concurrency at [release.yml:53-55](../../.github/workflows/release.yml#L53-L55)
 
 ### 2. The checks: the Go half of the gate
 

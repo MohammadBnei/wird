@@ -47,9 +47,11 @@ on:
       - '*'
 
 # Two pushes racing would build two images and bump values.yaml twice, and the
-# loser's bump would point at the older of the two. Keep the newest.
+# loser's bump would point at the older of the two. Keep the newest. A pull
+# request gets a group of its own: in the shared one, every push to main
+# cancelled whichever PR's checks were running.
 concurrency:
-  group: release
+  group: release-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
   cancel-in-progress: true
 
 env:
