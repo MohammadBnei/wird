@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wird — understand what you recite</title>
+<meta name="description" content="Read the Qur'an word by word, through its roots. Pray with the words in front of you.">
+<link rel="icon" href="wird-icon.svg" type="image/svg+xml">
+<script src="./site-data.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/styles.css">
+<script src="_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)}
+a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
+.ar{font-family:"Scheherazade New",serif}
+/* The demo phones are 412px wide; shrink them rather than clip them on a phone. */
+@media (max-width:460px){.demo{zoom:.86}}
+@media (max-width:390px){.demo{zoom:.76}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;overflow-x:clip;background:radial-gradient(90% 60% at 20% 0%,#1d1f33 0%,var(--color-bg) 60%)">
+
+<header style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:16px;padding:14px clamp(20px,5vw,64px);background:color-mix(in srgb,var(--color-bg) 82%,transparent);backdrop-filter:blur(12px)">
+  <a href="#top" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--color-text)">
+    <img src="wird-icon.svg" alt="" width="28" height="28" style="border-radius:7px;display:block">
+    <span style="font:500 16px var(--font-heading)">Wird</span>
+    <span class="ar" style="font-size:20px;color:var(--color-accent-300);line-height:1">وِرْد</span>
+  </a>
+  <div style="flex:1"></div>
+  <div role="group" aria-label="Language" style="display:flex;gap:2px;padding:2px;border-radius:var(--radius-md);border:1px solid var(--color-neutral-700)">
+    <button onClick="{{ setEn }}" aria-pressed="{{ isEn }}" style="font:500 12px var(--font-body);padding:5px 10px;border:0;border-radius:6px;cursor:pointer;background:{{ enBg }};color:{{ enCol }}">EN</button>
+    <button onClick="{{ setFr }}" aria-pressed="{{ isFr }}" style="font:500 12px var(--font-body);padding:5px 10px;border:0;border-radius:6px;cursor:pointer;background:{{ frBg }};color:{{ frCol }}">FR</button>
+  </div>
+  <a class="btn btn-primary" href="/download/android" style="text-decoration:none">
+    <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">Download</sc-if>
+    <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">Télécharger</sc-if>
+  </a>
+</header>
+
+<main id="top" style="max-width:1160px;margin:0 auto;padding:0 clamp(20px,5vw,64px)">
+
+  <section data-screen-label="Hero" style="padding:clamp(64px,12vw,140px) 0 clamp(56px,9vw,110px);display:flex;flex-direction:column;align-items:flex-start;gap:28px">
+    <div class="ar" style="font-size:clamp(72px,11vw,128px);line-height:1.5;color:var(--color-accent-200);text-shadow:0 0 60px color-mix(in srgb,var(--color-accent) 35%,transparent)">وِرْد</div>
+    <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">
+      <h1 style="margin:0;max-width:680px;font:500 clamp(34px,5vw,56px)/1.08 var(--font-heading);letter-spacing:-.02em;text-wrap:balance">Understand what you recite.</h1>
+      <p style="margin:18px 0 0;max-width:520px;font-size:18px;line-height:1.55;color:var(--color-neutral-300);text-wrap:pretty">Read the Qur'an word by word, through its roots. Pray with the words in front of you.</p>
+    </sc-if>
+    <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin:0;max-width:680px;font:500 clamp(34px,5vw,56px)/1.08 var(--font-heading);letter-spacing:-.02em;text-wrap:balance">Comprenez ce que vous récitez.</h1>
+      <p style="margin:18px 0 0;max-width:520px;font-size:18px;line-height:1.55;color:var(--color-neutral-300);text-wrap:pretty">Lisez le Coran mot à mot, à travers ses racines. Priez avec les mots sous les yeux.</p>
+    </sc-if>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px">
+      <a class="btn btn-primary" href="/download/android" style="text-decoration:none;padding:12px 20px;font-size:15px;display:inline-flex;align-items:center;gap:10px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>
+        <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">Download for Android</sc-if>
+        <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">Télécharger pour Android</sc-if>
+      </a>
+      <span style="font-size:13px;color:var(--color-neutral-400)">APK</span>
+    </div>
+  </section>
+
+  <section id="read" data-screen-label="Read" style="padding:clamp(40px,7vw,80px) 0;display:flex;flex-wrap:wrap;align-items:center;gap:clamp(32px,6vw,80px)">
+    <div class="demo" style="flex:none;margin:-44px -48px -60px">
+      <dc-import name="Wird Reader" show-notes="{{ false }}" hint-size="508px,996px"></dc-import>
+    </div>
+    <div style="flex:1 1 300px;max-width:440px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:24px;height:2px;border-radius:1px;background:var(--color-accent)"></span>
+        <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}"><span style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent-300)">Read</span></sc-if>
+        <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent-300)">Lire</span></sc-if>
+        <span class="ar" style="font-size:20px;line-height:1;color:var(--color-neutral-400)">قِرَاءَة</span>
+      </div>
+      <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">
+        <h2 style="margin:0;font:500 clamp(26px,3.4vw,36px)/1.15 var(--font-heading);letter-spacing:-.01em;text-wrap:balance">Every word, from its root</h2>
+        <p style="margin:14px 0 0;font-size:16px;line-height:1.6;color:var(--color-neutral-300);text-wrap:pretty">Each word opens onto its root: the letters, their senses, the forms they take, and where else they appear in the Qur'an.</p>
+        <p style="margin:14px 0 0;font-size:13px;line-height:1.5;color:var(--color-neutral-400)">Try it: swipe the sheet, or tap any word.</p>
+      </sc-if>
+      <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">
+        <h2 style="margin:0;font:500 clamp(26px,3.4vw,36px)/1.15 var(--font-heading);letter-spacing:-.01em;text-wrap:balance">Chaque mot, depuis sa racine</h2>
+        <p style="margin:14px 0 0;font-size:16px;line-height:1.6;color:var(--color-neutral-300);text-wrap:pretty">Chaque mot s'ouvre sur sa racine : ses lettres, ses sens, les formes qu'elle prend, et ses autres occurrences dans le Coran.</p>
+        <p style="margin:14px 0 0;font-size:13px;line-height:1.5;color:var(--color-neutral-400)">Essayez : faites glisser la fiche, ou touchez un mot.</p>
+      </sc-if>
+    </div>
+  </section>
+
+  <section id="pray" data-screen-label="Pray" style="padding:clamp(56px,9vw,110px) 0 clamp(40px,7vw,80px);display:flex;flex-direction:column;gap:clamp(8px,2vw,20px)">
+    <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:24px;height:2px;border-radius:1px;background:var(--color-accent)"></span>
+        <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}"><span style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent-300)">Pray</span></sc-if>
+        <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent-300)">Prier</span></sc-if>
+        <span class="ar" style="font-size:20px;line-height:1;color:var(--color-neutral-400)">صَلَاة</span>
+      </div>
+      <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">
+        <h2 style="margin:0;font:500 clamp(26px,3.4vw,36px)/1.15 var(--font-heading);letter-spacing:-.01em;text-wrap:balance">Pray with the meaning in view</h2>
+        <p style="margin:14px 0 0;font-size:16px;line-height:1.6;color:var(--color-neutral-300);text-wrap:pretty">Choose what you'll recite in each rakʿah. During prayer, the current word stays on screen with its meaning, following your voice or a steady pace.</p>
+      </sc-if>
+      <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">
+        <h2 style="margin:0;font:500 clamp(26px,3.4vw,36px)/1.15 var(--font-heading);letter-spacing:-.01em;text-wrap:balance">Priez avec le sens sous les yeux</h2>
+        <p style="margin:14px 0 0;font-size:16px;line-height:1.6;color:var(--color-neutral-300);text-wrap:pretty">Choisissez ce que vous réciterez à chaque rakʿah. Pendant la prière, le mot en cours reste à l'écran avec son sens, au rythme de votre voix ou d'une cadence régulière.</p>
+      </sc-if>
+    </div>
+    <div class="demo" style="margin:-44px -48px -60px">
+      <dc-import name="Wird Prayer" show-notes="{{ false }}" hint-size="100%,1050px"></dc-import>
+    </div>
+  </section>
+
+  <section id="about" data-screen-label="About" style="padding:clamp(56px,9vw,110px) 0;display:flex;flex-direction:column;gap:16px;max-width:560px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="width:24px;height:2px;border-radius:1px;background:var(--color-accent)"></span>
+      <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}"><span style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent-300)">About</span></sc-if>
+      <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent-300)">À propos</span></sc-if>
+    </div>
+    <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">
+      <p style="margin:0;font-size:16px;line-height:1.6;color:var(--color-neutral-300);text-wrap:pretty">Wird is made by Mohammad Bnei, a Go and platform engineer in France. I wanted to understand what I recite in prayer, word by word, so I built the tool I was missing. It is free, <a href="https://github.com/MohammadBnei/wird">open source</a> (AGPL), and runs on my own servers.</p>
+    </sc-if>
+    <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">
+      <p style="margin:0;font-size:16px;line-height:1.6;color:var(--color-neutral-300);text-wrap:pretty">Wird est fait par Mohammad Bnei, ingénieur Go et plateforme en France. Je voulais comprendre ce que je récite dans la prière, mot à mot : j'ai donc construit l'outil qui me manquait. Il est gratuit, <a href="https://github.com/MohammadBnei/wird">libre</a> (AGPL), et tourne sur mes propres serveurs.</p>
+    </sc-if>
+  </section>
+
+  <section id="download" data-screen-label="Download" style="padding:clamp(56px,9vw,110px) 0 clamp(72px,10vw,120px);display:flex;flex-wrap:wrap;align-items:center;gap:28px">
+    <img src="wird-icon.svg" alt="Wird" width="96" height="96" style="flex:none;border-radius:22px;display:block;box-shadow:var(--shadow-lg)">
+    <div style="flex:1 1 280px;display:flex;flex-direction:column;align-items:flex-start;gap:16px">
+      <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}"><h2 style="margin:0;font:500 clamp(26px,3.4vw,36px)/1.15 var(--font-heading)">Download Wird</h2></sc-if>
+      <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}"><h2 style="margin:0;font:500 clamp(26px,3.4vw,36px)/1.15 var(--font-heading)">Télécharger Wird</h2></sc-if>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px">
+        <a class="btn btn-primary" href="/download/android" style="text-decoration:none;padding:12px 20px;font-size:15px;display:inline-flex;align-items:center;gap:10px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>
+          <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">Download for Android</sc-if>
+          <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">Télécharger pour Android</sc-if>
+        </a>
+        <span style="font-size:13px;color:var(--color-neutral-400)">APK</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer style="max-width:1160px;margin:0 auto;padding:24px clamp(20px,5vw,64px) 40px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:12px;color:var(--color-neutral-400)">
+  <span>Wird</span>
+  <span class="ar" style="font-size:16px;line-height:1">وِرْد</span>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startLang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;English&quot;,&quot;Français&quot;],&quot;default&quot;:&quot;English&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Opening language&quot;}}">
+class Component extends DCLogic {
+  state = { lang: null };
+  renderVals() {
+    const lang = this.state.lang ?? (this.props.startLang === 'Français' ? 'fr' : 'en');
+    const on = 'var(--color-accent-800)', onC = 'var(--color-accent-100)', offC = 'var(--color-neutral-300)';
+    const en = lang === 'en';
+    return {
+      isEn: en, isFr: !en,
+      enBg: en ? on : 'transparent', enCol: en ? onC : offC,
+      frBg: en ? 'transparent' : on, frCol: en ? offC : onC,
+      setEn: () => this.setState({ lang: 'en' }),
+      setFr: () => this.setState({ lang: 'fr' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

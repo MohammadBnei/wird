@@ -1,6 +1,6 @@
 # 5. One image, the API only, and the database comes from Infisical
 
-Date: 2026-09-24. Status: accepted.
+Date: 2026-09-24. Status: accepted. Amended by ADR 0018.
 
 ## Context
 

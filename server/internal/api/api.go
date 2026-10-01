@@ -6,11 +6,13 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"unicode"
 
 	"github.com/MohammadBnei/wird/server/internal/auth"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
+	"github.com/MohammadBnei/wird/server/internal/site"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
@@ -19,8 +21,8 @@ type Handler struct {
 	log   *slog.Logger
 }
 
-// Routes wires every endpoint behind the authenticator. /healthz is the one
-// thing outside it, because a liveness probe carries no token.
+// Routes wires every endpoint behind the authenticator, except the few that are
+// reached without an account: each open route below says why it is open.
 func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handler {
 	h := &Handler{store: s, log: log}
 
@@ -50,16 +52,28 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	// needs to. It answers 302 to the store and the bytes never come through
 	// here; without a store configured it says so rather than pretending the
 	// file is missing.
-	if store := modelStoreFromEnv(log); store != nil {
-		mux.HandleFunc(modelsPath, store.serve)
+	models := modelStoreFromEnv(log)
+	if models != nil {
+		mux.HandleFunc(modelsPath, models.serve)
 	} else {
 		mux.HandleFunc(modelsPath, modelsNotConfigured)
 	}
+	// The app itself, from the same store, for the public page's Download
+	// buttons. apk.go carries why the key is configured rather than fixed.
+	mux.HandleFunc(apkPath, apk(models, os.Getenv("WIRD_APK_KEY"), log))
 	// The senses, fetched by a phone that has never signed in. Open for the
 	// same reason as the recogniser, and registered here rather than on v1 so
 	// ServeMux specificity keeps it out of the middleware. senses.go carries
 	// the whole of why.
 	mux.HandleFunc(sensesPath, h.senses)
+	// The public page, for someone who has not installed anything. Its files
+	// are one path segment deep (or under _ds/), and every API route is two or
+	// more, so these patterns cannot reach v1; /healthz is matched exactly and
+	// wins over {file}.
+	page := site.Handler()
+	mux.Handle("GET /{$}", page)
+	mux.Handle("GET /{file}", page)
+	mux.Handle("GET /_ds/", page)
 	mux.Handle("/", a.Middleware(v1))
 	return mux
 }

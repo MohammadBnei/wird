@@ -173,7 +173,7 @@ Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE` ([main.
 
 ### 6. The middleware checks, then finds the reader
 
-The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:38-63](../../../server/internal/api/api.go#L38-L63)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
+The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:38-63](../../../server/internal/api/api.go#L40-L77)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
 
 ```go
 		token, err := a.verifier.Verify(r.Context(), raw)
