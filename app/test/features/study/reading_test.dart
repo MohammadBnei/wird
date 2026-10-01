@@ -156,13 +156,25 @@ void main() {
     await openStudy(tester, target: _kursi);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mark set understood'));
+
+    expect(
+      await db.query('ayah_understood'),
+      isEmpty,
+      reason: 'scrolling is reading, not a claim to have understood',
+    );
+
+    final mark = find.byWidgetPredicate(
+      (w) => w is AyaMark && w.aya.id == _kursi,
+    );
+    await tester.ensureVisible(mark);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: mark, matching: find.byType(Text)));
     await tester.pumpAndSettle();
 
     expect(
       (await db.query('ayah_understood')).map((r) => r['ayah_id']),
       [_kursi],
-      reason: 'the aya the reader asked for, not the sūra they read',
+      reason: 'the aya the reader marked, not the sūra they read',
     );
   });
 

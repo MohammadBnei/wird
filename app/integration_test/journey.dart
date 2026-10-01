@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/main.dart' as app;
-import 'package:wird/features/study/study_chrome.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:wird/shell/wird_shell.dart';
 
@@ -150,22 +149,21 @@ Set<int> wordsOnScreen(WidgetTester tester) => {
     (e.widget.key! as WordKey).value,
 };
 
-/// The ayas *drawn*, which is fewer than the set: the reading builds an aya
-/// as it nears the viewport, and on a phone three of a five-aya set are on
-/// screen at once. Good for "the reading moved on", never for "this is what
-/// the reader marked" — [ayasInTheSet] is that.
+/// The ayas *drawn*: the reading builds an aya as it nears the viewport, so
+/// this is the ayas around the open word, not the sūra. Good for "the reading
+/// moved on", never for "this is what the reader marked" — [finishSet]
+/// answers that.
 Set<int> ayasOnScreen(WidgetTester tester) => {
   for (final id in wordsOnScreen(tester)) id ~/ 1000,
 };
 
-/// The ayas the reader answers for: the set the header names, which is what
-/// "Mark set understood" marks and what screen 1d then counts. Off the walk
-/// the screen reads a whole sūra around it, so this is not what is on screen.
-Set<int> ayasInTheSet(WidgetTester tester) => {
-  for (final aya
-      in tester.widget<StudyHeader>(find.byType(StudyHeader)).set.ayas)
-    aya.id,
-};
+/// The aya the open word is in, read off the reader's bar ("96:6 · word
+/// 31/72"), so it follows the reader rather than what is built.
+int openAya(WidgetTester tester) {
+  final label = tester.widget<Text>(find.byKey(const Key('position'))).data!;
+  final ref = label.split(' ').first.split(':');
+  return int.parse(ref[0]) * 1000 + int.parse(ref[1]);
+}
 
 /// The root the corpus gives a word, spelled the way the root panel prints
 /// it. Null for the particles and proper nouns that carry none.
@@ -234,36 +232,59 @@ Future<String?> _firstRootDisplay(WidgetTester tester, Database corpus) async {
   return null;
 }
 
-/// The "Mark set understood" control, refused when it is drawn but dead.
-Finder markSetUnderstood(WidgetTester tester) {
-  final finder = find.widgetWithText(GestureDetector, 'Mark set understood');
-  final live = finder
-      .evaluate()
-      .map((e) => e.widget as GestureDetector)
-      .where((g) => g.onTap != null);
-  if (live.isEmpty) {
+/// The number that closes an aya, which is how a reader marks it understood
+/// (ADR 0014). Refused when it is drawn but dead.
+Finder markOf(WidgetTester tester, int ayahId) {
+  final finder = find.byWidgetPredicate(
+    (w) => w is AyaMark && w.aya.id == ayahId,
+  );
+  if (finder.evaluate().isEmpty ||
+      tester.widget<AyaMark>(finder).onMark == null) {
     throw NotWiredYet(
-      'the "Mark set understood" button is drawn but has no action behind it, '
-      'so a set cannot be completed and the next one cannot arrive; waiting on '
-      'the phase 4 change to app/lib/features/study/ that gives it one',
+      'the number closing $ayahId has no action behind it, so the aya cannot '
+      'be marked understood',
     );
   }
-  return find.byWidget(live.first);
+  // The number itself: the mark's box carries the margin that lets the
+  // circle down onto the baseline, and a margin takes no tap.
+  return find.descendant(of: finder, matching: find.byType(Text));
 }
 
-/// Marks the set, then asks for the next one.
+/// Marks every aya drawn understood, by its number, then walks on: the
+/// sheet's next-word arrow, which is what a reader who does not swipe walks
+/// with, until the open word is in an aya after the ones just marked.
 ///
-/// Marking leaves the reader on the set they marked, so that the bars they
-/// just filled are on screen in front of them. Walking on is a second press,
-/// the way it is for a reader.
-Future<void> finishSet(WidgetTester tester) async {
-  await tester.tap(markSetUnderstood(tester));
-  await waitFor(
-    tester,
-    () => find.text('Next set').evaluate().isNotEmpty,
-    'the way on to the next set, after the one before it was marked',
-  );
-  await tester.tap(find.text('Next set'));
+/// The reader no longer moves when a reader marks (ADR 0014), so walking on is
+/// the reader's own act, as it is on the phone. Returns the ayas marked.
+Future<Set<int>> finishSet(WidgetTester tester) async {
+  final ayas = {
+    for (final id in ayasOnScreen(tester))
+      if (tester
+              .widget<AyaMark>(
+                find.byWidgetPredicate((w) => w is AyaMark && w.aya.id == id),
+              )
+              .onMark !=
+          null)
+        id,
+  };
+  if (ayas.isEmpty) {
+    throw NotWiredYet('every aya on screen is understood already');
+  }
+  for (final id in ayas.toList()..sort()) {
+    final mark = markOf(tester, id);
+    await tester.ensureVisible(mark);
+    await tester.pumpAndSettle();
+    await tester.tap(mark);
+    await tester.pumpAndSettle();
+  }
+  final last = ayas.reduce((a, b) => a > b ? a : b);
+  // ponytail: a step per word, bounded by the longest aya run a phone draws.
+  for (var steps = 0; openAya(tester) <= last; steps++) {
+    if (steps > 600) fail('the next-word arrow never left $last');
+    await tester.tap(find.byKey(const Key('next word')));
+    await tester.pumpAndSettle();
+  }
+  return ayas;
 }
 
 /// A prayer happens in a room with no signal. Nothing the app draws may spin

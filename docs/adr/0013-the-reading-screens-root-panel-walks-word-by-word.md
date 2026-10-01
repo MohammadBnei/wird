@@ -1,6 +1,6 @@
 # 13. The reading screen's root panel walks word by word, where the corpus attribution stood
 
-Date: 2026-09-30. Status: accepted.
+Date: 2026-09-30. Status: accepted, amended by ADR 0014.
 
 ## Context
 

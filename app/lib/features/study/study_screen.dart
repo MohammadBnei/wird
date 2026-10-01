@@ -1,35 +1,36 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../../l10n/app_localizations.dart';
 import '../../app.dart';
-import '../report/report.dart';
 import '../../data/audio.dart';
 import '../../data/db.dart';
 import '../../data/root_repo.dart';
 import '../../data/sets.dart';
+import '../report/report.dart';
+import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
 import '../../shell/wird_shell.dart';
 import '../../theme/nocturne.dart';
-import '../../widgets/nocturne_button.dart';
-import 'reading_nav.dart';
-import 'study_chrome.dart';
+import 'reading_walk.dart';
+import 'root_sheet.dart';
+import 'study_chrome.dart' show DashedRule;
 import 'word_row.dart';
 
-/// Screen 1a — the set the reader studies before praying it.
+/// Screen 1a — a whole sūra, read a word at a time.
+///
+/// The sūra fills the top of the screen and the open word's root fills a sheet
+/// under it; a sideways swipe on the sheet walks to the next word. Scrolling
+/// the sheet shrinks the sūra to one line and brings up the counts, the root's
+/// forms and the other ayas it is read in (ADR 0014).
 class StudyScreen extends StatefulWidget {
   const StudyScreen({super.key, required this.db, this.target});
 
   final Database db;
 
-  /// The aya to open on, or null to open on the walk's next set.
-  ///
-  /// The walk's position is derived — the next aya not yet understood — so
-  /// visiting an aya costs the reader nothing: marking it counts like any other
-  /// mark and the walk recomputes around it.
+  /// The aya to open on, or null to open where the reader last stood.
   final int? target;
 
   @override
@@ -37,296 +38,267 @@ class StudyScreen extends StatefulWidget {
 }
 
 class _StudyScreenState extends State<StudyScreen> {
-  StudySet? _set;
-  RootDetail? _root;
-  StudyWord? _word;
-  ReadingOrder _order = ReadingOrder.nuzul;
+  /// The sūra on screen: [StudySet.reading] is every aya of it. Kept while
+  /// the reader walks, so the list never rebuilds under them.
+  StudySet? _surah;
 
-  /// The application's recitation, once it is carrying the set on screen.
-  /// Null before then, which is what the word row asks about: a set with no
-  /// player yet has no word that will answer a press.
-  ///
-  /// The screen no longer owns it. It hands over the set and walks away, so a
-  /// recitation the reader started here can be seen and stopped from the
-  /// shell's transport on any screen they go to next.
-  Recitation? _audio;
+  /// The ayas around the open word that the recitation carries and a prayer
+  /// takes. Moves with the reader; [_surah] does not.
+  StudySet? _acted;
 
-  /// Minted once here and again after every mark that lands. Two presses of
-  /// "Mark set understood" carry one op id and the set is counted once; a
-  /// second, different mark — after the reader pulls the set wider — carries a
-  /// new one, because an op id already in the outbox is read as that same
-  /// press replayed and the write is dropped.
-  String _opId = newOpId();
-
-  /// The aya the reader asked for, or null while they are on the walk.
-  int? _target;
-
-  /// Which load owns the screen. A load that has been overtaken stops before it
-  /// touches either: two of them in flight both prefetch, and a prefetch re-pins
-  /// the cache, so the loser would unpin the aya actually on screen and the
-  /// sweep would delete the recitation of the aya the reader is listening to.
-  int _generation = 0;
-
-  bool _loaded = false;
-
-  /// The sets either side of this one in the written order, or null at the
-  /// two ends of the Qur'an, which are the only places a step has nowhere to
-  /// go. A span rather than an aya, because the footer moves by the set.
-  AyaSpan? _before;
-  AyaSpan? _after;
-
-  /// How many ayas the reader takes at once, kept so a step hands over that
-  /// many. It is not read back off the span the arrow printed: a span stops
-  /// at the sūra's edge, so a step into Al-Kawthar's three ayas would
-  /// otherwise shrink every step after it to three.
-  int _width = 1;
-
-  /// Which words the phone can sound, worked out once rather than at render
-  /// time — it used to be an `existsSync` per word per frame. Rebuilt at the
-  /// three moments it can change: the set arrives, a download lands, an aya is
-  /// marked.
-  Set<int> _speakable = const {};
-
-  /// The words of the passage, by aya, as far as they have been read. A sūra
-  /// arrives as ayas alone and its words come a chunk at a time, because
-  /// Al-Baqarah is 6116 of them and the screen shows twenty.
+  /// The words of the sūra, by aya, as far as they have been read. Al-Baqarah
+  /// is 6116 of them and the screen shows a screenful, so they arrive in
+  /// chunks.
   Map<int, List<StudyWord>> _words = {};
 
-  /// The words the passage is drawing, in reading order: what the arrows step
-  /// through. The cache rather than the set, because off the walk the reading
-  /// is the whole sūra and every word of it can be tapped.
-  ///
-  /// Baked where _words changes rather than read at build, like [_speakable]:
-  /// whether an arrow is dark is a question every frame asks.
-  List<StudyWord> _walk = const [];
-
-  /// The word being opened, while its root is still being read. [_stepWord]
-  /// counts from here, so two quick presses move two words rather than both
-  /// moving from the same one.
-  int? _stepping;
-
-  /// Each aya's translation in the reader's language, by aya, as far as it has
-  /// been read: Pickthall's English or Rashid Maash's French. Read whether or
-  /// not the reader shows it, so turning it on in Settings needs no reload.
+  /// Each aya's translation in the reader's language, as far as it has been
+  /// read. Read whether or not the reader shows it, so the setting needs no
+  /// reload.
   final Map<int, String> _translated = {};
-
-  /// Ayas whose words are on their way. Without it the list asks for the same
-  /// chunk on every frame it draws a gap.
   final _pending = <int>{};
 
-  /// Where the passage hangs from. Everything before it in the sliver list
-  /// grows upward, so opening Al-Baqarah at 255 costs nothing for the 254
-  /// ayas above and the reader can still move up into them.
-  static const _anchor = ValueKey('reading-anchor');
+  StudyWord? _word;
+  SheetWord? _sheet;
 
-  /// The word whose transliteration stands in for audio it cannot play. One
-  /// word at a time, and never a snackbar: 2:282 is 128 words, and tapping
-  /// through them must not queue 128 of anything.
+  /// The word being opened, while its root is read: a second step counts from
+  /// here, so two quick swipes move two words.
+  int? _opening;
+
+  bool _expanded = false;
+
+  /// Another aya the reader opened from the root's list, shown in place of
+  /// the sūra until they go back.
+  RootAya? _away;
+
+  bool _loaded = false;
+  int _generation = 0;
+  Locale? _readIn;
+
+  Recitation? _audio;
+  Set<int> _speakable = const {};
   int? _unheard;
 
-  /// Stand-ins for the set that has no audio yet, so the bar and the ayas
-  /// have something to listen to before the first set is read.
+  final _sheetScroll = ScrollController();
+  final _current = GlobalKey();
+  static const _anchor = ValueKey('reading-anchor');
   static final _silent = ValueNotifier<int?>(null);
   static final _paused = ValueNotifier<bool>(false);
 
-  /// Every aya in the set is understood, so marking it again would write
-  /// nothing and the only thing left to do is walk on.
-  bool _allUnderstood(StudySet set) => set.ayas.every((a) => a.understood);
-
-  void _bake() {
-    _speakable = _audio?.speakable ?? const {};
-    _walk = [
-      for (final aya in _set?.reading ?? const <StudyAya>[])
-        ...?_words[aya.id],
-    ];
-  }
+  /// The position is written once the reader has settled on a word, not on
+  /// every swipe: a sitting sends a handful of moves to their other devices.
+  Timer? _settle;
+  static const _settleAfter = Duration(seconds: 2);
 
   Prefs get _prefs => Wird.of(context).prefs;
-  double get _arabicSize => _prefs.arabicSize;
-
-  /// The set is read here rather than in initState because the reader's order
-  /// and the recitation are reached through the application above this screen.
-  /// The language the root panel's sentence was read in, so a reader who
-  /// switches language is handed the other one where they stand rather than
-  /// on the next set.
-  Locale? _readIn;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final locale = Localizations.localeOf(context);
-    if (!_loaded) {
+    if (!_loaded || locale != _readIn) {
       _readIn = locale;
-      _load(target: widget.target);
-    } else if (locale != _readIn) {
-      _readIn = locale;
-      _load(target: widget.target);
+      _load(target: widget.target, word: _word?.id);
     }
   }
 
-  /// Reads what the screen shows: the walk's next set, the portion a footer
-  /// [step] hands over, or the aya at [target]. Everything after the set
-  /// itself — the reciter, the root panel's first root, the recitation — is
-  /// the same either way. What is downloaded is not, which is what
-  /// `onTheWalk` says.
-  ///
-  /// A step arrives as the whole span its arrow printed rather than as a place
-  /// and a count worked out again here: [_span] is the one rule for what a
-  /// step is. It carries no grain with it, so a step into a short sūra takes
-  /// the ayas that are there without narrowing the one after it.
-  ///
-  /// A reference — a kin, a row in the index — passes [target] and gets the
-  /// one aya it named, which is ADR 0003 and has not moved.
-  Future<void> _load({int? target, AyaSpan? step}) async {
-    final generation = ++_generation;
-    final readIn = Localizations.localeOf(context);
-    final recitation = Wird.of(context).recitation;
-    final order = _prefs.order;
-    final at = step?.first ?? target;
-    final set = at == null
-        ? await nextSet(widget.db, order)
-        : await ayaSet(
-            widget.db,
-            order,
-            at,
-            ayas: step == null ? 1 : step.last - step.first + 1,
-          );
-    // The width the reader reads in. On the walk the set already is it, the
-    // width they pulled in settings and all. A step keeps the width it was
-    // taken at rather than the width it got — a step into Al-Kawthar takes
-    // the three ayas there and must not shrink the reader's grain to three.
-    // A visit's one aya is a reference and not a width, so it asks.
-    final width = set == null
-        ? 1
-        : step != null
-        ? _width
-        : target == null
-        ? set.ayas.length
-        : await readingWidth(widget.db, order);
-    final before = set == null
-        ? null
-        : await _span(
-            await ayaBeside(widget.db, set.ayas.first.id, after: false),
-            width,
-            after: false,
-          );
-    final after = set == null
-        ? null
-        : await _span(
-            await ayaBeside(widget.db, set.ayas.last.id, after: true),
-            width,
-            after: true,
-          );
-    final rooted =
-        set?.ayas
-            .expand((a) => a.words)
-            .where((w) => w.root != null)
-            .toList() ??
-        const <StudyWord>[];
-    final first = rooted.isEmpty ? null : rooted.first;
-    final root = first == null
-        ? null
-        : await rootReading(widget.db, first.root!, readIn: readIn);
-    final keep = set == null
-        ? const <String>[]
-        : await pathsToKeep(widget.db, order, set, onTheWalk: at == null);
-    if (set != null) {
-      await recitation.carry(
-        await tracksFor(widget.db, [for (final aya in set.ayas) aya.id]),
-        title: set.title,
-        words: {
-          for (final aya in set.ayas)
-            for (final word in aya.words) word.id: word.text,
-        },
-      );
+  @override
+  void dispose() {
+    // A reader who leaves before the position settled still left from there.
+    if (_settle?.isActive ?? false) {
+      _settle!.cancel();
+      if (_word case final word?) unawaited(movePosition(widget.db, word.id));
     }
-    if (!mounted || generation != _generation) return;
-    // The set arrives with its words, so this is where its renderings belong
-    // too — _readWordsAround only fires for ayas the set did not bring.
+    _sheetScroll.dispose();
+    super.dispose();
+  }
+
+  /// Opens a sūra on the aya [target], on the word [word], or where the reader
+  /// last stood: their latest position, else the walk's next aya, else 1:1.
+  Future<void> _load({int? target, int? word}) async {
+    final generation = ++_generation;
+    final order = _prefs.order;
+    var at = word ?? (target == null ? null : target * 1000 + 1);
+    if (at == null) {
+      final positions = await readingPositions(widget.db);
+      if (positions.isNotEmpty) {
+        at = positions.first.wordId;
+      } else {
+        final next = await nextSet(widget.db, order);
+        at = (next?.ayas.first.id ?? 1001) * 1000 + 1;
+      }
+    }
+    final surah = await ayaSet(widget.db, order, at ~/ 1000);
+    if (surah == null || !mounted || generation != _generation) return;
     final lang = Localizations.localeOf(context).languageCode;
-    final rendered = set == null
-        ? const <int, String>{}
-        : await translationsFor(
-            widget.db,
-            [for (final aya in set.reading) aya.id],
-            lang,
-          );
+    final rendered = await translationsFor(widget.db, [
+      for (final aya in surah.reading) aya.id,
+    ], lang);
     if (!mounted || generation != _generation) return;
+    final words = {
+      for (final aya in surah.reading)
+        if (aya.words.isNotEmpty) aya.id: aya.words,
+    };
+    final open =
+        words[at ~/ 1000]?.where((w) => w.id == at).firstOrNull ??
+        words[at ~/ 1000]?.firstOrNull;
     setState(() {
+      _surah = surah;
+      _words = words;
       _translated
         ..clear()
         ..addAll(rendered);
-      _order = order;
-      _target = at;
-      _before = before;
-      _after = after;
-      _width = width;
-      _set = set;
-      _word = first;
-      _root = root;
-      _stepping = null;
-      _audio = set == null ? null : recitation;
-      _loaded = true;
       _pending.clear();
-      _words = {
-        for (final aya in set?.reading ?? const <StudyAya>[])
-          if (aya.words.isNotEmpty) aya.id: aya.words,
-      };
-      _bake();
+      _away = null;
+      _loaded = true;
     });
-    if (set == null) return;
-    // The download runs behind the set rather than in front of it: the reader
-    // studies while the recitation arrives, and an aeroplane leaves the screen
-    // working with the play button honestly dark.
-    await recitation.prefetch(keep);
-    if (mounted && generation == _generation) setState(_bake);
+    if (open != null) await _open(open);
   }
 
-  /// The set on one side of the reading, grown from the aya next to its edge.
+  /// Reads everything the sheet shows for [word], then shows it.
   ///
-  /// It is [width] ayas wide and stops at the sūra's edge: a step into
-  /// Al-Kawthar takes the three ayas that are there. That the edge aya itself
-  /// may belong to the next sūra is deliberate — see [ayaBeside].
-  Future<AyaSpan?> _span(int? edge, int width, {required bool after}) async {
-    if (edge == null) return null;
-    final surahId = edge ~/ 1000;
-    final number = edge % 1000;
-    final first = after ? number : max(1, number - width + 1);
-    final last = after
-        ? min(number + width - 1, await ayahCount(widget.db, surahId))
-        : number;
-    return (first: surahId * 1000 + first, last: surahId * 1000 + last);
-  }
-
-  /// Marks what is open in the set and stays on it.
-  ///
-  /// An aya the set was pulled across is already understood and is left out:
-  /// it was recited along with the rest, and re-marking it would move the day
-  /// the reader understood it to today. The flags are refreshed in place
-  /// because they are baked at load — without that the progress bars would go
-  /// on calling a marked aya open.
-  Future<void> _markUnderstood(StudySet set) async {
-    final open = [
-      for (final aya in set.ayas)
-        if (!aya.understood) aya.id,
-    ];
-    if (open.isEmpty) return;
-    await markSetUnderstood(widget.db, _opId, open);
-    if (!mounted) return;
+  /// The sheet keeps the word it is showing until the next one has been read,
+  /// so a swipe never blanks it.
+  Future<void> _open(StudyWord word) async {
+    final generation = _generation;
+    _opening = word.id;
+    final readIn = Localizations.localeOf(context);
+    final letters = word.root;
+    final root = letters == null
+        ? null
+        : await rootReading(widget.db, letters, readIn: readIn);
+    final sheet = (
+      word: word,
+      root: root,
+      lemmas: letters == null
+          ? const <Lemma>[]
+          : await lemmasOf(widget.db, letters),
+      inSurah: letters == null
+          ? 0
+          : await rootCountInSurah(widget.db, letters, word.id ~/ 1000000),
+      ayas: letters == null
+          ? const <RootAya>[]
+          : await rootAyas(
+              widget.db,
+              letters,
+              lang: readIn.languageCode,
+              except: word.id ~/ 1000,
+            ),
+      irab: await wordIrab(widget.db, word.id, readIn: readIn),
+    );
+    if (!mounted || generation != _generation) return;
     setState(() {
-      _set = set.withUnderstood(open.toSet());
-      _opId = newOpId();
-      _bake();
+      _word = word;
+      _sheet = sheet;
+      _opening = null;
+      _away = null;
     });
+    if (_sheetScroll.hasClients) _sheetScroll.jumpTo(0);
+    _settle?.cancel();
+    _settle = Timer(_settleAfter, () => movePosition(widget.db, word.id));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _centre());
+    await _carry(word.id ~/ 1000);
   }
 
-  /// A reader's verdict on the sense drawn for a root, on its way to the people
-  /// who wrote it.
+  /// Keeps the recitation on the ayas around the open word, so the play
+  /// button and a prayer are always about where the reader is.
+  Future<void> _carry(int ayahId) async {
+    final acted = _acted;
+    if (acted != null && acted.ayas.any((a) => a.id == ayahId)) return;
+    final generation = _generation;
+    final recitation = Wird.of(context).recitation;
+    final order = _prefs.order;
+    final set = await ayaSet(
+      widget.db,
+      order,
+      ayahId,
+      ayas: await readingWidth(widget.db, order),
+    );
+    if (set == null || !mounted || generation != _generation) return;
+    await recitation.carry(
+      await tracksFor(widget.db, [for (final aya in set.ayas) aya.id]),
+      title: set.title,
+      words: {
+        for (final aya in set.ayas)
+          for (final word in aya.words) word.id: word.text,
+      },
+    );
+    final keep = await pathsToKeep(widget.db, order, set, onTheWalk: false);
+    if (!mounted || generation != _generation) return;
+    setState(() {
+      _acted = set;
+      _audio = recitation;
+      _speakable = recitation.speakable;
+    });
+    await recitation.prefetch(keep);
+    if (mounted) setState(() => _speakable = recitation.speakable);
+  }
+
+  /// Puts the open word in the middle of the sūra list.
   ///
-  /// Queued, never sent here: the outbox flushes when there is a signal, so a
-  /// reader judging a sense on a plane is not told their opinion failed. Nothing
-  /// is shown either way — `_JudgeSense` says thank you itself, and a screen that
-  /// raised a snackbar over the reading would charge the reader for helping.
+  /// ponytail: only a word whose aya has been built. A jump to an aya off the
+  /// screen lands it at the list's anchor instead, which is where [_load]
+  /// opens a sūra; move the anchor if a jump inside a long sūra ever lands
+  /// out of sight.
+  void _centre() {
+    final context = _current.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  /// The word [by] along from the open one, across the whole sūra.
+  Future<void> _step(int by) async {
+    final surah = _surah;
+    final from = _opening ?? _word?.id;
+    if (surah == null || from == null) return;
+    var step = stepFrom(surah.reading, _words, from, by);
+    if (step == null) return;
+    if (step.wordId == null) {
+      await _readWordsAround(step.ayaIndex, surah.reading);
+      if (!mounted) return;
+      step = stepFrom(surah.reading, _words, from, by);
+      if (step?.wordId == null) return;
+    }
+    final to = _words[surah.reading[step!.ayaIndex].id]!.firstWhere(
+      (w) => w.id == step!.wordId,
+    );
+    await _open(to);
+  }
+
+  /// Which way a step can go: null at the ends of the sūra.
+  VoidCallback? _stepTo(int by) {
+    final surah = _surah;
+    final from = _opening ?? _word?.id;
+    if (surah == null || from == null) return null;
+    return stepFrom(surah.reading, _words, from, by) == null
+        ? null
+        : () => _step(by);
+  }
+
+  /// The word next to the open one, for the sheet's hint row, when its aya
+  /// has been read.
+  StudyWord? _beside(int by) {
+    final surah = _surah;
+    final from = _word?.id;
+    if (surah == null || from == null) return null;
+    final step = stepFrom(surah.reading, _words, from, by);
+    if (step?.wordId == null) return null;
+    return _words[surah.reading[step!.ayaIndex].id]!.firstWhere(
+      (w) => w.id == step.wordId,
+    );
+  }
+
+  Future<void> _markUnderstood(StudyAya aya) async {
+    await markSetUnderstood(widget.db, newOpId(), [aya.id]);
+    if (!mounted) return;
+    setState(() => _surah = _surah?.withUnderstood({aya.id}));
+  }
+
+  /// Queued, never sent here: a verdict given on a plane is not told it
+  /// failed, and nothing is drawn over the reading either way.
   Future<void> _judgeSense(String root, bool good) async {
     await judgeSense(
       widget.db,
@@ -336,245 +308,210 @@ class _StudyScreenState extends State<StudyScreen> {
     );
   }
 
-  /// Sounds one word. An aya that was never downloaded shows the word's
-  /// transliteration under it and plays nothing — it must never spin, and it
-  /// must not shout.
   Future<void> _speak(StudyWord word) async {
     final sounded = await _audio?.playWord(word.id) ?? false;
     if (mounted) setState(() => _unheard = sounded ? null : word.id);
   }
 
-  /// Pushes a screen that reads a root, and takes the aya it answers with.
-  ///
-  /// A root, its spine and the constellation all print aya references, and a
-  /// reference answers by popping the aya down to here rather than by stacking
-  /// a second reader over this one — ADR-0003. This is the screen that catches
-  /// it, and it changes in place, exactly as a kin tag in the panel does.
   Future<void> _visit(String route, Object arguments) async {
     final chosen = await Navigator.of(context)
         .pushNamed(route, arguments: arguments);
     if (mounted && chosen is int) await _load(target: chosen);
   }
 
-  /// The panel keeps the root it is showing until the next one has been read,
-  /// so a tap never blanks the screen the reader is looking at.
-  ///
-  /// A word with no root — and a word whose letters the roots table has no row
-  /// for — lands all the same, carrying no root. The arrows walk onto
-  /// particles, and a press that did nothing would read as a dead button.
-  Future<void> _openWord(StudyWord word) async {
-    final generation = _generation;
-    _stepping = word.id;
-    final letters = word.root;
-    final detail = letters == null
-        ? null
-        : await rootReading(
-            widget.db,
-            letters,
-            readIn: Localizations.localeOf(context),
-          );
-    // The set may have changed under the read — back to the walk, a kin, a
-    // step — and this word belongs to the set that was.
-    if (!mounted || generation != _generation) return;
-    setState(() {
-      _word = word;
-      _root = detail;
-      _stepping = null;
-    });
+  void _setExpanded(bool expanded) {
+    setState(() => _expanded = expanded);
+    if (!expanded && _sheetScroll.hasClients) _sheetScroll.jumpTo(0);
   }
-
-  /// The word [by] along from the open one, anywhere in the passage.
-  ///
-  /// Particles come with the rest: a reader walking an aya is walking every
-  /// word of it. The ends are the passage's, and [_walk] only holds the ayas
-  /// whose words have been read, so a step at that edge reads the next chunk
-  /// first — one query against the bundled corpus.
-  Future<void> _stepWord(int by) async {
-    final from = _stepping ?? _word?.id;
-    final at = _walk.indexWhere((w) => w.id == from) + by;
-    if (at < 0) return;
-    if (at >= _walk.length) {
-      final ayas = _set?.reading ?? const <StudyAya>[];
-      final next = ayas.indexWhere((a) => !_words.containsKey(a.id));
-      if (next < 0) return;
-      await _readWordsAround(next, ayas);
-      if (!mounted || at >= _walk.length) return;
-    }
-    await _openWord(_walk[at]);
-  }
-
-  /// Which arrows the panel can offer: null where the passage ends.
-  VoidCallback? _stepTo(int by) {
-    final at = _walk.indexWhere((w) => w.id == (_stepping ?? _word?.id)) + by;
-    if (at < 0) return null;
-    if (at >= _walk.length && _walk.length == _wordsInReading) return null;
-    return () => _stepWord(by);
-  }
-
-  /// How many words the passage holds once every aya of it has been read. The
-  /// count is on the aya whether or not its words are ([StudyAya.wordCount]),
-  /// so the last arrow goes dark at the end of the sūra and not at the end of
-  /// the chunk.
-  int get _wordsInReading => [
-    for (final aya in _set?.reading ?? const <StudyAya>[]) aya.wordCount,
-  ].fold(0, (a, b) => a + b);
 
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
-    final set = _set;
-    // The display mode and the Arabic size are set on the settings screen and
-    // held by the application, so the words redraw when the reader comes back
-    // from having changed them.
+    final surah = _surah;
     return ListenableBuilder(
       listenable: _prefs,
       builder: (context, _) => SafeArea(
-        child: !_loaded
+        child: !_loaded || surah == null
             ? const SizedBox.shrink()
-            : set == null
-            ? _finished(n)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  StudyHeader(
-                    key: const Key('study header'),
-                    set: set,
-                    order: _order,
-                    visiting: _target != null,
-                    open: _prefs.headerOpen,
-                    onToggle: () => _prefs.setHeaderOpen(!_prefs.headerOpen),
-                    onBackToTheWalk: () => _load(),
-                  ),
-                  Expanded(child: _reading(n, set)),
-                  _footer(n, set),
-                  // ponytail: half the window, and the panel's body scrolls
-                  // past it. The Mark button does not scroll — RootPanel pins
-                  // it under the scrolled body, because it is the only way
-                  // through the Qur'an and a clipped one is worse than the
-                  // overflow this cap removes.
-                  //
-                  // The panel is the last child of this Column and the reading
-                  // above it is the Expanded, so the panel takes whatever
-                  // height it asks for and the reading pays. The transport in
-                  // the footer and the root's sense in the panel each added a
-                  // band, and the phone this was walked on rotates — nothing
-                  // sets a preferred orientation — so in landscape the fixed
-                  // chrome asked for 69px more than the window has and the
-                  // Column overflowed. The cap is the only thing standing
-                  // between that and a red screen over someone's prayer.
-                  //
-                  // The cap binds whenever the open panel wants more than two
-                  // fifths of the window, which is not landscape alone: it
-                  // binds on a 320pt-wide phone in portrait, and from roughly
-                  // 1.4x system text on a 402x874 one. Two fifths rather than
-                  // a half because a half left the reading 45px sideways —
-                  // less than one aya tile, so a reading screen with no
-                  // reading on it. The ceiling: where the cap binds the panel
-                  // gives up its body, and sideways the reading is still a
-                  // strip rather than a page. This buys a layout that does not
-                  // break, not one that reads well sideways. The fraction is
-                  // the knob, and study_screen_test holds the floor it buys.
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.sizeOf(context).height * 0.4,
-                    ),
-                    child: RootPanel(
-                      root: _root,
-                      word: _word,
-                      open: _prefs.rootOpen,
-                      onToggle: () => _prefs.setRootOpen(!_prefs.rootOpen),
-                      onVisit: _visit,
-                      onKin: (ayahId) => _load(target: ayahId),
-                      allUnderstood: _allUnderstood(set),
-                      onMark: _allUnderstood(set)
-                          ? () => _load()
-                          : () => _markUnderstood(set),
-                      onJudge: _judgeSense,
-                      onPrevious: _stepTo(-1),
-                      onNext: _stepTo(1),
+            : CallbackShortcuts(
+                bindings: {
+                  // Arabic reads leftward: the next word is to the left.
+                  const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
+                      _stepTo(1)?.call(),
+                  const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
+                      _stepTo(-1)?.call(),
+                },
+                child: Focus(
+                  autofocus: true,
+                  child: LayoutBuilder(
+                    builder: (context, box) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _bar(n, surah),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 350),
+                          curve: const Cubic(0.3, 0.7, 0.2, 1),
+                          // The design's 318 of 812.
+                          height: _expanded ? 58 : box.maxHeight * 0.39,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: n.divider),
+                            ),
+                          ),
+                          clipBehavior: Clip.hardEdge,
+                          child: _top(n, surah),
+                        ),
+                        Expanded(
+                          child: _sheet == null
+                              ? const SizedBox.shrink()
+                              : RootSheet(
+                                  sheet: _sheet!,
+                                  expanded: _expanded,
+                                  previous: _beside(-1),
+                                  next: _beside(1),
+                                  onPrevious: _stepTo(-1),
+                                  onNext: _stepTo(1),
+                                  onToggle: () => _setExpanded(!_expanded),
+                                  onExpand: () => _setExpanded(true),
+                                  onRoot: (letters) =>
+                                      _visit(Routes.root, letters),
+                                  onJudge: _judgeSense,
+                                  onAya: (aya) {
+                                    setState(() => _away = aya);
+                                    if (_sheetScroll.hasClients) {
+                                      _sheetScroll.jumpTo(0);
+                                    }
+                                  },
+                                  scroll: _sheetScroll,
+                                ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
       ),
     );
   }
 
-  /// What plays, what is sounding, and where the reader can go: one block at
-  /// the foot of the screen, under one edge.
-  ///
-  /// The transport used to sit under the top bar, a thumb's length from the
-  /// controls it belongs with. It is first in the block rather than last
-  /// because a [Column] hangs its tail off the bottom: everything below the
-  /// transport keeps its place when a recitation starts, and the reading gives
-  /// up the height instead. Nothing under the reader's thumb moves.
-  ///
-  /// The play button came here from inside the scrolling list, where starting
-  /// the recitation — and learning whether the recitation was even on the
-  /// phone — meant scrolling past the whole set first. It is always drawn,
-  /// which reverses the trade [SoundingNow] makes just below it: a reader who
-  /// never plays anything now pays for a band of chrome. The transport is the
-  /// reason the screen exists to be prayed from, so it is the one piece of
-  /// chrome that does not earn its place by being asked for.
-  Widget _footer(Nocturne n, StudySet set) => Container(
-    decoration: BoxDecoration(
-      border: Border(top: BorderSide(color: n.divider)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            n.space('6'),
-            n.space('2'),
-            n.space('6'),
-            0,
+  /// Menu, the sūra's name (which opens the index), where the reader is,
+  /// the recitation and the prayer.
+  Widget _bar(Nocturne n, StudySet surah) {
+    final l = AppLocalizations.of(context)!;
+    final first = surah.reading.first;
+    final word = _word;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      child: Row(
+        spacing: 4,
+        children: [
+          const ShellBurger(),
+          Expanded(
+            child: InkWell(
+              key: const Key('surah name'),
+              onTap: () => _visit(Routes.index, const AStepFrom()),
+              // One run of text with the chevron inside it, so a narrow bar
+              // or a large system text size ellipsises the name rather than
+              // overflowing the row.
+              child: Text.rich(
+                TextSpan(
+                  text: '${first.surahNameEn} ',
+                  children: [
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 16,
+                        color: n.textAt(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 16, color: n.text),
+              ),
+            ),
           ),
-          child: _audioBar(n),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: n.space('6')),
-          child: const SoundingNow(),
-        ),
-        ReadingNav(
-          surahId: set.ayas.first.surahId,
-          previous: _before,
-          next: _after,
-          onStep: (to) => _load(step: to),
-          onIndex: () => _visit(Routes.index, const AStepFrom()),
-        ),
-      ],
-    ),
-  );
-
-  Widget _finished(Nocturne n) => Center(
-    child: Padding(
-      padding: EdgeInsets.all(n.space('8')),
-      child: Text(
-        AppLocalizations.of(context)!.study_nothingLeftToServe,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.headlineSmall,
+          if (word != null)
+            Flexible(
+              child: Text(
+                _position(l, surah, word),
+                key: const Key('position'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: n.textAt(0.62)),
+              ),
+            ),
+          ValueListenableBuilder<bool>(
+            valueListenable: _audio?.playing ?? _paused,
+            builder: (context, playing, _) => IconButton(
+              // A dark button says why it is dark: the corpus carries no
+              // recitation for these ayas, or it is not on the phone yet.
+              tooltip: playing
+                  ? l.study_pauseRecitation
+                  : _audio == null || _audio!.ready
+                  ? l.study_recite
+                  : _audio!.tracks.isEmpty
+                  ? l.study_noRecitation
+                  : l.notDownloaded,
+              onPressed: _audio?.ready ?? false ? _audio!.toggle : null,
+              icon: Icon(
+                playing ? Icons.pause : Icons.play_arrow,
+                size: 20,
+                color: n.color('accent-300'),
+              ),
+            ),
+          ),
+          TextButton(
+            key: const Key('pray'),
+            onPressed: _acted == null
+                ? null
+                : () => prayTheSet(context, _acted!),
+            child: Text(
+              l.study_pray,
+              style: TextStyle(fontSize: 12.5, color: n.color('accent-300')),
+            ),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
 
-  /// The passage, hung from the aya the reader opened on.
+  /// "2:255 · word 3/50": the aya and the word open, and where that word
+  /// falls in the sūra, counting words whose ayas have not been read.
+  String _position(AppLocalizations l, StudySet surah, StudyWord word) {
+    final ayaId = word.id ~/ 1000;
+    var before = 0;
+    var total = 0;
+    for (final aya in surah.reading) {
+      if (aya.id < ayaId) before += aya.wordCount;
+      total += aya.wordCount;
+    }
+    return l.study_position(ayahRef(ayaId), before + word.id % 1000, total);
+  }
+
+  Widget _top(Nocturne n, StudySet surah) {
+    final away = _away;
+    if (away != null) {
+      return _expanded ? _awayStrip(n, away) : _awayFull(n, away);
+    }
+    return _expanded ? _strip(n) : _list(n, surah);
+  }
+
+  /// The whole sūra, hung from the aya it was opened at.
   ///
-  /// An aya is built when it comes near the viewport and not before: the walk
-  /// serves five ayas, but a sūra is up to 286 and Al-Baqarah's 6116 words
-  /// laid out in one `Column` is a frame no phone can draw. The slivers before
-  /// [_anchor] grow upward, which is what lets the screen open at 2:255
-  /// without building the 254 ayas above it and still let the reader move up
-  /// into them — a sūra is continuous.
-  Widget _reading(Nocturne n, StudySet set) {
-    final ayas = set.reading;
-    final focus = set.focusIndex;
+  /// An aya is built when it comes near the viewport and not before. The
+  /// slivers before [_anchor] grow upward, so opening Al-Baqarah at 255 does
+  /// not build the 254 ayas above it, and the reader can still scroll up into
+  /// them.
+  Widget _list(Nocturne n, StudySet surah) {
+    final ayas = surah.reading;
+    final focus = surah.focusIndex;
     return ValueListenableBuilder<int?>(
       valueListenable: _audio?.currentWordId ?? _silent,
       builder: (context, recited, _) => CustomScrollView(
-        // A new passage starts at its own aya rather than at the offset the
-        // last one was left scrolled to.
-        key: ValueKey(set.ayas.first.id),
+        key: ValueKey(ayas.first.id),
         center: _anchor,
         slivers: [
           SliverList(
@@ -586,53 +523,35 @@ class _StudyScreenState extends State<StudyScreen> {
           const SliverToBoxAdapter(key: _anchor, child: SizedBox.shrink()),
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              // The bar has left the list for the footer, but the gap under
-              // the acted set has not: `lastBeforeBar` is the last aya the
-              // play button will recite, and `ayas.length - 1` is the last aya
-              // of the whole reading. Opening 2:255 those are 31 ayas apart,
-              // so that gap is the only thing on screen saying where the span
-              // an always-visible play button covers ends.
-              (context, i) => _ayaTile(
-                n,
-                ayas,
-                focus + i,
-                recited,
-                lastBeforeBar: focus + set.ayas.length - 1,
-              ),
+              (context, i) => _ayaTile(n, ayas, focus + i, recited),
               childCount: ayas.length - focus,
             ),
           ),
-          SliverToBoxAdapter(child: SizedBox(height: n.space('6'))),
+          SliverToBoxAdapter(child: SizedBox(height: n.space('8'))),
         ],
       ),
     );
   }
 
-  Widget _ayaTile(
-    Nocturne n,
-    List<StudyAya> ayas,
-    int index,
-    int? recited, {
-    int lastBeforeBar = -1,
-  }) {
+  Widget _ayaTile(Nocturne n, List<StudyAya> ayas, int index, int? recited) {
     final aya = ayas[index];
     final words = _words[aya.id];
     if (words == null) {
       _readWordsAround(index, ayas);
       // ponytail: a word is about 28 px of column once it has wrapped. The
       // guess only has to keep an aya above the reader from shoving the one
-      // they are reading when its words land, and the chunk read ahead means
-      // the gap is rarely drawn at all. Measure a tile if scrolling up ever
-      // jumps.
+      // they are reading when its words land.
       return SizedBox(height: 28.0 * aya.wordCount);
     }
+    final l = AppLocalizations.of(context)!;
     final face = faceOf(aya, words, _speakable);
+    final open = _word;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: n.space('6')),
+      padding: EdgeInsets.symmetric(horizontal: n.space('4')),
       child: Column(
         children: [
           if (index == 0)
-            SizedBox(height: n.space('6'))
+            SizedBox(height: n.space('2'))
           else
             Padding(
               padding: EdgeInsets.symmetric(vertical: n.space('2')),
@@ -640,49 +559,50 @@ class _StudyScreenState extends State<StudyScreen> {
             ),
           if (index == 0 &&
               Localizations.localeOf(context).languageCode == 'fr') ...[
-            SizedBox(height: n.space('2')),
-            // Once, above the reading, not under every aya: a reader learns this
-            // on the first screenful and does not need telling six more times.
+            // Once, above the reading, not under every aya.
             Text(
-              AppLocalizations.of(context)!.study_glossesSource,
+              l.study_glossesSource,
               style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
             ),
+            SizedBox(height: n.space('2')),
           ],
           Wrap(
             textDirection: TextDirection.rtl,
             alignment: WrapAlignment.center,
-            // Tops, so the Arabic of a word carrying a two-line gloss stays
-            // in line with its neighbours and the gloss hangs below at
-            // whatever height it needs.
             crossAxisAlignment: WrapCrossAlignment.start,
-            spacing: n.space('6'),
+            spacing: n.space('3'),
             runSpacing: n.space('1'),
             children: [
               for (final word in face.words)
-                WordTile(
-                  // Keyed by the corpus id so the tile keeps its element
-                  // across a rebuild, rather than being matched by position
-                  // against a different word.
-                  key: WordKey(word.word.id),
-                  face: word,
-                  voice: word.voice(sounding: recited, unheard: _unheard),
-                  open: word.word.id == _word?.id,
-                  prefs: _prefs,
-                  onOpen: _openWord,
-                  onHear: _speak,
+                KeyedSubtree(
+                  key: word.word.id == open?.id ? _current : null,
+                  child: WordTile(
+                    key: WordKey(word.word.id),
+                    face: word,
+                    voice: word.voice(sounding: recited, unheard: _unheard),
+                    open: word.word.id == open?.id,
+                    sameRoot:
+                        open?.root != null &&
+                        word.word.id != open?.id &&
+                        word.word.root == open?.root,
+                    prefs: _prefs,
+                    onOpen: _open,
+                    onHear: _speak,
+                  ),
                 ),
-              AyaMark(aya: face.aya, arabicSize: _arabicSize),
+              AyaMark(
+                aya: face.aya,
+                arabicSize: _prefs.arabicSize,
+                label: l.study_markUnderstood(ayahRef(aya.id)),
+                onMark: aya.understood ? null : () => _markUnderstood(aya),
+              ),
             ],
           ),
           if (_translated[aya.id] case final rendered?
               when _prefs.ayaTranslation) ...[
-            SizedBox(height: n.space('3')),
-            // Under the whole aya, because it renders the whole aya. The words
-            // above carry their own English glosses and this does not replace
-            // them — the reader is told so once, above the reading.
+            SizedBox(height: n.space('2')),
             Text(
               rendered,
-              textAlign: TextAlign.start,
               style: TextStyle(
                 fontSize: 13.5,
                 height: 1.55,
@@ -691,22 +611,171 @@ class _StudyScreenState extends State<StudyScreen> {
             ),
             SizedBox(height: n.space('1')),
             Text(
-              AppLocalizations.of(context)!.study_ayaTranslated,
+              l.study_ayaTranslated,
               style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
             ),
           ],
-          if (index == lastBeforeBar || index == ayas.length - 1)
-            SizedBox(height: n.space('6')),
         ],
       ),
     );
   }
 
-  /// Reads the words of the ayas around [index], a chunk at a time.
-  ///
-  /// The chunk reaches further down than up because that is the direction a
-  /// reader moves, and it is one query however many ayas it covers: a query
-  /// per aya would be 286 of them to read Al-Baqarah.
+  /// One line: the aya open, and the open word with two either side of it.
+  Widget _strip(Nocturne n) {
+    final word = _word;
+    final words = word == null ? null : _words[word.id ~/ 1000];
+    if (word == null || words == null) return const SizedBox.shrink();
+    final at = words.indexWhere((w) => w.id == word.id);
+    final lo = (at - 2).clamp(0, words.length);
+    final hi = (at + 3).clamp(0, words.length);
+    final dim = n.textAt(0.4);
+    Widget arabic(String text, Color colour, {bool line = false}) => Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: line ? n.accent : Colors.transparent,
+            width: 2,
+          ),
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontFamily: Nocturne.arabicFamily,
+          fontSize: 20,
+          height: 1.6,
+          color: colour,
+        ),
+      ),
+    );
+    return GestureDetector(
+      key: const Key('strip'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _setExpanded(false),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          spacing: 10,
+          children: [
+            Text(
+              ayahRef(word.id ~/ 1000),
+              style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
+            ),
+            Expanded(
+              child: ClipRect(
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 9,
+                  children: [
+                    if (lo > 0) arabic('…', dim),
+                    for (final w in words.sublist(lo, hi))
+                      arabic(
+                        w.text,
+                        w.id == word.id
+                            ? n.color('accent-100')
+                            : n.textAt(0.62),
+                        line: w.id == word.id,
+                      ),
+                    if (hi < words.length) arabic('…', dim),
+                  ],
+                ),
+              ),
+            ),
+            Icon(Icons.expand_more, size: 16, color: n.textAt(0.6)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _awayFull(Nocturne n, RootAya away) {
+    final l = AppLocalizations.of(context)!;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          OutlinedButton.icon(
+            key: const Key('back to reading'),
+            onPressed: () => setState(() => _away = null),
+            icon: const Icon(Icons.chevron_left, size: 14),
+            label: Text(l.study_backTo(ayahRef((_word?.id ?? 0) ~/ 1000))),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            ayahRef(away.ayahId),
+            style: TextStyle(
+              fontSize: 10,
+              letterSpacing: 1.1,
+              color: n.color('accent-300'),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            away.text,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: Nocturne.arabicFamily,
+              fontSize: 28,
+              height: 1.8,
+              color: n.text,
+            ),
+          ),
+          if (away.translation != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              away.translation!,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.55,
+                color: n.textAt(0.78),
+              ),
+            ),
+          ],
+          TextButton(
+            key: const Key('read from here'),
+            onPressed: () => _load(target: away.ayahId),
+            child: Text(l.study_readFromHere),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _awayStrip(Nocturne n, RootAya away) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    child: Row(
+      spacing: 10,
+      children: [
+        OutlinedButton(
+          onPressed: () => setState(() => _away = null),
+          child: Text('‹ ${ayahRef((_word?.id ?? 0) ~/ 1000)}'),
+        ),
+        Text(
+          ayahRef(away.ayahId),
+          style: TextStyle(fontSize: 11, color: n.color('accent-300')),
+        ),
+        Expanded(
+          child: Text(
+            away.text,
+            textDirection: TextDirection.rtl,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: Nocturne.arabicFamily,
+              fontSize: 18,
+              height: 1.6,
+              color: n.text,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  /// Reads the words of the ayas around [index], a chunk at a time, in one
+  /// query however many ayas the chunk covers.
   Future<void> _readWordsAround(int index, List<StudyAya> ayas) async {
     final generation = _generation;
     final want = <int>[];
@@ -719,96 +788,8 @@ class _StudyScreenState extends State<StudyScreen> {
       if (!_words.containsKey(id) && _pending.add(id)) want.add(id);
     }
     if (want.isEmpty) return;
-    // The reader's language, read before the first await: a BuildContext is not
-    // ours to touch once one has passed.
-    final lang = Localizations.localeOf(context).languageCode;
     final read = await wordsFor(widget.db, want);
-    final rendered = await translationsFor(widget.db, want, lang);
     if (!mounted || generation != _generation) return;
-    setState(() {
-      _words.addAll(read);
-      _translated.addAll(rendered);
-      _bake();
-    });
+    setState(() => _words.addAll(read));
   }
-
-  Widget _audioBar(Nocturne n) => Container(
-    padding: EdgeInsets.symmetric(
-      horizontal: n.space('3'),
-      vertical: n.space('2'),
-    ),
-    decoration: BoxDecoration(
-      color: n.surface,
-      borderRadius: BorderRadius.circular(n.radius('md')),
-      boxShadow: n.shadow('sm'),
-    ),
-    child: Row(
-      spacing: n.space('3'),
-      children: [
-        ValueListenableBuilder<bool>(
-          valueListenable: _audio?.playing ?? _paused,
-          builder: (context, playing, _) => NocturneButton(
-            variant: NocturneButtonVariant.icon,
-            onPressed: _audio?.ready ?? false ? _audio!.toggle : null,
-            child: Icon(playing ? Icons.pause : Icons.play_arrow),
-          ),
-        ),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            spacing: n.space('1'),
-            children: [
-              // ponytail: five fixed heights, not a level. Mid-scroll that was
-              // incidental; pinned beside a real transport it is a fake meter
-              // that is always on screen. Carried across unchanged — drawing
-              // the real amplitude is its own step, and deleting it leaves the
-              // row with a hole. Replace it, do not tune it.
-              for (final (i, height) in const [
-                20.0,
-                14.0,
-                18.0,
-                9.0,
-                6.0,
-              ].indexed)
-                Container(
-                  width: 2.5,
-                  height: height,
-                  decoration: BoxDecoration(
-                    color: i < 3
-                        ? n.accent
-                        : n.color(i == 3 ? 'accent-600' : 'accent-700'),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: n.space('3')),
-                  child: const DashedRule(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Not the reciter's name — that is who is reciting, it never changes
-        // mid-set, and it reads as settled rather than as the state of this
-        // button. It is said once, in Settings. What stays here is the one
-        // thing that explains why the play button beside it is dark: a screen
-        // may not draw a dead control with nothing saying why.
-        //
-        // Two reasons, and they are not the same reason. `ready` is false both
-        // when the corpus ships no recitation for this set — `tracks` comes
-        // from ayah_audio, so no rows means nothing to fetch, ever — and when
-        // the files simply are not cached yet. Saying "Not downloaded" for the
-        // first offers a download that does not exist. Before `_audio` is
-        // loaded nothing is known, so nothing is said.
-        if (_audio case final audio? when !audio.ready)
-          Text(
-            audio.tracks.isEmpty
-                ? AppLocalizations.of(context)!.study_noRecitation
-                : AppLocalizations.of(context)!.notDownloaded,
-            style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
-          ),
-      ],
-    ),
-  );
 }

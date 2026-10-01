@@ -62,6 +62,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Where the reader stands, as the reader's bar prints it: "96:1 · word 1/72".
+  String? position(WidgetTester tester) =>
+      tester.widget<Text>(find.byKey(const Key('position'))).data;
+
+  /// A root as the reader's sheet names it, over the word open. The ring
+  /// further down the sheet prints the same letters at its centre.
+  Finder rootNamed(String display) => find.descendant(
+    of: find.byKey(const Key('swipe')),
+    matching: find.text(display),
+  );
+
   /// The set, which is no longer the screen the app opens on.
   Future<void> openTheSet(WidgetTester tester) async {
     await openApp(tester);
@@ -134,7 +145,7 @@ void main() {
     expect(navigatorIn(tester).canPop(), isFalse);
   });
 
-  testWidgets('coming back from a root leaves the set on the word the reader '
+  testWidgets('coming back from the index leaves the reader on the word they '
       'pressed, not on the one it opened with', (tester) async {
     final rooted = [
       for (final aya in set.ayas)
@@ -143,31 +154,33 @@ void main() {
     ];
     final opened = rooted.first;
     final tapped = rooted.firstWhere((w) => w.root != opened.root);
-    final detail = (await rootReading(db, tapped.root!, readIn: const Locale('en')))!;
+    final detail = (await rootReading(
+      db,
+      tapped.root!,
+      readIn: const Locale('en'),
+    ))!;
 
     await openTheSet(tester);
     // The tap is what opens a root; the press is what sounds the word.
     await tester.tap(find.byKey(WordKey(tapped.id)));
     await tester.pumpAndSettle();
-    expect(find.text(detail.display), findsOneWidget);
+    expect(rootNamed(detail.display), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('open-root')));
+    // The index is a step from the reader; back without choosing an aya.
+    await tester.tap(find.byKey(const Key('surah name')));
     await tester.pumpAndSettle();
-    expect(find.byType(RootScreen), findsOneWidget);
-    // The root screen prints the radicals spaced apart, the way a lexicon
-    // does, rather than the joined form the corpus keys them by.
-    expect(find.text(detail.display), findsOneWidget);
+    expect(find.byType(IndexScreen), findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(StudyScreen), findsOneWidget);
-    expect(find.text(detail.display), findsOneWidget);
+    expect(rootNamed(detail.display), findsOneWidget);
   });
 
   testWidgets('a reader who wants Al-Fātiḥa is stuck with whatever set the '
       'walk hands them', (tester) async {
     await openTheSet(tester);
-    expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
+    expect(position(tester), startsWith('96:1 '));
 
     await goTo(tester, 'Sūra index');
     await tester.tap(find.byKey(const ValueKey('ayas-1')));
@@ -176,11 +189,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(IndexScreen), findsNothing);
-    expect(find.textContaining('Al-Fatihah 5'), findsOneWidget);
+    expect(find.textContaining('Al-Fatihah'), findsOneWidget);
+    expect(position(tester), startsWith('1:5 '));
   });
 
   testWidgets('the index opened from the passage hands its aya to a second '
-      'reader stacked on the first, each holding a live player', (tester) async {
+      'reader stacked on the first, each holding a live player', (
+    tester,
+  ) async {
     await openApp(tester);
     await goTo(tester, 'Your passage');
     await tester.tap(find.text('All 114'));
@@ -193,7 +209,7 @@ void main() {
     // Down to the one screen that reads an aya, not up onto a second one.
     expect(find.byType(StudyScreen), findsOneWidget);
     expect(find.byType(ProgressScreen), findsNothing);
-    expect(find.textContaining('Al-Fatihah 5'), findsOneWidget);
+    expect(position(tester), startsWith('1:5 '));
   });
 
   testWidgets('the app goes down on the frame the corpus finishes opening, so '
@@ -214,8 +230,8 @@ void main() {
     // The iPad Pro 11-inch in landscape, which is where the three-pane
     // reading opens rather than the phone one.
     tester.view.physicalSize = const Size(1194, 834);
-    navigatorIn(tester).pushNamed(Routes.deepDive,
-        arguments: (ayahId: 96002, letters: 'علق'));
+    navigatorIn(tester)
+        .pushNamed(Routes.deepDive, arguments: (ayahId: 96002, letters: 'علق'));
     await tester.pumpAndSettle();
 
     expect(find.text('ROOT CONSTELLATION'), findsOneWidget);
@@ -224,8 +240,8 @@ void main() {
   testWidgets('a reader on a phone opening a constellation is handed the '
       'tablet’s three rails, which do not fit a phone', (tester) async {
     await openTheSet(tester);
-    navigatorIn(tester).pushNamed(Routes.deepDive,
-        arguments: (ayahId: 96002, letters: 'علق'));
+    navigatorIn(tester)
+        .pushNamed(Routes.deepDive, arguments: (ayahId: 96002, letters: 'علق'));
     await tester.pumpAndSettle();
 
     expect(find.text('DEEP DIVE · 96:2'), findsOneWidget);
@@ -253,9 +269,8 @@ void main() {
     expect(find.byType(StudyScreen, skipOffstage: false), findsOneWidget);
     expect(find.byType(RootScreen, skipOffstage: false), findsNothing);
     expect(
-      find.textContaining(await surahAndAya(db, reference.ayahId)),
-      findsOneWidget,
-      reason: ayahRef(reference.ayahId),
+      tester.widget<Text>(find.byKey(const Key('position'))).data,
+      startsWith('${ayahRef(reference.ayahId)} '),
     );
     // And back from the visited aya is home, not a second reader.
     await tester.binding.handlePopRoute();

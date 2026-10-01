@@ -1540,5 +1540,120 @@
   "aboutSelfTerms": "Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.",
   "@aboutSelfTerms": {
     "description": "The body of the first card of the sources screen, Wird's own terms. The licence title stays in English: it is the licence's own name."
+  },
+  "study_swipe": "swipe",
+  "@study_swipe": {
+    "description": "Between the two neighbouring words in the root sheet's hint row: dragging the sheet sideways moves to them."
+  },
+  "study_expandSheet": "Show counts, forms and other ayas",
+  "@study_expandSheet": {
+    "description": "Screen-reader label of the root sheet's handle while the sūra fills the top half."
+  },
+  "study_collapseSheet": "Show the whole sūra again",
+  "@study_collapseSheet": {
+    "description": "Screen-reader label of the root sheet's handle while it fills the screen."
+  },
+  "study_senses": "Senses",
+  "@study_senses": {
+    "description": "Small heading over the numbered senses of the root."
+  },
+  "study_inThisVerse": "In this verse · {gloss}",
+  "@study_inThisVerse": {
+    "description": "Heading of the card that says what the word does in this aya. {gloss} is the word's gloss.",
+    "placeholders": {
+      "gloss": {
+        "type": "String"
+      }
+    }
+  },
+  "study_particleNote": "Particles and pronouns have no three-letter root. Swipe on to the next word.",
+  "@study_particleNote": {
+    "description": "Under a word that has no root, at the foot of the root sheet."
+  },
+  "study_moreRow": "Counts, forms, other ayas",
+  "@study_moreRow": {
+    "description": "The row that opens the lower part of the root sheet."
+  },
+  "study_acrossQuran": "Across the Qur'an",
+  "@study_acrossQuran": {
+    "description": "Heading over the three count tiles."
+  },
+  "study_countRoot": "this root",
+  "@study_countRoot": {
+    "description": "Under the number of words in the Qur'an built on this root."
+  },
+  "study_countLemma": "as",
+  "@study_countLemma": {
+    "description": "Before the Arabic of the word's lemma, under the number of times that lemma is read."
+  },
+  "study_countSurah": "in this sūra",
+  "@study_countSurah": {
+    "description": "Under the number of words of the sūra on screen built on this root."
+  },
+  "study_ringCaption": "Its forms, and how often each is read",
+  "@study_ringCaption": {
+    "description": "Caption under the ring of the root's lemmas."
+  },
+  "study_otherAyas": "Other ayas",
+  "@study_otherAyas": {
+    "description": "Heading over the list of other ayas the root is read in."
+  },
+  "study_position": "{ref} · word {n}/{total}",
+  "@study_position": {
+    "description": "Top right of the reading screen: the aya and word open, and where that word falls in the sūra.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "study_backTo": "Back to {ref}",
+  "@study_backTo": {
+    "description": "Button that leaves another aya and returns to the reading position.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "study_readFromHere": "Read this sūra from here",
+  "@study_readFromHere": {
+    "description": "Under another aya: opens that aya's sūra at that aya."
+  },
+  "study_pray": "Pray",
+  "@study_pray": {
+    "description": "App bar action on the reading screen: pray the ayas around the one open."
+  },
+  "study_recite": "Recite",
+  "@study_recite": {
+    "description": "Screen-reader label of the play button in the reading screen's app bar."
+  },
+  "study_pauseRecitation": "Pause the recitation",
+  "@study_pauseRecitation": {
+    "description": "Screen-reader label of the play button while it is reciting."
+  },
+  "study_markUnderstood": "Mark aya {ref} understood",
+  "@study_markUnderstood": {
+    "description": "Screen-reader label of an aya's number circle, which marks the aya understood.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "study_openRoot": "Open the root {root}",
+  "@study_openRoot": {
+    "description": "Screen-reader label of the root letters in the reading screen's sheet, which open the root's own screen.",
+    "placeholders": {
+      "root": {
+        "type": "String"
+      }
+    }
   }
 }

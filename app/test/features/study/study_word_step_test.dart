@@ -4,20 +4,19 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/nav.dart';
-import 'package:wird/widgets/nocturne_button.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
 import '../../offline.dart';
 import '../../wird.dart';
 
-/// The arrows in the root panel: the reader walks the passage a word at a
-/// time, reading what each one is built from, instead of hunting for the next
-/// word to tap.
+/// The arrows in the root sheet: the reader walks the sūra a word at a time,
+/// reading what each one is built from, instead of hunting for the next word
+/// to tap. They are what a reader who cannot drag, or a screen reader, walks
+/// with, so they do everything the swipe does.
 ///
-/// The unit is the word and the reach is the passage — every word of it,
-/// particles included. A walk that stopped at the acted set would stop mid-aya
-/// on a visit, where the set is one aya and the sūra around it is on screen.
+/// The unit is the word and the reach is the sūra — every word of it,
+/// particles included.
 void main() {
   late Database db;
   late AudioCache audio;
@@ -49,17 +48,24 @@ void main() {
   }
 
   bool dark(WidgetTester tester, Finder arrow) =>
-      tester.widget<NocturneStep>(arrow).onPressed == null;
+      tester.widget<GestureDetector>(arrow).onTap == null;
+
+  /// A root as the sheet names it, over the word open. The ring further down
+  /// the sheet prints the same letters at its centre.
+  Finder rootNamed(String display) => find.descendant(
+    of: find.byKey(const Key('swipe')),
+    matching: find.text(display),
+  );
 
   testWidgets('the next arrow skips a word or stays put instead of opening the '
       'next word of the aya', (tester) async {
     await openStudy(tester);
-    expect(find.text('ق ر أ'), findsOneWidget);
+    expect(rootNamed('ق ر أ'), findsOneWidget);
 
     await step(tester, next);
 
-    expect(find.text('س م و'), findsOneWidget);
-    expect(find.text('ق ر أ'), findsNothing);
+    expect(rootNamed('س م و'), findsOneWidget);
+    expect(rootNamed('ق ر أ'), findsNothing);
   });
 
   testWidgets('a word with no root stops the walk dead instead of being one '
@@ -70,43 +76,40 @@ void main() {
     await step(tester, next, times: 3);
 
     expect(find.text('No root'), findsOneWidget);
-    expect(
-      find.text('No word in this set carries a root.'),
-      findsNothing,
-      reason: 'that sentence is about the set, and this set is full of roots',
-    );
     expect(dark(tester, next), isFalse);
     expect(dark(tester, previous), isFalse);
 
     await step(tester, next);
 
-    expect(find.text('خ ل ق'), findsOneWidget);
+    expect(rootNamed('خ ل ق'), findsOneWidget);
   });
 
   testWidgets('the walk stops at the edge of the acted set, leaving the ayas '
       'the reader is looking at out of reach', (tester) async {
     // A visit: the set is aya 10 alone, and the sūra around it is the reading.
     await openStudy(tester, target: 96010);
-    expect(find.text('ع ب د'), findsOneWidget);
+    expect(rootNamed('ع ب د'), findsOneWidget);
 
     // عبد, إذا, صلى — then out of the acted aya and into the next one.
     await step(tester, next, times: 3);
 
-    expect(find.text('ر أ ي'), findsOneWidget);
+    expect(rootNamed('ر أ ي'), findsOneWidget);
   });
 
   testWidgets('an arrow with nowhere to go is still lit, so the reader presses '
       'it and nothing happens', (tester) async {
     await openStudy(tester);
 
-    expect(dark(tester, previous), isTrue);
+    expect(dark(tester, previous), isTrue, reason: 'the first word of 96');
     expect(dark(tester, next), isFalse);
 
-    // Twenty words in the five ayas, and the panel opens on the first.
-    await step(tester, next, times: 19);
+    // The last aya of the sūra has five words, and it opens on the first.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await openStudy(tester, target: 96019);
+    await step(tester, next, times: 4);
 
-    expect(find.text('ع ل م'), findsOneWidget);
-    expect(dark(tester, next), isTrue);
+    expect(rootNamed('ق ر ب'), findsOneWidget);
+    expect(dark(tester, next), isTrue, reason: 'the last word of 96');
     expect(dark(tester, previous), isFalse);
   });
 
@@ -118,7 +121,7 @@ void main() {
     await tester.tap(next);
     await tester.pumpAndSettle();
 
-    expect(find.text('ر ب ب'), findsOneWidget);
+    expect(rootNamed('ر ب ب'), findsOneWidget);
   });
 
   testWidgets('a word whose root the corpus lost pins the reader on the word '
@@ -129,18 +132,21 @@ void main() {
     await step(tester, next);
 
     expect(find.text('No root'), findsOneWidget);
-    expect(find.text('ق ر أ'), findsNothing);
+    expect(rootNamed('ق ر أ'), findsNothing);
   });
 
-  testWidgets('folding the panel on a word with no root leaves a strip that '
-      'cannot be unfolded again', (tester) async {
+  testWidgets('expanding the sheet on a word with no root leaves a sheet that '
+      'cannot be brought back down', (tester) async {
     await openStudy(tester);
     await step(tester, next, times: 3);
 
-    await tester.tap(find.byKey(const Key('toggle root panel')));
+    await tester.tap(find.byKey(const Key('sheet handle')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('toggle root panel')));
+    expect(find.byKey(const Key('strip')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('sheet handle')));
     await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('strip')), findsNothing);
 
     expect(find.text('No root'), findsOneWidget);
     expect(next, findsOneWidget);

@@ -1768,6 +1768,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.'**
   String get aboutSelfTerms;
+
+  /// Between the two neighbouring words in the root sheet's hint row: dragging the sheet sideways moves to them.
+  ///
+  /// In en, this message translates to:
+  /// **'swipe'**
+  String get study_swipe;
+
+  /// Screen-reader label of the root sheet's handle while the sūra fills the top half.
+  ///
+  /// In en, this message translates to:
+  /// **'Show counts, forms and other ayas'**
+  String get study_expandSheet;
+
+  /// Screen-reader label of the root sheet's handle while it fills the screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the whole sūra again'**
+  String get study_collapseSheet;
+
+  /// Small heading over the numbered senses of the root.
+  ///
+  /// In en, this message translates to:
+  /// **'Senses'**
+  String get study_senses;
+
+  /// Heading of the card that says what the word does in this aya. {gloss} is the word's gloss.
+  ///
+  /// In en, this message translates to:
+  /// **'In this verse · {gloss}'**
+  String study_inThisVerse(String gloss);
+
+  /// Under a word that has no root, at the foot of the root sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Particles and pronouns have no three-letter root. Swipe on to the next word.'**
+  String get study_particleNote;
+
+  /// The row that opens the lower part of the root sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts, forms, other ayas'**
+  String get study_moreRow;
+
+  /// Heading over the three count tiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Across the Qur\'an'**
+  String get study_acrossQuran;
+
+  /// Under the number of words in the Qur'an built on this root.
+  ///
+  /// In en, this message translates to:
+  /// **'this root'**
+  String get study_countRoot;
+
+  /// Before the Arabic of the word's lemma, under the number of times that lemma is read.
+  ///
+  /// In en, this message translates to:
+  /// **'as'**
+  String get study_countLemma;
+
+  /// Under the number of words of the sūra on screen built on this root.
+  ///
+  /// In en, this message translates to:
+  /// **'in this sūra'**
+  String get study_countSurah;
+
+  /// Caption under the ring of the root's lemmas.
+  ///
+  /// In en, this message translates to:
+  /// **'Its forms, and how often each is read'**
+  String get study_ringCaption;
+
+  /// Heading over the list of other ayas the root is read in.
+  ///
+  /// In en, this message translates to:
+  /// **'Other ayas'**
+  String get study_otherAyas;
+
+  /// Top right of the reading screen: the aya and word open, and where that word falls in the sūra.
+  ///
+  /// In en, this message translates to:
+  /// **'{ref} · word {n}/{total}'**
+  String study_position(String ref, int n, int total);
+
+  /// Button that leaves another aya and returns to the reading position.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {ref}'**
+  String study_backTo(String ref);
+
+  /// Under another aya: opens that aya's sūra at that aya.
+  ///
+  /// In en, this message translates to:
+  /// **'Read this sūra from here'**
+  String get study_readFromHere;
+
+  /// App bar action on the reading screen: pray the ayas around the one open.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray'**
+  String get study_pray;
+
+  /// Screen-reader label of the play button in the reading screen's app bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Recite'**
+  String get study_recite;
+
+  /// Screen-reader label of the play button while it is reciting.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause the recitation'**
+  String get study_pauseRecitation;
+
+  /// Screen-reader label of an aya's number circle, which marks the aya understood.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark aya {ref} understood'**
+  String study_markUnderstood(String ref);
+
+  /// Screen-reader label of the root letters in the reading screen's sheet, which open the root's own screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the root {root}'**
+  String study_openRoot(String root);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

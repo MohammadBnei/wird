@@ -10,10 +10,10 @@ import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/features/settings/settings_screen.dart';
+import 'package:wird/features/study/root_sheet.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/theme/nocturne.dart';
-import 'package:wird/widgets/nocturne_button.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -50,8 +50,14 @@ Finder arabic(int wordId) =>
 Text arabicOf(WidgetTester tester, int wordId) =>
     tester.widget<Text>(arabic(wordId));
 
-/// The line under a word's Arabic, which says the word has a root, and at
-/// full accent which root is the one open.
+/// A root as the sheet names it, over the word open. The ring further down
+/// the sheet prints the same letters at its centre.
+Finder rootNamed(String display) => find.descendant(
+  of: find.byKey(const Key('swipe')),
+  matching: find.text(display),
+);
+
+/// The line under a word's Arabic, which says the word has a root.
 Color underlineOf(WidgetTester tester, int wordId) {
   final box = tester.widget<Container>(
     find.ancestor(of: arabic(wordId), matching: find.byType(Container)).first,
@@ -59,12 +65,19 @@ Color underlineOf(WidgetTester tester, int wordId) {
   return ((box.decoration! as BoxDecoration).border! as Border).bottom.color;
 }
 
-/// Whether a word is drawn as the one the reader is looking at: its rule lit
-/// to the accent, where every other rooted word wears the same rule in grey.
-/// A frame and a glow said this before and both reached the Arabic.
-bool lit(WidgetTester tester, int wordId) =>
-    underlineOf(tester, wordId) ==
-    Nocturne.of(tester.element(tile(wordId))).accent;
+/// Whether a word is drawn as the one the reader is looking at: it sits on
+/// the filled chip the design draws, which no other word wears.
+bool lit(WidgetTester tester, int wordId) {
+  final chip = tester.widget<Container>(
+    find.descendant(of: tile(wordId), matching: find.byType(Container)).first,
+  );
+  return (chip.decoration as BoxDecoration?)?.color ==
+      Nocturne.of(tester.element(tile(wordId))).color('accent-800');
+}
+
+/// The number that closes an aya, which is also how it is marked understood.
+Finder mark(int ayahId) =>
+    find.byWidgetPredicate((w) => w is AyaMark && w.aya.id == ayahId);
 
 void main() {
   late Database db;
@@ -121,19 +134,25 @@ void main() {
     }
   }
 
-  testWidgets('a set that crosses a sūra boundary drops the ayas on the far '
-      'side of it', (tester) async {
-    await db.execute(
-      "INSERT INTO ayah_understood SELECT id, '' FROM ayahs "
-      'WHERE surah_id = 96 AND number < 19',
-    );
+  testWidgets(
+    'a set that crosses a sūra boundary drops the ayas on the far '
+    'side of it',
+    (tester) async {
+      await db.execute(
+        "INSERT INTO ayah_understood SELECT id, '' FROM ayahs "
+        'WHERE surah_id = 96 AND number < 19',
+      );
 
-    await openStudy(tester);
+      await openStudy(tester);
 
-    expect(find.text(await word(db, 96019001)), findsOneWidget);
-    expect(find.text(await word(db, 68001001)), findsOneWidget);
-    expect(find.textContaining('Al-Qalam'), findsOneWidget);
-  });
+      expect(find.text(await word(db, 96019001)), findsOneWidget);
+      expect(find.text(await word(db, 68001001)), findsOneWidget);
+      expect(find.textContaining('Al-Qalam'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the reader holds one whole sūra, so no set
+    // crosses into the next
+    skip: true,
+  );
 
   testWidgets('the aya paints left to right, or loses the harakat the corpus '
       'stores', (tester) async {
@@ -150,10 +169,11 @@ void main() {
     expect(painted.style!.fontFamily, Nocturne.arabicFamily);
   });
 
-  testWidgets('tapping a word blanks the aya while the root panel catches up',
-      (tester) async {
+  testWidgets('tapping a word blanks the aya while the root panel catches up', (
+    tester,
+  ) async {
     await openStudy(tester);
-    expect(find.text('ق ر أ'), findsOneWidget);
+    expect(rootNamed('ق ر أ'), findsOneWidget);
 
     await tester.tap(tile(96002004));
     await tester.pump();
@@ -164,51 +184,62 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    expect(find.text('ع ل ق'), findsOneWidget);
-    expect(find.text('ق ر أ'), findsNothing);
+    expect(rootNamed('ع ل ق'), findsOneWidget);
+    expect(rootNamed('ق ر أ'), findsNothing);
   });
 
-  testWidgets('tapping a word that carries no root throws away the root the '
-      'reader was reading', (tester) async {
-    await openStudy(tester);
+  testWidgets(
+    'tapping a word that carries no root throws away the root the '
+    'reader was reading',
+    (tester) async {
+      await openStudy(tester);
 
-    await tester.tap(tile(96001004));
-    await tester.pumpAndSettle();
+      await tester.tap(tile(96001004));
+      await tester.pumpAndSettle();
 
-    expect(find.text('ق ر أ'), findsOneWidget);
-  });
+      expect(rootNamed('ق ر أ'), findsOneWidget);
+    },
+    // Removed by ADR 0014: a tap on a particle opens it in the sheet
+    skip: true,
+  );
 
   testWidgets('a word with no root wears the rule that says a root is under '
       'it, now the arrows can walk onto one', (tester) async {
     await openStudy(tester);
 
-    // ٱلَّذِى, the set's fourth word and its first particle.
+    // ٱلَّذِى, the sūra's fourth word and its first particle.
     for (var i = 0; i < 3; i++) {
       await tester.tap(find.byKey(const Key('next word')));
       await tester.pumpAndSettle();
     }
 
     expect(find.text('No root'), findsOneWidget);
-    expect(lit(tester, 96001004), isFalse);
+    expect(underlineOf(tester, 96001004), Colors.transparent);
   });
 
-  testWidgets('the screen puts an aya the reader understood out of order back '
-      'in front of them', (tester) async {
-    await markSetUnderstood(db, newOpId(), [96002]);
+  testWidgets(
+    'the screen puts an aya the reader understood out of order back '
+    'in front of them',
+    (tester) async {
+      await markSetUnderstood(db, newOpId(), [96002]);
 
-    await openStudy(tester);
+      await openStudy(tester);
 
-    expect(tile(96001001), findsOneWidget);
-    expect(
-      tile(96002004),
-      findsNothing,
-      reason: 'aya 2 is understood, so the set ends before it',
-    );
-    // The sentence spelling the marks out lives in the unfolded header.
-    await tester.tap(find.byKey(const Key('toggle header')));
-    await tester.pumpAndSettle();
-    expect(find.text('No aya marked understood yet'), findsOneWidget);
-  });
+      expect(tile(96001001), findsOneWidget);
+      expect(
+        tile(96002004),
+        findsNothing,
+        reason: 'aya 2 is understood, so the set ends before it',
+      );
+      // The sentence spelling the marks out lives in the unfolded header.
+      await tester.tap(find.byKey(const Key('toggle header')));
+      await tester.pumpAndSettle();
+      expect(find.text('No aya marked understood yet'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the reader shows the whole sūra, not a set that
+    // ends before an understood aya
+    skip: true,
+  );
 
   testWidgets('turning the gloss off takes the Arabic with it', (tester) async {
     await openStudy(tester);
@@ -223,8 +254,9 @@ void main() {
     expect(find.text(await word(db, 96002004)), findsOneWidget);
   });
 
-  testWidgets('the Arabic size setting leaves the aya at the size it was',
-      (tester) async {
+  testWidgets('the Arabic size setting leaves the aya at the size it was', (
+    tester,
+  ) async {
     await openStudy(tester);
     final before = arabicOf(tester, 96001001).style!.fontSize;
 
@@ -243,12 +275,12 @@ void main() {
     await openStudy(tester);
     final rows = await db.query('words', where: 'id = 96002004');
     final translit = rows.single['translit']! as String;
-    expect(find.text('ق ر أ'), findsOneWidget);
+    expect(rootNamed('ق ر أ'), findsOneWidget);
 
     await tester.tap(tile(96002004));
     await tester.pumpAndSettle();
 
-    expect(find.text('ع ل ق'), findsOneWidget);
+    expect(rootNamed('ع ل ق'), findsOneWidget);
     expect(
       find.descendant(of: tile(96002004), matching: find.text(translit)),
       findsNothing,
@@ -268,21 +300,24 @@ void main() {
   testWidgets('a word carrying no root is a dead tile that answers a tap with '
       'nothing at all', (tester) async {
     await openStudy(tester);
-    final rows = await db.query('words', where: 'id = 96001004');
-    final translit = rows.single['translit']! as String;
 
     await tester.tap(tile(96001004));
     await tester.pumpAndSettle();
 
+    expect(lit(tester, 96001004), isTrue);
     expect(
-      find.descendant(of: tile(96001004), matching: find.text(translit)),
+      find.descendant(
+        of: find.byType(RootSheet),
+        matching: find.text('No root'),
+      ),
       findsOneWidget,
-      reason: 'with no root to open, the tap falls through to the word sound',
+      reason: 'the sheet opens on the particle and says it has no root',
     );
   });
 
-  testWidgets('nothing on the row says which word the open root belongs to',
-      (tester) async {
+  testWidgets('nothing on the row says which word the open root belongs to', (
+    tester,
+  ) async {
     await openStudy(tester);
     final set = (await nextSet(db, ReadingOrder.nuzul))!;
     final ids = [
@@ -290,16 +325,22 @@ void main() {
         for (final word in aya.words) word.id,
     ];
     expect(
-      [for (final id in ids) if (drawn(id) && lit(tester, id)) id],
+      [
+        for (final id in ids)
+          if (drawn(id) && lit(tester, id)) id,
+      ],
       [96001001],
-      reason: 'the panel opens on the first rooted word and says so',
+      reason: 'the sheet opens on the first word and the page says so',
     );
 
     await tester.tap(tile(96002004));
     await tester.pumpAndSettle();
 
     expect(
-      [for (final id in ids) if (drawn(id) && lit(tester, id)) id],
+      [
+        for (final id in ids)
+          if (drawn(id) && lit(tester, id)) id,
+      ],
       [96002004],
       reason: 'one word at a time wears the accent, and it is the one tapped',
     );
@@ -345,9 +386,10 @@ void main() {
     // fake clock a widget test runs on.
     final dir = (await tester.runAsync(() async {
       final dir = await tempAudioDir();
-      await AudioCache(dir, fetch: FakeCdn().call).prefetch([
-        downloaded.relPath,
-      ]);
+      await AudioCache(
+        dir,
+        fetch: FakeCdn().call,
+      ).prefetch([downloaded.relPath]);
       return dir;
     }))!;
     await pumpPhone(
@@ -379,7 +421,8 @@ void main() {
       expect(
         underlineOf(tester, word.id) == Colors.transparent,
         word.root == null,
-        reason: 'no recitation for ${word.id}, and the rule is not the '
+        reason:
+            'no recitation for ${word.id}, and the rule is not the '
             'recitation\'s to spend',
       );
     }
@@ -395,10 +438,9 @@ void main() {
       for (final id in ids)
         tester
             .getRect(
-              find.ancestor(
-                of: arabic(id),
-                matching: find.byType(Container),
-              ).first,
+              find
+                  .ancestor(of: arabic(id), matching: find.byType(Container))
+                  .first,
             )
             .bottom,
     };
@@ -415,22 +457,24 @@ void main() {
 
   testWidgets('the aya mark floats off the baseline', (tester) async {
     await openStudy(tester);
-    // The mark closes its aya, so the row it rides is the row the aya's last
-    // word is on.
+    // The mark closes its aya. Al-ʿAlaq 1 fills its row on a phone, so the
+    // mark wraps onto a row of its own, and the baseline it has to ride is
+    // the one a word would have there: as far below the row's top as the
+    // last word's baseline is below the top of its own row.
     final last = arabic(96001005);
     final painted = tester.widget<Text>(last);
     final baseline = TextPainter(
       text: TextSpan(text: painted.data, style: painted.style),
       textDirection: TextDirection.rtl,
     )..layout();
+    final drop =
+        tester.getRect(last).top -
+        tester.getRect(tile(96001005)).top +
+        baseline.computeDistanceToActualBaseline(TextBaseline.alphabetic);
 
     expect(
       tester.getCenter(find.text('١')).dy,
-      closeTo(
-        tester.getRect(last).top +
-            baseline.computeDistanceToActualBaseline(TextBaseline.alphabetic),
-        4,
-      ),
+      closeTo(tester.getRect(mark(96001)).top + drop, 4),
       reason: 'the mark rides the Arabic baseline, not the top of the row',
     );
   });
@@ -438,18 +482,16 @@ void main() {
   testWidgets('the recitation offers to play a set that is not on the phone, '
       'and stalls on a file it cannot fetch', (tester) async {
     await openStudy(tester);
-    // The bar is pinned in the footer, so nothing is scrolled to reach it.
-    // It used to be an item in the sliver list under the last aya of the set,
-    // and this test had to drag two thousand pixels before the play button
-    // existed at all — which is the finding, not the setup.
-    expect(find.text('Not downloaded'), findsOneWidget);
-    final play = tester.widget<NocturneButton>(
+    // The play button sits in the reader's own bar, so nothing is scrolled
+    // to reach it, and a dark button says why it is dark.
+    final play = tester.widget<IconButton>(
       find.ancestor(
         of: find.byIcon(Icons.play_arrow),
-        matching: find.byType(NocturneButton),
+        matching: find.byType(IconButton),
       ),
     );
     expect(play.onPressed, isNull);
+    expect(play.tooltip, 'Not downloaded');
   });
 
   testWidgets('the dark play button offers a download of a recitation the '
@@ -460,8 +502,8 @@ void main() {
     await db.delete('ayah_audio');
     await openStudy(tester);
 
-    expect(find.text('No recitation for this set'), findsOneWidget);
-    expect(find.text('Not downloaded'), findsNothing);
+    expect(find.byTooltip('No recitation for this set'), findsOneWidget);
+    expect(find.byTooltip('Not downloaded'), findsNothing);
   });
 
   testWidgets('the word panel names the root and keeps its sense to itself, so '
@@ -471,128 +513,135 @@ void main() {
     // the panel opens on for this set's first rooted word.
     await seedSenses(db, {'قرأ': 'a recitation, the quran; to recite'});
     await openStudy(tester);
-    final panel = find.byKey(const Key('root panel'));
+    final panel = find.byType(RootSheet);
 
     expect(
-      find.descendant(of: panel, matching: find.text('CORE SENSE')),
+      find.descendant(of: panel, matching: find.text('SENSES')),
       findsOneWidget,
     );
+    for (final sense in ['a recitation, the quran', 'to recite']) {
+      expect(
+        find.descendant(of: panel, matching: find.text(sense)),
+        findsOneWidget,
+      );
+    }
+    // The gloss in this aya answers a different question and stays.
     expect(
       find.descendant(
         of: panel,
-        matching: find.text('a recitation, the quran; to recite'),
+        matching: find.textContaining('IN THIS VERSE'),
       ),
       findsOneWidget,
     );
-    // The gloss in this aya answers a different question and stays.
-    expect(
-      find.descendant(of: panel, matching: find.text('IN THIS AYA')),
-      findsOneWidget,
-    );
 
-    // ربب was not in the pack. Unguarded is the point: the section is still
-    // drawn and says why it is empty, because a panel that simply stopped
-    // printing a sense reads as a section someone forgot. And since a pack HAS
-    // been fetched here, the sentence is the first of the two absences —
-    // nobody wrote one for this root — not "nothing has been downloaded".
+    // ربب was not in the pack. ADR 0014 draws no section it has no data for,
+    // so the heading goes with the sense rather than standing over nothing.
     await tester.tap(tile(96001003));
     await tester.pumpAndSettle();
     expect(
-      find.descendant(of: panel, matching: find.text('CORE SENSE')),
-      findsOneWidget,
-      reason: 'a root with no sense still gets the heading',
+      find.descendant(of: panel, matching: find.text('SENSES')),
+      findsNothing,
     );
-    expect(
-      find.descendant(
-        of: panel,
-        matching: find.textContaining('None has been written for this root'),
-      ),
-      findsOneWidget,
-      reason: 'the machine chose the absence, so it says so',
-    );
+  });
+
+  // The failure: the reading screen draws the sense and no way to say it is
+  // wrong, so the one signal ADR 0010 corrects senses by stops arriving from
+  // the screen where senses are read.
+  testWidgets('a reader who finds the sense wrong on the reading screen has no '
+      'way to say so', (tester) async {
+    await seedSenses(db, {'قرأ': 'a recitation, the quran; to recite'});
+    await openStudy(tester);
+
+    await tester.tap(find.bySemanticsLabel('This sense is wrong'));
+    await tester.pumpAndSettle();
+
+    final queued = await db.query('outbox', where: "kind = 'report_written'");
+    expect(queued, hasLength(1));
+    expect(queued.single['body'] as String, contains('قرأ'));
   });
 
   // Nothing in app/lib sets a preferred orientation and the manifest handles
   // the configuration change itself, so the app rotates; the system text size
-  // is the reader's and goes to 2x. The transport and the root's sense each
-  // added a band to the fixed chrome, and at every one of these shapes the sum
-  // passed the window: sideways as a red overflow, and — once the panel was
-  // capped and scrolled — as a Mark button quietly off the bottom of the
-  // screen, which is worse, because the overflow at least says so.
+  // is the reader's and goes to 2x. The bar, the sūra and the sheet share the
+  // window, and at every one of these shapes something has to give: a bar row
+  // that runs off the right, or a sheet whose arrows fall off the bottom, or a
+  // sūra squeezed to nothing.
   //
   // 874x402 is the same phone sideways, 320x568 the smallest phone still sold,
   // and 2.0 the top of the system text slider.
   for (final window in const [Size(402, 874), Size(320, 568), Size(874, 402)]) {
     for (final scale in const [1.0, 2.0]) {
-      testWidgets(
-        'the reader cannot advance the walk at ${window.width.toInt()}x'
-        '${window.height.toInt()} at ${scale}x text: the one action that '
-        'marks the set is off the screen, or the reading is gone from it',
-        (tester) async {
-          tester.view.physicalSize = window;
-          tester.view.devicePixelRatio = 1;
-          tester.platformDispatcher.textScaleFactorTestValue = scale;
-          addTearDown(tester.view.reset);
-          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-          await tester.pumpWidget(
-            await wirdAround(
-              db,
-              StudyScreen(db: db),
-              route: Routes.study,
-              cache: audio,
-            ),
-          );
-          await tester.pumpAndSettle();
+      testWidgets('the reader cannot walk the sūra at ${window.width.toInt()}x'
+          '${window.height.toInt()} at ${scale}x text: the arrows or the prayer '
+          'are off the screen, or the reading is gone from it', (tester) async {
+        tester.view.physicalSize = window;
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        unmountAtTearDown(tester);
+        await tester.pumpWidget(
+          await wirdAround(
+            db,
+            StudyScreen(db: db),
+            route: Routes.study,
+            cache: audio,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-          // At 1.4x and up a Row inside the chrome runs off the RIGHT — a
-          // horizontal defect of its own, older than the cap and untouched by
-          // it. Taken so the vertical claims below can be made at 2.0 as well;
-          // they are geometric, so a Column that overflowed downwards again
-          // would fail them whether or not it also raised this.
-          final overflowed = tester.takeException();
-          if (scale == 1.0) expect(overflowed, isNull);
+        expect(tester.takeException(), isNull, reason: 'nothing overflows');
 
-          // `Mark set understood` is the only way through the Qur'an. It is
-          // the last thing in the panel, the panel is capped, and a cap over a
-          // scroll view is a clip — so this is the assertion that says the
-          // button is pinned and not scrolled out.
-          final mark = tester.getRect(find.text('Mark set understood'));
+        // The arrows are the walk for a reader who cannot drag, and Pray is
+        // the act the reading is for.
+        for (final control in [
+          find.byKey(const Key('next word')),
+          find.byKey(const Key('previous word')),
+          find.byKey(const Key('pray')),
+        ]) {
+          final rect = tester.getRect(control);
           expect(
-            window.contains(mark.topLeft) && window.contains(mark.bottomRight),
+            window.contains(rect.topLeft) && window.contains(rect.bottomRight),
             isTrue,
-            reason: 'the button is inside the window, at $mark',
+            reason: '$control is inside the window, at $rect',
           );
+        }
 
-          // What the panel gives up is the reading's height, so the cap needs
-          // a floor as well as a ceiling. 75px is one aya tile at the default
-          // text size, measured; sideways the reading is a strip, but never
-          // less than one word of it. `greaterThan(0)` passed here at 45.6px
-          // and guarded nothing.
-          expect(
-            tester.getRect(find.byType(CustomScrollView)).height,
-            greaterThanOrEqualTo(75),
-          );
-        },
-      );
+        // What the sheet takes is the reading's height, so the reading
+        // needs a floor. 75px is one aya tile at the default text size.
+        final reading = tester.getRect(find.byType(CustomScrollView));
+        expect(reading.height, greaterThanOrEqualTo(75));
+        expect(
+          reading.overlaps(tester.getRect(tile(96001001))),
+          isTrue,
+          reason: 'the open word is in the part of the sūra on screen',
+        );
+      });
     }
   }
 
-  testWidgets('the reader is stuck in the order they started, with no way to '
-      'read the muṣḥaf from its first sūra', (tester) async {
-    await openStudy(tester);
-    expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
+  testWidgets(
+    'the reader is stuck in the order they started, with no way to '
+    'read the muṣḥaf from its first sūra',
+    (tester) async {
+      await openStudy(tester);
+      expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
 
-    await openSettings(tester);
-    await tester.tap(find.text('Muṣḥaf'));
-    await tester.pumpAndSettle();
-    // Reaching settings leaves the set behind — the drawer pops to home
-    // first — so the order is seen on the set the reader opens next.
-    await tester.pumpWidget(const SizedBox.shrink());
-    await openStudy(tester);
+      await openSettings(tester);
+      await tester.tap(find.text('Muṣḥaf'));
+      await tester.pumpAndSettle();
+      // Reaching settings leaves the set behind — the drawer pops to home
+      // first — so the order is seen on the set the reader opens next.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await openStudy(tester);
 
-    expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
-    expect(await readingOrder(db), ReadingOrder.mushaf);
-  });
+      expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
+      expect(await readingOrder(db), ReadingOrder.mushaf);
+    },
+    // Removed by ADR 0014: the reader reopens where it last stood (ADR
+    // 0015), so the order only picks where a first reading starts
+    skip: true,
+  );
 
   testWidgets('the microphone is asked for on the way into the prayer, where '
       'no dialog may appear', (tester) async {
@@ -614,96 +663,127 @@ void main() {
     expect(find.textContaining('Download recogniser'), findsOneWidget);
   });
 
-  testWidgets('the reader is carried off the set the moment they mark it, '
-      'before the marks they just made are on screen', (tester) async {
-    await openStudy(tester);
-    expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
+  testWidgets(
+    'the reader is carried off the set the moment they mark it, '
+    'before the marks they just made are on screen',
+    (tester) async {
+      await openStudy(tester);
+      expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
 
-    await tester.tap(find.text('Mark set understood'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Mark set understood'));
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
-    await tester.tap(find.byKey(const Key('toggle header')));
-    await tester.pumpAndSettle();
-    expect(find.text('Every aya in this set is understood'), findsOneWidget);
-    expect((await db.query('outbox')).length, 1);
-    expect((await db.query('ayah_understood')).length, 5);
+      expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
+      await tester.tap(find.byKey(const Key('toggle header')));
+      await tester.pumpAndSettle();
+      expect(find.text('Every aya in this set is understood'), findsOneWidget);
+      expect((await db.query('outbox')).length, 1);
+      expect((await db.query('ayah_understood')).length, 5);
 
-    await tester.tap(find.text('Next set'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining("Al-'Alaq 6"), findsOneWidget);
-  });
+      await tester.tap(find.text('Next set'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining("Al-'Alaq 6"), findsOneWidget);
+    },
+    // Removed by ADR 0014: there is no set to be carried off; a reader marks
+    // one aya at a time and stays where they are
+    skip: true,
+  );
 
-  testWidgets('the set the reader pulled wider is five ayas again when they '
-      'come back to screen 1a', (tester) async {
-    await openStudy(tester);
-    await openSettings(tester);
-    expect(find.text('5 ayas'), findsOneWidget);
+  testWidgets(
+    'the set the reader pulled wider is five ayas again when they '
+    'come back to screen 1a',
+    (tester) async {
+      await openStudy(tester);
+      await openSettings(tester);
+      expect(find.text('5 ayas'), findsOneWidget);
 
-    await widen(tester, 3);
+      await widen(tester, 3);
 
-    // Away from 1a and back, which is where an in-memory width is lost.
-    await tester.pumpWidget(const SizedBox.shrink());
-    await openStudy(tester);
+      // Away from 1a and back, which is where an in-memory width is lost.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await openStudy(tester);
 
-    expect(find.textContaining("Al-'Alaq 1–8"), findsOneWidget);
-  });
+      expect(find.textContaining("Al-'Alaq 1–8"), findsOneWidget);
+    },
+    // Removed by ADR 0014: the reader has no set to pull wider
+    skip: true,
+  );
 
-  testWidgets('the second set the reader marks is thrown away, because it is '
+  testWidgets('the second aya the reader marks is thrown away, because it is '
       'queued under the op id the first one already used', (tester) async {
     await openStudy(tester);
-    await openSettings(tester);
-    await widen(tester, 3);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await openStudy(tester);
 
-    await tester.tap(find.text('Mark set understood'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Next set'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Mark set understood'));
-    await tester.pumpAndSettle();
+    for (final aya in [96001, 96002]) {
+      await tester.ensureVisible(mark(aya));
+      await tester.pumpAndSettle();
+      // The number, not the box: the box carries the margin that lets the
+      // circle down onto the baseline, and a margin takes no tap.
+      await tester.tap(
+        find.descendant(of: mark(aya), matching: find.byType(Text)),
+      );
+      await tester.pumpAndSettle();
+    }
 
     expect(
-      (await db.query('ayah_understood')).length,
-      13,
-      reason: 'eight ayas pulled wide, then the five of the set after them',
+      (await db.query('ayah_understood')).map((r) => r['ayah_id']),
+      unorderedEquals([96001, 96002]),
     );
-    expect((await db.query('outbox')).length, 2);
+    final ops = await db.query(
+      'outbox',
+      where: 'kind = ?',
+      whereArgs: ['ayah_understood'],
+    );
+    expect(ops.map((op) => op['client_op_id']).toSet(), hasLength(2));
   });
 
-  testWidgets('a set pulled across an aya the reader already understood marks '
-      'it a second time, moving the day they understood it', (tester) async {
-    await markSetUnderstood(db, newOpId(), [96003]);
-    final before = await db.query('ayah_understood');
+  testWidgets(
+    'a set pulled across an aya the reader already understood marks '
+    'it a second time, moving the day they understood it',
+    (tester) async {
+      await markSetUnderstood(db, newOpId(), [96003]);
+      final before = await db.query('ayah_understood');
 
-    await openStudy(tester);
-    await openSettings(tester);
-    // The proposal stops before aya 3; the reader pulls the set across it.
-    expect(find.text('2 ayas'), findsOneWidget);
-    await widen(tester, 3);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await openStudy(tester);
-    expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
+      await openStudy(tester);
+      await openSettings(tester);
+      // The proposal stops before aya 3; the reader pulls the set across it.
+      expect(find.text('2 ayas'), findsOneWidget);
+      await widen(tester, 3);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await openStudy(tester);
+      expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
 
-    await tester.tap(find.text('Mark set understood'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Mark set understood'));
+      await tester.pumpAndSettle();
 
-    final ops = await db.query('outbox', orderBy: 'created_at, client_op_id');
-    expect(
-      jsonDecode(ops.last['body']! as String)['ayah_ids'],
-      [96001, 96002, 96004, 96005],
-      reason: 'the aya the set was pulled across is recited, not re-marked',
-    );
-    expect(await db.query('ayah_understood', where: 'ayah_id = 96003'), before);
-  });
+      final ops = await db.query('outbox', orderBy: 'created_at, client_op_id');
+      expect(jsonDecode(ops.last['body']! as String)['ayah_ids'], [
+        96001,
+        96002,
+        96004,
+        96005,
+      ], reason: 'the aya the set was pulled across is recited, not re-marked');
+      expect(
+        await db.query('ayah_understood', where: 'ayah_id = 96003'),
+        before,
+      );
+    },
+    // Removed by ADR 0014: the reader has no set to pull across an
+    // understood aya
+    skip: true,
+  );
 
   testWidgets('the prayer is lost when the reader leaves the prayer screen by '
       'the back gesture instead of its Exit button', (tester) async {
     await openStudy(tester);
-    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    // The prayer takes the ayas around the open word, the reading width wide.
+    final set = (await ayaSet(
+      db,
+      ReadingOrder.nuzul,
+      96001,
+      ayas: await readingWidth(db, ReadingOrder.nuzul),
+    ))!;
 
-    await tester.tap(find.text('Pray this set'));
+    await tester.tap(find.byKey(const Key('pray')));
     await tester.pumpAndSettle();
     expect(find.text('praying'), findsOneWidget);
 
@@ -713,8 +793,11 @@ void main() {
 
     final prayers = await db.query('set_prayers');
     expect(prayers.single['set_id'], set.id);
-    final op = (await db.query('outbox')).single;
-    expect(op['kind'], 'set_prayed');
+    final op = (await db.query(
+      'outbox',
+      where: 'kind = ?',
+      whereArgs: ['set_prayed'],
+    )).single;
     expect(jsonDecode(op['body']! as String), {
       'id': op['client_op_id'],
       'set_id': set.id,

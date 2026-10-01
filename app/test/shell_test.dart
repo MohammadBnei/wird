@@ -77,10 +77,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 60));
   }
 
+  /// The reader hands its ayas to the recitation and then carries its own
+  /// play button; the transport that says what is sounding is the shell's,
+  /// on every other screen. So the set is opened, and the reader walks on.
+  Future<void> openTheSetAndLeave(
+    WidgetTester tester,
+    Recitation recitation,
+  ) async {
+    await openTheSet(tester, recitation);
+    await goTo(tester, 'Sūra index');
+  }
+
   testWidgets('a word sounding and the whole set sounding look the same, so '
       'the reader cannot tell which one they started', (tester) async {
     final recitation = downloaded;
-    await openTheSet(tester, recitation);
+    await openTheSetAndLeave(tester, recitation);
 
     unawaitedToggle(recitation);
     await beats(tester);
@@ -112,7 +123,7 @@ void main() {
     tester,
   ) async {
     final recitation = downloaded;
-    await openTheSet(tester, recitation);
+    await openTheSetAndLeave(tester, recitation);
     unawaitedToggle(recitation);
     await beats(tester);
 
@@ -128,7 +139,7 @@ void main() {
   testWidgets('the sounding word is drawn at the size the set label uses, '
       'where a fully vowelled Arabic word is a smudge', (tester) async {
     final recitation = downloaded;
-    await openTheSet(tester, recitation);
+    await openTheSetAndLeave(tester, recitation);
     final word =
         (await db.query(
               'words',
@@ -170,19 +181,25 @@ void main() {
     );
   });
 
-  testWidgets('the sign that a recitation is running scrolls away with the '
-      'words, so a reader who has scrolled sees nothing', (tester) async {
-    final recitation = downloaded;
-    await openTheSet(tester, recitation);
-    unawaitedToggle(recitation);
-    await beats(tester);
+  testWidgets(
+    'the sign that a recitation is running scrolls away with the '
+    'words, so a reader who has scrolled sees nothing',
+    (tester) async {
+      final recitation = downloaded;
+      await openTheSet(tester, recitation);
+      unawaitedToggle(recitation);
+      await beats(tester);
 
-    await tester.drag(find.byType(StudyScreen), const Offset(0, -400));
-    await beats(tester);
+      await tester.drag(find.byType(StudyScreen), const Offset(0, -400));
+      await beats(tester);
 
-    expect(find.text('RECITING THE SET'), findsOneWidget);
-    expect(find.byKey(const Key('stop sounding')), findsOneWidget);
-  });
+      expect(find.text('RECITING THE SET'), findsOneWidget);
+      expect(find.byKey(const Key('stop sounding')), findsOneWidget);
+    },
+    // Removed by ADR 0014: the transport left the reader, which carries its
+    // own play button in its bar
+    skip: true,
+  );
 
   testWidgets('the app opens on the set, with nothing saying which portion is '
       'waiting or whether it has been prayed', (tester) async {
@@ -346,8 +363,8 @@ void main() {
     // The burger, where the reader is, and the act the reading is for share
     // one row: a second bar above would push the title down off its centre.
     for (final beside in [
-      find.textContaining("Al-'Alaq 1–5"),
-      find.byKey(const Key('pray the set')),
+      find.byKey(const Key('surah name')),
+      find.byKey(const Key('pray')),
     ]) {
       expect(
         tester.getCenter(beside).dy,
@@ -356,7 +373,7 @@ void main() {
       );
     }
     expect(
-      tester.getRect(find.byKey(const Key('study header'))).top,
+      tester.getRect(find.byKey(const Key('surah name'))).top,
       lessThan(24),
       reason: 'the heading starts below a bar the shell drew',
     );

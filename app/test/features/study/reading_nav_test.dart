@@ -87,144 +87,197 @@ void main() {
     await tester.pump(const Duration(milliseconds: 60));
   }
 
-  testWidgets('the footer steps one aya while the screen is about a set, so a '
-      'reader who takes five at once is moved by four less than that', (
-    tester,
-  ) async {
-    await openStudy(tester);
-    expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
+  testWidgets(
+    'the footer steps one aya while the screen is about a set, so a '
+    'reader who takes five at once is moved by four less than that',
+    (tester) async {
+      await openStudy(tester);
+      expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
 
-    expect(stepSays(tester, 'next set'), '6–10');
-    await step(tester, 'next set');
+      expect(stepSays(tester, 'next set'), '6–10');
+      await step(tester, 'next set');
 
-    expect(find.textContaining("Al-'Alaq 6–10"), findsOneWidget);
-    expect(await db.query('ayah_understood'), isEmpty);
-  });
+      expect(find.textContaining("Al-'Alaq 6–10"), findsOneWidget);
+      expect(await db.query('ayah_understood'), isEmpty);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('the set the footer offers is reached by pressing the arrow, '
-      'not by marking the one on screen understood first', (tester) async {
-    await openStudy(tester);
+  testWidgets(
+    'the set the footer offers is reached by pressing the arrow, '
+    'not by marking the one on screen understood first',
+    (tester) async {
+      await openStudy(tester);
 
-    await step(tester, 'next set');
+      await step(tester, 'next set');
 
-    expect(await db.query('ayah_understood'), isEmpty);
-  });
+      expect(await db.query('ayah_understood'), isEmpty);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('a sūra read from the index is stepped through one aya at a '
-      'time, forgetting how much the reader takes at once', (tester) async {
-    await openStudy(tester, target: 2255);
+  testWidgets(
+    'a sūra read from the index is stepped through one aya at a '
+    'time, forgetting how much the reader takes at once',
+    (tester) async {
+      await openStudy(tester, target: 2255);
 
-    expect(stepSays(tester, 'next set'), '256–260');
-    await step(tester, 'next set');
+      expect(stepSays(tester, 'next set'), '256–260');
+      await step(tester, 'next set');
 
-    expect(find.textContaining('Al-Baqarah 256–260'), findsOneWidget);
-  });
+      expect(find.textContaining('Al-Baqarah 256–260'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('the set above the one being read is out of reach, so a sūra '
-      'can only be read forwards', (tester) async {
-    await openStudy(tester, target: 2255);
+  testWidgets(
+    'the set above the one being read is out of reach, so a sūra '
+    'can only be read forwards',
+    (tester) async {
+      await openStudy(tester, target: 2255);
 
-    expect(stepSays(tester, 'previous set'), '250–254');
-    await step(tester, 'previous set');
+      expect(stepSays(tester, 'previous set'), '250–254');
+      await step(tester, 'previous set');
 
-    expect(find.textContaining('Al-Baqarah 250–254'), findsOneWidget);
-  });
+      expect(find.textContaining('Al-Baqarah 250–254'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('a step up near the start of a sūra reaches back past its first '
-      'aya, into a sūra the reader did not ask for', (tester) async {
-    await openStudy(tester, target: 2003);
+  testWidgets(
+    'a step up near the start of a sūra reaches back past its first '
+    'aya, into a sūra the reader did not ask for',
+    (tester) async {
+      await openStudy(tester, target: 2003);
 
-    expect(stepSays(tester, 'previous set'), '1–2');
-  });
+      expect(stepSays(tester, 'previous set'), '1–2');
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('a step up near the start of a sūra opens a wider set than the '
-      'arrow named, so marking it closes ayas the reader never chose', (
-    tester,
-  ) async {
-    await openStudy(tester, target: 2003);
+  testWidgets(
+    'a step up near the start of a sūra opens a wider set than the '
+    'arrow named, so marking it closes ayas the reader never chose',
+    (tester) async {
+      await openStudy(tester, target: 2003);
 
-    await step(tester, 'previous set');
+      await step(tester, 'previous set');
 
-    expect(find.textContaining('Al-Baqarah 1–2'), findsOneWidget);
-  });
+      expect(find.textContaining('Al-Baqarah 1–2'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('a step down promises more ayas than the sūra it lands in has, '
-      'so the reader is offered a set that runs off the end of the text', (
-    tester,
-  ) async {
-    await openStudy(tester, target: 107007);
+  testWidgets(
+    'a step down promises more ayas than the sūra it lands in has, '
+    'so the reader is offered a set that runs off the end of the text',
+    (tester) async {
+      await openStudy(tester, target: 107007);
 
-    expect(stepSays(tester, 'next set'), '108:1–3');
-    await step(tester, 'next set');
+      expect(stepSays(tester, 'next set'), '108:1–3');
+      await step(tester, 'next set');
 
-    expect(find.textContaining('Al-Kawthar 1–3'), findsOneWidget);
-  });
+      expect(find.textContaining('Al-Kawthar 1–3'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('a step into a short sūra shrinks the reader’s grain to what '
-      'fitted there, so every step after it is narrower', (tester) async {
-    await openStudy(tester, target: 107007);
+  testWidgets(
+    'a step into a short sūra shrinks the reader’s grain to what '
+    'fitted there, so every step after it is narrower',
+    (tester) async {
+      await openStudy(tester, target: 107007);
 
-    await step(tester, 'next set');
+      await step(tester, 'next set');
 
-    expect(stepSays(tester, 'next set'), '109:1–5');
-  });
+      expect(stepSays(tester, 'next set'), '109:1–5');
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('a sūra opens at its first aya, where the step up is dark, so '
-      'the first press a reader makes on the footer does nothing', (
-    tester,
-  ) async {
-    await openStudy(tester, target: 2001);
+  testWidgets(
+    'a sūra opens at its first aya, where the step up is dark, so '
+    'the first press a reader makes on the footer does nothing',
+    (tester) async {
+      await openStudy(tester, target: 2001);
 
-    await step(tester, 'previous set');
+      await step(tester, 'previous set');
 
-    expect(find.textContaining('Al-Fatihah 3–7'), findsOneWidget);
-  });
+      expect(find.textContaining('Al-Fatihah 3–7'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('a step out of the sūra prints only the aya numbers, so 2:1 '
-      'offers "3–7" and lands the reader somewhere else entirely', (
-    tester,
-  ) async {
-    await openStudy(tester, target: 2001);
+  testWidgets(
+    'a step out of the sūra prints only the aya numbers, so 2:1 '
+    'offers "3–7" and lands the reader somewhere else entirely',
+    (tester) async {
+      await openStudy(tester, target: 2001);
 
-    expect(stepSays(tester, 'previous set'), '1:3–7');
-    expect(stepSays(tester, 'next set'), '2–6');
-  });
+      expect(stepSays(tester, 'previous set'), '1:3–7');
+      expect(stepSays(tester, 'next set'), '2–6');
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('the first aya of the Qur’an offers a step above it, onto ayas '
-      'the corpus cannot serve', (tester) async {
-    await openStudy(tester, target: 1001);
+  testWidgets(
+    'the first aya of the Qur’an offers a step above it, onto ayas '
+    'the corpus cannot serve',
+    (tester) async {
+      await openStudy(tester, target: 1001);
 
-    expect(stepSays(tester, 'previous set'), isNull);
-    await step(tester, 'previous set');
+      expect(stepSays(tester, 'previous set'), isNull);
+      await step(tester, 'previous set');
 
-    expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
-  });
+      expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('the last aya of the Qur’an offers a step below it, onto ayas '
-      'the corpus cannot serve', (tester) async {
-    await openStudy(tester, target: 114006);
+  testWidgets(
+    'the last aya of the Qur’an offers a step below it, onto ayas '
+    'the corpus cannot serve',
+    (tester) async {
+      await openStudy(tester, target: 114006);
 
-    expect(stepSays(tester, 'next set'), isNull);
-    await step(tester, 'next set');
+      expect(stepSays(tester, 'next set'), isNull);
+      await step(tester, 'next set');
 
-    expect(find.textContaining('An-Nas 6'), findsOneWidget);
-  });
+      expect(find.textContaining('An-Nas 6'), findsOneWidget);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('the middle of the footer names what the index answers with '
-      'rather than the move it makes, so the reader asks what it is', (
-    tester,
-  ) async {
-    await openStudy(tester);
+  testWidgets(
+    'the middle of the footer names what the index answers with '
+    'rather than the move it makes, so the reader asks what it is',
+    (tester) async {
+      await openStudy(tester);
 
-    expect(find.text('Go to…'), findsOneWidget);
-    expect(find.textContaining('Sūra or aya'), findsNothing);
-  });
+      expect(find.text('Go to…'), findsOneWidget);
+      expect(find.textContaining('Sūra or aya'), findsNothing);
+    },
+    // Removed by ADR 0014: the set stepper in the reader footer
+    skip: true,
+  );
 
-  testWidgets('the footer cannot reach the sūra index, so changing sūra means '
+  testWidgets('the reader cannot reach the sūra index, so changing sūra means '
       'leaving the reading by the drawer', (tester) async {
     await openStudy(tester);
 
-    await tester.tap(find.byKey(const Key('open the index')));
+    await tester.tap(find.byKey(const Key('surah name')));
     await tester.pumpAndSettle();
 
     expect(find.byType(IndexScreen), findsOneWidget);
@@ -239,57 +292,78 @@ void main() {
       'on a second reader stacked over the first', (tester) async {
     await openStudy(tester);
 
-    await tester.tap(find.byKey(const Key('open the index')));
+    await tester.tap(find.byKey(const Key('surah name')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('sura-1')));
     await tester.pumpAndSettle();
 
     expect(find.byType(IndexScreen), findsNothing);
     expect(find.byType(StudyScreen), findsOneWidget);
-    expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
-  });
-
-  testWidgets('a sūra chosen from the index opens on a set of five, marking '
-      'and praying four ayas the reader only asked to read', (tester) async {
-    await openStudy(tester);
-
-    await tester.tap(find.byKey(const Key('open the index')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('sura-1')));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Al-Fatihah 1–'), findsNothing);
-  });
-
-  testWidgets('the transport is a screen away from the controls the reader is '
-      'already holding, so stopping a recitation is a second reach', (
-    tester,
-  ) async {
-    await openStudy(tester, recitation: downloaded);
-    downloaded.toggle();
-    await beats(tester);
-
-    expect(find.text('RECITING THE SET'), findsOneWidget);
+    expect(find.textContaining('Al-Fatihah'), findsOneWidget);
     expect(
-      tester.getRect(find.byType(SoundingNow)).top,
-      greaterThan(tester.getRect(find.byType(CustomScrollView)).center.dy),
-      reason: 'the transport is drawn above the set rather than under it',
+      tester.widget<Text>(find.byKey(const Key('position'))).data,
+      startsWith('1:1 '),
     );
   });
 
-  testWidgets('the footer jumps under the reader’s thumb when a '
-      'recitation starts', (tester) async {
-    await openStudy(tester, recitation: downloaded);
-    final before = tester.getRect(find.byKey(const Key('open the index'))).top;
+  testWidgets(
+    'a sūra chosen from the index opens on a set of five, marking '
+    'and praying four ayas the reader only asked to read',
+    (tester) async {
+      await openStudy(tester);
 
-    downloaded.toggle();
-    await beats(tester);
+      await tester.tap(find.byKey(const Key('open the index')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('sura-1')));
+      await tester.pumpAndSettle();
 
-    expect(find.text('RECITING THE SET'), findsOneWidget);
-    expect(
-      tester.getRect(find.byKey(const Key('open the index'))).top,
-      moreOrLessEquals(before),
-      reason: 'the reading gives up the height, not the row under the thumb',
-    );
-  });
+      expect(find.textContaining('Al-Fatihah 1–'), findsNothing);
+    },
+    // Removed by ADR 0014: the reader has no set; a sūra chosen from the
+    // index opens on its first word
+    skip: true,
+  );
+
+  testWidgets(
+    'the transport is a screen away from the controls the reader is '
+    'already holding, so stopping a recitation is a second reach',
+    (tester) async {
+      await openStudy(tester, recitation: downloaded);
+      downloaded.toggle();
+      await beats(tester);
+
+      expect(find.text('RECITING THE SET'), findsOneWidget);
+      expect(
+        tester.getRect(find.byType(SoundingNow)).top,
+        greaterThan(tester.getRect(find.byType(CustomScrollView)).center.dy),
+        reason: 'the transport is drawn above the set rather than under it',
+      );
+    },
+    // Removed by ADR 0014: the transport left the reader; play sits in its
+    // bar
+    skip: true,
+  );
+
+  testWidgets(
+    'the footer jumps under the reader’s thumb when a '
+    'recitation starts',
+    (tester) async {
+      await openStudy(tester, recitation: downloaded);
+      final before = tester
+          .getRect(find.byKey(const Key('open the index')))
+          .top;
+
+      downloaded.toggle();
+      await beats(tester);
+
+      expect(find.text('RECITING THE SET'), findsOneWidget);
+      expect(
+        tester.getRect(find.byKey(const Key('open the index'))).top,
+        moreOrLessEquals(before),
+        reason: 'the reading gives up the height, not the row under the thumb',
+      );
+    },
+    // Removed by ADR 0014: the reader has no footer
+    skip: true,
+  );
 }

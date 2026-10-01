@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
-import 'package:wird/data/db.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/features/study/word_row.dart';
 import 'package:wird/nav.dart';
 
 import '../../corpus.dart';
@@ -65,52 +65,54 @@ void main() {
   Future<String> recitationOf(int ayahId) async =>
       (await tracksFor(db, [ayahId])).single.relPath.split('/').last;
 
-  /// The kin the root panel offers first, and the aya it leads to.
-  Future<Kin> firstKin() async =>
-      (await rootReading(
-        db,
-        (await nextSet(db, ReadingOrder.nuzul))!.ayas.first.words.first.root!,
-        readIn: const Locale('en'),
-      ))!.kin.first;
+  /// The first of the other ayas the root sheet lists for the word the
+  /// reader opens on, 96:1's first.
+  Future<RootAya> firstOtherAya() async =>
+      (await rootAyas(db, 'قرأ', lang: 'en', except: 96001)).first;
 
-  testWidgets('a kin printed in the root panel leads nowhere, so the aya it '
-      'names cannot be read', (tester) async {
-    final kin = await firstKin();
-    final surah = (await db.query(
-      'surahs',
-      columns: ['name_en'],
-      where: 'id = ?',
-      whereArgs: [kin.ayahId ~/ 1000],
-    )).single['name_en']! as String;
+  /// The number that closes an aya, which is also how it is marked.
+  Finder mark(int ayahId) =>
+      find.byWidgetPredicate((w) => w is AyaMark && w.aya.id == ayahId);
+
+  testWidgets('an aya the root sheet lists leads nowhere, so the aya it names '
+      'cannot be read', (tester) async {
+    final other = await firstOtherAya();
 
     await openStudy(tester);
-    expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
-
-    // The panel's body scrolls, and the kin tags sit below its fold on a phone
-    // — scroll to the tag rather than tapping where it would be if nothing were
-    // above it, or every row added to the panel breaks this test instead of the
-    // jump it is about.
-    final tag = find.byKey(ValueKey('kin-${kin.text}-${kin.ayahId}'));
-    await tester.ensureVisible(tag);
-    await tester.pumpAndSettle();
-    await tester.tap(tag);
+    await tester.tap(find.byKey(const Key('more row')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('$surah ${kin.ayahId % 1000}'), findsOneWidget);
-    expect(find.textContaining('VISITING'), findsOneWidget);
+    final row = find.byKey(Key('other aya ${other.ayahId}'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+
+    // The sheet opened full height, so the aya is on the strip above it.
+    expect(find.text(other.text), findsWidgets);
+    expect(find.text(ayahRef(other.ayahId)), findsWidgets);
+
+    // And it can be read in full, with the way back to where the reader was.
+    await tester.tap(find.byKey(const Key('sheet handle')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('back to reading')), findsOneWidget);
+    expect(find.byKey(const Key('read from here')), findsOneWidget);
   });
 
   testWidgets('an aya the reader asked for drags the set the walk would have '
       'served next onto the phone with it', (tester) async {
-    // A phone with nothing downloaded, opened straight on an aya. On the walk
-    // the set after this one is fetched too; there is no set after an aya the
-    // reader asked for, and the walk's own next set is not it.
+    // A phone with nothing downloaded, opened straight on an aya. What is
+    // fetched is the ayas around it, the reading width wide; the walk's own
+    // next set, Al-ʿAlaq 1–5, is not among them.
     await openStudy(tester, target: 4082);
     await settleDownloads(tester);
 
     expect(
       [for (final url in cdn.served) url.split('/').last],
-      [await recitationOf(4082)],
+      [
+        for (final aya in [4082, 4083, 4084, 4085, 4086])
+          await recitationOf(aya),
+      ],
     );
   });
 
@@ -127,43 +129,47 @@ void main() {
     );
     expect(dir.listSync(), hasLength(walked.length));
 
-    // An aya out of the set after this one, which is on the phone already.
-    await openStudy(tester, target: 96007);
+    // An aya whose recitation, and that of the four after it, is on the
+    // phone already.
+    await openStudy(tester, target: 96006);
     await settleDownloads(tester);
 
-    expect(
-      dir.listSync().map((f) => f.uri.pathSegments.last).toSet(),
-      {for (final path in walked) path.split('/').last},
-      reason: 'nothing was downloaded, so nothing may be thrown away',
-    );
+    expect(dir.listSync().map((f) => f.uri.pathSegments.last).toSet(), {
+      for (final path in walked) path.split('/').last,
+    }, reason: 'nothing was downloaded, so nothing may be thrown away');
   });
 
   testWidgets('the aya the reader marks after jumping to it is recorded as '
-      'somewhere else, and the walk resumes in the wrong place', (tester) async {
+      'somewhere else, and the walk resumes in the wrong place', (
+    tester,
+  ) async {
     await openStudy(tester, target: 96007);
-    expect(find.textContaining("Al-'Alaq 7"), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('position'))).data,
+      startsWith('96:7 '),
+    );
 
-    await tester.tap(find.text('Mark set understood'));
+    await tester.ensureVisible(mark(96007));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: mark(96007), matching: find.byType(Text)),
+    );
     await tester.pumpAndSettle();
 
-    expect(
-      (await db.query('ayah_understood')).map((r) => r['ayah_id']),
-      [96007],
-    );
+    expect((await db.query('ayah_understood')).map((r) => r['ayah_id']), [
+      96007,
+    ]);
     // The walk is derived, so it resumes where it always did — at the first
     // aya not yet understood — and stops before the hole the visit left.
     final walk = (await nextSet(db, ReadingOrder.nuzul))!;
-    expect([for (final aya in walk.ayas) aya.id], [
-      96001,
-      96002,
-      96003,
-      96004,
-      96005,
-    ]);
-
-    await tester.tap(find.text('Next set'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
-    expect(find.textContaining('VISITING'), findsNothing);
+    expect(
+      [for (final aya in walk.ayas) aya.id],
+      [96001, 96002, 96003, 96004, 96005],
+    );
+    // And the reader stays on the aya they marked.
+    expect(
+      tester.widget<Text>(find.byKey(const Key('position'))).data,
+      startsWith('96:7 '),
+    );
   });
 }

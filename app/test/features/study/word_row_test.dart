@@ -151,13 +151,14 @@ void main() {
 
   testWidgets('the open word cannot be picked out of the page, so the reader '
       'cannot tell which word the panel below belongs to', (tester) async {
+    // The open word sits on the design's filled chip, its gloss lit with it.
     await show(tester, rooted, open: true);
-    final lit = (line(tester).color, glossColour(tester));
+    final lit = (tile(tester).color, glossColour(tester));
     await show(tester, rooted);
 
-    expect(lit, (n.accent, n.color('accent-300')));
-    expect(line(tester).color, isNot(n.accent));
-    expect(glossColour(tester), isNot(n.color('accent-300')));
+    expect(lit, (n.color('accent-800'), n.color('accent-100')));
+    expect(tile(tester).color, isNot(n.color('accent-800')));
+    expect(glossColour(tester), isNot(n.color('accent-100')));
   });
 
   testWidgets('the word sounding now loses its fill to the root the reader '

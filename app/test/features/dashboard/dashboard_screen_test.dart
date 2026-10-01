@@ -35,7 +35,11 @@ void main() {
     expect(find.text(finished.title), findsNothing);
     expect(find.text((await nextSet(db, ReadingOrder.nuzul))!.title),
         findsOneWidget);
-  });
+  },
+      // Removed by ADR 0014: the reader has no Mark set understood; a reader
+      // marks one aya at a time
+      skip: true,
+  );
 
   testWidgets('home offers the set of the reading order the reader has just '
       'left', (tester) async {

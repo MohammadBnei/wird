@@ -996,4 +996,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutSelfTerms => 'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.';
+
+  @override
+  String get study_swipe => 'swipe';
+
+  @override
+  String get study_expandSheet => 'Show counts, forms and other ayas';
+
+  @override
+  String get study_collapseSheet => 'Show the whole sūra again';
+
+  @override
+  String get study_senses => 'Senses';
+
+  @override
+  String study_inThisVerse(String gloss) {
+    return 'In this verse · $gloss';
+  }
+
+  @override
+  String get study_particleNote => 'Particles and pronouns have no three-letter root. Swipe on to the next word.';
+
+  @override
+  String get study_moreRow => 'Counts, forms, other ayas';
+
+  @override
+  String get study_acrossQuran => 'Across the Qur\'an';
+
+  @override
+  String get study_countRoot => 'this root';
+
+  @override
+  String get study_countLemma => 'as';
+
+  @override
+  String get study_countSurah => 'in this sūra';
+
+  @override
+  String get study_ringCaption => 'Its forms, and how often each is read';
+
+  @override
+  String get study_otherAyas => 'Other ayas';
+
+  @override
+  String study_position(String ref, int n, int total) {
+    return '$ref · word $n/$total';
+  }
+
+  @override
+  String study_backTo(String ref) {
+    return 'Back to $ref';
+  }
+
+  @override
+  String get study_readFromHere => 'Read this sūra from here';
+
+  @override
+  String get study_pray => 'Pray';
+
+  @override
+  String get study_recite => 'Recite';
+
+  @override
+  String get study_pauseRecitation => 'Pause the recitation';
+
+  @override
+  String study_markUnderstood(String ref) {
+    return 'Mark aya $ref understood';
+  }
+
+  @override
+  String study_openRoot(String root) {
+    return 'Open the root $root';
+  }
 }

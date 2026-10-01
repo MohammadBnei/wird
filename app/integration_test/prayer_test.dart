@@ -25,13 +25,12 @@ void main() {
             'starting Wird for the first time was handed something else',
       );
 
-      await finishSet(tester);
-      await waitFor(
-        tester,
-        () => ayasOnScreen(tester).intersection(first).isEmpty,
-        'the second set: the set that was understood was the last one the '
-            'reader ever got, which is the offline promise dying after '
-            'exactly one set',
+      final marked = await finishSet(tester);
+      expect(
+        openAya(tester),
+        greaterThan(marked.reduce((a, b) => a > b ? a : b)),
+        reason: 'the ayas that were understood were the last ones the reader '
+            'could reach, which is the offline promise dying after one set',
       );
 
       final second = ayasOnScreen(tester);
@@ -47,12 +46,12 @@ void main() {
         'the root of a word in the second set',
       );
 
-      await finishSet(tester);
-      await waitFor(
-        tester,
-        () => ayasOnScreen(tester).intersection(first.union(second)).isEmpty,
-        'the third set: the walk stalls and starts re-serving ayas already '
-            'marked understood',
+      final again = await finishSet(tester);
+      expect(
+        again.intersection(marked),
+        isEmpty,
+        reason: 'the reader is handed ayas already marked understood to mark '
+            'again',
       );
     },
   );
@@ -89,12 +88,12 @@ void main() {
         );
         expectNoSpinnerAndNoApology(tester, 'after opening a root offline');
 
-        await finishSet(tester);
-        await waitFor(
-          tester,
-          () => ayasOnScreen(tester).intersection(first).isEmpty,
-          'the next set, which never arrives with the radio off — the whole '
-              'reason sets are generated on the device',
+        final marked = await finishSet(tester);
+        expect(
+          openAya(tester),
+          greaterThan(marked.reduce((a, b) => a > b ? a : b)),
+          reason: 'the reading stops with the radio off, which is the whole '
+              'reason the text is on the device',
         );
         expect(ayasOnScreen(tester), isNotEmpty);
         expectNoSpinnerAndNoApology(tester, 'on the second set, offline');

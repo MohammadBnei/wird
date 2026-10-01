@@ -9,6 +9,7 @@ import '../../shell/wird_shell.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_tag.dart';
+import 'root_sheet.dart' show JudgeSense;
 // Shown, not imported whole, for two reasons that both bite. root_sections.dart
 // declares a DashedRule of its own — painted with ThreadPainter rather than the
 // _DashPainter below — so an unqualified import makes every `DashedRule` in this
@@ -380,116 +381,116 @@ class RootPanel extends StatelessWidget {
                         style: TextStyle(fontSize: 12.5, color: n.textAt(0.6)),
                       )
                     else ...[
-                    // The root the panel is holding already carries its sense: `root`
-                    // is a RootReading, the same object the root screen, the spine and
-                    // the deep dive all hand to CoreSense. This was the only one of the
-                    // four that did not ask, and printed the word's gloss alone.
-                    //
-                    // Unguarded, like the other three. Where a root ships no sense
-                    // CoreSense says so in words, because a root whose sense Wird
-                    // declined to claim must not read as a section someone forgot: the
-                    // machine chose the absence and the reader is told it chose.
-                    //
-                    // The dash above supplies the gap over it; the gap under it is
-                    // here, or the sentence butts into the IN THIS AYA kicker.
-                    Padding(
-                      padding: EdgeInsets.only(bottom: n.space('4')),
-                      child: CoreSense(reading: root),
-                    ),
-                    // Whether the sense above is right, asked of the one person
-                    // who can tell. The sense is written from lexicography and
-                    // checked against the Qurʼan for contradiction, and neither
-                    // can see whether it is COMPLETE — ر ح م shipped without
-                    // "womb" past a gate scoring six terms.
-                    //
-                    // Only where there is a sense to judge: CoreSense draws a
-                    // refusal notice when a root has none, and asking a reader to
-                    // rate a refusal asks them nothing.
-                    if (root.coreSense != null)
+                      // The root the panel is holding already carries its sense: `root`
+                      // is a RootReading, the same object the root screen, the spine and
+                      // the deep dive all hand to CoreSense. This was the only one of the
+                      // four that did not ask, and printed the word's gloss alone.
+                      //
+                      // Unguarded, like the other three. Where a root ships no sense
+                      // CoreSense says so in words, because a root whose sense Wird
+                      // declined to claim must not read as a section someone forgot: the
+                      // machine chose the absence and the reader is told it chose.
+                      //
+                      // The dash above supplies the gap over it; the gap under it is
+                      // here, or the sentence butts into the IN THIS AYA kicker.
                       Padding(
                         padding: EdgeInsets.only(bottom: n.space('4')),
-                        child: _JudgeSense(
-                          root: root.letters,
-                          onJudge: onJudge,
-                        ),
+                        child: CoreSense(reading: root),
                       ),
-                    // "Open constellation" used to sit beside "Mark set understood"
-                    // at equal weight. One of the two moves the reader through the
-                    // Qur'an and the other is an occasional detour, so the detour is
-                    // demoted into the panel it belongs to and the bottom of the
-                    // screen carries one action.
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            l10n.inThisAya,
-                            style: TextStyle(
-                              fontSize: 10,
-                              letterSpacing: 0.11 * 10,
-                              color: n.accent,
-                            ),
+                      // Whether the sense above is right, asked of the one person
+                      // who can tell. The sense is written from lexicography and
+                      // checked against the Qurʼan for contradiction, and neither
+                      // can see whether it is COMPLETE — ر ح م shipped without
+                      // "womb" past a gate scoring six terms.
+                      //
+                      // Only where there is a sense to judge: CoreSense draws a
+                      // refusal notice when a root has none, and asking a reader to
+                      // rate a refusal asks them nothing.
+                      if (root.coreSense != null)
+                        Padding(
+                          padding: EdgeInsets.only(bottom: n.space('4')),
+                          child: JudgeSense(
+                            root: root.letters,
+                            onJudge: onJudge,
                           ),
                         ),
-                        if (letters != null)
-                          NocturneButton(
-                            variant: NocturneButtonVariant.ghost,
-                            onPressed: () => onVisit(Routes.deepDive, (
-                              ayahId: word!.id ~/ 1000,
-                              letters: letters,
-                            )),
+                      // "Open constellation" used to sit beside "Mark set understood"
+                      // at equal weight. One of the two moves the reader through the
+                      // Qur'an and the other is an occasional detour, so the detour is
+                      // demoted into the panel it belongs to and the bottom of the
+                      // screen carries one action.
+                      Row(
+                        children: [
+                          Expanded(
                             child: Text(
-                              l10n.study_constellation,
-                              style: const TextStyle(fontSize: 11),
+                              l10n.inThisAya,
+                              style: TextStyle(
+                                fontSize: 10,
+                                letterSpacing: 0.11 * 10,
+                                color: n.accent,
+                              ),
                             ),
                           ),
-                      ],
-                    ),
-                    SizedBox(height: n.space('1')),
-                    Text(
-                      word?.glossIn(Localizations.localeOf(context)) ?? '—',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        height: 1.5,
-                        color: n.text,
+                          if (letters != null)
+                            NocturneButton(
+                              variant: NocturneButtonVariant.ghost,
+                              onPressed: () => onVisit(Routes.deepDive, (
+                                ayahId: word!.id ~/ 1000,
+                                letters: letters,
+                              )),
+                              child: Text(
+                                l10n.study_constellation,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                    SizedBox(height: n.space('3')),
-                    Wrap(
-                      spacing: n.space('2'),
-                      runSpacing: n.space('2'),
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        // The tag sets everything about its label but the family, so
-                        // the Arabic face reaches it through the default style.
-                        for (final kin in root.kin)
-                          GestureDetector(
-                            // Keyed by the form as well as the aya: two derivatives
-                            // are first met in the same aya often enough, and the two
-                            // tags cannot carry one key.
-                            key: ValueKey('kin-${kin.text}-${kin.ayahId}'),
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => onKin(kin.ayahId),
-                            child: DefaultTextStyle.merge(
-                              style: const TextStyle(
-                                fontFamily: Nocturne.arabicFamily,
-                              ),
-                              child: NocturneTag(
-                                kin.text,
-                                variant: NocturneTagVariant.neutral,
+                      SizedBox(height: n.space('1')),
+                      Text(
+                        word?.glossIn(Localizations.localeOf(context)) ?? '—',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          height: 1.5,
+                          color: n.text,
+                        ),
+                      ),
+                      SizedBox(height: n.space('3')),
+                      Wrap(
+                        spacing: n.space('2'),
+                        runSpacing: n.space('2'),
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          // The tag sets everything about its label but the family, so
+                          // the Arabic face reaches it through the default style.
+                          for (final kin in root.kin)
+                            GestureDetector(
+                              // Keyed by the form as well as the aya: two derivatives
+                              // are first met in the same aya often enough, and the two
+                              // tags cannot carry one key.
+                              key: ValueKey('kin-${kin.text}-${kin.ayahId}'),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => onKin(kin.ayahId),
+                              child: DefaultTextStyle.merge(
+                                style: const TextStyle(
+                                  fontFamily: Nocturne.arabicFamily,
+                                ),
+                                child: NocturneTag(
+                                  kin.text,
+                                  variant: NocturneTagVariant.neutral,
+                                ),
                               ),
                             ),
-                          ),
-                        // The corpus attribution stood here and is gone:
-                        // ADR 0013. About > Sources carries the name, the
-                        // notice and the link the licence asks for, and
-                        // IrabSection says it again on 3a, 2b and 1c.
-                      ],
-                    ),
-                    SizedBox(height: n.space('2')),
-                    Text(
-                      l10n.study_kinOpensItsAya,
-                      style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
-                    ),
+                          // The corpus attribution stood here and is gone:
+                          // ADR 0013. About > Sources carries the name, the
+                          // notice and the link the licence asks for, and
+                          // IrabSection says it again on 3a, 2b and 1c.
+                        ],
+                      ),
+                      SizedBox(height: n.space('2')),
+                      Text(
+                        l10n.study_kinOpensItsAya,
+                        style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
+                      ),
                     ],
                   ],
                 ],
@@ -671,64 +672,3 @@ String _numbers(AppLocalizations l10n, List<int> numbers) => numbers.length == 1
         numbers.sublist(0, numbers.length - 1).join(', '),
         numbers.last,
       );
-
-/// Yes or no on the sense above, and then nothing.
-///
-/// Stateful only to stop asking once answered: a control that stays live invites a
-/// second press, and two verdicts from one reader on one root is noise in the one
-/// signal this feature exists to collect. It does not undo — a reader who
-/// mis-taps has said something true about how clear the sense was.
-class _JudgeSense extends StatefulWidget {
-  const _JudgeSense({required this.root, required this.onJudge});
-
-  final String root;
-  final void Function(String root, bool good) onJudge;
-
-  @override
-  State<_JudgeSense> createState() => _JudgeSenseState();
-}
-
-class _JudgeSenseState extends State<_JudgeSense> {
-  bool _answered = false;
-
-  void _say(bool good) {
-    if (_answered) return;
-    setState(() => _answered = true);
-    widget.onJudge(widget.root, good);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final n = Nocturne.of(context);
-    final l = AppLocalizations.of(context)!;
-    final quiet = TextStyle(fontSize: 10.5, color: n.textAt(0.45));
-    if (_answered) {
-      return Text(l.root_senseJudgeThanks, style: quiet);
-    }
-    // Two thumbs and no question. The sense is directly above them, so what is
-    // being judged needs no naming; a screen reader gets the naming through the
-    // Semantics label, which is the one thing here that is not an icon.
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final (good, icon, semantics) in [
-          (true, Icons.thumb_up_outlined, l.root_senseJudgeGoodLabel),
-          (false, Icons.thumb_down_outlined, l.root_senseJudgeBadLabel),
-        ])
-          Padding(
-            padding: EdgeInsets.only(right: n.space('2')),
-            child: Semantics(
-              button: true,
-              label: semantics,
-              child: NocturneButton(
-                key: Key('judge sense ${good ? 'good' : 'bad'}'),
-                variant: NocturneButtonVariant.icon,
-                onPressed: () => _say(good),
-                child: Icon(icon, size: 16),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}

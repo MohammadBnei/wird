@@ -64,15 +64,7 @@ void main() {
     'counts a set understood on the passage',
     body: (tester) async {
       await launchFresh(tester);
-      final before = ayasOnScreen(tester);
-      final set = ayasInTheSet(tester);
-
-      await finishSet(tester);
-      await waitFor(
-        tester,
-        () => ayasOnScreen(tester).intersection(before).isEmpty,
-        'the next set',
-      );
+      final set = await finishSet(tester);
 
       await goThroughTheDrawer(tester, 'Your passage');
       expect(find.byType(ProgressScreen), findsOneWidget);

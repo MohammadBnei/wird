@@ -996,4 +996,77 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aboutSelfTerms => 'Wird est un logiciel libre sous GNU Affero General Public License, version 3 ou ultérieure. L’AGPL plutôt que la GPL, parce que Wird a un serveur : quiconque le fait tourner comme service doit à ses utilisateurs le code source de ce qu’ils utilisent.';
+
+  @override
+  String get study_swipe => 'glisser';
+
+  @override
+  String get study_expandSheet => 'Afficher les nombres, les formes et les autres versets';
+
+  @override
+  String get study_collapseSheet => 'Revoir toute la sourate';
+
+  @override
+  String get study_senses => 'Sens';
+
+  @override
+  String study_inThisVerse(String gloss) {
+    return 'Dans ce verset · $gloss';
+  }
+
+  @override
+  String get study_particleNote => 'Les particules et les pronoms n’ont pas de racine trilitère. Glissez jusqu’au mot suivant.';
+
+  @override
+  String get study_moreRow => 'Nombres, formes, autres versets';
+
+  @override
+  String get study_acrossQuran => 'Dans tout le Coran';
+
+  @override
+  String get study_countRoot => 'cette racine';
+
+  @override
+  String get study_countLemma => 'sous la forme';
+
+  @override
+  String get study_countSurah => 'dans cette sourate';
+
+  @override
+  String get study_ringCaption => 'Ses formes, et combien de fois chacune est lue';
+
+  @override
+  String get study_otherAyas => 'Autres versets';
+
+  @override
+  String study_position(String ref, int n, int total) {
+    return '$ref · mot $n/$total';
+  }
+
+  @override
+  String study_backTo(String ref) {
+    return 'Retour à $ref';
+  }
+
+  @override
+  String get study_readFromHere => 'Lire cette sourate à partir d’ici';
+
+  @override
+  String get study_pray => 'Prier';
+
+  @override
+  String get study_recite => 'Réciter';
+
+  @override
+  String get study_pauseRecitation => 'Mettre la récitation en pause';
+
+  @override
+  String study_markUnderstood(String ref) {
+    return 'Marquer le verset $ref comme compris';
+  }
+
+  @override
+  String study_openRoot(String root) {
+    return 'Ouvrir la racine $root';
+  }
 }
