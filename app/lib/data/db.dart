@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -18,23 +19,136 @@ const _fileName = 'wird.db';
 /// across platforms.
 Future<Database> openWird() async {
   // ponytail: sqflite's own databases directory, so the app needs no
-  // path_provider. Move to the app support directory if the 24 MB corpus
-  // showing up in a device backup ever becomes a complaint.
+  // path_provider. Move to the app support directory if the corpus showing up
+  // in a device backup ever becomes a complaint.
   final path = '${await getDatabasesPath()}/$_fileName';
   final file = File(path);
+  final kept = File('$path.bak');
+  // A launch killed between the two renames of an upgrade leaves the reader's
+  // file under its backup name and nothing at the real one.
+  if (!file.existsSync() && kept.existsSync()) await kept.rename(path);
   if (!file.existsSync()) {
-    final asset = await rootBundle.load(_corpusAsset);
-    await installCorpus(
-      file,
-      asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes),
-    );
+    await installCorpus(file, await _bundledCorpus());
+  } else if (await installedCorpusVersion(path) < bundledCorpusVersion) {
+    try {
+      await upgradeCorpus(file, await _bundledCorpus());
+    } catch (e) {
+      // The old corpus still opens and still holds every row the reader wrote;
+      // the next launch tries again.
+      debugPrint('corpus upgrade failed, keeping the installed one: $e');
+    }
   }
-  return openWirdAt(path);
+  final db = await openWirdAt(path);
+  if (kept.existsSync()) await kept.delete();
+  return db;
+}
+
+/// The `corpus_meta.corpus_version` of `assets/corpus.db`. A constant rather
+/// than read from the asset, so a launch need not copy the whole corpus out of
+/// the bundle to learn it; a test holds the two equal.
+const bundledCorpusVersion = 5;
+
+Future<Uint8List> _bundledCorpus() async {
+  final asset = await rootBundle.load(_corpusAsset);
+  return asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes);
+}
+
+/// The corpus version of the file at [path], or 0 when it has none.
+Future<int> installedCorpusVersion(String path) async {
+  final db = await openDatabase(path, readOnly: true, singleInstance: false);
+  try {
+    final rows = await db.rawQuery('SELECT corpus_version FROM corpus_meta');
+    return rows.isEmpty ? 0 : rows.first['corpus_version']! as int;
+  } on DatabaseException {
+    return 0;
+  } finally {
+    await db.close();
+  }
+}
+
+/// Replaces the corpus at [target] with [bytes] and carries the reader's own
+/// rows across: every table the new corpus does not ship, and the senses this
+/// device fetched into `root_notes`.
+///
+/// Before this, a corpus was installed only when no file was there, so no
+/// install ever received a newer one (corpus 5's French never reached a phone
+/// that had 4). The reader's tables share the file with the corpus, so the
+/// file cannot simply be overwritten.
+///
+/// Nothing is lost at any point. The new corpus is filled in `wird.db.next`;
+/// the reader's file becomes `wird.db.bak` only once that is whole, and
+/// `openWird` puts it back if the second rename never happened. A failure
+/// before the renames deletes `.next` and leaves the old file untouched.
+Future<void> upgradeCorpus(File target, Uint8List bytes) async {
+  final next = File('${target.path}.next');
+  await installCorpus(next, bytes);
+  try {
+    final old = await openDatabase(
+      target.path,
+      readOnly: true,
+      singleInstance: false,
+    );
+    final fresh = await openDatabase(next.path, singleInstance: false);
+    try {
+      await _carryReaderRows(old, fresh);
+    } finally {
+      await old.close();
+      await fresh.close();
+    }
+  } catch (_) {
+    if (next.existsSync()) await next.delete();
+    rethrow;
+  }
+  await target.rename('${target.path}.bak');
+  await next.rename(target.path);
+}
+
+Future<void> _carryReaderRows(Database old, Database fresh) async {
+  final shipped = {
+    for (final r in await fresh.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    ))
+      r['name']! as String,
+  };
+  final schema = await old.rawQuery(
+    "SELECT type, name, tbl_name, sql FROM sqlite_master "
+    "WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' "
+    "ORDER BY type = 'index'",
+  );
+  final ours = [
+    for (final r in schema)
+      if (r['type'] == 'table' && !shipped.contains(r['name']))
+        r['name']! as String,
+  ];
+  await fresh.transaction((txn) async {
+    for (final r in schema) {
+      if (ours.contains(r['tbl_name'])) await txn.execute(r['sql']! as String);
+    }
+    for (final table in ours) {
+      await _copyRows(old, txn, table);
+    }
+    if (shipped.contains('root_notes')) await _copyRows(old, txn, 'root_notes');
+  });
+}
+
+/// Copies [table]'s rows by the columns both sides have, so a corpus table
+/// whose shape moved between versions still takes what it can hold.
+Future<void> _copyRows(Database from, Transaction to, String table) async {
+  Future<Set<String>> columns(DatabaseExecutor db) async => {
+    for (final c in await db.rawQuery('PRAGMA table_info($table)'))
+      c['name']! as String,
+  };
+  final shared = (await columns(from)).intersection(await columns(to));
+  if (shared.isEmpty) return;
+  final names = shared.join(', ');
+  for (final row in await from.rawQuery('SELECT $names FROM $table')) {
+    await to.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
 }
 
 /// Puts the corpus at [target] in one step, or leaves nothing there.
 ///
-/// Writing 24 MB straight to the destination takes long enough on a phone to
+/// Writing the corpus straight to the destination takes long enough on a phone to
 /// be interrupted — the reader backgrounds the app, the system reclaims it,
 /// the battery goes. What that left behind was a truncated file at the
 /// destination, and `openWird` asks only whether the destination exists, so
@@ -185,11 +299,10 @@ Future<void> markSetUnderstood(
   if (seen.isNotEmpty) return;
   final at = DateTime.now().toIso8601String();
   for (final ayahId in ayahIds) {
-    await txn.insert(
-      'ayah_understood',
-      {'ayah_id': ayahId, 'understood_at': at},
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    await txn.insert('ayah_understood', {
+      'ayah_id': ayahId,
+      'understood_at': at,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
   await enqueue(
     txn,
@@ -244,10 +357,9 @@ Future<void> recordSetPrayed(Database db, StudySet set) =>
 /// say "the fourth prayer on this set".
 Future<int> prayersOnSet(Database db, String setId) async =>
     Sqflite.firstIntValue(
-      await db.rawQuery(
-        'SELECT COUNT(*) FROM set_prayers WHERE set_id = ?',
-        [setId],
-      ),
+      await db.rawQuery('SELECT COUNT(*) FROM set_prayers WHERE set_id = ?', [
+        setId,
+      ]),
     )!;
 
 Future<ReadingOrder> readingOrder(Database db) async {
@@ -387,7 +499,6 @@ Future<void> setDisplayPrefs(
 typedef Kin = Derivative;
 typedef RootDetail = RootReading;
 
-
 /// The reciter whose audio the corpus carries paths for.
 Future<String?> reciterLabel(Database db) async {
   final rows = await db.query('recitations', limit: 1);
@@ -400,10 +511,8 @@ Future<String?> reciterLabel(Database db) async {
 /// Gives a corpus installed before the French word glosses a `gloss_fr` column,
 /// empty, so every query can name it and every word falls back to its English.
 ///
-/// ponytail: `openWird` installs the corpus only when no file is there, so an
-/// install from before corpus 5 never receives the French itself. The upgrade
-/// is replacing the corpus tables when `corpus_meta.corpus_version` moves while
-/// keeping the reader's own tables, which share this file.
+/// `upgradeCorpus` now brings an older install the French itself; this stays
+/// for the launch where that upgrade failed and the old corpus was kept.
 Future<void> _ensureFrenchGlossColumn(Database db) async {
   final columns = await db.rawQuery('PRAGMA table_info(words)');
   // No words table is a database the corpus was never copied into, which only
