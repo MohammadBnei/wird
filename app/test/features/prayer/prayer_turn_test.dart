@@ -89,7 +89,8 @@ void main() {
     expect(
       litWord(tester),
       103002004,
-      reason: 'the reciter was two words on and the screen was still holding '
+      reason:
+          'the reciter was two words on and the screen was still holding '
           'the aya before, waiting out a breath they never took',
     );
   });

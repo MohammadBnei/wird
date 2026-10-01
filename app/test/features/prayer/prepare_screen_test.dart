@@ -104,10 +104,7 @@ void main() {
     expect(find.text('Al-Ikhlas'), findsNWidgets(2));
     await prayAndLeave(tester);
     expect(await db.query('set_prayers'), isEmpty);
-    expect(
-      (await db.query('prayer_history')).single['start_ayah_id'],
-      112001,
-    );
+    expect((await db.query('prayer_history')).single['start_ayah_id'], 112001);
   });
 
   testWidgets('a reference typed in the search opens somewhere other than '

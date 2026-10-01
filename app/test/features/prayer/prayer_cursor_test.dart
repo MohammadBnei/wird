@@ -42,19 +42,22 @@ void main() {
     },
   );
 
-  test('the reciter repeating an aya is dragged on instead of followed back', () {
-    // The rule this class carried until 2026-09-25 was advance-or-freeze, and
-    // it made this impossible. A reciter repeats, and the screen has to go
-    // with them: during ṣalāh the phone is on the floor and there is no hand
-    // coming to correct it.
-    final cursor = PrayerCursor(5)..moveTo(3);
-    cursor.moveTo(1);
-    expect(cursor.at, 1);
-    cursor.moveTo(3);
-    expect(cursor.at, 3);
-    cursor.moveTo(0);
-    expect(cursor.at, 0);
-  });
+  test(
+    'the reciter repeating an aya is dragged on instead of followed back',
+    () {
+      // The rule this class carried until 2026-09-25 was advance-or-freeze, and
+      // it made this impossible. A reciter repeats, and the screen has to go
+      // with them: during ṣalāh the phone is on the floor and there is no hand
+      // coming to correct it.
+      final cursor = PrayerCursor(5)..moveTo(3);
+      cursor.moveTo(1);
+      expect(cursor.at, 1);
+      cursor.moveTo(3);
+      expect(cursor.at, 3);
+      cursor.moveTo(0);
+      expect(cursor.at, 0);
+    },
+  );
 
   test('the set started again for the next rakʿa runs off the end instead of '
       'beginning again', () {
@@ -77,8 +80,13 @@ void main() {
     cursor.addListener(() => rebuilds++);
     cursor.moveTo(2);
     cursor.moveTo(2);
-    expect(rebuilds, 0, reason: 'the voice answers several times a second and '
-        'mostly answers the same place twice');
+    expect(
+      rebuilds,
+      0,
+      reason:
+          'the voice answers several times a second and '
+          'mostly answers the same place twice',
+    );
     cursor.moveTo(3);
     expect(rebuilds, 1);
   });

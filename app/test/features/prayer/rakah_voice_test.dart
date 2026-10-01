@@ -104,19 +104,26 @@ void main() {
     expect(cursor.at, inInclusiveRange(29, 31));
   });
 
-  test('a rakʿah tapped on goes unfollowed by the voice until its end', () async {
-    // Al-ʿAṣr, heard well into the rakʿah: nothing of Al-Fātiḥa's opening.
-    final r = await betweenRakahs([
-      'الرحيم والعصر إن الإنسان',
-      'والعصر إن الإنسان لفي خسر',
-    ]);
-    await r.voice.feed(loud(1));
-    expect(r.second.at, 0, reason: 'the opening gate let the passage through');
-    r.voice.begun();
-    await r.voice.feed(loud(1));
-    // Somewhere in Al-ʿAṣr 103:1–2, words 29 to 33 on screen.
-    expect(r.second.at, inInclusiveRange(29, 33));
-  });
+  test(
+    'a rakʿah tapped on goes unfollowed by the voice until its end',
+    () async {
+      // Al-ʿAṣr, heard well into the rakʿah: nothing of Al-Fātiḥa's opening.
+      final r = await betweenRakahs([
+        'الرحيم والعصر إن الإنسان',
+        'والعصر إن الإنسان لفي خسر',
+      ]);
+      await r.voice.feed(loud(1));
+      expect(
+        r.second.at,
+        0,
+        reason: 'the opening gate let the passage through',
+      );
+      r.voice.begun();
+      await r.voice.feed(loud(1));
+      // Somewhere in Al-ʿAṣr 103:1–2, words 29 to 33 on screen.
+      expect(r.second.at, inInclusiveRange(29, 33));
+    },
+  );
 
   test('a recogniser stuck on its last words in a loud room keeps the pace '
       'from ever taking over', () {

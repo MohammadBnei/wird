@@ -68,7 +68,10 @@ void main() {
     // reciter holds: ar-Raḥmān is four letters longer said than written.
     // The article's own lām stays; what the recogniser wrote here is the
     // word as it sounds inside the basmala, where the lām has run into the rāʾ.
-    expect(recitationKey('ٱلرَّحْمَـٰنِ').substring(1), recitationKey('رَحمَاانِ'));
+    expect(
+      recitationKey('ٱلرَّحْمَـٰنِ').substring(1),
+      recitationKey('رَحمَاانِ'),
+    );
   });
 
   test('silence and a hallucinated word carry the prayer somewhere', () {

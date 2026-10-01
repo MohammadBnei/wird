@@ -616,7 +616,8 @@ class PrayerVoice {
       heard.length > 40 ? heard.substring(heard.length - 40) : heard;
 
   static String _verdict(
-    ({int word, double score, double rival, double needed})? said,
+    ({int word, double score, double needed, double rival, double margin})?
+    said,
     ({int word, double score})? at,
   ) {
     if (said == null) return 'too little heard';
@@ -625,8 +626,8 @@ class PrayerVoice {
     if (said.score < said.needed) {
       return 'stay: $where under ${said.needed.toStringAsFixed(2)}';
     }
-    return 'stay: $where but elsewhere ${said.rival.toStringAsFixed(2)} '
-        '— said twice';
+    return 'stay: $where but elsewhere ${said.rival.toStringAsFixed(2)}, '
+        'margin ${said.margin.toStringAsFixed(2)} — said twice';
   }
 
   /// Ends the listening. It cannot fail, and it cannot be run twice.

@@ -54,9 +54,13 @@ const followThreshold = 0.44;
 /// reader at speed who puts five in.
 const followPerLetterShort = 0.01;
 
-/// How far ahead of everywhere else the best place must sit before the prayer
-/// moves to it. The guard that does the real work: it is what tells the two
-/// copies of a repeated phrase apart, by refusing both.
+/// How far ahead of another place the best one must sit before the prayer
+/// moves, for two places whose text has nothing in common. Places that share
+/// text are asked for less, in proportion: see [Recitation.twin].
+///
+/// This is the guard that does the real work. Asked of every pair alike, it
+/// refused every window on a set that says a phrase twice — al-Fātiḥa's
+/// ٱلرَّحْمَٰنِ ٱلرَّحِيمِ, in every rakʿah — and the cursor pinned (ADR 0019).
 const followMargin = 0.32;
 
 /// The score above which the word itself is worth pointing at, rather than
@@ -108,6 +112,27 @@ class Recitation {
 
   int wordAt(int letter) => _wordOf[letter];
 
+  /// The [length] letters of the set that end at [end], or fewer near its
+  /// start.
+  String expected(int end, int length) =>
+      stream.substring(max(0, end - length), end);
+
+  final _twins = <(int, int, int), double>{};
+
+  /// How alike the set's own text is at two places, read as a window of
+  /// [length] letters ending at each: 1 for a phrase the set says twice, near
+  /// 0 for two places with nothing in common.
+  ///
+  /// This is what a perfect recitation at [a] would score at [b], so `1 - twin`
+  /// is the most margin any voice could ever give between them. The margin
+  /// asked of a window is a share of that, not a constant: the set says before
+  /// a word is spoken which of its places are hard to tell apart.
+  double twin(int a, int b, int length) => _twins.putIfAbsent((
+    length,
+    min(a, b),
+    max(a, b),
+  ), () => _alike(expected(a, length), expected(b, length)));
+
   bool get isEmpty => stream.isEmpty;
 }
 
@@ -125,18 +150,24 @@ class Recitation {
   final said = explain(set, heard);
   if (said == null) return null;
   if (said.score < said.needed) return null;
-  if (said.score - said.rival < followMargin) return null;
+  if (said.score - said.rival < said.margin) return null;
   return (word: said.word, score: said.score);
 }
 
 /// The same search, with its workings, for the screen in Settings that exists
-/// to say why the prayer is not moving. [locate] is this plus the two gates.
+/// to say why the prayer is not moving. [locate] is this plus the two gates:
+///
+/// - **fit**: `score` must reach `needed`.
+/// - **clear**: `score - rival` must reach `margin`, where `rival` is the place
+///   two or more words away that comes closest to failing that, and `margin`
+///   is what that pair is asked for ([followMargin] scaled by
+///   [Recitation.twin]).
 ///
 /// Kept as one implementation rather than two: a diagnosis that does not run
 /// the code being diagnosed is worth nothing, and this screen was written
 /// because four builds went to a reader with nobody able to see what their
 /// phone was doing.
-({int word, double score, double rival, double needed})? explain(
+({int word, double score, double needed, double rival, double margin})? explain(
   Recitation set,
   String heard,
 ) {
@@ -153,31 +184,42 @@ class Recitation {
     tail = tail.substring(tail.length - heardTailLetters);
   }
 
-  var best = (word: -1, score: 0.0);
-  // The best agreement somewhere else entirely. A reciter with an accent, or
-  // one who slips, agrees with the muṣḥaf less well everywhere — so how high
-  // the best score is says as much about the voice as about the place. What
-  // does not depend on the voice is whether one place fits better than the
-  // rest, and that is what decides whether the prayer moves.
-  var rival = 0.0;
-  for (final end in set.ends) {
-    final expected = StringBuffer();
-    for (var i = end - tail.length; i < end; i++) {
-      if (i >= 0) expected.writeCharCode(set.stream.codeUnitAt(i));
-    }
-    final word = set.wordAt(end - 1);
-    final score = _alike(tail, expected.toString());
+  final scores = [
+    for (final end in set.ends) _alike(tail, set.expected(end, tail.length)),
+  ];
 
-    if (score > best.score + _tie) {
-      if (best.word >= 0 && (word - best.word).abs() >= 2) rival = best.score;
-      best = (word: word, score: score);
-      continue;
-    }
-    if (score > rival && best.word >= 0 && (word - best.word).abs() >= 2) {
-      rival = score;
+  // The best place. Two ends within [_tie] of each other are one answer told
+  // twice, and the earlier one is kept: late, never ahead.
+  var best = 0;
+  for (var i = 1; i < scores.length; i++) {
+    if (scores[i] > scores[best] + _tie) best = i;
+  }
+  final bestEnd = set.ends[best];
+  final word = set.wordAt(bestEnd - 1);
+
+  // The competitor that comes closest to holding the prayer where it is. A
+  // reciter with an accent agrees with the muṣḥaf less well everywhere, so how
+  // high the best score is says as much about the voice as about the place;
+  // what does not depend on the voice is whether one place fits better than
+  // the rest.
+  var rival = 0.0, margin = followMargin, slack = double.infinity;
+  for (var i = 0; i < scores.length; i++) {
+    final end = set.ends[i];
+    if ((set.wordAt(end - 1) - word).abs() < 2) continue;
+    final gap = scores[best] - scores[i];
+    // Clears even the margin asked of two unrelated places: no need to ask
+    // the set how alike they are.
+    if (gap >= followMargin && gap - followMargin >= slack) continue;
+    final asked = max(
+      _tie,
+      followMargin * (1 - set.twin(bestEnd, end, tail.length)),
+    );
+    if (gap - asked < slack) {
+      slack = gap - asked;
+      rival = scores[i];
+      margin = asked;
     }
   }
-  if (best.word < 0) return null;
 
   // A short window is weak evidence wherever it agrees, because a handful of
   // letters finds agreement almost anywhere in a run of them. It clears a
@@ -186,20 +228,35 @@ class Recitation {
   // five in and is followed on the same rule.
   final needed =
       followThreshold + (heardTailLetters - tail.length) * followPerLetterShort;
-  return (word: best.word, score: best.score, rival: rival, needed: needed);
+  return (
+    word: word,
+    score: scores[best],
+    needed: needed,
+    rival: rival,
+    margin: margin,
+  );
 }
 
-/// How alike two runs of letters are, with no floor under it. A reciter with
-/// an accent, a reader who slips, and tajwīd reshaping a word all arrive here
-/// as a few letters out of a great many, which is a percentage rather than a
-/// verdict.
+/// How alike what was heard is to the set's letters ending at a place, with
+/// no floor under it. A reciter with an accent, a reader who slips, and tajwīd
+/// reshaping a word all arrive here as a few letters out of a great many,
+/// which is a percentage rather than a verdict.
+///
+/// The match must end where the place ends but may start anywhere in
+/// [expected]: letters of the set before what was heard are not errors. A
+/// recogniser that began a new utterance hears less than a full window, and
+/// charging it for the set's letters before that put every place but the
+/// first in the set at a disadvantage — al-Fātiḥa's basmala then beat its
+/// exact twin before the passage.
 double _alike(String heard, String expected) {
   if (heard.isEmpty || expected.isEmpty) return 0;
-  return 1 - _edits(heard, expected) / max(heard.length, expected.length);
+  return max(0, 1 - _edits(heard, expected) / heard.length);
 }
 
+/// Edits to turn [a] into a run of [b] that ends where [b] ends.
 int _edits(String a, String b) {
-  var previous = List<int>.generate(b.length + 1, (i) => i);
+  // Row 0 is free: [b] may be entered at any letter.
+  var previous = List<int>.filled(b.length + 1, 0);
   for (var i = 1; i <= a.length; i++) {
     final row = List<int>.filled(b.length + 1, 0)..[0] = i;
     for (var j = 1; j <= b.length; j++) {

@@ -149,7 +149,7 @@ class _VoiceCheckState extends State<VoiceCheck> {
                   (said.score * 100).round(),
                   (said.needed * 100).round(),
                 )
-              : said.score - said.rival < followMargin
+              : said.score - said.rival < said.margin
               ? l.settingsVoiceCheckAmbiguous(
                   said.word + 1,
                   (said.score * 100).round(),

@@ -7,11 +7,14 @@ import 'package:wird/data/sets.dart';
 Future<StudySet> setOf(Database db, List<int> ayahIds) async {
   final ayas = <StudyAya>[];
   for (final id in ayahIds) {
-    final row = (await db.rawQuery('''
+    final row = (await db.rawQuery(
+      '''
       SELECT a.surah_id, a.number, s.name_en, s.name_ar,
              s.revelation_order, s.revelation_place
         FROM ayahs a JOIN surahs s ON s.id = a.surah_id
-       WHERE a.id = ?''', [id])).single;
+       WHERE a.id = ?''',
+      [id],
+    )).single;
     final words = await db.rawQuery(
       '''SELECT id, text_ar, translit, gloss_en, root_letters
            FROM words WHERE ayah_id = ? ORDER BY position''',
