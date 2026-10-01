@@ -100,10 +100,73 @@ class AppLocalizationsFr extends AppLocalizations {
   String get notDownloaded => 'Non téléchargé';
 
   @override
-  String get prayer_in_prayer => 'EN PRIÈRE';
+  String prayer_header(String prayer, int rakah, int count) {
+    return '$prayer · Rakʿa $rakah sur $count';
+  }
 
   @override
-  String get prayer_following_your_voice => 'SUIT VOTRE VOIX';
+  String prayer_part(String sura, String ref) {
+    return '$sura · $ref';
+  }
+
+  @override
+  String get prayer_generic => 'Prière';
+
+  @override
+  String get prayer_fajr => 'Fajr';
+
+  @override
+  String get prayer_zuhr => 'Ẓuhr';
+
+  @override
+  String get prayer_asr => 'ʿAṣr';
+
+  @override
+  String get prayer_maghrib => 'Maghrib';
+
+  @override
+  String get prayer_isha => 'ʿIshāʾ';
+
+  @override
+  String get prayer_mode_both => 'La voix, le rythme en relais';
+
+  @override
+  String get prayer_mode_voice => 'Suit votre voix';
+
+  @override
+  String prayer_mode_pace(int wpm) {
+    return 'Régulier · $wpm mots/min';
+  }
+
+  @override
+  String get prayer_mode_tap => 'Touchez pour avancer';
+
+  @override
+  String prayer_rakah_count(int rakah, int count) {
+    return '$rakah sur $count';
+  }
+
+  @override
+  String prayer_between(int rakah, int count) {
+    return 'Rakʿa $rakah sur $count';
+  }
+
+  @override
+  String get prayer_between_voice => 'Commence quand vous récitez · ou touchez';
+
+  @override
+  String get prayer_between_tap => 'Touchez pour commencer';
+
+  @override
+  String get prayer_complete => 'Prière terminée';
+
+  @override
+  String prayer_size_remembered(int size) {
+    return '$size px · retenu';
+  }
+
+  @override
+  String get prayer_on_a_word => 'Aller au mot suivant';
 
   @override
   String get prayer_exit => 'Quitter';
@@ -113,12 +176,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prayer_on_to_the_next_aya => 'Aller au verset suivant';
-
-  @override
-  String get prayer_foot_taps_only => 'Écran maintenu allumé · touchez pour avancer · le bord gauche revient en arrière';
-
-  @override
-  String get prayer_foot_following => 'Écran maintenu allumé · touchez à tout moment · le bord gauche revient en arrière';
 
   @override
   String get progress_kicker => 'COMPRIS, ET PAS SEULEMENT LU';

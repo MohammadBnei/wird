@@ -4,45 +4,73 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../../l10n/app_localizations.dart';
+import '../../data/db.dart';
 import '../../data/sets.dart';
-import '../study/word_row.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
+import '../study/word_row.dart';
 import 'prayer_cursor.dart';
+import 'prayer_pace.dart';
+import 'prayer_plan.dart';
 import 'prayer_trail.dart';
 import 'prayer_voice.dart';
 
-/// Screen 1b — the set recited inside the prayer.
+/// What the prayer leaves behind for whoever opened it, filled in as it goes.
+///
+/// The prayer screen writes nothing — it runs inside the prayer, where a
+/// database write has no safe moment: `dispose()` cannot await, and the
+/// back-swipe and Android's back are not the Exit button. So it says what
+/// happened here, and the screen that pushed it writes when it gets the reader
+/// back, however they left.
+class PrayerOutcome {
+  /// The furthest rakʿah the reader began, counted from one.
+  int reached = 1;
+
+  /// The Arabic size the reader pinched to, or null where they left it.
+  double? size;
+}
+
+/// Screen 1b — the prayer, one rakʿah at a time.
 ///
 /// It runs in a room that usually has no signal, while the reader recites from
 /// memory and is not looking at the phone. So it reads nothing, asks for
-/// nothing and downloads nothing: the set arrives from screen 1a already read,
+/// nothing and downloads nothing: the plan and Al-Fātiḥa arrive already read,
 /// which is what leaves this screen with no dialog, no error and no spinner to
-/// show. The recitation is the reader's own voice, so the audio the app holds
-/// stays silent here.
+/// show.
 ///
-/// The design reads "nothing to tap", and voice-follow is what makes that
-/// true — when the reader has allowed the microphone and downloaded the model,
-/// both of which happen in Settings. It stays off for everyone else, and it
-/// gives up silently for anyone it fails: the field is split into two tap
-/// zones, a large one that goes on an aya and a smaller one that steps back an
-/// aya, sized to be hit without being looked at. The deviation is recorded in
-/// the plan.
+/// Each rakʿah is Al-Fātiḥa and then its passage. What moves the text is the
+/// reader's choice, made before the prayer: their voice, a steady pace, both
+/// (the voice leads and the pace covers for it), or neither. Whatever was
+/// chosen, the field is two tap zones — a large one that goes on an aya and a
+/// narrow one down the left that steps back an aya — because the voice and
+/// the pace can both be wrong and the reader's hand is the correction. With
+/// neither chosen, the large zone goes on a word: that reader is following
+/// along by hand.
 class PrayerScreen extends StatefulWidget {
   const PrayerScreen({
     super.key,
     required this.db,
-    required this.set,
+    required this.plan,
+    required this.fatiha,
+    this.prefs = defaultPrayerPrefs,
+    this.outcome,
     this.cursor,
     this.wakelock = WakelockPlus.toggle,
   });
 
   final Database db;
-  final StudySet set;
+  final PrayerPlan plan;
 
-  /// Supplied by the golden, which needs the prayer held on one frame.
+  /// Al-Fātiḥa's seven ayas, with their words, recited at the head of every
+  /// rakʿah.
+  final List<StudyAya> fatiha;
+  final PrayerPrefs prefs;
+  final PrayerOutcome? outcome;
+
+  /// The first rakʿah's cursor, supplied by the golden, which needs the prayer
+  /// held on one frame.
   final PrayerCursor? cursor;
 
   /// Supplied by the test that has to prove the phone is kept awake for the
@@ -56,12 +84,11 @@ class PrayerScreen extends StatefulWidget {
   State<PrayerScreen> createState() => _PrayerScreenState();
 }
 
-/// The design's own geometry, in its own numbers. The space scale stops at
-/// 22.4 and the rhythm of this screen is set by its type, so the gaps between
-/// the lines are read off the mockup where no step carries them.
-const _side = 26.0;
-const _foot = 46.0;
-const _previewSize = 25.0;
+/// The design's own geometry, in its own numbers.
+const _side = 22.0;
+const _aroundSize = 24.0;
+const _minSize = 30.0;
+const _maxSize = 88.0;
 
 /// How long the aya just finished stands before the next one arrives.
 ///
@@ -70,27 +97,31 @@ const _previewSize = 25.0;
 /// two reads as the screen having listened.
 const _dwell = Duration(seconds: 1);
 
-/// How long the next aya takes to arrive once it starts arriving.
+/// How long the voice may rest on the last word before the rakʿah is taken as
+/// recited: the end of the aya, and the breath before bowing.
+const _lastWordHeld = Duration(seconds: 2);
+
+/// How long "Prayer complete" stands before the prayer closes itself.
+const _completeFor = Duration(milliseconds: 2400);
+
+/// How long the aya takes to arrive once it starts arriving.
 const _turn = Duration(milliseconds: 420);
-const _previewHeight = 1.9;
-const _reciting = 52.0;
+
+enum _Phase { reading, between, done }
 
 class _PrayerScreenState extends State<PrayerScreen> {
-  late final List<({StudyAya aya, StudyWord word})> _flat = [
-    for (final aya in widget.set.ayas)
-      for (final word in aya.words) (aya: aya, word: word),
-  ];
-  late final PrayerCursor _cursor = widget.cursor ?? PrayerCursor(_flat.length);
+  /// Which rakʿah is on screen, from one. Between two rakʿahs it is already
+  /// the next one, waiting to be begun.
+  var _r = 1;
+  var _phase = _Phase.reading;
 
-  /// The word each aya of the set starts on, with one whole reading standing
-  /// in for the aya after the last one, so the aya after the end of the set is
-  /// the first aya of the next reading. A set with no words in it leaves the
-  /// two sentinels, and a tap on it moves by the one word the cursor claims.
-  late final List<int> _ayaStarts = [
-    0,
-    for (var i = 1; i < _flat.length; i++)
-      if (_flat[i].aya.id != _flat[i - 1].aya.id) i,
-  ];
+  late Rakah _rakah;
+  late List<({StudyAya aya, StudyWord word})> _flat;
+
+  /// The word each aya of the rakʿah starts on.
+  late List<int> _ayaStarts;
+  late PrayerCursor _cursor;
+  late PrayerPace _pace;
 
   /// Null until the microphone is open, and null for good on a phone where it
   /// never will be. Nothing on this screen tells the reader which, because
@@ -98,41 +129,88 @@ class _PrayerScreenState extends State<PrayerScreen> {
   PrayerVoice? _voice;
 
   /// The same voice, from the moment the microphone is live rather than from
-  /// the moment there is anything to follow with.
-  ///
-  /// The two are up to twenty seconds apart — the model loads after the stream
-  /// opens — and [_voice] is what the screen draws with, so it stays null until
-  /// voice-follow is really running. This is the one the way out has to stop: a
-  /// reader who mis-taps into a prayer and backs out after two seconds must not
-  /// leave a microphone streaming behind a screen nobody is looking at.
+  /// the moment there is anything to follow with. The two are up to twenty
+  /// seconds apart, and this is the one the way out has to stop: a reader who
+  /// backs out after two seconds must not leave a microphone streaming.
   PrayerVoice? _opening;
 
   /// Which aya is on screen. It lags the cursor by [_dwell] when the reciter
   /// crosses into the next one, so the aya they have just finished stands for
-  /// a moment before the next arrives. A prayer is not a race, and a screen
-  /// that changes the instant the last syllable lands reads as impatience.
-  late int _shown = _ayaOf(_cursor.at);
+  /// a moment before the next arrives.
+  late int _shown;
   Timer? _turning;
 
   /// Whether the move now arriving is the reader's own hand.
   var _theirHand = false;
 
+  Timer? _finishing;
+  Timer? _closing;
+  late final AppLifecycleListener _life;
+
+  late double _size = widget.prefs.arabicSize;
+  double _pinchFrom = 0;
+  Timer? _flash;
+
+  final _window = ScrollController();
+
+  bool get _wordByWord => !widget.prefs.voice && !widget.prefs.pace;
+
   @override
   void initState() {
     super.initState();
-    _cursor.addListener(_onTheMove);
+    _load(1, cursor: widget.cursor);
+    _pace.start();
+    _life = AppLifecycleListener(
+      // A prayer the phone left for another app is not a prayer the pace can
+      // go on reciting by itself.
+      onHide: () => _pace.pause(),
+      onShow: () {
+        if (_phase == _Phase.reading) _pace.start();
+      },
+    );
     unawaited(_keepAwake(true));
-    unawaited(_followTheReciter());
+    if (widget.prefs.voice) unawaited(_followTheReciter());
   }
 
   @override
   void dispose() {
     _turning?.cancel();
+    _finishing?.cancel();
+    _closing?.cancel();
+    _flash?.cancel();
+    _life.dispose();
+    _pace.dispose();
     _cursor.removeListener(_onTheMove);
+    if (!identical(_cursor, widget.cursor)) _cursor.dispose();
+    _window.dispose();
     unawaited(_keepAwake(false));
     unawaited((_voice ?? _opening)?.stop());
-    if (widget.cursor == null) _cursor.dispose();
     super.dispose();
+  }
+
+  /// Sets rakʿah [r] on screen, on a cursor of its own: [PrayerCursor] knows
+  /// how many words it has, and the next rakʿah is a different length.
+  void _load(int r, {PrayerCursor? cursor}) {
+    _r = r;
+    _rakah = rakahOf(widget.fatiha, widget.plan.passageFor(r));
+    _flat = [
+      for (final aya in _rakah.ayas)
+        for (final word in aya.words) (aya: aya, word: word),
+    ];
+    _ayaStarts = [
+      0,
+      for (var i = 1; i < _flat.length; i++)
+        if (_flat[i].aya.id != _flat[i - 1].aya.id) i,
+    ];
+    _cursor = (cursor ?? PrayerCursor(_flat.length))..addListener(_onTheMove);
+    _shown = _ayaOf(_cursor.at);
+    _pace = PrayerPace(
+      _cursor,
+      voice: widget.prefs.voice,
+      pace: widget.prefs.pace,
+      wpm: widget.prefs.wpm,
+      onEnd: _endRakah,
+    );
   }
 
   /// The aya the cursor is in, which is not always the one on screen.
@@ -149,20 +227,32 @@ class _PrayerScreenState extends State<PrayerScreen> {
   /// whether the next one arrives now or after a breath.
   ///
   /// **A hand turns the page at once.** The reader tapping is the reader
-  /// saying where they are, and making them wait a second for an answer reads
-  /// as the screen ignoring them.
+  /// saying where they are.
   ///
-  /// **A voice gets the breath, unless it is still going.** The dwell is for
-  /// the moment a reciter finishes an aya and pauses: the one they have just
-  /// said stands while it settles. A reciter running straight on says so by
-  /// moving again, and a second move cancels the wait and turns immediately —
-  /// nobody reciting without pauses should be watching the screen catch up.
+  /// **A voice gets the breath, unless it is still going.** A reciter running
+  /// straight on says so by moving again, and a second move cancels the wait.
+  ///
+  /// Between two rakʿahs the only thing that moves the cursor is the voice
+  /// hearing the reader begin Al-Fātiḥa (`PrayerVoice.follow`), so a move
+  /// there begins the rakʿah.
   void _onTheMove() {
+    if (_phase == _Phase.between) {
+      _begin();
+      return;
+    }
+    if (_phase != _Phase.reading) return;
     setState(() {});
+    _holdTheLine();
+    _finishing?.cancel();
+    _finishing = null;
+    if (_voice != null && !_theirHand && _cursor.at == _cursor.words - 1) {
+      _finishing = Timer(_lastWordHeld, _endRakah);
+    }
     final wants = _ayaOf(_cursor.at);
     if (wants == _shown) {
       _turning?.cancel();
       _turning = null;
+      _theirHand = false;
       return;
     }
     if (_theirHand || _turning != null) {
@@ -178,23 +268,61 @@ class _PrayerScreenState extends State<PrayerScreen> {
     });
   }
 
+  /// The rakʿah is recited: on to the next, or the prayer is over.
+  void _endRakah() {
+    if (_phase != _Phase.reading || !mounted) return;
+    _finishing?.cancel();
+    _turning?.cancel();
+    _turning = null;
+    _pace.pause();
+    if (_r >= widget.plan.rakahs) {
+      setState(() => _phase = _Phase.done);
+      _closing = Timer(_completeFor, () {
+        if (mounted) unawaited(Navigator.of(context).maybePop());
+      });
+      return;
+    }
+    _cursor.removeListener(_onTheMove);
+    if (!identical(_cursor, widget.cursor)) _cursor.dispose();
+    _pace.dispose();
+    setState(() {
+      _phase = _Phase.between;
+      _load(_r + 1);
+    });
+    _voice?.follow(_cursor, _rakah.heard, unseenAt: _rakah.basmalaAt);
+    if (_window.hasClients) _window.jumpTo(0);
+  }
+
+  /// The next rakʿah is begun: by the reader reciting it, or by a tap.
+  void _begin() {
+    if (_phase != _Phase.between) return;
+    widget.outcome?.reached = _r;
+    setState(() {
+      _phase = _Phase.reading;
+      _shown = _ayaOf(_cursor.at);
+    });
+    _pace.start();
+  }
+
   Future<void> _followTheReciter() async {
     final trail = await PrayerTrail.beside(await getDatabasesPath());
-    trail.note('set', '${_flat.length} words, ${widget.set.ayas.length} ayas');
+    trail.note(
+      'prayer',
+      '${widget.plan.rakahs} rakʿahs, ${_flat.length} words in the first',
+    );
     final voice = await PrayerVoice.start(
       widget.db,
       _cursor,
-      [for (final here in _flat) here.word.text],
+      _rakah.heard,
+      unseenAt: _rakah.basmalaAt,
       trail: trail,
       // Before this answers, and it is what `dispose` above stops. The
       // microphone is open from here on.
       listening: (live) => _opening = live,
     );
-    // The prayer can be over before the model is loaded, and a microphone left
-    // open behind a screen nobody is looking at is the worst of the failures
-    // available here. `dispose` has already stopped the microphone through
-    // `_opening` by the time this is reached; what this refuses is a loaded
-    // recogniser held open by a screen that has gone.
+    // The prayer can be over before the model is loaded; `dispose` has stopped
+    // the microphone through `_opening`, and this refuses a loaded recogniser
+    // held open by a screen that has gone.
     if (!mounted) {
       await voice?.stop();
       return;
@@ -204,76 +332,78 @@ class _PrayerScreenState extends State<PrayerScreen> {
       await trail.close();
       return;
     }
+    // The voice was started on the first rakʿah, and the reader may be past
+    // it by the time the model has loaded.
+    if (_r > 1) {
+      voice.follow(_cursor, _rakah.heard, unseenAt: _rakah.basmalaAt);
+    }
+    voice.onRecognised = () => _pace.recognised();
     setState(() => _voice = voice);
   }
 
-  /// The words that last moved the prayer, under the aya, fading as they age.
-  ///
-  /// Only what matched. A window the matcher refused is a window it could not
-  /// read, and putting that in front of somebody praying would be the screen
-  /// talking about itself — contract 2 bends this far and no further: what is
-  /// shown is the reader's own recitation, arriving because it was understood.
-  Widget _echo(Nocturne n) => ValueListenableBuilder<String>(
-    valueListenable: _voice!.matched,
-    builder: (context, heard, _) => AnimatedSwitcher(
-      duration: const Duration(milliseconds: 260),
-      transitionBuilder: (child, fade) => FadeTransition(
-        opacity: fade,
-        child: SlideTransition(
-          position: Tween(
-            begin: const Offset(0, 0.4),
-            end: Offset.zero,
-          ).animate(fade),
-          child: child,
-        ),
-      ),
-      child: heard.isEmpty
-          ? const SizedBox.shrink()
-          : Text(
-              heard,
-              key: ValueKey(heard),
-              textDirection: TextDirection.rtl,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: Nocturne.arabicFamily,
-                fontSize: 15,
-                color: n.accent.withValues(alpha: 0.5),
-              ),
-            ),
-    ),
-  );
-
-  /// A tap carries the reader to the start of an aya, not of a word. Most
-  /// readers have nothing following their voice — voice-follow wants a
-  /// permission and a 73 MB download — and a set runs to 25 words, so a word
-  /// per tap is 25 taps in the middle of a prayer. It is the same move while
-  /// the voice is being followed, where the tap is the reader saying the
-  /// screen is behind them: a screen one word out is not one anybody reaches
-  /// for, and two grains to learn is worse than the one that is right both
-  /// times.
-  ///
-  /// Both zones wrap at the ends of the set, because the set is recited again
-  /// for the next rakʿa and the cursor no longer counts readings — the last
-  /// aya's "on" is the first aya, and the first aya's "back" is the last.
-  /// They also name their own direction: the cursor takes any move it is
-  /// given now, so nothing downstream will quietly correct a wrong one.
-  void _onToTheNextAya() {
+  /// A tap carries the reader to the start of an aya, not of a word: a set
+  /// runs to 25 words, and a word per tap is 25 taps in the middle of a
+  /// prayer. Past the last aya it ends the rakʿah. With nothing else moving
+  /// the text, it goes on a word, because then the hand is the only pace.
+  void _onToTheNext() {
+    if (_phase == _Phase.between) return _begin();
+    if (_phase != _Phase.reading) return;
     _theirHand = true;
-    final next = _ayaStarts.indexWhere((w) => w > _cursor.at);
-    _cursor.moveTo(next < 0 ? 0 : _ayaStarts[next] % _cursor.words);
+    if (_wordByWord) {
+      if (_cursor.at + 1 >= _cursor.words) return _endRakah();
+      _cursor.moveTo(_cursor.at + 1);
+    } else {
+      final next = _ayaStarts.indexWhere((w) => w > _cursor.at);
+      if (next < 0) return _endRakah();
+      _cursor.moveTo(_ayaStarts[next]);
+    }
+    _pace.restartFrom();
     _voice?.hold();
   }
 
   /// From inside an aya it is that aya's own start, because a reader tapping
   /// back is saying the screen has run ahead of them; from an aya's start it
-  /// is the aya before, and from the first it is the last.
+  /// is the aya before.
   void _backAnAya() {
+    if (_phase == _Phase.between) return _begin();
+    if (_phase != _Phase.reading) return;
     _theirHand = true;
     final at = _ayaStarts.lastIndexWhere((w) => w < _cursor.at);
-    _cursor.moveTo(at < 0 ? _ayaStarts.last : _ayaStarts[at]);
+    _cursor.moveTo(at < 0 ? 0 : _ayaStarts[at]);
+    _pace.restartFrom();
     _voice?.hold();
+  }
+
+  /// Keeps the word being recited a third of the way down the aya, whatever
+  /// the size: a long aya at a large size runs off the field, and the reader
+  /// should find the word in the same place every time they look.
+  void _holdTheLine() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Keyed by the word's own id rather than one key for whichever word is
+      // lit: while an aya turns, the one leaving is still in the tree, lit.
+      final lit = GlobalObjectKey(_flat[_cursor.at].word.id).currentContext;
+      if (lit == null || !mounted) return;
+      unawaited(
+        Scrollable.ensureVisible(
+          lit,
+          alignment: 0.3,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        ),
+      );
+    });
+  }
+
+  void _setSize(double size) {
+    final next = size.clamp(_minSize, _maxSize).roundToDouble();
+    if (next == _size) return;
+    widget.outcome?.size = next;
+    _flash?.cancel();
+    setState(() => _size = next);
+    _flash = Timer(const Duration(milliseconds: 1100), () {
+      if (mounted) setState(() => _flash = null);
+    });
+    _holdTheLine();
   }
 
   Future<void> _keepAwake(bool awake) async {
@@ -285,27 +415,33 @@ class _PrayerScreenState extends State<PrayerScreen> {
     }
   }
 
+  /// What is moving the text, as it is and not as it was asked for: a voice
+  /// chosen and not running is not claimed.
+  String _mode(AppLocalizations l) {
+    final pace = widget.prefs.pace;
+    if (_voice != null) return pace ? l.prayer_mode_both : l.prayer_mode_voice;
+    if (pace) return l.prayer_mode_pace(widget.prefs.wpm);
+    return l.prayer_mode_tap;
+  }
+
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
-    final ayas = widget.set.ayas;
-    // The aya on screen lags the cursor by [_dwell] when the reciter crosses
-    // into the next one, so `here` is drawn from what is shown rather than
-    // from where the reciter is. Inside one aya the two agree and the word
-    // moves as it is recited.
-    final at = _flat.isEmpty ? -1 : _shown.clamp(0, ayas.length - 1);
+    final l = AppLocalizations.of(context)!;
+    final ayas = _rakah.ayas;
+    final at = _shown.clamp(0, ayas.length - 1);
+    // The aya on screen lags the cursor by [_dwell], so the word is drawn from
+    // what is shown rather than from where the reciter is.
     final word = _ayaOf(_cursor.at) == at ? _cursor.at : _ayaStarts[at];
-    final here = _flat.isEmpty ? null : _flat[word.clamp(0, _flat.length - 1)];
+    final here = _flat[word.clamp(0, _flat.length - 1)];
     return Scaffold(
       backgroundColor: n.bg,
       body: DecoratedBox(
         // The design's ground: a bloom of the accent behind the reciter,
-        // falling back to the page. Its `#1b1d31` is that bloom at five
-        // percent over the background, and an ellipse where Flutter draws a
-        // circle.
+        // falling back to the page.
         decoration: BoxDecoration(
           gradient: RadialGradient(
-            center: const Alignment(0, -0.32),
+            center: const Alignment(0, -0.24),
             radius: 1.2,
             colors: [
               Color.alphaBlend(n.accent.withValues(alpha: 0.05), n.bg),
@@ -315,23 +451,25 @@ class _PrayerScreenState extends State<PrayerScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _chrome(n),
-              Expanded(
-                child: _field(
-                  n,
-                  here,
-                  at > 0 ? ayas[at - 1] : null,
-                  at >= 0 && at < ayas.length - 1 ? ayas[at + 1] : null,
-                ),
+              Column(
+                children: [
+                  _chrome(n, l, here),
+                  Expanded(
+                    child: _field(
+                      n,
+                      l,
+                      here,
+                      at > 0 ? ayas[at - 1] : null,
+                      at < ayas.length - 1 ? ayas[at + 1] : null,
+                    ),
+                  ),
+                  _strip(n, l),
+                ],
               ),
-              if (_voice != null)
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: _side),
-                  child: SizedBox(height: 22, child: _echo(n)),
-                ),
-              _strip(n),
+              if (_phase == _Phase.between) _between(n, l),
+              if (_phase == _Phase.done) _complete(n, l),
             ],
           ),
         ),
@@ -339,44 +477,50 @@ class _PrayerScreenState extends State<PrayerScreen> {
     );
   }
 
-  Widget _chrome(Nocturne n) => Padding(
-    padding: EdgeInsets.fromLTRB(n.space('8'), n.space('4'), n.space('8'), 0),
+  Widget _chrome(
+    Nocturne n,
+    AppLocalizations l,
+    ({StudyAya aya, StudyWord word}) here,
+  ) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 14, 12, 0),
     child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          spacing: n.space('3'),
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: n.accent,
-                boxShadow: [BoxShadow(color: n.accent, blurRadius: 8)],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l
+                    .prayer_header(
+                      prayerName(l, widget.plan.preset),
+                      _r,
+                      widget.plan.rakahs,
+                    )
+                    .toUpperCase(),
+                style: TextStyle(
+                  fontSize: 10.5,
+                  letterSpacing: 0.13 * 10.5,
+                  color: n.color('accent-300'),
+                ),
               ),
-            ),
-            // The design says "Following your voice", and it says so only
-            // while something is: a screen that claims to hear the reader
-            // when it does not is worse than a plain one.
-            Text(
-              _voice == null
-                  ? AppLocalizations.of(context)!.prayer_in_prayer
-                  : AppLocalizations.of(context)!.prayer_following_your_voice,
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 0.13 * 10,
-                color: n.accent,
+              const SizedBox(height: 4),
+              Text(
+                l.prayer_part(
+                  here.aya.surahNameEn,
+                  '${here.aya.surahId}:${here.aya.number}',
+                ),
+                style: TextStyle(fontSize: 12, color: n.textAt(0.55)),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         NocturneButton(
           variant: NocturneButtonVariant.ghost,
           onPressed: () => Navigator.of(context).maybePop(),
           child: Text(
-            AppLocalizations.of(context)!.prayer_exit,
-            style: TextStyle(fontSize: 12, color: n.textAt(0.6)),
+            l.prayer_exit,
+            style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
           ),
         ),
       ],
@@ -385,131 +529,163 @@ class _PrayerScreenState extends State<PrayerScreen> {
 
   Widget _field(
     Nocturne n,
-    ({StudyAya aya, StudyWord word})? here,
+    AppLocalizations l,
+    ({StudyAya aya, StudyWord word}) here,
     StudyAya? before,
     StudyAya? after,
   ) {
     final locale = Localizations.localeOf(context);
-    final gloss = here == null
-        ? ''
-        : [for (final w in here.aya.words) ?w.glossIn(locale)].join(' ');
-    final note = here?.word.glossIn(locale) ?? here?.word.translit;
-    return Stack(
-      children: [
-        // An aya too long for the field runs off the top and bottom of it
-        // rather than striping an overflow banner across the prayer: 2:282 is
-        // a page by itself and the word budget lets it be a set on its own.
-        Positioned.fill(
-          child: IgnorePointer(
-            child: ClipRect(
-              child: OverflowBox(
-                // The field is tight, so the minimum has to be let go of too
-                // or the column is stretched to it and paints from the top.
-                minHeight: 0,
-                maxHeight: double.infinity,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: _side),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _preview(n, before, 0.24),
-                      const SizedBox(height: 18),
-                      if (here != null)
-                        // Keyed by the aya, so the switcher has something to
-                        // switch on: it compares runtimeType and key, and an
-                        // unkeyed Wrap would be updated in place and never
-                        // animate. The new aya rises as the old one leaves.
-                        AnimatedSwitcher(
-                          duration: _turn,
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeIn,
-                          transitionBuilder: (child, fade) => FadeTransition(
-                            opacity: fade,
-                            child: SlideTransition(
-                              position: Tween(
-                                begin: const Offset(0, 0.16),
-                                end: Offset.zero,
-                              ).animate(fade),
-                              child: child,
-                            ),
-                          ),
-                          child: KeyedSubtree(
-                            key: ValueKey(here.aya.id),
-                            child: _recited(n, here),
-                          ),
+    final around = widget.prefs.around;
+    // The design trades the aya before for room as the Arabic grows, and the
+    // aya after with it once the size passes 72.
+    final above = !around
+        ? 0.0
+        : _size <= 60
+        ? 120.0
+        : _size <= 72
+        ? 64.0
+        : 0.0;
+    final gloss = here.word.glossIn(locale) ?? here.word.translit ?? '';
+    return GestureDetector(
+      // Pinching the text is the one control the prayer has that is not a
+      // tap: the size that reads from the floor is found by trying it.
+      onScaleStart: (_) => _pinchFrom = _size,
+      onScaleUpdate: (d) {
+        if (d.pointerCount >= 2) _setSize(_pinchFrom * d.scale);
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: _side),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: above,
+                      child: ClipRect(
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: _neighbour(n, before, 0.3),
                         ),
-                      const SizedBox(height: 24),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 34),
-                        child: _DottedRule(),
                       ),
-                      SizedBox(height: n.space('6')),
-                      if (gloss.isNotEmpty)
-                        Text(
-                          gloss,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            height: 1.55,
-                            color: n.textAt(0.72),
-                          ),
-                        ),
-                      SizedBox(height: n.space('2')),
-                      if (here != null)
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: here.word.text,
-                                style: const TextStyle(
-                                  fontFamily: Nocturne.arabicFamily,
-                                ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: _window,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Column(
+                          children: [
+                            // Keyed by the rakʿah and the aya, so the
+                            // switcher has something to switch on and the
+                            // new aya rises as the old one leaves.
+                            AnimatedSwitcher(
+                              duration: _turn,
+                              switchInCurve: Curves.easeOutCubic,
+                              switchOutCurve: Curves.easeIn,
+                              transitionBuilder: (child, fade) =>
+                                  FadeTransition(
+                                    opacity: fade,
+                                    child: SlideTransition(
+                                      position: Tween(
+                                        begin: const Offset(0, 0.16),
+                                        end: Offset.zero,
+                                      ).animate(fade),
+                                      child: child,
+                                    ),
+                                  ),
+                              child: KeyedSubtree(
+                                key: ValueKey((_r, here.aya.id)),
+                                child: _recited(n, here),
                               ),
-                              if (note != null) TextSpan(text: ' · $note'),
+                            ),
+                            if (around && _size <= 72) ...[
+                              const SizedBox(height: 14),
+                              _neighbour(n, after, 0.22),
                             ],
-                          ),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            height: 1.5,
-                            color: n.textAt(0.4),
-                          ),
+                          ],
                         ),
-                      const SizedBox(height: 34),
-                      _preview(n, after, 0.18),
-                    ],
-                  ),
+                      ),
+                    ),
+                    if (widget.prefs.gloss)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
+                        child: Column(
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 34),
+                              child: _DottedRule(),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              gloss,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 18,
+                                height: 1.45,
+                                color: n.textAt(0.82),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
           ),
-        ),
-        // The whole field advances the prayer; a narrower strip at its left
-        // edge steps back. A person mid-prayer is not aiming at anything.
-        Positioned.fill(
-          child: Row(
-            children: [
-              Expanded(
-                child: _zone(
-                  PrayerScreen.backZone,
-                  AppLocalizations.of(context)!.prayer_back_an_aya,
-                  _backAnAya,
+          // The whole field advances the prayer; a narrower strip at its left
+          // edge steps back. A person mid-prayer is not aiming at anything.
+          Positioned.fill(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _zone(
+                    PrayerScreen.backZone,
+                    l.prayer_back_an_aya,
+                    _backAnAya,
+                  ),
                 ),
-              ),
-              Expanded(
-                flex: 2,
-                child: _zone(
-                  PrayerScreen.nextZone,
-                  AppLocalizations.of(context)!.prayer_on_to_the_next_aya,
-                  _onToTheNextAya,
+                Expanded(
+                  flex: 2,
+                  child: _zone(
+                    PrayerScreen.nextZone,
+                    _wordByWord
+                        ? l.prayer_on_a_word
+                        : l.prayer_on_to_the_next_aya,
+                    _onToTheNext,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+          if (_flash != null)
+            Positioned(
+              top: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: n.surface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    l.prayer_size_remembered(_size.round()),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -524,120 +700,202 @@ class _PrayerScreenState extends State<PrayerScreen> {
     ),
   );
 
-  /// The aya before or after the one being recited, kept to a single line so
-  /// the frame under the reciter never reflows as the prayer moves.
-  Widget _preview(Nocturne n, StudyAya? aya, double opacity) => SizedBox(
-    height: _previewSize * _previewHeight,
-    child: aya == null
-        ? null
-        : Text(
-            [for (final w in aya.words) w.text].join(' '),
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: Nocturne.arabicFamily,
-              fontSize: _previewSize,
-              height: _previewHeight,
-              color: n.textAt(opacity),
-            ),
+  /// The aya before or after the one being recited, faded, so the reader
+  /// knows where they are in the passage without it competing with the aya.
+  Widget _neighbour(Nocturne n, StudyAya? aya, double opacity) => aya == null
+      ? const SizedBox.shrink()
+      : Text(
+          [for (final w in aya.words) w.text].join(' '),
+          textDirection: TextDirection.rtl,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: Nocturne.arabicFamily,
+            fontSize: _aroundSize,
+            height: 1.85,
+            color: n.textAt(opacity),
           ),
-  );
+        );
 
   Widget _recited(Nocturne n, ({StudyAya aya, StudyWord word}) here) => Wrap(
     textDirection: TextDirection.rtl,
     alignment: WrapAlignment.center,
     crossAxisAlignment: WrapCrossAlignment.end,
-    spacing: 16,
+    spacing: (_size * 0.28).roundToDouble(),
     children: [
       for (final word in here.aya.words)
-        Text(
-          word.text,
-          key: WordKey(word.id),
-          textDirection: TextDirection.rtl,
-          style:
-              TextStyle(
-                fontFamily: Nocturne.arabicFamily,
-                fontSize: _reciting,
-                height: 1.95,
-                // The aya is what the screen is for: one is drawn at a time, at
-                // 52px, and a word either side of the truth is not visible from a
-                // metre away on the floor. The word inside it is singled out only
-                // when the recitation named one place clearly — otherwise every
-                // word of the aya is lit alike, which is the truth about what was
-                // heard rather than a claim the matcher never made.
-                color: !_cursor.sure || word.id < here.word.id
-                    ? n.text
-                    : n.textAt(0.3),
-              ).merge(
-                _cursor.sure && word.id == here.word.id
-                    ? glowing(n, Glow.recited)
-                    : null,
-              ),
+        KeyedSubtree(
+          key: word.id == here.word.id ? GlobalObjectKey(word.id) : null,
+          child: Text(
+            word.text,
+            key: WordKey(word.id),
+            textDirection: TextDirection.rtl,
+            style:
+                TextStyle(
+                  fontFamily: Nocturne.arabicFamily,
+                  fontSize: _size,
+                  height: 1.9,
+                  // The word inside the aya is singled out only when the
+                  // recitation, the pace or a tap named it — otherwise every
+                  // word of the aya is lit alike, which is the truth about
+                  // what was heard rather than a claim nobody made.
+                  color: !_cursor.sure
+                      ? n.text
+                      : word.id < here.word.id
+                      ? n.textAt(0.72)
+                      : n.textAt(0.4),
+                ).merge(
+                  _cursor.sure && word.id == here.word.id
+                      ? glowing(n, Glow.recited)
+                      : null,
+                ),
+          ),
         ),
     ],
   );
 
-  /// Where the reciter is, as the muṣḥaf would say it. Factual, and the same
-  /// sentence on every reading of the set: the count of readings that stood
-  /// here before could only be derived from a cursor that never moved
-  /// backward, and a reciter repeating an aya would have made it tick down.
-  String _whereInTheSurah() {
-    if (_flat.isEmpty) return '';
-    final aya = _flat[_cursor.at].aya;
-    return '${aya.surahNameEn} · ${aya.number}';
-  }
-
-  Widget _strip(Nocturne n) {
+  Widget _strip(Nocturne n, AppLocalizations l) {
     final through = (_cursor.at + 1) / _cursor.words;
+    final small = TextStyle(fontSize: 11, color: n.textAt(0.58));
     return Padding(
-      padding: const EdgeInsets.fromLTRB(_side, 0, _side, _foot),
+      padding: const EdgeInsets.fromLTRB(_side, 0, _side, 22),
       child: Column(
         children: [
+          Container(
+            height: 2,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(2),
+              gradient: LinearGradient(
+                colors: [
+                  n.accent,
+                  n.accent,
+                  n.color('neutral-800'),
+                  n.color('neutral-800'),
+                ],
+                stops: [0, through, through, 1],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
-            spacing: n.space('4'),
+            spacing: 12,
             children: [
               Expanded(
-                child: Container(
-                  height: 2,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    gradient: LinearGradient(
-                      colors: [
-                        n.accent,
-                        n.accent,
-                        n.color('neutral-800'),
-                        n.color('neutral-800'),
-                      ],
-                      stops: [0, through, through, 1],
+                child: Row(
+                  spacing: 7,
+                  children: [
+                    _dot(n, n.accent, glow: true, size: 6),
+                    Flexible(
+                      child: Text(
+                        _mode(l),
+                        style: small,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-              Text(
-                _whereInTheSurah(),
-                style: TextStyle(
-                  fontSize: 10,
-                  letterSpacing: 0.08 * 10,
-                  color: n.textAt(0.58),
+              Row(
+                spacing: 7,
+                children: [
+                  for (var r = 1; r <= widget.plan.rakahs; r++)
+                    _dot(
+                      n,
+                      r < _r
+                          ? n.color('accent-700')
+                          : r == _r
+                          ? n.accent
+                          : n.color('neutral-800'),
+                      glow: r == _r,
+                    ),
+                ],
+              ),
+              Expanded(
+                child: Text(
+                  l.prayer_rakah_count(_r, widget.plan.rakahs),
+                  textAlign: TextAlign.right,
+                  style: small,
                 ),
               ),
             ],
-          ),
-          SizedBox(height: n.space('4')),
-          Text(
-            _voice == null
-                ? AppLocalizations.of(context)!.prayer_foot_taps_only
-                : AppLocalizations.of(context)!.prayer_foot_following,
-            style: TextStyle(fontSize: 10.5, color: n.textAt(0.58)),
           ),
         ],
       ),
     );
   }
+
+  Widget _dot(Nocturne n, Color color, {bool glow = false, double size = 8}) =>
+      Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          boxShadow: glow ? [BoxShadow(color: n.accent, blurRadius: 8)] : null,
+        ),
+      );
+
+  /// Between two rakʿahs the reader is bowing and prostrating, and the screen
+  /// all but goes out: the next rakʿah's number, and what will begin it.
+  Widget _between(Nocturne n, AppLocalizations l) => Positioned.fill(
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _begin,
+      child: ColoredBox(
+        color: const Color(0xF0090A11),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: 10,
+          children: [
+            Text(
+              l.prayer_between(_r, widget.plan.rakahs).toUpperCase(),
+              style: TextStyle(
+                fontSize: 10.5,
+                letterSpacing: 0.13 * 10.5,
+                color: n.textAt(0.4),
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [
+                _dot(n, n.color('accent-700'), size: 6),
+                Text(
+                  _voice != null
+                      ? l.prayer_between_voice
+                      : l.prayer_between_tap,
+                  style: TextStyle(fontSize: 13, color: n.textAt(0.45)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _complete(Nocturne n, AppLocalizations l) => Positioned.fill(
+    child: ColoredBox(
+      color: const Color(0xF0090A11),
+      child: Center(
+        child: Text(
+          l.prayer_complete,
+          style: TextStyle(fontSize: 13, color: n.textAt(0.42)),
+        ),
+      ),
+    ),
+  );
 }
+
+/// The prayer's name, or the word for a prayer with no preset.
+String prayerName(AppLocalizations l, PrayerPreset? preset) =>
+    switch (preset) {
+      null => l.prayer_generic,
+      PrayerPreset.fajr => l.prayer_fajr,
+      PrayerPreset.zuhr => l.prayer_zuhr,
+      PrayerPreset.asr => l.prayer_asr,
+      PrayerPreset.maghrib => l.prayer_maghrib,
+      PrayerPreset.isha => l.prayer_isha,
+    };
 
 /// ponytail: screen 1a has its own copy at a different period, and
 /// lib/widgets/ belongs to one owner this phase. Lift them into a shared

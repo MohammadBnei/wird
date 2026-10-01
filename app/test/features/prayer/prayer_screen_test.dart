@@ -4,15 +4,30 @@ import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/features/study/word_row.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
+import 'package:wird/features/prayer/prayer_plan.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/theme/nocturne.dart';
 
 import '../../corpus.dart';
 import '../../microphone.dart';
 import 'sets.dart';
+
+/// A reader who asked to be followed by voice, with no pace behind it: the
+/// text moves only when it is told to, so a test is not racing a timer.
+const voiceNoPace = (
+  preset: null,
+  rakahs: 1,
+  voice: true,
+  pace: false,
+  wpm: 40,
+  gloss: true,
+  around: true,
+  arabicSize: 52.0,
+);
 
 /// The phone's own screen, and whether the prayer left it awake.
 class Phone {
@@ -33,6 +48,10 @@ Future<void> pumpPrayer(
   required StudySet set,
   required Future<void> Function({required bool enable}) wakelock,
   PrayerCursor? cursor,
+  PrayerPrefs prefs = voiceNoPace,
+  PrayerPlan? plan,
+  List<StudyAya> fatiha = const [],
+  PrayerOutcome? outcome,
 }) async {
   tester.view.physicalSize = const Size(402, 874);
   tester.view.devicePixelRatio = 1;
@@ -51,7 +70,12 @@ Future<void> pumpPrayer(
               MaterialPageRoute<void>(
                 builder: (_) => PrayerScreen(
                   db: db,
-                  set: set,
+                  // The set alone, one rakʿah of it: what these tests pin is
+                  // how the screen moves through ayas, not Al-Fātiḥa.
+                  plan: plan ?? PrayerPlan(rakahs: 1, first: set),
+                  fatiha: fatiha,
+                  prefs: prefs,
+                  outcome: outcome,
                   cursor: cursor,
                   wakelock: wakelock,
                 ),
@@ -197,25 +221,28 @@ void main() {
     }
   });
 
-  testWidgets('the set recited a second time inside the same prayer runs off '
-      'the end instead of starting again', (tester) async {
+  testWidgets('the last aya of the last rakʿah leaves the reader with no way '
+      'to finish the prayer', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
-    expect(find.text("Al-'Asr · 1"), findsOneWidget);
-    await tapOn(tester, PrayerScreen.nextZone, times: set.ayas.length);
-    expect(litWord(tester), 103001001);
-    // The footer says where in the sūra the reciter is, and on the second
-    // reading of the set that is the same sentence as on the first. A count of
-    // readings could only be derived from a cursor that never moved backward,
-    // and a reciter repeating an aya would have made it tick down.
-    expect(find.text("Al-'Asr · 1"), findsOneWidget);
+    expect(find.text("Al-'Asr · 103:1"), findsOneWidget);
+    await tapOn(tester, PrayerScreen.nextZone, times: set.ayas.length - 1);
+    expect(find.text("Al-'Asr · 103:3"), findsOneWidget);
+    await tapOn(tester, PrayerScreen.nextZone);
+    expect(find.text('Prayer complete'), findsOneWidget);
+    // And it closes itself: the reader is bowing, not reaching for Exit.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    expect(find.text('the set'), findsOneWidget);
   });
 
   testWidgets('the prayer stops to show a dialog, an error or a spinner, in '
       'a room where none of them can be dealt with', (tester) async {
     await pumpPrayer(tester, db: db, set: set, wakelock: _noWakelockHere);
-    await tapOn(tester, PrayerScreen.nextZone, times: 40);
+    await tapOn(tester, PrayerScreen.nextZone, times: 2);
     await tapOn(tester, PrayerScreen.backZone, times: 5);
-    await tester.tap(find.text('Exit'));
+    // Past the end: the prayer completes, and the taps after land on that.
+    await tapOn(tester, PrayerScreen.nextZone, times: 5);
+    await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(
@@ -240,8 +267,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a set that is one long aya swallows the tap, because the jump '
-      'to the next reading is further than the prayer takes in one step', (
+  testWidgets('a rakʿah that is one long aya cannot be finished by a tap', (
     tester,
   ) async {
     await pumpPrayer(
@@ -250,10 +276,11 @@ void main() {
       set: await setOf(db, [2282]),
       wakelock: Phone().keepAwake,
     );
-    expect(find.text('Al-Baqarah · 282'), findsOneWidget);
+    expect(find.text('Al-Baqarah · 2:282'), findsOneWidget);
     await tapOn(tester, PrayerScreen.nextZone);
-    // One aya, so the only aya to go on to is itself.
-    expect(find.text('Al-Baqarah · 282'), findsOneWidget);
+    expect(find.text('Prayer complete'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('the prayer opens the microphone on a reader who never allowed '
@@ -266,8 +293,8 @@ void main() {
 
     expect(mic.opened, isEmpty);
     // And the screen does not claim to be hearing anyone.
-    expect(find.text('IN PRAYER'), findsOneWidget);
-    expect(find.text('FOLLOWING YOUR VOICE'), findsNothing);
+    expect(find.text('Tap to advance'), findsOneWidget);
+    expect(find.text('Following your voice'), findsNothing);
   });
 
   testWidgets('a reader who allowed the microphone but never downloaded the '
@@ -282,6 +309,112 @@ void main() {
     // to listen with, and opening the microphone would be a recording nobody
     // asked for.
     expect(mic.opened, isEmpty);
-    expect(find.text('IN PRAYER'), findsOneWidget);
+    expect(find.text('Tap to advance'), findsOneWidget);
+  });
+
+  group('a prayer of several rakʿahs', () {
+    late List<StudyAya> fatiha;
+
+    setUp(() async {
+      fatiha = (await setOf(db, [
+        for (var a = 1; a <= 7; a++) 1000 + a,
+      ])).ayas;
+    });
+
+    testWidgets('the second rakʿah begins before the reader has stood up from '
+        'the first', (tester) async {
+      final outcome = PrayerOutcome();
+      await pumpPrayer(
+        tester,
+        db: db,
+        set: set,
+        wakelock: Phone().keepAwake,
+        plan: PrayerPlan(preset: PrayerPreset.maghrib, rakahs: 3, first: set),
+        fatiha: fatiha,
+        outcome: outcome,
+      );
+      expect(find.text('MAGHRIB · RAKʿAH 1 OF 3'), findsOneWidget);
+      expect(find.text('Al-Fatihah · 1:1'), findsOneWidget);
+      // Seven ayas of Al-Fātiḥa and three of Al-ʿAṣr, then one past the end.
+      await tapOn(tester, PrayerScreen.nextZone, times: 10);
+      expect(find.text('RAKʿAH 2 OF 3'), findsOneWidget);
+      expect(find.text('Tap to begin'), findsOneWidget);
+      expect(outcome.reached, 1);
+      await tester.tap(find.text('Tap to begin'));
+      await tester.pumpAndSettle();
+      expect(find.text('MAGHRIB · RAKʿAH 2 OF 3'), findsOneWidget);
+      expect(find.text('Al-Fatihah · 1:1'), findsOneWidget);
+      expect(outcome.reached, 2);
+    });
+
+    testWidgets('the third rakʿah is given a passage it is not recited with', (
+      tester,
+    ) async {
+      await pumpPrayer(
+        tester,
+        db: db,
+        set: set,
+        wakelock: Phone().keepAwake,
+        plan: PrayerPlan(rakahs: 3, first: set),
+        fatiha: fatiha,
+      );
+      for (var r = 1; r <= 2; r++) {
+        await tapOn(tester, PrayerScreen.nextZone, times: 10);
+        await tapOn(tester, PrayerScreen.nextZone);
+      }
+      expect(find.text('PRAYER · RAKʿAH 3 OF 3'), findsOneWidget);
+      // Al-Fātiḥa alone: its seventh aya is the last, and then it is over.
+      await tapOn(tester, PrayerScreen.nextZone, times: 7);
+      expect(find.text('Prayer complete'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+    });
+  });
+
+  testWidgets('a reader with neither voice nor pace has a tap skip a whole aya',
+      (tester) async {
+    await pumpPrayer(
+      tester,
+      db: db,
+      set: set,
+      wakelock: Phone().keepAwake,
+      prefs: (
+        preset: null,
+        rakahs: 1,
+        voice: false,
+        pace: false,
+        wpm: 40,
+        gloss: true,
+        around: true,
+        arabicSize: 52,
+      ),
+    );
+    expect(find.text('Tap to advance'), findsOneWidget);
+    await tapOn(tester, PrayerScreen.nextZone);
+    expect(litWord(tester), 103002001);
+    await tapOn(tester, PrayerScreen.nextZone);
+    expect(litWord(tester), 103002002);
+  });
+
+  testWidgets('a pinched size is lost when the prayer closes', (tester) async {
+    final outcome = PrayerOutcome();
+    await pumpPrayer(
+      tester,
+      db: db,
+      set: set,
+      wakelock: Phone().keepAwake,
+      outcome: outcome,
+    );
+    final field = tester.getCenter(find.byKey(PrayerScreen.nextZone));
+    final a = await tester.startGesture(field - const Offset(20, 0));
+    final b = await tester.startGesture(field + const Offset(20, 0), pointer: 9);
+    await a.moveBy(const Offset(-20, 0));
+    await b.moveBy(const Offset(20, 0));
+    await tester.pump();
+    await a.up();
+    await b.up();
+    await tester.pumpAndSettle();
+    expect(outcome.size, greaterThan(52));
+    expect(find.textContaining('remembered'), findsOneWidget);
   });
 }

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/features/prayer/prayer_cursor.dart';
+import 'package:wird/features/prayer/prayer_plan.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/theme/nocturne.dart';
 
@@ -24,6 +25,9 @@ void main() {
       'test can see: type, spacing, or the layout of the prayer', (
     tester,
   ) async {
+    final fatiha = (await setOf(db, [
+      for (var a = 1; a <= 7; a++) 1000 + a,
+    ])).ayas;
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -35,11 +39,26 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: PrayerScreen(
           db: db,
-          set: await alAsr(db),
-          // The design's own frame: the third word of 103:2 being recited,
-          // the second time through the set. Nothing on this screen animates,
-          // and the cursor is pinned, so the frame is the same every run.
-          cursor: PrayerCursor(14, at: 3),
+          plan: PrayerPlan(
+            preset: PrayerPreset.maghrib,
+            rakahs: 3,
+            first: await alAsr(db),
+          ),
+          fatiha: fatiha,
+          // The design's own frame: Maghrib's first rakʿah, a few words into
+          // Al-Fātiḥa's fourth aya. The cursor is pinned and nothing moves it
+          // — no voice, no pace — so the frame is the same every run.
+          cursor: PrayerCursor(42, at: 11),
+          prefs: (
+            preset: 'maghrib',
+            rakahs: 3,
+            voice: false,
+            pace: false,
+            wpm: 40,
+            gloss: true,
+            around: true,
+            arabicSize: 52,
+          ),
           wakelock: _heldOpen,
         ),
       ),

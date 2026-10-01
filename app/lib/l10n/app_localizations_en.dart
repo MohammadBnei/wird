@@ -100,10 +100,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notDownloaded => 'Not downloaded';
 
   @override
-  String get prayer_in_prayer => 'IN PRAYER';
+  String prayer_header(String prayer, int rakah, int count) {
+    return '$prayer · Rakʿah $rakah of $count';
+  }
 
   @override
-  String get prayer_following_your_voice => 'FOLLOWING YOUR VOICE';
+  String prayer_part(String sura, String ref) {
+    return '$sura · $ref';
+  }
+
+  @override
+  String get prayer_generic => 'Prayer';
+
+  @override
+  String get prayer_fajr => 'Fajr';
+
+  @override
+  String get prayer_zuhr => 'Ẓuhr';
+
+  @override
+  String get prayer_asr => 'ʿAṣr';
+
+  @override
+  String get prayer_maghrib => 'Maghrib';
+
+  @override
+  String get prayer_isha => 'ʿIshāʾ';
+
+  @override
+  String get prayer_mode_both => 'Voice, pace as fallback';
+
+  @override
+  String get prayer_mode_voice => 'Following your voice';
+
+  @override
+  String prayer_mode_pace(int wpm) {
+    return 'Steady · $wpm wpm';
+  }
+
+  @override
+  String get prayer_mode_tap => 'Tap to advance';
+
+  @override
+  String prayer_rakah_count(int rakah, int count) {
+    return '$rakah of $count';
+  }
+
+  @override
+  String prayer_between(int rakah, int count) {
+    return 'Rakʿah $rakah of $count';
+  }
+
+  @override
+  String get prayer_between_voice => 'Begins when you recite · or tap';
+
+  @override
+  String get prayer_between_tap => 'Tap to begin';
+
+  @override
+  String get prayer_complete => 'Prayer complete';
+
+  @override
+  String prayer_size_remembered(int size) {
+    return '$size px · remembered';
+  }
+
+  @override
+  String get prayer_on_a_word => 'On to the next word';
 
   @override
   String get prayer_exit => 'Exit';
@@ -113,12 +176,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prayer_on_to_the_next_aya => 'On to the next aya';
-
-  @override
-  String get prayer_foot_taps_only => 'Screen stays awake · tap to go on · left edge steps back';
-
-  @override
-  String get prayer_foot_following => 'Screen stays awake · tap any time · left edge steps back';
 
   @override
   String get progress_kicker => 'UNDERSTOOD, NOT MERELY READ';

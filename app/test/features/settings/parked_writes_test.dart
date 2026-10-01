@@ -5,6 +5,7 @@ import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/outbox.dart';
+import 'package:wird/features/prayer/prayer_plan.dart';
 import 'package:wird/features/prayer/prayer_screen.dart';
 import 'package:wird/features/report/report.dart';
 import 'package:wird/features/settings/settings_screen.dart';
@@ -150,7 +151,8 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: PrayerScreen(
           db: db,
-          set: set,
+          plan: PrayerPlan(rakahs: 1, first: set),
+          fatiha: const [],
           wakelock: ({required bool enable}) async {},
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'app.dart';
 import 'l10n/app_localizations.dart';
+import 'data/db.dart';
 import 'data/flush.dart';
 import 'data/sets.dart';
 import 'features/about/about_screen.dart';
@@ -10,6 +11,7 @@ import 'features/dashboard/dashboard_screen.dart';
 import 'features/deepdive/deep_dive_screen.dart';
 import 'features/index/index_screen.dart';
 import 'features/kept/kept_screen.dart';
+import 'features/prayer/prayer_plan.dart';
 import 'features/prayer/prayer_screen.dart';
 import 'features/progress/progress_screen.dart';
 import 'features/report/report_screen.dart';
@@ -77,7 +79,23 @@ final screens = <String, ScreenBuilder>{
   Routes.study: (db, args) => args is AtWord
       ? StudyScreen(db: db, word: args.wordId)
       : StudyScreen(db: db, target: args as int?),
-  Routes.prayer: (db, args) => PrayerScreen(db: db, set: args! as StudySet),
+  // ponytail: until the prayer is prepared first, the set is the whole
+  // prayer — one rakʿah of it, with no Al-Fātiḥa, as before.
+  Routes.prayer: (db, args) => PrayerScreen(
+    db: db,
+    plan: PrayerPlan(rakahs: 1, first: args! as StudySet),
+    fatiha: const [],
+    prefs: (
+      preset: null,
+      rakahs: 1,
+      voice: true,
+      pace: false,
+      wpm: defaultPrayerPrefs.wpm,
+      gloss: true,
+      around: true,
+      arabicSize: defaultPrayerPrefs.arabicSize,
+    ),
+  ),
   Routes.root: (db, args) => RootScreen(db: db, letters: args! as String),
   Routes.rootSpine: (db, args) =>
       RootSpineScreen(db: db, letters: args! as String),

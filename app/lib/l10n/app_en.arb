@@ -140,13 +140,84 @@
   "@notDownloaded": {
     "description": "Why the play button is dark: the recitation for this set is not on the device."
   },
-  "prayer_in_prayer": "IN PRAYER",
-  "@prayer_in_prayer": {
-    "description": "Kicker beside the dot at the top of the prayer screen, while nothing is following the reciter."
+  "prayer_header": "{prayer} · Rakʿah {rakah} of {count}",
+  "@prayer_header": {
+    "description": "Kicker at the top left of the prayer screen, drawn in capitals: which prayer, and which rakʿah of how many.",
+    "placeholders": {
+      "prayer": {"type": "String"},
+      "rakah": {"type": "int"},
+      "count": {"type": "int"}
+    }
   },
-  "prayer_following_your_voice": "FOLLOWING YOUR VOICE",
-  "@prayer_following_your_voice": {
-    "description": "The same kicker at the top of the prayer screen, but only once voice-follow is really running."
+  "prayer_part": "{sura} · {ref}",
+  "@prayer_part": {
+    "description": "Under the kicker on the prayer screen: the sūra being recited and the aya, as in 'Al-Fatihah · 1:4'.",
+    "placeholders": {
+      "sura": {"type": "String"},
+      "ref": {"type": "String"}
+    }
+  },
+  "prayer_generic": "Prayer",
+  "@prayer_generic": {
+    "description": "The prayer's name when no preset was chosen: a sunna, a nafl, or a count the reader set."
+  },
+  "prayer_fajr": "Fajr",
+  "@prayer_fajr": {"description": "The dawn prayer, two rakʿahs."},
+  "prayer_zuhr": "Ẓuhr",
+  "@prayer_zuhr": {"description": "The midday prayer, four rakʿahs."},
+  "prayer_asr": "ʿAṣr",
+  "@prayer_asr": {"description": "The afternoon prayer, four rakʿahs."},
+  "prayer_maghrib": "Maghrib",
+  "@prayer_maghrib": {"description": "The sunset prayer, three rakʿahs."},
+  "prayer_isha": "ʿIshāʾ",
+  "@prayer_isha": {"description": "The night prayer, four rakʿahs."},
+  "prayer_mode_both": "Voice, pace as fallback",
+  "@prayer_mode_both": {
+    "description": "Foot of the prayer screen: the voice is followed, and a steady pace takes over when it loses the reciter."
+  },
+  "prayer_mode_voice": "Following your voice",
+  "@prayer_mode_voice": {
+    "description": "Foot of the prayer screen, only once voice-follow is really running."
+  },
+  "prayer_mode_pace": "Steady · {wpm} wpm",
+  "@prayer_mode_pace": {
+    "description": "Foot of the prayer screen: the text moves on its own at this many words a minute.",
+    "placeholders": {"wpm": {"type": "int"}}
+  },
+  "prayer_mode_tap": "Tap to advance",
+  "@prayer_mode_tap": {
+    "description": "Foot of the prayer screen when nothing moves the text but the reader's own taps."
+  },
+  "prayer_rakah_count": "{rakah} of {count}",
+  "@prayer_rakah_count": {
+    "description": "Bottom right of the prayer screen: which rakʿah of how many.",
+    "placeholders": {"rakah": {"type": "int"}, "count": {"type": "int"}}
+  },
+  "prayer_between": "Rakʿah {rakah} of {count}",
+  "@prayer_between": {
+    "description": "Over the screen between two rakʿahs, drawn in capitals: the rakʿah that comes next.",
+    "placeholders": {"rakah": {"type": "int"}, "count": {"type": "int"}}
+  },
+  "prayer_between_voice": "Begins when you recite · or tap",
+  "@prayer_between_voice": {
+    "description": "Between two rakʿahs, while the voice is followed: the next one starts when the reader recites Al-Fātiḥa, or on a tap."
+  },
+  "prayer_between_tap": "Tap to begin",
+  "@prayer_between_tap": {
+    "description": "Between two rakʿahs, with no voice: the next one starts on a tap."
+  },
+  "prayer_complete": "Prayer complete",
+  "@prayer_complete": {
+    "description": "Over the screen for a moment after the last rakʿah, before the prayer closes."
+  },
+  "prayer_size_remembered": "{size} px · remembered",
+  "@prayer_size_remembered": {
+    "description": "A brief chip while the reader pinches the Arabic: its new size, kept for the next prayer.",
+    "placeholders": {"size": {"type": "int"}}
+  },
+  "prayer_on_a_word": "On to the next word",
+  "@prayer_on_a_word": {
+    "description": "Screen-reader label for the wide tap zone when nothing else moves the text, where a tap moves on one word."
   },
   "prayer_exit": "Exit",
   "@prayer_exit": {
@@ -159,14 +230,6 @@
   "prayer_on_to_the_next_aya": "On to the next aya",
   "@prayer_on_to_the_next_aya": {
     "description": "Screen-reader label for the wide tap zone filling the rest of the prayer field, which moves on an aya."
-  },
-  "prayer_foot_taps_only": "Screen stays awake · tap to go on · left edge steps back",
-  "@prayer_foot_taps_only": {
-    "description": "The hint under the progress strip at the foot of the prayer screen, when the prayer answers taps only."
-  },
-  "prayer_foot_following": "Screen stays awake · tap any time · left edge steps back",
-  "@prayer_foot_following": {
-    "description": "The same hint at the foot of the prayer screen once voice-follow is running, where a tap is a correction rather than the only way on."
   },
   "progress_kicker": "UNDERSTOOD, NOT MERELY READ",
   "@progress_kicker": {

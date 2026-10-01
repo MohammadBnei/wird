@@ -245,17 +245,119 @@ abstract class AppLocalizations {
   /// **'Not downloaded'**
   String get notDownloaded;
 
-  /// Kicker beside the dot at the top of the prayer screen, while nothing is following the reciter.
+  /// Kicker at the top left of the prayer screen, drawn in capitals: which prayer, and which rakʿah of how many.
   ///
   /// In en, this message translates to:
-  /// **'IN PRAYER'**
-  String get prayer_in_prayer;
+  /// **'{prayer} · Rakʿah {rakah} of {count}'**
+  String prayer_header(String prayer, int rakah, int count);
 
-  /// The same kicker at the top of the prayer screen, but only once voice-follow is really running.
+  /// Under the kicker on the prayer screen: the sūra being recited and the aya, as in 'Al-Fatihah · 1:4'.
   ///
   /// In en, this message translates to:
-  /// **'FOLLOWING YOUR VOICE'**
-  String get prayer_following_your_voice;
+  /// **'{sura} · {ref}'**
+  String prayer_part(String sura, String ref);
+
+  /// The prayer's name when no preset was chosen: a sunna, a nafl, or a count the reader set.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer'**
+  String get prayer_generic;
+
+  /// The dawn prayer, two rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'Fajr'**
+  String get prayer_fajr;
+
+  /// The midday prayer, four rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'Ẓuhr'**
+  String get prayer_zuhr;
+
+  /// The afternoon prayer, four rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'ʿAṣr'**
+  String get prayer_asr;
+
+  /// The sunset prayer, three rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'Maghrib'**
+  String get prayer_maghrib;
+
+  /// The night prayer, four rakʿahs.
+  ///
+  /// In en, this message translates to:
+  /// **'ʿIshāʾ'**
+  String get prayer_isha;
+
+  /// Foot of the prayer screen: the voice is followed, and a steady pace takes over when it loses the reciter.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice, pace as fallback'**
+  String get prayer_mode_both;
+
+  /// Foot of the prayer screen, only once voice-follow is really running.
+  ///
+  /// In en, this message translates to:
+  /// **'Following your voice'**
+  String get prayer_mode_voice;
+
+  /// Foot of the prayer screen: the text moves on its own at this many words a minute.
+  ///
+  /// In en, this message translates to:
+  /// **'Steady · {wpm} wpm'**
+  String prayer_mode_pace(int wpm);
+
+  /// Foot of the prayer screen when nothing moves the text but the reader's own taps.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to advance'**
+  String get prayer_mode_tap;
+
+  /// Bottom right of the prayer screen: which rakʿah of how many.
+  ///
+  /// In en, this message translates to:
+  /// **'{rakah} of {count}'**
+  String prayer_rakah_count(int rakah, int count);
+
+  /// Over the screen between two rakʿahs, drawn in capitals: the rakʿah that comes next.
+  ///
+  /// In en, this message translates to:
+  /// **'Rakʿah {rakah} of {count}'**
+  String prayer_between(int rakah, int count);
+
+  /// Between two rakʿahs, while the voice is followed: the next one starts when the reader recites Al-Fātiḥa, or on a tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Begins when you recite · or tap'**
+  String get prayer_between_voice;
+
+  /// Between two rakʿahs, with no voice: the next one starts on a tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to begin'**
+  String get prayer_between_tap;
+
+  /// Over the screen for a moment after the last rakʿah, before the prayer closes.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer complete'**
+  String get prayer_complete;
+
+  /// A brief chip while the reader pinches the Arabic: its new size, kept for the next prayer.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} px · remembered'**
+  String prayer_size_remembered(int size);
+
+  /// Screen-reader label for the wide tap zone when nothing else moves the text, where a tap moves on one word.
+  ///
+  /// In en, this message translates to:
+  /// **'On to the next word'**
+  String get prayer_on_a_word;
 
   /// The ghost button at the top right of the prayer screen, the one way out of the prayer.
   ///
@@ -274,18 +376,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On to the next aya'**
   String get prayer_on_to_the_next_aya;
-
-  /// The hint under the progress strip at the foot of the prayer screen, when the prayer answers taps only.
-  ///
-  /// In en, this message translates to:
-  /// **'Screen stays awake · tap to go on · left edge steps back'**
-  String get prayer_foot_taps_only;
-
-  /// The same hint at the foot of the prayer screen once voice-follow is running, where a tap is a correction rather than the only way on.
-  ///
-  /// In en, this message translates to:
-  /// **'Screen stays awake · tap any time · left edge steps back'**
-  String get prayer_foot_following;
 
   /// The kicker over the title of the passage screen (1d), saying what the screen counts.
   ///

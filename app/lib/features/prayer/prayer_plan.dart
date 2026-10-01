@@ -89,7 +89,8 @@ Rakah rakahOf(List<StudyAya> fatiha, StudySet? passage) {
     for (final aya in passage?.ayas ?? const <StudyAya>[])
       for (final w in aya.words) w.text,
   ];
-  final basmala = passage == null || passage.ayas.first.surahId == 9
+  final basmala =
+      fatiha.isEmpty || passage == null || passage.ayas.first.surahId == 9
       ? const <String>[]
       : [for (final w in fatiha.first.words) w.text];
   return (
