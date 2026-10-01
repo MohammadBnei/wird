@@ -59,6 +59,11 @@ class _PrepareScreenState extends State<PrepareScreen> {
   StudySet? _second;
   var _sameAsFirst = true;
   var _voice = defaultPrayerPrefs.voice;
+
+  /// The reader's own answer to "follow my voice", kept while the phone
+  /// cannot follow it: a recogniser not yet downloaded must not cost them the
+  /// choice for the day it is.
+  var _voiceWanted = defaultPrayerPrefs.voice;
   var _pace = defaultPrayerPrefs.pace;
   var _wpm = defaultPrayerPrefs.wpm;
   var _gloss = defaultPrayerPrefs.gloss;
@@ -102,6 +107,7 @@ class _PrepareScreenState extends State<PrepareScreen> {
       _preset = PrayerPreset.values.asNameMap()[prefs.preset];
       _rakahs = prefs.rakahs;
       _first = widget.from ?? next;
+      _voiceWanted = prefs.voice;
       _voice = prefs.voice && voiceReady;
       _pace = prefs.pace;
       _wpm = prefs.wpm;
@@ -121,6 +127,18 @@ class _PrepareScreenState extends State<PrepareScreen> {
   );
 
   PrayerPrefs get _prefs => (
+    preset: _preset?.name,
+    rakahs: _rakahs,
+    voice: (_loaded?.voiceReady ?? false) ? _voice : _voiceWanted,
+    pace: _pace,
+    wpm: _wpm,
+    gloss: _gloss,
+    around: _around,
+    arabicSize: _size,
+  );
+
+  /// The same, as the prayer runs it: with the voice only where it can be.
+  PrayerPrefs get _running => (
     preset: _preset?.name,
     rakahs: _rakahs,
     voice: _voice,
@@ -183,7 +201,7 @@ class _PrepareScreenState extends State<PrepareScreen> {
           db: widget.db,
           plan: plan,
           fatiha: loaded.fatiha,
-          prefs: _prefs,
+          prefs: _running,
           outcome: outcome,
         ),
       ),

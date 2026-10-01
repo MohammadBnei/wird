@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/prayer/prepare_screen.dart';
 import 'package:wird/l10n/app_localizations.dart';
@@ -167,5 +168,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Begin Maghrib'), findsOneWidget);
     expect(await db.query('set_prayers'), isEmpty);
+  });
+
+  testWidgets('a reader who has not downloaded the recogniser yet loses '
+      'their choice to be followed by voice', (tester) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await prayAndLeave(tester);
+    expect((await prayerPrefs(db)).voice, isTrue);
   });
 }
