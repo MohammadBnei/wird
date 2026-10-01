@@ -19,10 +19,10 @@ class AyaTranslation extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(top: n.space('2')),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             text,
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13.5,
               height: 1.55,
