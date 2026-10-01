@@ -610,7 +610,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
                       child: ClipRect(
                         child: Align(
                           alignment: Alignment.bottomCenter,
-                          child: _neighbour(n, before, 0.3),
+                          child: _neighbour(n, before, 0.3, current: here.aya),
                         ),
                       ),
                     ),
@@ -653,7 +653,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
                             ),
                             if (around && _size <= 72) ...[
                               const SizedBox(height: 14),
-                              _neighbour(n, after, 0.22),
+                              _neighbour(n, after, 0.22, current: here.aya),
                             ],
                           ],
                         ),
@@ -753,19 +753,66 @@ class _PrayerScreenState extends State<PrayerScreen> {
 
   /// The aya before or after the one being recited, faded, so the reader
   /// knows where they are in the passage without it competing with the aya.
-  Widget _neighbour(Nocturne n, StudyAya? aya, double opacity) => aya == null
-      ? const SizedBox.shrink()
-      : Text(
-          [for (final w in aya.words) w.text].join(' '),
-          textDirection: TextDirection.rtl,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: Nocturne.arabicFamily,
-            fontSize: _aroundSize,
-            height: 1.85,
-            color: n.textAt(opacity),
+  /// The aya beside the one being recited, or — where it belongs to another
+  /// sūra — the boundary between the two, named by the later of them. Drawn
+  /// as an aya, al-Fātiḥa's last ran straight into the passage's first and
+  /// the two read as one sūra.
+  Widget _neighbour(
+    Nocturne n,
+    StudyAya? aya,
+    double opacity, {
+    required StudyAya current,
+  }) {
+    if (aya == null) return const SizedBox.shrink();
+    if (aya.surahId != current.surahId) {
+      final later = aya.id < current.id ? current : aya;
+      return _suraMark(n, later);
+    }
+    return Text(
+      [for (final w in aya.words) w.text].join(' '),
+      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontFamily: Nocturne.arabicFamily,
+        fontSize: _aroundSize,
+        height: 1.85,
+        color: n.textAt(opacity),
+      ),
+    );
+  }
+
+  Widget _suraMark(Nocturne n, StudyAya of) {
+    final rule = Expanded(child: Divider(color: n.color('accent-700')));
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        spacing: 12,
+        children: [
+          rule,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                of.surahNameAr,
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  fontFamily: Nocturne.arabicFamily,
+                  fontSize: 22,
+                  height: 1.6,
+                  color: n.color('accent-300'),
+                ),
+              ),
+              Text(
+                of.surahNameEn,
+                style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
+              ),
+            ],
           ),
-        );
+          rule,
+        ],
+      ),
+    );
+  }
 
   /// [named] is whether a word of this aya has been named. An aya shown
   /// because the one before it was finished has none yet: lighting its first

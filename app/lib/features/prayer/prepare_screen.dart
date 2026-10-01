@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
@@ -62,7 +63,7 @@ class _PrepareScreenState extends State<PrepareScreen> {
   int _rakahs = defaultPrayerPrefs.rakahs;
   StudySet? _first;
   StudySet? _second;
-  var _sameAsFirst = true;
+  var _sameAsFirst = false;
   var _voice = defaultPrayerPrefs.voice;
 
   /// What voice-follow needs and whether the phone has it: the microphone
@@ -118,6 +119,13 @@ class _PrepareScreenState extends State<PrepareScreen> {
     final model =
         mic == MicPermission.granted &&
         (await VoiceModel.beside(await getDatabasesPath())).ready;
+    // Al-Fātiḥa is recited in every rakʿah already, so a set of it — the one
+    // the reader was studying, say — is no passage: it would recite it twice
+    // and every word would stand in two places. The chooser refuses it too.
+    final first = [widget.from, next]
+        .where((s) => s != null && s.ayas.every((a) => a.surahId != 1))
+        .firstOrNull;
+    final second = await _after(first, order, suras);
     if (!mounted) return;
     setState(() {
       _loaded = (
@@ -131,13 +139,9 @@ class _PrepareScreenState extends State<PrepareScreen> {
       _model = model;
       _preset = PrayerPreset.values.asNameMap()[prefs.preset];
       _rakahs = prefs.rakahs;
-      // Al-Fātiḥa is recited in every rakʿah already, so a set of it — the
-      // one the reader was studying, say — is no passage: it would recite it
-      // twice and every word would stand in two places. The chooser refuses
-      // it too.
-      _first = [widget.from, next]
-          .where((s) => s != null && s.ayas.every((a) => a.surahId != 1))
-          .firstOrNull;
+      _first = first;
+      _second = second;
+      _sameAsFirst = false;
       _voiceWanted = prefs.voice;
       _voice = prefs.voice && _voiceReady;
       _pace = prefs.pace;
@@ -146,6 +150,29 @@ class _PrepareScreenState extends State<PrepareScreen> {
       _around = prefs.around;
       _size = prefs.arabicSize;
     });
+  }
+
+  /// The ayas after [set], as many as it holds, going on into the next sūra
+  /// when it ends one: the second rakʿah's own passage, rather than the
+  /// first's again. Null after an-Nās, and with no first passage.
+  Future<StudySet?> _after(
+    StudySet? set,
+    ReadingOrder order,
+    List<SuraEntry> suras,
+  ) async {
+    if (set == null) return null;
+    final last = set.ayas.last;
+    final ends = last.number >= suras[last.surahId - 1].ayahCount;
+    if (ends && last.surahId == 114) return null;
+    final sura = ends ? last.surahId + 1 : last.surahId;
+    final from = ends ? 1 : last.number + 1;
+    final left = suras[sura - 1].ayahCount - from + 1;
+    return ayaSet(
+      widget.db,
+      order,
+      sura * 1000 + from,
+      ayas: min(set.ayas.length, left),
+    );
   }
 
   PrayerPlan get _plan => PrayerPlan(

@@ -137,4 +137,33 @@ void main() {
           '103:1 and the screen still showed it',
     );
   });
+
+  testWidgets("al-Fātiḥa's last aya runs into the passage's first as one "
+      'sūra', (tester) async {
+    final fatiha = (await setOf(db, [
+      for (var a = 1; a <= 7; a++) 1000 + a,
+    ])).ayas;
+    // On the passage's first word: the aya before it is al-Fātiḥa's last.
+    final cursor = PrayerCursor(29 + 14, at: 29);
+    await pumpPrayer(
+      tester,
+      db: db,
+      set: set,
+      fatiha: fatiha,
+      cursor: cursor,
+      wakelock: ({required bool enable}) async {},
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text("Al-'Asr"),
+      findsOneWidget,
+      reason:
+          'nothing marked '
+          'where al-Fātiḥa ended and the passage began',
+    );
+    expect(
+      find.text([for (final w in fatiha.last.words) w.text].join(' ')),
+      findsNothing,
+    );
+  });
 }

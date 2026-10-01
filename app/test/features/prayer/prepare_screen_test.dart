@@ -72,9 +72,11 @@ void main() {
     tester,
   ) async {
     await pumpPrepare(tester, db: db, from: asr);
-    // In the first rakʿah, and again in the second, which repeats it.
-    expect(find.text("Al-'Asr"), findsNWidgets(2));
-    expect(find.textContaining('same as rakʿah 1'), findsOneWidget);
+    // In the first rakʿah; the second goes on from it rather than repeating
+    // it, into the next sūra since al-ʿAṣr ends where the first stops.
+    expect(find.text("Al-'Asr"), findsOneWidget);
+    expect(find.textContaining('Al-Humazah'), findsOneWidget);
+    expect(find.textContaining('same as rakʿah 1'), findsNothing);
     expect(find.text('Begin Maghrib'), findsOneWidget);
   });
 
@@ -148,7 +150,9 @@ void main() {
     // Four ayas, so it is offered whole and named as a sūra.
     await tester.tap(find.text('Recite Al-Ikhlas'));
     await tester.pumpAndSettle();
-    expect(find.text('Al-Ikhlas'), findsNWidgets(2));
+    // The first rakʿah's choice is its own: the second keeps its passage.
+    expect(find.text('Al-Ikhlas'), findsOneWidget);
+    expect(find.textContaining('Al-Humazah'), findsOneWidget);
     await prayAndLeave(tester);
     expect(await db.query('set_prayers'), isEmpty);
     expect((await db.query('prayer_history')).single['start_ayah_id'], 112001);
