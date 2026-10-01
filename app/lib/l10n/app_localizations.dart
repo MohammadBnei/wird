@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// **'THE WHOLE QUR’AN'**
   String get index_kicker;
 
-  /// The index screen's title: every sūra of the Qur'an, in written order.
+  /// The index screen's title: every sūra of the Qur'an, listed in the reader's reading order.
   ///
   /// In en, this message translates to:
   /// **'All 114'**
@@ -124,6 +124,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick an aya of {sura}'**
   String index_pick_aya(String sura);
+
+  /// Under 'Go to …' in the index, when the search is a reference like 2:255: choosing it opens the reader on that aya.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens at this aya'**
+  String get index_go_to_hint;
 
   /// Shown on the kept list in place of the cards when the reader has kept no aya; it names the control on the constellation screen that keeps one.
   ///

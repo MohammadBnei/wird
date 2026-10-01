@@ -148,7 +148,7 @@ void main() {
     await openTheList(tester);
     await tester.enterText(find.byType(TextField), 'ikhlas');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Al-Ikhlas'));
+    await tester.tap(find.byKey(const ValueKey('sura-112')));
     await tester.pumpAndSettle();
     // Four ayas, so it is offered whole and named as a sūra.
     await tester.tap(find.text('Recite Al-Ikhlas'));

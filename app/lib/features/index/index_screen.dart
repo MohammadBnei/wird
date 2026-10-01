@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../data/db.dart';
+import '../../data/sets.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
-import '../../widgets/nocturne_rule.dart';
+import 'sura_picker.dart';
 
 /// One sūra as the index lists it: what it is called, when it was revealed,
 /// and how much of it the reader has understood.
@@ -16,7 +18,7 @@ typedef SuraEntry = ({
   int understood,
 });
 
-/// All 114, in written order, with the reader's progress against each.
+/// All 114, in written order whatever the reader reads in, with the reader's progress against each.
 Future<List<SuraEntry>> suraIndex(Database db) async {
   final rows = await db.rawQuery('''
     SELECT s.id, s.name_en, s.name_ar, s.revelation_order, s.ayah_count,
@@ -66,6 +68,7 @@ class IndexScreen extends StatefulWidget {
 
 class _IndexScreenState extends State<IndexScreen> {
   List<SuraEntry>? _suras;
+  ReadingOrder _order = ReadingOrder.mushaf;
 
   /// The sūra whose aya numbers are showing. A sūra is 286 ayas at its
   /// longest, so they are unfolded one sūra at a time rather than all at once.
@@ -82,7 +85,13 @@ class _IndexScreenState extends State<IndexScreen> {
 
   Future<void> _load() async {
     final suras = await suraIndex(widget.db);
-    if (mounted) setState(() => _suras = suras);
+    final order = await readingOrder(widget.db);
+    if (mounted) {
+      setState(() {
+        _suras = suras;
+        _order = order;
+      });
+    }
   }
 
   @override
@@ -99,15 +108,15 @@ class _IndexScreenState extends State<IndexScreen> {
                 children: [
                   _header(n),
                   Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.fromLTRB(
-                        n.space('6'),
-                        0,
-                        n.space('6'),
-                        n.space('8'),
-                      ),
-                      itemCount: suras.length,
-                      itemBuilder: (context, i) => _row(n, suras[i]),
+                    child: SuraPicker(
+                      suras: suras,
+                      order: _order,
+                      goToHint: AppLocalizations.of(context)!.index_go_to_hint,
+                      onSura: (sura) => _read(sura.id * 1000 + 1),
+                      onRef: _read,
+                      trailing: (sura) => _arrow(n, sura),
+                      below: (sura) =>
+                          _opened == sura.id ? _ayas(n, sura) : null,
                     ),
                   ),
                 ],
@@ -144,125 +153,29 @@ class _IndexScreenState extends State<IndexScreen> {
     ),
   );
 
-  Widget _row(Nocturne n, SuraEntry sura) {
+  Widget _arrow(Nocturne n, SuraEntry sura) {
     final opened = _opened == sura.id;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          spacing: n.space('3'),
-          children: [
-            Expanded(
-              child: GestureDetector(
-                key: ValueKey('sura-${sura.id}'),
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _read(sura.id * 1000 + 1),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: n.space('2')),
-                  child: Row(
-                    spacing: n.space('3'),
-                    children: [
-                      SizedBox(
-                        width: 74,
-                        child: Text(
-                          sura.nameAr,
-                          textAlign: TextAlign.right,
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            fontFamily: Nocturne.arabicFamily,
-                            fontSize: 19,
-                            color: n.textAt(opened ? 1 : 0.75),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${sura.id} · ${sura.nameEn}',
-                                  style: TextStyle(fontSize: 11, color: n.text),
-                                ),
-                                Text(
-                                  '${sura.understood} / ${sura.ayahCount}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: n.textAt(0.55),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            // The revelation order is the other way the app reads the
-                            // Qur'an, so a reader in that order can find their place
-                            // by it rather than by the written number. It is spelled
-                            // out because a bare number under a count of ayas reads
-                            // as a second count.
-                            Text(
-                              AppLocalizations.of(context)!.index_revealed_nth(
-                                _ordinal(
-                                  Localizations.localeOf(context).languageCode,
-                                  sura.revelationOrder,
-                                ),
-                              ),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: n.textAt(0.42),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _bar(n, sura),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Semantics(
-              button: true,
-              label: AppLocalizations.of(context)!.index_pick_aya(sura.nameEn),
-              child: GestureDetector(
-                key: ValueKey('ayas-${sura.id}'),
-                behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() => _opened = opened ? null : sura.id),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: n.space('2'),
-                    vertical: n.space('3'),
-                  ),
-                  child: Icon(
-                    opened ? Icons.expand_less : Icons.expand_more,
-                    size: 18,
-                    color: n.color('accent-300'),
-                  ),
-                ),
-              ),
-            ),
-          ],
+    return Semantics(
+      button: true,
+      label: AppLocalizations.of(context)!.index_pick_aya(sura.nameEn),
+      child: GestureDetector(
+        key: ValueKey('ayas-${sura.id}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _opened = opened ? null : sura.id),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: n.space('2'),
+            vertical: n.space('3'),
+          ),
+          child: Icon(
+            opened ? Icons.expand_less : Icons.expand_more,
+            size: 18,
+            color: n.color('accent-300'),
+          ),
         ),
-        if (opened) _ayas(n, sura),
-        const NocturneRule(fade: 30),
-      ],
+      ),
     );
   }
-
-  Widget _bar(Nocturne n, SuraEntry sura) => ClipRRect(
-    borderRadius: BorderRadius.circular(2),
-    child: Container(
-      height: 3,
-      color: n.color('neutral-800'),
-      alignment: Alignment.centerLeft,
-      child: FractionallySizedBox(
-        widthFactor: sura.understood / sura.ayahCount,
-        child: Container(color: n.color('accent-700')),
-      ),
-    ),
-  );
 
   Widget _ayas(Nocturne n, SuraEntry sura) => Padding(
     padding: EdgeInsets.only(bottom: n.space('3')),
@@ -292,27 +205,4 @@ class _IndexScreenState extends State<IndexScreen> {
       ],
     ),
   );
-}
-
-/// "1st", "22nd", "113th" in English; "1re", "22e", "113e" in French — the
-/// ordinal the reader sees, agreeing with the feminine "sourate" it qualifies.
-///
-/// The suffix is the one reader-facing string that cannot live in the ARB:
-/// gen-l10n rejects ICU `selectordinal`, and `plural`'s `=1 =2 =3` match only
-/// the literal numbers, so 21 and 22 would come out "21th" and "22th". The
-/// sentence around it is `index_revealed_nth`, which takes this already spelled.
-///
-// ponytail: two languages, inline. A third locale means a real ordinal
-// formatter — reach for one then, not now.
-String _ordinal(String languageCode, int n) {
-  if (languageCode == 'fr') return n == 1 ? '${n}re' : '${n}e';
-  final suffix = n % 100 >= 11 && n % 100 <= 13
-      ? 'th'
-      : switch (n % 10) {
-          1 => 'st',
-          2 => 'nd',
-          3 => 'rd',
-          _ => 'th',
-        };
-  return '$n$suffix';
 }

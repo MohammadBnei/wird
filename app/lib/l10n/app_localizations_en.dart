@@ -28,6 +28,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get index_go_to_hint => 'Opens at this aya';
+
+  @override
   String get kept_empty_ayas => 'No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.';
 
   @override

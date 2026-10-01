@@ -8,9 +8,9 @@ import '../../data/sets.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
-import '../../widgets/nocturne_input.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../index/index_screen.dart';
+import '../index/sura_picker.dart';
 import 'prayer_plan.dart';
 
 /// What the reader chose for a rakʿah: a passage, the first rakʿah's passage
@@ -61,8 +61,6 @@ class PassageChooser extends StatefulWidget {
 }
 
 class _PassageChooserState extends State<PassageChooser> {
-  var _query = '';
-
   /// The range step, once a sūra is chosen: null while the list is showing.
   ({int sura, int from, int to})? _range;
   StudySet? _ranged;
@@ -171,176 +169,57 @@ class _PassageChooserState extends State<PassageChooser> {
   }
 
   Widget _list(Nocturne n, AppLocalizations l) {
-    // Al-Fātiḥa is refused here as it is in the list below.
-    final ref = switch (parseRef(_query, widget.suras)) {
-      final id? when id ~/ 1000 != 1 => id,
-      _ => null,
-    };
-    final head = RegExp(r'^\s*(\d{1,3})\s*[:.]').firstMatch(_query);
-    // A reference names one sūra; the list narrows to it rather than to every
-    // sūra with those digits in its number.
-    final rows = head != null
-        ? [
-            for (final s in widget.suras)
-              if (s.id == int.parse(head[1]!)) s,
-          ]
-        : searchSuras(widget.suras, _query);
-    // Al-Fātiḥa is recited in every rakʿah already; offering it as the
-    // passage would recite it twice and match every word against two places.
-    final offered = [
-      for (final s in rows)
-        if (s.id != 1) s,
-    ];
     final current = widget.current;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 6, 18, 8),
-          child: NocturneInput(
-            hint: l.chooser_search,
-            onChanged: (q) => setState(() => _query = q),
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
-            children: [
-              if (ref != null) _goTo(n, l, ref),
-              if (_query.trim().isEmpty) ...[
-                const SizedBox(height: 8),
-                NocturneKicker(l.chooser_suggested),
-                if (widget.rakah == 2)
-                  _suggestion(
-                    n,
-                    l.chooser_same,
-                    null,
-                    marked: current?.same ?? false,
-                    onTap: () => _choose((set: null, same: true)),
-                  ),
-                if (widget.continuing case final next?)
-                  _suggestion(
-                    n,
-                    l.chooser_continue,
-                    passageTitle(next, widget.suras),
-                    onTap: () => _choose((set: next, same: false)),
-                  ),
-                for (final set in widget.recent)
-                  _suggestion(
-                    n,
-                    passageTitle(set, widget.suras),
-                    l.chooser_recent,
-                    marked: current?.set?.id == set.id,
-                    onTap: () => _choose((set: set, same: false)),
-                  ),
-                _suggestion(
-                  n,
-                  l.chooser_fatiha_only,
-                  l.chooser_fatiha_only_hint,
-                  marked:
-                      current != null && current.set == null && !current.same,
-                  onTap: () => _choose((set: null, same: false)),
-                ),
-                const SizedBox(height: 16),
-                NocturneKicker(l.chooser_all),
-              ],
-              for (final s in offered)
-                InkWell(
-                  onTap: () => _openRange(
-                    s.id,
-                    1,
-                    // A short sūra is offered whole; a long one, its opening.
-                    s.ayahCount <= 10 ? s.ayahCount : 3,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: n.divider)),
-                    ),
-                    child: Row(
-                      spacing: 12,
-                      children: [
-                        SizedBox(
-                          width: 30,
-                          child: Text(
-                            '${s.id}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: n.textAt(0.5),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            s.nameEn,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ),
-                        Text(
-                          l.prepare_ayas(s.ayahCount),
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: n.textAt(0.55),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              if (_query.trim().isNotEmpty && offered.isEmpty && ref == null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 20),
-                  child: Text(
-                    l.chooser_no_match(_query.trim()),
-                    style: TextStyle(fontSize: 13, color: n.textAt(0.58)),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _goTo(Nocturne n, AppLocalizations l, int ref) {
-    final sura = ref ~/ 1000;
-    final aya = ref % 1000;
-    return InkWell(
-      onTap: () => _openRange(sura, aya, aya + 2),
-      child: Container(
-        margin: const EdgeInsets.only(top: 4),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: n.color('accent-900'),
-          border: Border.all(color: n.color('accent-700')),
-          borderRadius: BorderRadius.circular(n.radius('lg')),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.chooser_go_to(
-                      '${widget.suras[sura - 1].nameEn} $sura:$aya',
-                    ),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: n.color('accent-100'),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    l.chooser_go_to_hint,
-                    style: TextStyle(fontSize: 11.5, color: n.textAt(0.66)),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, size: 16, color: n.textAt(0.6)),
-          ],
-        ),
+    return SuraPicker(
+      suras: widget.suras,
+      order: widget.order,
+      goToHint: l.chooser_go_to_hint,
+      // Al-Fātiḥa is recited in every rakʿah already; offering it as the
+      // passage would recite it twice and match every word against two places.
+      exclude: const {1},
+      onSura: (s) => _openRange(
+        s.id,
+        1,
+        // A short sūra is offered whole; a long one, its opening.
+        s.ayahCount <= 10 ? s.ayahCount : 3,
       ),
+      onRef: (ref) => _openRange(ref ~/ 1000, ref % 1000, ref % 1000 + 2),
+      leading: [
+        const SizedBox(height: 8),
+        NocturneKicker(l.chooser_suggested),
+        if (widget.rakah == 2)
+          _suggestion(
+            n,
+            l.chooser_same,
+            null,
+            marked: current?.same ?? false,
+            onTap: () => _choose((set: null, same: true)),
+          ),
+        if (widget.continuing case final next?)
+          _suggestion(
+            n,
+            l.chooser_continue,
+            passageTitle(next, widget.suras),
+            onTap: () => _choose((set: next, same: false)),
+          ),
+        for (final set in widget.recent)
+          _suggestion(
+            n,
+            passageTitle(set, widget.suras),
+            l.chooser_recent,
+            marked: current?.set?.id == set.id,
+            onTap: () => _choose((set: set, same: false)),
+          ),
+        _suggestion(
+          n,
+          l.chooser_fatiha_only,
+          l.chooser_fatiha_only_hint,
+          marked: current != null && current.set == null && !current.same,
+          onTap: () => _choose((set: null, same: false)),
+        ),
+        const SizedBox(height: 16),
+        NocturneKicker(l.chooser_all),
+      ],
     );
   }
 
