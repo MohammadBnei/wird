@@ -41,6 +41,11 @@ The workflow stops if the tag and the pubspec disagree, if any signing value is 
 
 The route is served by [`models.go`](../../server/internal/api/models.go#L46) and works like the voice model download.
 
+## Installing over an older build
+
+- **A phone with a debug-signed build** cannot take a release APK as an update. Android refuses it because the signing key differs. Uninstall first. That deletes the app's local data, including the downloaded voice model.
+- **A phone with a release APK** refuses a later local walk build. The release arm64 APK carries version code 2001 (`2 × 1000 + build number`), and a walk build passes `force-version-code-ignoring-abi`, which makes it 1. Install the walk build with `adb install -d`, or uninstall first.
+
 ## A build without a tag
 
 Run the `apk` workflow by hand from the Actions tab. It uploads to `app/dispatch-<commit>/` and leaves `latest` alone.
