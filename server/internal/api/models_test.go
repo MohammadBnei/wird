@@ -135,31 +135,3 @@ func TestTheApiAnswersTheRangeItselfAndBreaksTheResume(t *testing.T) {
 		t.Error("this route answered the range itself")
 	}
 }
-
-// The APK link goes in a README and onto a stranger's phone, neither of which
-// holds a token. It must redirect to a signature under app/ and nowhere else.
-func TestTheApkIsAskedForABearerTokenAStrangerCannotHave(t *testing.T) {
-	h := withStore(t)
-
-	w := h.get(t, "/app/latest/app-arm64-v8a-release.apk", "")
-
-	if w.Code != http.StatusFound {
-		t.Fatalf("answered %d: %s", w.Code, w.Body.String())
-	}
-	to, err := url.Parse(w.Header().Get("Location"))
-	if err != nil || to.Path != "/wird-models/app/latest/app-arm64-v8a-release.apk" {
-		t.Errorf("Location is %q", w.Header().Get("Location"))
-	}
-}
-
-// The app route prefixes app/, so a traversal or the bare prefix must not be
-// turned into a signature for the recogniser's weights or the bucket root.
-func TestTheApkRouteSignsOutsideTheAppPrefix(t *testing.T) {
-	h := withStore(t)
-
-	for _, path := range []string{"/app/", "/app/../base-ar-quran/x", "/app/a/../../b"} {
-		if w := h.get(t, path, ""); w.Code == http.StatusFound {
-			t.Errorf("%q was signed: %s", path, w.Header().Get("Location"))
-		}
-	}
-}

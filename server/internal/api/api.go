@@ -55,10 +55,8 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	models := modelStoreFromEnv(log)
 	if models != nil {
 		mux.HandleFunc(modelsPath, models.serve)
-		mux.HandleFunc(appPath, models.serveApp)
 	} else {
 		mux.HandleFunc(modelsPath, modelsNotConfigured)
-		mux.HandleFunc(appPath, modelsNotConfigured)
 	}
 	// The app itself, from the same store, for the public page's Download
 	// buttons. apk.go carries why the key is configured rather than fixed.

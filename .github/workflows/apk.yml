@@ -1,8 +1,8 @@
-# A version tag -> a release-signed APK per ABI -> s3://wird-models/app/<tag>/
-# and app/latest/. wird-api's GET /app/ presigns and redirects to those keys,
-# so https://wird.bnei.dev/app/latest/app-arm64-v8a-release.apk is a link that
-# never expires (server/internal/api/models.go). docs/guides/releasing-the-apk.md
-# is the human version of this file.
+# A version tag -> a release-signed arm64 APK -> s3://wird-models/android/
+# wird-<sha12>.apk -> WIRD_APK_KEY bumped in helm/values.yaml -> ArgoCD rolls
+# the pod, and https://wird.bnei.dev/download/android (server/internal/api/
+# apk.go) hands out the new build. docs/guides/releasing-the-apk.md is the
+# human version of this file.
 #
 # WHY ubuntu-latest AND NOT ukubi-build. The build box has 9.6 GB free, 4 GB of
 # RAM and no JDK, and its disk is buildah's image store. An Android SDK, a
@@ -15,8 +15,8 @@
 name: apk
 
 on:
-  # A dispatch builds and uploads under app/dispatch-<sha>/ and leaves
-  # app/latest/ alone: latest names a tagged release only. Dispatch from main:
+  # A dispatch builds and uploads but does not publish: only a tag moves
+  # /download/android. Dispatch from main:
   # the Infisical identity accepts this file only from a tag or from main
   # (its workflow_ref bound claim), so no other workflow or branch can read
   # the keystore.
@@ -49,8 +49,10 @@ env:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    # contents: write to push the WIRD_APK_KEY bump, the way release.yml
+    # pushes its image tag. id-token mints the OIDC token Infisical checks.
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v5
@@ -177,12 +179,14 @@ jobs:
             prop keyPassword "$WIRD_ANDROID_KEY_PASSWORD"
           } > app/android/key.properties
 
-      # --split-per-abi keeps 25 MB of x86_64 onnxruntime off an arm64 phone
-      # (build.gradle.kts). No force-version-code-ignoring-abi: that flag is for
-      # walk builds, and a release keeps the per-ABI version codes.
+      # arm64 only: /download/android serves one file, and every phone Wird
+      # targets is 64-bit. --split-per-abi still matters, because it is what
+      # keeps sherpa_onnx's other-ABI libonnxruntime.so out (build.gradle.kts).
+      # No force-version-code-ignoring-abi: that flag is for walk builds, and a
+      # release keeps the per-ABI version code.
       - name: Build
         working-directory: app
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64
 
       # The second line of defence for the fallback above, checked on the
       # artifact itself rather than on the inputs.
@@ -194,37 +198,64 @@ jobs:
           echo "$certs"
           if grep -q 'CN=Android Debug' <<<"$certs"; then echo "::error::signed with the debug key"; exit 1; fi
 
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.p12" app/android/key.properties
+
+      # The key names the build's digest (deploy.md, ADR 0018): a published key
+      # is never overwritten, so a phone resuming a download cannot get half of
+      # one build and half of another.
+      #
       # aws s3 cp goes multipart above 8 MB. A single PUT through s3.bnei.dev
       # is cut at 60 s with a 502, and an APK is well over that threshold.
-      #
-      # ponytail: app/<version>/ is never deleted and Garage has no lifecycle.
-      # Fine at one tag now and then; prune old prefixes here if they pile up.
       #
       # The two checksum settings: AWS CLI 2.23+ adds CRC checksums to every
       # upload by default, which S3-compatible stores do not all accept, and the
       # failure reads like a signature fault. Send them only when required.
+      #
+      # ponytail: old android/ objects are never deleted and Garage has no
+      # lifecycle. Fine at one tag now and then; prune here if they pile up.
       - name: Upload
+        id: upload
         env:
           AWS_REQUEST_CHECKSUM_CALCULATION: when_required
           AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
           AWS_ACCESS_KEY_ID: ${{ env.WIRD_MODELS_S3_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ env.WIRD_MODELS_S3_SECRET }}
-          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || format('dispatch-{0}', github.sha) }}
-          IS_TAG: ${{ github.ref_type == 'tag' }}
         run: |
           set -euo pipefail
           aws configure set default.s3.addressing_style path
-          out=app/build/app/outputs/flutter-apk
-          aws s3 cp "$out" "s3://$BUCKET/app/$VERSION/" --recursive --exclude '*' --include 'app-*-release.apk'
-          [ "$IS_TAG" != true ] || aws s3 sync "s3://$BUCKET/app/$VERSION/" "s3://$BUCKET/app/latest/" --delete
-          {
-            echo "### APK $VERSION"
-            for f in "$out"/app-*-release.apk; do
-              echo "- https://wird.bnei.dev/app/$VERSION/$(basename "$f")"
-            done
-            [ "$IS_TAG" != true ] || echo "- latest: https://wird.bnei.dev/app/latest/app-arm64-v8a-release.apk"
-          } >> "$GITHUB_STEP_SUMMARY"
+          apk=app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          key="android/wird-$(sha256sum "$apk" | cut -c1-12).apk"
+          aws s3 cp "$apk" "s3://$BUCKET/$key" --content-type application/vnd.android.package-archive
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+          echo "Uploaded \`$key\` ($(du -h "$apk" | cut -f1))." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Remove the keystore
-        if: always()
-        run: rm -f "$RUNNER_TEMP/release.p12" app/android/key.properties
+      # Only a tag publishes. The bump goes to main, the branch ArgoCD reads,
+      # whatever ref this run checked out. Pushing with GITHUB_TOKEN triggers
+      # no workflow, and release.yml ignores helm/** anyway, so no loop.
+      - name: Publish to /download/android
+        if: github.ref_type == 'tag'
+        env:
+          KEY: ${{ steps.upload.outputs.key }}
+        run: |
+          set -euo pipefail
+          git fetch -q origin main
+          git checkout -q -B main origin/main
+          # Matches the line after `- name: WIRD_APK_KEY` only.
+          sed -i -E "/^  - name: WIRD_APK_KEY$/{n;s|^(    value: ).*|\1\"${KEY}\"|}" helm/values.yaml
+          # A sed that stops matching would leave the old build published and
+          # this run green. Silence must not read as success.
+          grep -A1 -x '  - name: WIRD_APK_KEY' helm/values.yaml | grep -qx "    value: \"${KEY}\"" || {
+            echo "::error::WIRD_APK_KEY was not bumped — check the sed against helm/values.yaml"
+            exit 1
+          }
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add helm/values.yaml
+          git diff --cached --quiet && { echo "WIRD_APK_KEY already at ${KEY}"; exit 0; }
+          git commit -q -m "chore(deploy): publish ${GITHUB_REF_NAME} at /download/android"
+          # release.yml can push its own bump between the fetch and this push.
+          git pull -q --rebase origin main
+          git push -q origin main
+          echo "Published ${GITHUB_REF_NAME}: https://wird.bnei.dev/download/android once ArgoCD syncs." >> "$GITHUB_STEP_SUMMARY"

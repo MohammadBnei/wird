@@ -34,17 +34,6 @@ import (
 // thing to debug twice.
 const modelsPath = "GET /models/"
 
-// The signed release APKs, which .github/workflows/apk.yml writes into the
-// same bucket under app/<tag>/ and app/latest/. Open for the same reason as
-// the recogniser: a stranger installing Wird has no account yet. A link to
-// /app/latest/app-arm64-v8a-release.apk never expires, because the signature
-// is minted per request; a presigned URL handed out directly dies in a week.
-//
-// ponytail: same bucket and key as the recogniser, so /models/app/... reaches
-// the APKs too. Harmless while both are public; a bucket of its own when
-// either stops being.
-const appPath = "GET /app/"
-
 // Long enough for a phone on a slow connection to start the transfer, short
 // enough that a URL out of a log is worth nothing later. The reader's client
 // holds a path and re-asks, so it never holds a URL that can expire.
@@ -79,17 +68,10 @@ func modelStoreFromEnv(log *slog.Logger) *modelStore {
 }
 
 func (m *modelStore) serve(w http.ResponseWriter, r *http.Request) {
-	m.serveKey(w, r, strings.TrimPrefix(r.URL.Path, "/models/"))
-}
-
-func (m *modelStore) serveApp(w http.ResponseWriter, r *http.Request) {
-	m.serveKey(w, r, "app/"+strings.TrimPrefix(r.URL.Path, "/app/"))
-}
-
-func (m *modelStore) serveKey(w http.ResponseWriter, r *http.Request, key string) {
-	// `..` in a key would reach another prefix of the bucket, which also
-	// holds the APKs under app/.
-	if key == "" || key == "app/" || strings.Contains(key, "..") {
+	key := strings.TrimPrefix(r.URL.Path, "/models/")
+	// `..` in a key would reach another prefix of the bucket, and the bucket
+	// is shared with nothing today but will not always be.
+	if key == "" || strings.Contains(key, "..") {
 		http.NotFound(w, r)
 		return
 	}
