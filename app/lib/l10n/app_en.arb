@@ -1023,6 +1023,18 @@
   "@settingsWordNeither": {
     "description": "Fourth option of the settings screen's word-display segmented control: print nothing under the Arabic."
   },
+  "settingsAyaTranslationShown": "Aya translated",
+  "@settingsAyaTranslationShown": {
+    "description": "Settings: show each aya's translation under it on the reading screen."
+  },
+  "settingsAyaTranslationHidden": "Arabic only",
+  "@settingsAyaTranslationHidden": {
+    "description": "Settings: draw no translation under the ayas, only the words and their glosses."
+  },
+  "settingsAyaTranslationCaption": "Pickthall's English or Rashid Maash's French, under each aya.",
+  "@settingsAyaTranslationCaption": {
+    "description": "Caption under the aya translation setting: whose translation is shown, by language."
+  },
   "settingsWordCaption": "What is printed under each Arabic word.",
   "@settingsWordCaption": {
     "description": "Caption under the word-display segmented control on the settings screen."
@@ -1404,9 +1416,9 @@
   "@settingsParkedOther": {
     "description": "A parked write named in the settings screen's parked-writes panel when its kind is one this build does not know."
   },
-  "study_ayaTranslated": "Rashid Maash",
+  "study_ayaTranslated": "Pickthall",
   "@study_ayaTranslated": {
-    "description": "Who rendered the aya, shown under the translation."
+    "description": "Who rendered the aya, shown under the translation: Pickthall in English, Rashid Maash in French."
   },
   "study_glossesSource": "The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.",
   "@study_glossesSource": {

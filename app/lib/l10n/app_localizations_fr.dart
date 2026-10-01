@@ -634,6 +634,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsWordNeither => 'Aucun';
 
   @override
+  String get settingsAyaTranslationShown => 'Verset traduit';
+
+  @override
+  String get settingsAyaTranslationHidden => 'Arabe seul';
+
+  @override
+  String get settingsAyaTranslationCaption => 'La traduction de Rashid Maash, ou l’anglais de Pickthall, sous chaque verset.';
+
+  @override
   String get settingsWordCaption => 'Ce qui est imprimé sous chaque mot arabe.';
 
   @override

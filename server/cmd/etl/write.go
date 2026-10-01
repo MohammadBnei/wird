@@ -205,15 +205,22 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
-	fr := make([]Ayah, 0, len(c.Ayahs))
+	type translation struct {
+		ayah, resource int
+		lang, text     string
+	}
+	var rendered []translation
 	for _, a := range c.Ayahs {
 		if a.TextFr != "" {
-			fr = append(fr, a)
+			rendered = append(rendered, translation{a.ID, frenchTranslation, "fr", a.TextFr})
+		}
+		if a.TextEn != "" {
+			rendered = append(rendered, translation{a.ID, englishTranslation, "en", a.TextEn})
 		}
 	}
-	if err := insert(`INSERT INTO ayah_translations VALUES (?,?,?,?)`, len(fr), func(i int) []any {
-		a := fr[i]
-		return []any{a.ID, frenchTranslation, "fr", a.TextFr}
+	if err := insert(`INSERT INTO ayah_translations VALUES (?,?,?,?)`, len(rendered), func(i int) []any {
+		t := rendered[i]
+		return []any{t.ayah, t.resource, t.lang, t.text}
 	}); err != nil {
 		return err
 	}

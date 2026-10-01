@@ -477,11 +477,15 @@ const defaultArabicSize = 31.0;
 const defaultHeaderOpen = false;
 const defaultRootOpen = true;
 
+/// Each aya's translation is shown under it until the reader turns it off.
+const defaultAyaTranslation = true;
+
 typedef DisplayPrefs = ({
   int display,
   double arabicSize,
   bool headerOpen,
   bool rootOpen,
+  bool ayaTranslation,
 });
 
 /// Adds the columns a `display_prefs` written before either end of screen 1a
@@ -492,6 +496,7 @@ Future<void> ensureChromeColumns(Database db) async {
   for (final (column, byDefault) in [
     ('header_open', defaultHeaderOpen),
     ('root_open', defaultRootOpen),
+    ('aya_translation', defaultAyaTranslation),
   ]) {
     if (have.contains(column)) continue;
     await db.execute(
@@ -509,6 +514,7 @@ Future<DisplayPrefs> displayPrefs(Database db) async {
       arabicSize: defaultArabicSize,
       headerOpen: defaultHeaderOpen,
       rootOpen: defaultRootOpen,
+      ayaTranslation: defaultAyaTranslation,
     );
   }
   return (
@@ -516,6 +522,7 @@ Future<DisplayPrefs> displayPrefs(Database db) async {
     arabicSize: rows.first['arabic_size']! as double,
     headerOpen: rows.first['header_open'] == 1,
     rootOpen: rows.first['root_open'] == 1,
+    ayaTranslation: rows.first['aya_translation'] == 1,
   );
 }
 
@@ -527,12 +534,14 @@ Future<void> setDisplayPrefs(
   required double arabicSize,
   required bool headerOpen,
   required bool rootOpen,
+  required bool ayaTranslation,
 }) => db.insert('display_prefs', {
   'id': 1,
   'display': display,
   'arabic_size': arabicSize,
   'header_open': headerOpen ? 1 : 0,
   'root_open': rootOpen ? 1 : 0,
+  'aya_translation': ayaTranslation ? 1 : 0,
 }, conflictAlgorithm: ConflictAlgorithm.replace);
 
 /// A root's family, as screen 1a's root panel reads it.

@@ -40,6 +40,10 @@ type Ayah struct {
 	// because a reading that is French for a page and then English is worse than
 	// one that is honestly English throughout.
 	TextFr string
+
+	// Pickthall's English, 1930, public domain by age (data/SOURCES.md). Held
+	// to the same all-or-none rule as the French.
+	TextEn string
 }
 
 // The resource id of Rashid Maash's French, which is what quran.com identifies a
@@ -48,6 +52,9 @@ type Ayah struct {
 // it — so the French under each word comes from elsewhere (glosses_fr.go).
 // data/SOURCES.md has the provenance and the licence position of both.
 const frenchTranslation = 779
+
+// Marmaduke Pickthall's English, quran.com's resource 19.
+const englishTranslation = 19
 
 // footnote is the markup quran.com wraps a translator's note in:
 // `<sup foot_note=203920>1</sup>`. The note itself is in no field of the
@@ -217,15 +224,19 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 				return nil, err
 			}
 			aid := ayahID(su, ay)
-			fr := ""
+			fr, en := "", ""
 			for _, t := range v.Translations {
-				if t.ResourceID == frenchTranslation {
-					fr = strings.TrimSpace(footnote.ReplaceAllString(t.Text, ""))
+				text := strings.TrimSpace(footnote.ReplaceAllString(t.Text, ""))
+				switch t.ResourceID {
+				case frenchTranslation:
+					fr = text
+				case englishTranslation:
+					en = text
 				}
 			}
 			c.Ayahs = append(c.Ayahs, Ayah{
 				ID: aid, SurahID: su, Number: ay,
-				TextUthmani: v.TextUthmani, TextFr: fr,
+				TextUthmani: v.TextUthmani, TextFr: fr, TextEn: en,
 			})
 			pos := 0
 			for _, w := range v.Words {

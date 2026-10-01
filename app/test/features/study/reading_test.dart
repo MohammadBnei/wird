@@ -140,8 +140,13 @@ void main() {
       'around it cannot be read on', (tester) async {
     await openStudy(tester, target: _kursi);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
-    await tester.pumpAndSettle();
+    // Scrolled until it shows rather than by a fixed distance: how far 2:256
+    // is depends on how long 2:255's translation runs.
+    await tester.scrollUntilVisible(
+      find.byKey(WordKey(_word(2256, 1))),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
 
     expect(find.byKey(WordKey(_word(2256, 1))), findsOneWidget);
   });

@@ -634,6 +634,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsWordNeither => 'Neither';
 
   @override
+  String get settingsAyaTranslationShown => 'Aya translated';
+
+  @override
+  String get settingsAyaTranslationHidden => 'Arabic only';
+
+  @override
+  String get settingsAyaTranslationCaption => 'Pickthall\'s English or Rashid Maash\'s French, under each aya.';
+
+  @override
   String get settingsWordCaption => 'What is printed under each Arabic word.';
 
   @override
@@ -897,7 +906,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsParkedOther => 'A change you made';
 
   @override
-  String get study_ayaTranslated => 'Rashid Maash';
+  String get study_ayaTranslated => 'Pickthall';
 
   @override
   String get study_glossesSource => 'The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.';

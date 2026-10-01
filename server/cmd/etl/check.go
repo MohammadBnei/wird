@@ -96,10 +96,13 @@ func (c *Corpus) Check(full bool) error {
 	// answers English and calls it english, so "the column is populated" proves
 	// nothing about what is in it. Counted rather than sampled.
 	if full {
-		var french int
+		var french, english int
 		for _, a := range c.Ayahs {
 			if a.TextFr != "" {
 				french++
+			}
+			if a.TextEn != "" {
+				english++
 			}
 		}
 		if french != 0 && french != len(c.Ayahs) {
@@ -107,6 +110,11 @@ func (c *Corpus) Check(full bool) error {
 				"French reader would read some of the Qur'an in French and the rest in "+
 				"Arabic with an English gloss; ingest all of it or none of it",
 				french, len(c.Ayahs)))
+		}
+		if english != 0 && english != len(c.Ayahs) {
+			errs = append(errs, fmt.Errorf("%d of %d ayas carry Pickthall's English, so an "+
+				"English reader would meet a translation under some ayas and none under "+
+				"others; ingest all of it or none of it", english, len(c.Ayahs)))
 		}
 	}
 

@@ -8,7 +8,7 @@ go run ./server/cmd/ingest                      # -suras 1,2,103,112 for a parti
 go run ./server/cmd/etl -in ./data/raw/ -out ./app/assets/corpus.db
 ```
 
-That command writes `corpus_version` 4, which is what the shipped asset carries:
+That command writes `corpus_version` 6, which is what the shipped asset carries:
 the number is the ETL's `-corpus-version` default so the documented rebuild
 cannot regress it, and the app asserts it in
 `app/test/features/report/report_screen_test.dart`. The API groups reports by
@@ -253,6 +253,31 @@ Two readings the ETL makes, recorded here for the same reason as the two above:
   plural; the tag `ACC` is a particle where the feature is a case; the tag `IMPV`
   is a prefixed lām where the feature is an aspect.
 
+### English reaches a reader in Pickthall's words, because his are free
+
+Since 2026-10-01 the reading screen can show each aya's English under it, for a
+reader who wants it. quran.com serves the English in the same response as the
+French: `translations=779,19`, where **19 is Marmaduke Pickthall's _The Meaning
+of the Glorious Koran_ (1930)**.
+
+**Why Pickthall and not a more modern English.** The owner chose it on its
+licence footing. Pickthall died in 1936, so the text is out of copyright
+wherever the term is life plus 70 years. In the United States, a work published
+in 1930 entered the public domain on 1 January 2026. Sahih International, the
+most read modern English, is a copyrighted work whose redistribution terms
+could not be found. Yusuf Ali's 1934 text is old enough, but the revised
+editions are not, and which edition quran.com serves was not established. The
+English is archaic (thee, thou, overtaketh). That is what free costs here.
+
+**The same one modification.** The footnote marker the ETL strips from the
+French is stripped from the English too, by the same line.
+
+**What this does not change.** Pickthall's text is free. Its delivery through
+quran.com still sits under the QF Developer Terms' one-week storage rule that
+every other `api.quran.com` row below carries. Fetching the same text from a
+public-domain archive instead would remove that question for this table. That
+was not done.
+
 ## Provenance and licence
 
 Every "reached how" below other than the morphology is an unauthenticated public
@@ -265,7 +290,8 @@ is given so the reading can be checked rather than believed.
 | `ayahs.text_uthmani`, `words.text_ar` | `api.quran.com/api/v4/verses/by_chapter`; the text is [Tanzil](https://tanzil.net/download/)'s, which quran.com credits | Tanzil: verbatim copies, attribution, a link to tanzil.net. Delivery is governed by the QF terms | **Yes** for the text, unmodified and attributed; the delivery path carries the QF conditions |
 | `words.gloss_en`, `words.translit` | same endpoint | QF terms treat it as QF Content; **no upstream author is named anywhere I could find** | **Could not determine** — conditionally yes under the QF terms, with an unnamed source underneath |
 | `words.gloss_fr` | [The Last Dialogue, "Coran Mot à Mot"](https://www.thelastdialogue.org/coran-mot-a-mot-francais/), the sura pages saved by `ingest` | "© 2026 All Rights Reserved", and a written grant to Wird dated 2026-09-30, attribution not required | **Yes, by permission** — see *French word glosses* |
-| `ayah_translations` | `api.quran.com/api/v4/verses/by_chapter`, `translations=779` — Rashid Maash's French, arriving in the same response as the Arabic and keyed by verse | QF terms treat it as QF Content, and the translator is named where the word gloss's author is not | **Could not determine** — the same unresolved term as the row above, now carrying prose somebody is credited for |
+| `ayah_translations`, `lang = 'fr'` | `api.quran.com/api/v4/verses/by_chapter`, `translations=779` — Rashid Maash's French, arriving in the same response as the Arabic and keyed by verse | QF terms treat it as QF Content, and the translator is named where the word gloss's author is not | **Could not determine** — the same unresolved term as the row above, now carrying prose somebody is credited for |
+| `ayah_translations`, `lang = 'en'` | the same response, resource 19 — Marmaduke Pickthall's English, 1930 | Public domain by age: life plus 70 years since 2007, and in the US since 2026-01-01. Delivery is governed by the QF terms | **Yes** for the text; the delivery path carries the QF conditions — see *English reaches a reader* |
 | `words.root_letters`, `words.form`, `words.morphology`, `roots` | [Quranic Arabic Corpus 0.4](https://corpus.quran.com/download/), the upstream file, placed by hand | GPL, verbatim copies only, attribution and a link; Tanzil underneath it | **Yes** — Wird is AGPL-3.0 and the notice ships in `corpus_meta.notice`; see above |
 | `irab` | the same file, one row per segment rather than one per word | as above — it is upstream's own tags and features, rearranged and not edited | **Yes**, under the same row above |
 | `irab_roles` | **written here.** A translation of the annotation vocabulary the file uses; the names themselves are documented only on [corpus.quran.com](https://corpus.quran.com/documentation/) | a derivative of Dukes's annotation, so the GPL row above governs it; the French has no upstream at all | **Yes** — see *The parsing* |

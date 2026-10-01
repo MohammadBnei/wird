@@ -105,9 +105,9 @@ class _StudyScreenState extends State<StudyScreen> {
   /// moving from the same one.
   int? _stepping;
 
-  /// The reader's own language rendering of each aya, by aya, as far as it has
-  /// been read. Empty in English: there is nothing to draw beside a reading that
-  /// is already in the reader's language, and nothing to read either.
+  /// Each aya's translation in the reader's language, by aya, as far as it has
+  /// been read: Pickthall's English or Rashid Maash's French. Read whether or
+  /// not the reader shows it, so turning it on in Settings needs no reload.
   final Map<int, String> _translated = {};
 
   /// Ayas whose words are on their way. Without it the list asks for the same
@@ -244,7 +244,7 @@ class _StudyScreenState extends State<StudyScreen> {
     // The set arrives with its words, so this is where its renderings belong
     // too — _readWordsAround only fires for ayas the set did not bring.
     final lang = Localizations.localeOf(context).languageCode;
-    final rendered = lang == 'en' || set == null
+    final rendered = set == null
         ? const <int, String>{}
         : await translationsFor(
             widget.db,
@@ -638,7 +638,8 @@ class _StudyScreenState extends State<StudyScreen> {
               padding: EdgeInsets.symmetric(vertical: n.space('2')),
               child: const DashedRule(),
             ),
-          if (index == 0 && _translated.isNotEmpty) ...[
+          if (index == 0 &&
+              Localizations.localeOf(context).languageCode == 'fr') ...[
             SizedBox(height: n.space('2')),
             // Once, above the reading, not under every aya: a reader learns this
             // on the first screenful and does not need telling six more times.
@@ -673,7 +674,8 @@ class _StudyScreenState extends State<StudyScreen> {
               AyaMark(aya: face.aya, arabicSize: _arabicSize),
             ],
           ),
-          if (_translated[aya.id] case final rendered?) ...[
+          if (_translated[aya.id] case final rendered?
+              when _prefs.ayaTranslation) ...[
             SizedBox(height: n.space('3')),
             // Under the whole aya, because it renders the whole aya. The words
             // above carry their own English glosses and this does not replace
@@ -721,10 +723,7 @@ class _StudyScreenState extends State<StudyScreen> {
     // ours to touch once one has passed.
     final lang = Localizations.localeOf(context).languageCode;
     final read = await wordsFor(widget.db, want);
-    // English asks for nothing, because the reading is already in it.
-    final rendered = lang == 'en'
-        ? const <int, String>{}
-        : await translationsFor(widget.db, want, lang);
+    final rendered = await translationsFor(widget.db, want, lang);
     if (!mounted || generation != _generation) return;
     setState(() {
       _words.addAll(read);

@@ -1133,6 +1133,24 @@ abstract class AppLocalizations {
   /// **'Neither'**
   String get settingsWordNeither;
 
+  /// Settings: show each aya's translation under it on the reading screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Aya translated'**
+  String get settingsAyaTranslationShown;
+
+  /// Settings: draw no translation under the ayas, only the words and their glosses.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic only'**
+  String get settingsAyaTranslationHidden;
+
+  /// Caption under the aya translation setting: whose translation is shown, by language.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickthall\'s English or Rashid Maash\'s French, under each aya.'**
+  String get settingsAyaTranslationCaption;
+
   /// Caption under the word-display segmented control on the settings screen.
   ///
   /// In en, this message translates to:
@@ -1571,10 +1589,10 @@ abstract class AppLocalizations {
   /// **'A change you made'**
   String get settingsParkedOther;
 
-  /// Who rendered the aya, shown under the translation.
+  /// Who rendered the aya, shown under the translation: Pickthall in English, Rashid Maash in French.
   ///
   /// In en, this message translates to:
-  /// **'Rashid Maash'**
+  /// **'Pickthall'**
   String get study_ayaTranslated;
 
   /// Said once above the reading, where the aya is translated: whose the per-word glosses are, and that a few stay English.
