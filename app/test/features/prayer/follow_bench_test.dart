@@ -179,15 +179,10 @@ List<Window> notTheSet(List<String> said) {
 /// measured at when the margin became per-set and copies were settled by
 /// order (ADR 0019). Lower one when a change earns it; never raise one.
 const _behindAtMost = {
-  'al-ʿAsr slips 1': 1,
-  'al-ʿAsr slips 3': 3,
-  'al-Kāfirūn slips 1': 1,
-  'al-Kāfirūn slips 3': 10,
-  'al-Ikhlāṣ slips 1': 1,
-  'al-Ikhlāṣ slips 3': 2,
-  'az-Zalzalah slips 1': 1,
-  'az-Zalzalah slips 3': 2,
-  'al-Qāriʿah slips 3': 8,
+  'al-ʿAsr slips 3': 1,
+  'al-Kāfirūn slips 3': 3,
+  'al-Ikhlāṣ slips 3': 1,
+  'al-Qāriʿah slips 3': 3,
 };
 
 Map<String, dynamic> _fixture(String name) =>
@@ -303,6 +298,23 @@ void main() {
       ]),
     );
 
+    // The owner on 2026-10-01: al-Fātiḥa and al-Falaq, the first rakʿah of
+    // the trail (up to 88 s). Its last word is said walaḍ-ḍāllīn, and
+    // al-Falaq's last aya is word 55 of what is heard.
+    {
+      final r = await rakah(113, 5);
+      conditions.add(
+        Condition('falaq trail', r.heard, reach: 55, [
+          for (final line in File(
+            'test/fixtures/falaq_macos_trail.txt',
+          ).readAsLinesSync())
+            if (RegExp(r'^([\d.]+)s\s+heard\s+(.*?) \|').firstMatch(line)
+                case final m? when double.parse(m[1]!) < 88)
+              (heard: m[2]!, lo: null, hi: null),
+        ]),
+      );
+    }
+
     // Perfect recitations of real rakʿahs, the unseen basmala included.
     for (final (name, sura, n) in [
       ('al-ʿAsr', 103, 3),
@@ -356,7 +368,9 @@ void main() {
             for (final (i, aya) in a.indexed)
               i == 4 ? aya.skip(1).toList() : aya,
           ]),
-          behind: 0,
+          // One window late since the margin got a floor (ADR 0019): the
+          // floor stopped a twenty-word jump on the owner's trail.
+          behind: 1,
         ),
       );
       // Speech that is not the set: al-Ikhlāṣ without its basmala, then the
@@ -413,5 +427,29 @@ void main() {
     // ignore: avoid_print
     print(rows.join('\n'));
     expect(failures, isEmpty, reason: failures.join('\n'));
+  });
+
+  // Three windows off the same trail, each a failure the owner saw.
+  test("the owner's recogniser on al-Fātiḥa and al-Falaq", () async {
+    final db = await testCorpus();
+    final fatiha = (await setOf(db, [
+      for (var a = 1; a <= 7; a++) 1000 + a,
+    ])).ayas;
+    final r = rakahOf(
+      fatiha,
+      await setOf(db, [for (var a = 1; a <= 5; a++) 113000 + a]),
+    );
+    final set = Recitation(r.heard);
+    // walaḍ-ḍāllīn: the last word, which a window as long as what was heard
+    // could not name, and the reader said it over and over.
+    expect(
+      locate(set, 'غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦن', from: 27)?.word,
+      28,
+    );
+    // 1:3 and on into 1:4, which a near-copy in front of the passage took at
+    // a margin of 0.07: the cursor jumped to word 33 and back.
+    expect(locate(set, 'رَحمَۥۥنرَحِۦۦۦۦم مَلَاا', from: 9)?.word, isNot(33));
+    // The basmala opening the second rakʿah, placed at 0.73.
+    expect(locate(set, 'نِسمِللَااهِررَحمَاانِررَحِۦۦم', from: 0)?.word, 3);
   });
 }

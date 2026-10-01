@@ -69,6 +69,9 @@ bool stillHeard({
 /// ayas, the basmala and `al-ḥamdu lillāhi rabbi l-ʿālamīn`, four words each.
 const openingWords = 8;
 
+/// How many letters a window must hold to begin a rakʿah: about the basmala's.
+const openingLetters = 12;
+
 class PrayerVoice {
   PrayerVoice._(this._cursor, this._set, this._mic, this.trail, this._unseenAt);
 
@@ -594,14 +597,16 @@ class PrayerVoice {
   /// voice would follow nothing for the rest of the rakʿah.
   void begun() => _opening = false;
 
-  /// Whether [word], heard surely in [heard], is the reader beginning
-  /// Al-Fātiḥa: a full window, landing inside its first two ayas.
+  /// Whether [word], placed from [heard], is the reader beginning Al-Fātiḥa:
+  /// a window as long as the basmala, landing inside its first two ayas.
+  /// Asked for a full window, heard surely, a reader whose basmala placed at
+  /// 0.73 had to recite two ayas before the rakʿah began.
   bool _opens(int word, String heard) {
     var letters = 0;
     for (final w in heard.split(RegExp(r'\s+'))) {
       letters += recitationKey(w).length;
     }
-    return _lastSure && letters >= heardTailLetters && word < openingWords;
+    return letters >= openingLetters && word < openingWords;
   }
 
   /// Where [heard], a word of [_set], stands on the screen: the same place

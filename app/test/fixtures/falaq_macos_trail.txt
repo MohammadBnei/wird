@@ -1,0 +1,331 @@
+0.0s  trail  2026-10-01T18:49:15.511152
+0.0s  prayer  3 rakʿahs, 52 words in the first
+0.5s  microphone  listening, 482ms after the prayer opened
+1.3s  recogniser  loaded, 1264ms after the prayer opened
+1.3s  still here  1 batches of room, peak 0.026 to 0.026 | 
+1.3s  voice  the reader began, at 0.03
+3.1s  heard  بِ | too little heard | on 0 | peak 0.09
+3.6s  heard  بِسمِ | too little heard | on 0 | peak 0.10
+4.1s  heard  بِسمِللَااهِ | MOVE to word 1 at 0.83, the next of 2 copies | on 0 | peak 0.01
+4.3s  still here  33 batches since the reader began, peak 0.002 to 0.109 | بِسمِللَااهِ
+4.5s  heard  بِسمِللَااهِررَح | stay: word 1 at 0.63 but elsewhere 0.38, margin 0.26 — said twice | on 1 | peak 0.06
+5.0s  heard  بِسمِللَااهِررَحمَاانِ | MOVE to word 2 at 0.82, the next of 2 copies | on 1 | peak 0.04
+5.5s  heard  بِسمِللَااهِررَحمَاانِررَحِ | MOVE to word 2 at 0.69, the next of 2 copies | on 2 | peak 0.01
+6.0s  heard  بِسمِللَااهِررَحمَاانِررَحِۦۦم | MOVE to word 3 at 0.73, the next of 2 copies | on 2 | peak 0.00
+7.3s  still here  30 batches since the reader began, peak 0.003 to 0.074 | بِسمِللَااهِررَحمَاانِررَحِۦۦم
+7.4s  utterance ended  بِسمِللَااهِررَحمَاانِررَحِۦۦم
+7.9s  heard  بِسمِللَااهِررَحمَاانِررَحِۦۦم ءَ | MOVE to word 3 at 0.75, the next of 2 copies | on 3 | peak 0.11
+8.4s  heard  بِسمِللَااهِررَحمَاانِررَحِۦۦم ءَلحَمدُ | MOVE to word 4 at 0.80 | on 3 | peak 0.10
+8.9s  heard  لَااهِررَحمَاانِررَحِۦۦم ءَلحَمدُلِللَاا | MOVE to word 4 at 0.73 | on 4 | peak 0.06
+9.3s  heard  رَحمَاانِررَحِۦۦم ءَلحَمدُلِللَااهِرَببِ | MOVE to word 6 at 0.79 | on 4 | peak 0.07
+9.8s  heard  ررَحِۦۦم ءَلحَمدُلِللَااهِرَببِلعَاالَمِ | MOVE to word 7 at 0.75 | on 6 | peak 0.05
+10.3s  still here  30 batches since the reader began, peak 0.004 to 0.141 | ررَحِۦۦم ءَلحَمدُلِللَااهِرَببِلعَاالَمِ
+10.8s  heard  حِۦۦم ءَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦن | MOVE to word 7 at 0.88 | on 7 | peak 0.00
+11.7s  utterance ended  ءَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦن
+11.8s  heard  ءَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦن | MOVE to word 7 at 0.88 | on 7 | peak 0.06
+12.2s  heard  ءَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦن رَح | MOVE to word 7 at 0.79 | on 7 | peak 0.12
+12.7s  heard  حَمدُلِللَااهِرَببِلعَاالَمِۦۦن رَحمَۥۥن | MOVE to word 8 at 0.82 | on 7 | peak 0.01
+13.2s  heard  ُلِللَااهِرَببِلعَاالَمِۦۦن رَحمَۥۥنرَحِ | MOVE to word 8 at 0.75 | on 8 | peak 0.03
+13.4s  still here  31 batches since the reader began, peak 0.003 to 0.121 | ُلِللَااهِرَببِلعَاالَمِۦۦن رَحمَۥۥنرَحِ
+13.7s  heard  لَااهِرَببِلعَاالَمِۦۦن رَحمَۥۥنرَحِۦۦۦۦ | MOVE to word 8 at 0.75 | on 8 | peak 0.00
+14.1s  heard  َااهِرَببِلعَاالَمِۦۦن رَحمَۥۥنرَحِۦۦۦۦم | MOVE to word 9 at 0.79 | on 8 | peak 0.00
+15.1s  utterance ended  رَحمَۥۥنرَحِۦۦۦۦم
+15.2s  heard  رَحمَۥۥنرَحِۦۦۦۦم | MOVE to word 9 at 0.67, the next of 3 copies | on 9 | peak 0.00
+16.5s  still here  31 batches since the reader began, peak 0.002 to 0.115 | رَحمَۥۥنرَحِۦۦۦۦم
+16.5s  heard  رَحمَۥۥنرَحِۦۦۦۦم مَلَاا | MOVE to word 33 at 0.67 | on 9 | peak 0.09
+17.0s  heard  رَحمَۥۥنرَحِۦۦۦۦم مَلَااكِيَو | stay: word 10 at 0.60 but elsewhere 0.53, margin 0.15 — said twice | on 29 | peak 0.01
+17.5s  heard  رَحمَۥۥنرَحِۦۦۦۦم مَلَااكِيَومِددِ | MOVE to word 11 at 0.71 | on 29 | peak 0.04
+18.5s  heard  رَحمَۥۥنرَحِۦۦۦۦم مَلَااكِيَومِددِۦۦن | stay: word 11 at 0.63 but elsewhere 0.53, margin 0.17 — said twice | on 11 | peak 0.00
+19.5s  still here  30 batches since the reader began, peak 0.003 to 0.090 | رَحمَۥۥنرَحِۦۦۦۦم مَلَااكِيَومِددِۦۦن
+19.9s  utterance ended  مَلَااكِيَومِددِۦۦن
+20.0s  heard  مَلَااكِيَومِددِۦۦن | MOVE to word 12 at 0.70 | on 11 | peak 0.00
+22.3s  heard  مَلَااكِيَومِددِۦۦن ءِ | MOVE to word 12 at 0.64 | on 12 | peak 0.08
+22.5s  still here  30 batches since the reader began, peak 0.003 to 0.110 | مَلَااكِيَومِددِۦۦن ءِ
+22.8s  heard  مَلَااكِيَومِددِۦۦن ءِييَااكَنَ | MOVE to word 13 at 0.73 | on 12 | peak 0.07
+23.3s  heard  مَلَااكِيَومِددِۦۦن ءِييَااكَنَعبُدُ | MOVE to word 14 at 0.83 | on 13 | peak 0.01
+24.7s  heard  مَلَااكِيَومِددِۦۦن ءِييَااكَنَعبُدُهُوَ | MOVE to word 14 at 0.75 | on 14 | peak 0.13
+25.2s  heard  ِيَومِددِۦۦن ءِييَااكَنَعبُدُهُوَءِييَاا | MOVE to word 15 at 0.78 | on 14 | peak 0.05
+25.5s  still here  30 batches since the reader began, peak 0.004 to 0.131 | ِيَومِددِۦۦن ءِييَااكَنَعبُدُهُوَءِييَاا
+25.7s  heard  ِددِۦۦن ءِييَااكَنَعبُدُهُوَءِييَااكَنَس | MOVE to word 15 at 0.79 | on 15 | peak 0.07
+26.1s  heard  ۦۦن ءِييَااكَنَعبُدُهُوَءِييَااكَنَستَعِ | MOVE to word 15 at 0.75 | on 15 | peak 0.02
+26.6s  heard   ءِييَااكَنَعبُدُهُوَءِييَااكَنَستَعِۦۦن | MOVE to word 16 at 0.92 | on 15 | peak 0.01
+28.1s  utterance ended  ءِييَااكَنَعبُدُهُوَءِييَااكَنَستَعِۦۦن
+28.2s  heard  ءِييَااكَنَعبُدُهُوَءِييَااكَنَستَعِۦۦن | MOVE to word 16 at 0.95 | on 16 | peak 0.14
+28.5s  still here  30 batches since the reader began, peak 0.004 to 0.364 | ءِييَااكَنَعبُدُهُوَءِييَااكَنَستَعِۦۦن
+29.0s  heard  اكَنَعبُدُهُوَءِييَااكَنَستَعِۦۦن هَدِنَ | MOVE to word 17 at 0.91 | on 16 | peak 0.03
+29.5s  heard  بُدُهُوَءِييَااكَنَستَعِۦۦن هَدِنَااصِرَ | MOVE to word 17 at 0.88 | on 17 | peak 0.09
+30.0s  heard  ُوَءِييَااكَنَستَعِۦۦن هَدِنَااصِرَااطَل | MOVE to word 18 at 0.88 | on 17 | peak 0.03
+30.5s  heard  َااكَنَستَعِۦۦن هَدِنَااصِرَااطَلمُستَقِ | MOVE to word 18 at 0.75 | on 18 | peak 0.06
+30.9s  heard  كَنَستَعِۦۦن هَدِنَااصِرَااطَلمُستَقِۦۦم | MOVE to word 19 at 0.92 | on 18 | peak 0.01
+31.5s  still here  30 batches since the reader began, peak 0.005 to 0.114 | كَنَستَعِۦۦن هَدِنَااصِرَااطَلمُستَقِۦۦم
+32.4s  utterance ended  هَدِنَااصِرَااطَلمُستَقِۦۦم
+32.5s  heard  هَدِنَااصِرَااطَلمُستَقِۦۦم | MOVE to word 19 at 0.87 | on 19 | peak 0.12
+32.9s  heard  هَدِنَااصِرَااطَلمُستَقِۦۦم تَ | MOVE to word 19 at 0.88 | on 19 | peak 0.08
+33.3s  heard  هَدِنَااصِرَااطَلمُستَقِۦۦم تَللَذِ | MOVE to word 19 at 0.78 | on 19 | peak 0.10
+33.8s  heard  نَااصِرَااطَلمُستَقِۦۦم تَللَذِۦۦنَءَنعَ | stay: word 19 at 0.61 but elsewhere 0.61, margin 0.19 — said twice | on 19 | peak 0.08
+34.3s  heard  ِرَااطَلمُستَقِۦۦم تَللَذِۦۦنَءَنعَمتَعَ | stay: word 22 at 0.71 but elsewhere 0.50, margin 0.23 — said twice | on 19 | peak 0.08
+34.6s  still here  31 batches since the reader began, peak 0.006 to 0.158 | ِرَااطَلمُستَقِۦۦم تَللَذِۦۦنَءَنعَمتَعَ
+34.8s  heard  طَلمُستَقِۦۦم تَللَذِۦۦنَءَنعَمتَعَلَيهِ | stay: word 22 at 0.67 but elsewhere 0.50, margin 0.21 — said twice | on 19 | peak 0.00
+35.3s  heard  َلمُستَقِۦۦم تَللَذِۦۦنَءَنعَمتَعَلَيهِم | MOVE to word 23 at 0.71 | on 19 | peak 0.01
+36.2s  utterance ended  تَللَذِۦۦنَءَنعَمتَعَلَيهِم
+36.3s  heard  تَللَذِۦۦنَءَنعَمتَعَلَيهِم | MOVE to word 23 at 0.93 | on 23 | peak 0.12
+36.7s  heard  تَللَذِۦۦنَءَنعَمتَعَلَيهِم غَي | MOVE to word 24 at 0.88 | on 23 | peak 0.11
+37.2s  heard  تَللَذِۦۦنَءَنعَمتَعَلَيهِم غَيرِلمَ | MOVE to word 24 at 0.85 | on 24 | peak 0.09
+37.7s  still here  31 batches since the reader began, peak 0.004 to 0.143 | تَللَذِۦۦنَءَنعَمتَعَلَيهِم غَيرِلمَ
+37.7s  heard  تَللَذِۦۦنَءَنعَمتَعَلَيهِم غَيرِلمَضُۥۥ | MOVE to word 24 at 0.77 | on 24 | peak 0.09
+38.1s  heard  ۦۦنَءَنعَمتَعَلَيهِم غَيرِلمَضُۥۥبِعَلَي | MOVE to word 25 at 0.83 | on 24 | peak 0.07
+38.6s  heard  َءَنعَمتَعَلَيهِم غَيرِلمَضُۥۥبِعَلَيهِم | MOVE to word 26 at 0.92 | on 25 | peak 0.01
+39.6s  heard  عَمتَعَلَيهِم غَيرِلمَضُۥۥبِعَلَيهِموَلَ | MOVE to word 26 at 0.88 | on 26 | peak 0.14
+40.1s  heard  تَعَلَيهِم غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَ | MOVE to word 26 at 0.83 | on 26 | peak 0.13
+40.5s  heard  عَلَيهِم غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَاا | MOVE to word 27 at 0.92 | on 26 | peak 0.05
+40.8s  still here  31 batches since the reader began, peak 0.004 to 0.138 | عَلَيهِم غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَاا
+41.0s  heard  َيهِم غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِ | MOVE to word 27 at 0.88 | on 27 | peak 0.06
+42.0s  heard  هِم غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦ | MOVE to word 27 at 0.83 | on 27 | peak 0.00
+42.5s  heard  ِم غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦن | MOVE to word 27 at 0.79 | on 27 | peak 0.01
+43.4s  utterance ended  غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦن
+43.5s  heard  غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦن | MOVE to word 27 at 0.75 | on 27 | peak 0.04
+43.9s  still here  31 batches since the reader began, peak 0.003 to 0.060 | غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦن
+46.3s  utterance ended  (nothing)
+47.0s  still here  31 batches since the reader began, peak 0.003 to 0.039 | غَيرِلمَضُۥۥبِعَلَيهِموَلَضضَااللِۦۦن
+48.7s  heard  بَلضَ | too little heard | on 27 | peak 0.08
+49.2s  heard  بَلضَاا | stay: word 27 at 0.50 under 0.64 | on 27 | peak 0.03
+49.7s  heard  بَلضَااۦۦ | stay: word 27 at 0.40 under 0.63 | on 27 | peak 0.00
+50.0s  still here  30 batches since the reader began, peak 0.002 to 0.149 | بَلضَااۦۦ
+51.1s  utterance ended  بَلضَااۦۦ
+53.0s  heard  بَلضَااۦۦ دَلِ | stay: word 15 at 0.43 under 0.61 | on 27 | peak 0.00
+53.1s  still here  31 batches since the reader began, peak 0.002 to 0.136 | بَلضَااۦۦ دَلِ
+54.6s  utterance ended  دَلِ
+54.6s  heard  دَلِ | too little heard | on 27 | peak 0.01
+55.9s  heard  دَلِ وَنَ | stay: word 5 at 0.50 under 0.64 | on 27 | peak 0.16
+56.2s  still here  31 batches since the reader began, peak 0.004 to 0.164 | دَلِ وَنَ
+56.4s  heard  دَلِ وَنَضضَ | stay: word 5 at 0.40 under 0.63 | on 27 | peak 0.09
+56.9s  heard  دَلِ وَنَضضَاا | stay: word 17 at 0.50 under 0.62 | on 27 | peak 0.04
+57.4s  heard  دَلِ وَنَضضَاالِۦۦ | stay: word 28 at 0.50 under 0.60 | on 27 | peak 0.01
+57.8s  heard  دَلِ وَنَضضَاالِۦۦنَ | MOVE to word 28 at 0.67 | on 27 | peak 0.01
+58.8s  utterance ended  وَنَضضَاالِۦۦنَ
+58.9s  heard  وَنَضضَاالِۦۦنَ | MOVE to word 28 at 0.71 | on 28 | peak 0.01
+59.3s  still here  31 batches since the reader began, peak 0.004 to 0.136 | وَنَضضَاالِۦۦنَ
+61.2s  heard  وَنَضضَاالِۦۦنَ ذَاا | stay: word 28 at 0.56 under 0.59 | on 28 | peak 0.02
+62.3s  still here  30 batches since the reader began, peak 0.004 to 0.174 | وَنَضضَاالِۦۦنَ ذَاا
+62.6s  utterance ended  ذَاا
+62.7s  heard  ذَاا | too little heard | on 28 | peak 0.00
+63.6s  heard  ذَاا قُۥۥلءَ | stay: word 27 at 0.50 under 0.62 | on 28 | peak 0.11
+64.2s  heard  ذَاا قُۥۥلءَعُۥۥذُ | MOVE to word 34 at 0.67 | on 28 | peak 0.07
+64.5s  heard  ذَاا قُۥۥلءَعُۥۥذُبِرَببِ | MOVE to word 35 at 0.75 | on 30 | peak 0.13
+65.0s  heard  ذَاا قُۥۥلءَعُۥۥذُبِرَببِلفَلَ | MOVE to word 36 at 0.73 | on 31 | peak 0.01
+65.4s  still here  31 batches since the reader began, peak 0.003 to 0.152 | ذَاا قُۥۥلءَعُۥۥذُبِرَببِلفَلَ
+65.5s  heard  ذَاا قُۥۥلءَعُۥۥذُبِرَببِلفَلَقڇ | MOVE to word 36 at 0.81 | on 32 | peak 0.00
+66.5s  utterance ended  قُۥۥلءَعُۥۥذُبِرَببِلفَلَقڇ
+66.6s  heard  قُۥۥلءَعُۥۥذُبِرَببِلفَلَقڇ | MOVE to word 36 at 0.93 | on 32 | peak 0.11
+67.0s  heard  قُۥۥلءَعُۥۥذُبِرَببِلفَلَقڇ مِ | MOVE to word 36 at 0.87 | on 32 | peak 0.09
+68.0s  heard  قُۥۥلءَعُۥۥذُبِرَببِلفَلَقڇ مِںںںشَ | MOVE to word 37 at 0.88 | on 32 | peak 0.11
+68.4s  heard  ۥۥلءَعُۥۥذُبِرَببِلفَلَقڇ مِںںںشَررِمَاا | MOVE to word 39 at 0.95 | on 33 | peak 0.08
+68.5s  still here  31 batches since the reader began, peak 0.003 to 0.166 | ۥۥلءَعُۥۥذُبِرَببِلفَلَقڇ مِںںںشَررِمَاا
+68.9s  heard  ُۥۥذُبِرَببِلفَلَقڇ مِںںںشَررِمَااخَلَقڇ | MOVE to word 40 at 0.96 | on 35 | peak 0.00
+70.4s  utterance ended  مِںںںشَررِمَااخَلَقڇ
+70.4s  heard  مِںںںشَررِمَااخَلَقڇ | MOVE to word 40 at 1.00 | on 36 | peak 0.12
+70.8s  heard  مِںںںشَررِمَااخَلَقڇ وَمِ | MOVE to word 40 at 0.82 | on 36 | peak 0.08
+71.4s  heard  مِںںںشَررِمَااخَلَقڇ وَمِںںں | MOVE to word 41 at 1.00 | on 36 | peak 0.08
+71.6s  still here  31 batches since the reader began, peak 0.002 to 0.126 | مِںںںشَررِمَااخَلَقڇ وَمِںںں
+71.7s  heard  مِںںںشَررِمَااخَلَقڇ وَمِںںںشَررِ | MOVE to word 42 at 1.00 | on 37 | peak 0.09
+72.2s  heard  مِںںںشَررِمَااخَلَقڇ وَمِںںںشَررِغَااسِ | MOVE to word 43 at 0.88 | on 38 | peak 0.07
+72.7s  heard  ںشَررِمَااخَلَقڇ وَمِںںںشَررِغَااسِقِنءِ | MOVE to word 43 at 0.90 | on 39 | peak 0.09
+73.2s  heard  مَااخَلَقڇ وَمِںںںشَررِغَااسِقِنءِذَااوَ | MOVE to word 44 at 0.91 | on 39 | peak 0.04
+73.7s  heard  خَلَقڇ وَمِںںںشَررِغَااسِقِنءِذَااوَقَبڇ | MOVE to word 45 at 0.96 | on 40 | peak 0.01
+74.7s  still here  31 batches since the reader began, peak 0.006 to 0.122 | خَلَقڇ وَمِںںںشَررِغَااسِقِنءِذَااوَقَبڇ
+75.1s  utterance ended  وَمِںںںشَررِغَااسِقِنءِذَااوَقَبڇ
+75.2s  heard  وَمِںںںشَررِغَااسِقِنءِذَااوَقَبڇ | MOVE to word 45 at 0.94 | on 41 | peak 0.06
+75.6s  heard  وَمِںںںشَررِغَااسِقِنءِذَااوَقَبڇ وَ | MOVE to word 45 at 0.88 | on 41 | peak 0.07
+76.1s  heard  وَمِںںںشَررِغَااسِقِنءِذَااوَقَبڇ وَمِ | MOVE to word 46 at 0.89 | on 41 | peak 0.11
+76.6s  heard  َمِںںںشَررِغَااسِقِنءِذَااوَقَبڇ وَمِںںں | MOVE to word 46 at 0.95 | on 42 | peak 0.08
+77.0s  heard  ںشَررِغَااسِقِنءِذَااوَقَبڇ وَمِںںںشَررِ | MOVE to word 47 at 0.95 | on 42 | peak 0.10
+77.6s  heard  سِقِنءِذَااوَقَبڇ وَمِںںںشَررِءَننننَففَ | MOVE to word 47 at 0.83 | on 43 | peak 0.12
+77.8s  still here  31 batches since the reader began, peak 0.007 to 0.165 | سِقِنءِذَااوَقَبڇ وَمِںںںشَررِءَننننَففَ
+78.1s  heard  ِذَااوَقَبڇ وَمِںںںشَررِءَننننَففَااثَتِ | MOVE to word 48 at 0.88 | on 43 | peak 0.08
+78.6s  heard  اوَقَبڇ وَمِںںںشَررِءَننننَففَااثَتِفِيَ | MOVE to word 49 at 0.88 | on 44 | peak 0.03
+78.9s  heard  بڇ وَمِںںںشَررِءَننننَففَااثَتِفِيَلخُقَ | MOVE to word 49 at 0.75 | on 45 | peak 0.01
+79.4s  heard   وَمِںںںشَررِءَننننَففَااثَتِفِيَلخُقَدڇ | MOVE to word 50 at 0.83 | on 45 | peak 0.01
+80.4s  utterance ended  وَمِںںںشَررِءَننننَففَااثَتِفِيَلخُقَدڇ
+80.5s  heard  وَمِںںںشَررِءَننننَففَااثَتِفِيَلخُقَدڇ | MOVE to word 50 at 0.76 | on 46 | peak 0.00
+80.9s  still here  31 batches since the reader began, peak 0.005 to 0.124 | وَمِںںںشَررِءَننننَففَااثَتِفِيَلخُقَدڇ
+81.3s  heard  ںںںشَررِءَننننَففَااثَتِفِيَلخُقَدڇ وَمِ | MOVE to word 50 at 0.74 | on 46 | peak 0.08
+82.3s  heard  ررِءَننننَففَااثَتِفِيَلخُقَدڇ وَمِںںںشَ | MOVE to word 51 at 0.81 | on 46 | peak 0.10
+82.8s  heard  ننَففَااثَتِفِيَلخُقَدڇ وَمِںںںشَررِحَاا | MOVE to word 52 at 0.79 | on 47 | peak 0.10
+83.3s  heard  فَااثَتِفِيَلخُقَدڇ وَمِںںںشَررِحَااسِدِ | MOVE to word 53 at 0.83 | on 48 | peak 0.09
+83.8s  heard  َتِفِيَلخُقَدڇ وَمِںںںشَررِحَااسِدِنءِذَ | MOVE to word 53 at 0.75 | on 49 | peak 0.02
+84.0s  still here  31 batches since the reader began, peak 0.022 to 0.124 | َتِفِيَلخُقَدڇ وَمِںںںشَررِحَااسِدِنءِذَ
+84.3s  heard  خُقَدڇ وَمِںںںشَررِحَااسِدِنءِذَااحَسَدڇ | MOVE to word 55 at 0.88 | on 49 | peak 0.01
+85.7s  utterance ended  وَمِںںںشَررِحَااسِدِنءِذَااحَسَدڇ
+85.8s  heard  وَمِںںںشَررِحَااسِدِنءِذَااحَسَدڇ | MOVE to word 55 at 0.94 | on 51 | peak 0.01
+87.1s  still here  31 batches since the reader began, peak 0.005 to 0.011 | 
+88.5s  utterance ended  (nothing)
+90.2s  still here  31 batches since the reader began, peak 0.005 to 0.058 | 
+90.5s  heard  نِس | too little heard | on 0 | peak 0.13
+91.0s  heard  نِسمِللَاا | stay: word 1 at 0.60 under 0.63 | on 0 | peak 0.06
+91.4s  heard  نِسمِللَااهِررَحمَ | stay: word 1 at 0.44 under 0.59 | on 0 | peak 0.06
+91.9s  heard  نِسمِللَااهِررَحمَاانِررَ | stay: word 2 at 0.67 but elsewhere 0.58, margin 0.12 — said twice | on 0 | peak 0.02
+92.4s  heard  نِسمِللَااهِررَحمَاانِررَحِۦۦم | MOVE to word 3 at 0.73, the next of 2 copies | on 0 | peak 0.00
+93.3s  still here  31 batches since the reader began, peak 0.004 to 0.133 | نِسمِللَااهِررَحمَاانِررَحِۦۦم
+93.9s  utterance ended  نِسمِللَااهِررَحمَاانِررَحِۦۦم
+95.4s  heard  نِسمِللَااهِررَحمَاانِررَحِۦۦم ءَلحَم | stay: word 4 at 0.68 but elsewhere 0.63, margin 0.07 — said twice | on 0 | peak 0.10
+95.7s  heard  سمِللَااهِررَحمَاانِررَحِۦۦم ءَلحَمدُلِل | MOVE to word 4 at 0.71 | on 0 | peak 0.11
+96.2s  heard  َحمَاانِررَحِۦۦم ءَلحَمدُلِلااهِرَببِلءَ | MOVE to word 6 at 0.71 | on 0 | peak 0.08
+96.4s  still here  31 batches since the reader began, peak 0.005 to 0.123 | َحمَاانِررَحِۦۦم ءَلحَمدُلِلااهِرَببِلءَ
+96.7s  heard  نِررَحِۦۦم ءَلحَمدُلِلااهِرَببِلءَاالَمِ | MOVE to word 6 at 0.67 | on 0 | peak 0.02
+97.2s  heard  رَحِۦۦم ءَلحَمدُلِلااهِرَببِلءَاالَمِۦۦن | MOVE to word 7 at 0.83 | on 0 | peak 0.01
+98.1s  utterance ended  ءَلحَمدُلِلااهِرَببِلءَاالَمِۦۦن
+98.2s  heard  ءَلحَمدُلِلااهِرَببِلءَاالَمِۦۦن | MOVE to word 7 at 0.81 | on 7 | peak 0.01
+99.5s  still here  31 batches since the reader began, peak 0.009 to 0.062 | ءَلحَمدُلِلااهِرَببِلءَاالَمِۦۦن
+101.1s  utterance ended  (nothing)
+102.6s  still here  31 batches since the reader began, peak 0.004 to 0.011 | ءَلحَمدُلِلااهِرَببِلءَاالَمِۦۦن
+103.9s  heard  ءَ | too little heard | on 7 | peak 0.07
+104.5s  heard  ءَرَحمَ | stay: word 9 at 0.50 under 0.64 | on 7 | peak 0.06
+104.9s  heard  ءَرَحمَاانِررَ | stay: word 31 at 0.71 but elsewhere 0.71, margin 0.05 — said twice | on 7 | peak 0.03
+105.3s  heard  ءَرَحمَاانِررَحِ | stay: word 31 at 0.63 but elsewhere 0.63, margin 0.08 — said twice | on 7 | peak 0.01
+105.6s  still here  30 batches since the reader began, peak 0.005 to 0.130 | ءَرَحمَاانِررَحِ
+105.8s  heard  ءَرَحمَاانِررَحِۦۦم | MOVE to word 9 at 0.80, the next of 3 copies | on 7 | peak 0.01
+106.8s  utterance ended  ءَرَحمَاانِررَحِۦۦم
+108.7s  still here  31 batches since the reader began, peak 0.005 to 0.040 | ءَرَحمَاانِررَحِۦۦم
+109.8s  heard  ءَرَحمَاانِررَحِۦۦم مَلَاا | stay: word 32 at 0.62 but elsewhere 0.62, margin 0.20 — said twice | on 9 | peak 0.10
+110.2s  heard  ءَرَحمَاانِررَحِۦۦم مَلَااكِيَومِ | MOVE to word 11 at 0.76 | on 9 | peak 0.08
+110.7s  heard  ءَرَحمَاانِررَحِۦۦم مَلَااكِيَومِددِ | MOVE to word 11 at 0.72 | on 11 | peak 0.04
+111.2s  heard  ءَرَحمَاانِررَحِۦۦم مَلَااكِيَومِددِۦۦن | stay: word 11 at 0.65 but elsewhere 0.55, margin 0.14 — said twice | on 11 | peak 0.02
+111.8s  still here  31 batches since the reader began, peak 0.017 to 0.113 | ءَرَحمَاانِررَحِۦۦم مَلَااكِيَومِددِۦۦن
+112.5s  utterance ended  مَلَااكِيَومِددِۦۦن
+112.6s  heard  مَلَااكِيَومِددِۦۦن | MOVE to word 12 at 0.70 | on 11 | peak 0.02
+114.6s  heard  مَلَااكِيَومِددِۦۦن ءِ | stay: word 12 at 0.64 but elsewhere 0.45, margin 0.20 — said twice | on 12 | peak 0.09
+114.9s  still here  31 batches since the reader began, peak 0.012 to 0.120 | مَلَااكِيَومِددِۦۦن ءِ
+114.9s  heard  مَلَااكِيَومِددِۦۦن ءِييَااكَنَ | MOVE to word 13 at 0.73 | on 12 | peak 0.10
+115.4s  heard  مَلَااكِيَومِددِۦۦن ءِييَااكَنَعبُدُ | MOVE to word 14 at 0.83 | on 13 | peak 0.09
+115.9s  heard  َااكِيَومِددِۦۦن ءِييَااكَنَعبُدُوَييَاا | MOVE to word 14 at 0.71 | on 14 | peak 0.05
+116.4s  heard  ومِددِۦۦن ءِييَااكَنَعبُدُوَييَااكَنَستَ | MOVE to word 15 at 0.75 | on 14 | peak 0.07
+116.9s  heard  ِددِۦۦن ءِييَااكَنَعبُدُوَييَااكَنَستَعِ | MOVE to word 15 at 0.71 | on 15 | peak 0.00
+117.4s  heard  ِۦۦن ءِييَااكَنَعبُدُوَييَااكَنَستَعِۦۦن | MOVE to word 16 at 0.83 | on 15 | peak 0.01
+118.0s  still here  31 batches since the reader began, peak 0.003 to 0.099 | ِۦۦن ءِييَااكَنَعبُدُوَييَااكَنَستَعِۦۦن
+118.3s  utterance ended  ءِييَااكَنَعبُدُوَييَااكَنَستَعِۦۦن
+118.4s  heard  ءِييَااكَنَعبُدُوَييَااكَنَستَعِۦۦن | MOVE to word 16 at 0.89 | on 16 | peak 0.22
+119.7s  heard  يَااكَنَعبُدُوَييَااكَنَستَعِۦۦن ءِهدِنَ | MOVE to word 16 at 0.77 | on 16 | peak 0.08
+120.2s  heard  نَعبُدُوَييَااكَنَستَعِۦۦن ءِهدِنَااصِرَ | MOVE to word 17 at 0.83 | on 16 | peak 0.08
+120.8s  heard  وَييَااكَنَستَعِۦۦن ءِهدِنَااصِرَااطَلمُ | MOVE to word 18 at 0.79 | on 17 | peak 0.07
+121.0s  still here  30 batches since the reader began, peak 0.003 to 0.217 | وَييَااكَنَستَعِۦۦن ءِهدِنَااصِرَااطَلمُ
+121.2s  heard  ااكَنَستَعِۦۦن ءِهدِنَااصِرَااطَلمُستَقِ | stay: word 19 at 0.75 but elsewhere 0.54, margin 0.24 — said twice | on 18 | peak 0.04
+121.8s  heard  كَنَستَعِۦۦن ءِهدِنَااصِرَااطَلمُستَقِۦۦ | MOVE to word 19 at 0.83 | on 18 | peak 0.01
+122.1s  heard  َنَستَعِۦۦن ءِهدِنَااصِرَااطَلمُستَقِۦۦم | MOVE to word 19 at 0.92 | on 19 | peak 0.01
+123.1s  utterance ended  ءِهدِنَااصِرَااطَلمُستَقِۦۦم
+123.2s  heard  ءِهدِنَااصِرَااطَلمُستَقِۦۦم | MOVE to word 19 at 0.88 | on 19 | peak 0.00
+124.1s  still here  31 batches since the reader began, peak 0.003 to 0.118 | ءِهدِنَااصِرَااطَلمُستَقِۦۦم
+124.2s  heard  ءِهدِنَااصِرَااطَلمُستَقِۦۦم صِرَاا | MOVE to word 20 at 0.79 | on 19 | peak 0.08
+124.5s  heard  هدِنَااصِرَااطَلمُستَقِۦۦم صِرَااطَللَذِ | MOVE to word 20 at 0.82 | on 20 | peak 0.07
+125.0s  heard  رَااطَلمُستَقِۦۦم صِرَااطَللَذِۦۦنَءَنعَ | MOVE to word 21 at 0.83 | on 20 | peak 0.06
+125.5s  heard  مُستَقِۦۦم صِرَااطَللَذِۦۦنَءَنعَمتَعَلَ | MOVE to word 22 at 0.92 | on 21 | peak 0.06
+126.0s  heard  َقِۦۦم صِرَااطَللَذِۦۦنَءَنعَمتَعَلَيهِم | MOVE to word 23 at 1.00 | on 22 | peak 0.00
+127.0s  heard  ۦۦم صِرَااطَللَذِۦۦنَءَنعَمتَعَلَيهِمغَي | MOVE to word 23 at 0.92 | on 23 | peak 0.04
+127.2s  still here  31 batches since the reader began, peak 0.004 to 0.136 | ۦۦم صِرَااطَللَذِۦۦنَءَنعَمتَعَلَيهِمغَي
+127.5s  heard  ِرَااطَللَذِۦۦنَءَنعَمتَعَلَيهِمغَيرِلمَ | MOVE to word 24 at 0.92 | on 23 | peak 0.07
+128.0s  heard  طَللَذِۦۦنَءَنعَمتَعَلَيهِمغَيرِلمَغضُۥۥ | MOVE to word 25 at 0.92 | on 24 | peak 0.08
+128.4s  heard  ۦۦنَءَنعَمتَعَلَيهِمغَيرِلمَغضُۥۥبِعَلَي | MOVE to word 25 at 0.88 | on 25 | peak 0.06
+129.0s  heard  َءَنعَمتَعَلَيهِمغَيرِلمَغضُۥۥبِعَلَيهِم | MOVE to word 26 at 1.00 | on 25 | peak 0.01
+130.3s  still here  31 batches since the reader began, peak 0.002 to 0.120 | َءَنعَمتَعَلَيهِمغَيرِلمَغضُۥۥبِعَلَيهِم
+130.4s  heard  عَمتَعَلَيهِمغَيرِلمَغضُۥۥبِعَلَيهِموَلَ | MOVE to word 26 at 0.92 | on 26 | peak 0.10
+130.9s  heard  تَعَلَيهِمغَيرِلمَغضُۥۥبِعَلَيهِموَلَضضَ | MOVE to word 27 at 0.96 | on 26 | peak 0.06
+131.4s  heard  مغَيرِلمَغضُۥۥبِعَلَيهِموَلَضضَااااااللِ | MOVE to word 27 at 0.92 | on 27 | peak 0.04
+132.2s  heard  يرِلمَغضُۥۥبِعَلَيهِموَلَضضَااااااللِۦۦن | MOVE to word 27 at 0.83 | on 27 | peak 0.00
+133.4s  still here  31 batches since the reader began, peak 0.002 to 0.101 | يرِلمَغضُۥۥبِعَلَيهِموَلَضضَااااااللِۦۦن
+133.7s  utterance ended  صِرَااطَللَذِۦۦنَءَنعَمتَعَلَيهِمغَيرِلمَغضُۥۥبِعَلَيهِموَلَضضَااااااللِۦۦن
+133.8s  heard  يرِلمَغضُۥۥبِعَلَيهِموَلَضضَااااااللِۦۦن | MOVE to word 27 at 0.83 | on 27 | peak 0.05
+136.5s  still here  31 batches since the reader began, peak 0.002 to 0.052 | يرِلمَغضُۥۥبِعَلَيهِموَلَضضَااااااللِۦۦن
+136.6s  utterance ended  (nothing)
+138.0s  heard  وَ | too little heard | on 27 | peak 0.17
+138.6s  heard  وَنَضَ | too little heard | on 27 | peak 0.12
+138.9s  heard  وَنَضَاارِ | stay: word 15 at 0.40 under 0.63 | on 27 | peak 0.05
+139.4s  heard  وَنَضَاارِۦۦنَ | stay: word 28 at 0.57 under 0.61 | on 27 | peak 0.00
+139.6s  still here  31 batches since the reader began, peak 0.002 to 0.171 | وَنَضَاارِۦۦنَ
+141.0s  utterance ended  وَنَضَاارِۦۦنَ
+142.7s  still here  31 batches since the reader began, peak 0.002 to 0.008 | وَنَضَاارِۦۦنَ
+143.7s  heard  وَنَضَاارِۦۦنَ ءَلبنَ | stay: word 28 at 0.45 under 0.57 | on 27 | peak 0.01
+144.3s  heard  وَنَضَاارِۦۦنَ ءَلبنَااء | stay: word 17 at 0.42 under 0.56 | on 27 | peak 0.00
+145.2s  utterance ended  ءَلبنَااء
+145.3s  heard  ءَلبنَااء | stay: word 28 at 0.60 under 0.63 | on 27 | peak 0.12
+145.8s  still here  31 batches since the reader began, peak 0.003 to 0.134 | ءَلبنَااء
+146.1s  heard  ءَلبنَااء تَع | stay: word 18 at 0.43 under 0.61 | on 27 | peak 0.04
+147.2s  utterance ended  تَع
+147.2s  heard  تَع | too little heard | on 27 | peak 0.01
+148.5s  heard  تَع تُ | too little heard | on 27 | peak 0.09
+148.9s  still here  31 batches since the reader began, peak 0.004 to 0.124 | تَع تُ
+149.0s  heard  تَع تُمدَلِنَ | stay: word 5 at 0.43 under 0.61 | on 27 | peak 0.00
+149.5s  heard  تَع تُمدَلِنَاا | stay: word 17 at 0.50 under 0.60 | on 27 | peak 0.00
+150.5s  utterance ended  تُمدَلِنَاا
+150.6s  heard  تُمدَلِنَاا | stay: word 5 at 0.50 under 0.62 | on 27 | peak 0.00
+151.4s  heard  تُمدَلِنَاا فَلَ | stay: word 5 at 0.38 under 0.60 | on 27 | peak 0.16
+151.9s  heard  تُمدَلِنَاا فَلَددَ | stay: word 4 at 0.33 under 0.59 | on 27 | peak 0.12
+152.0s  still here  31 batches since the reader began, peak 0.003 to 0.170 | تُمدَلِنَاا فَلَددَ
+152.4s  heard  تُمدَلِنَاا فَلَددَاالِ | stay: word 34 at 0.45 under 0.57 | on 27 | peak 0.00
+152.9s  heard  تُمدَلِنَاا فَلَددَاالِۦۦ | stay: word 28 at 0.50 under 0.56 | on 27 | peak 0.01
+153.8s  utterance ended  فَلَددَاالِۦۦ
+153.9s  heard  فَلَددَاالِۦۦ | stay: word 28 at 0.50 under 0.62 | on 27 | peak 0.01
+155.1s  still here  31 batches since the reader began, peak 0.002 to 0.103 | فَلَددَاالِۦۦ
+156.7s  utterance ended  (nothing)
+158.2s  still here  31 batches since the reader began, peak 0.005 to 0.111 | فَلَددَاالِۦۦ
+159.6s  utterance ended  (nothing)
+161.3s  still here  31 batches since the reader began, peak 0.006 to 0.156 | فَلَددَاالِۦۦ
+162.5s  utterance ended  (nothing)
+164.4s  still here  31 batches since the reader began, peak 0.006 to 0.103 | فَلَددَاالِۦۦ
+165.3s  utterance ended  (nothing)
+167.5s  still here  31 batches since the reader began, peak 0.011 to 0.127 | فَلَددَاالِۦۦ
+168.2s  utterance ended  (nothing)
+170.6s  still here  31 batches since the reader began, peak 0.010 to 0.130 | فَلَددَاالِۦۦ
+171.1s  utterance ended  (nothing)
+173.7s  still here  31 batches since the reader began, peak 0.013 to 0.103 | فَلَددَاالِۦۦ
+174.0s  utterance ended  (nothing)
+176.8s  still here  31 batches since the reader began, peak 0.006 to 0.081 | فَلَددَاالِۦۦ
+176.9s  utterance ended  (nothing)
+179.7s  utterance ended  (nothing)
+179.9s  still here  31 batches since the reader began, peak 0.009 to 0.090 | فَلَددَاالِۦۦ
+182.6s  utterance ended  (nothing)
+183.0s  still here  31 batches since the reader began, peak 0.016 to 0.219 | فَلَددَاالِۦۦ
+185.5s  utterance ended  (nothing)
+186.1s  still here  31 batches since the reader began, peak 0.006 to 0.116 | فَلَددَاالِۦۦ
+188.4s  utterance ended  (nothing)
+189.2s  still here  31 batches since the reader began, peak 0.006 to 0.074 | فَلَددَاالِۦۦ
+191.3s  utterance ended  (nothing)
+192.3s  still here  31 batches since the reader began, peak 0.005 to 0.109 | فَلَددَاالِۦۦ
+194.1s  utterance ended  (nothing)
+195.4s  still here  31 batches since the reader began, peak 0.005 to 0.056 | فَلَددَاالِۦۦ
+197.0s  utterance ended  (nothing)
+198.5s  still here  31 batches since the reader began, peak 0.002 to 0.012 | فَلَددَاالِۦۦ
+199.9s  utterance ended  (nothing)
+201.6s  still here  31 batches since the reader began, peak 0.002 to 0.004 | فَلَددَاالِۦۦ
+202.8s  utterance ended  (nothing)
+204.7s  still here  31 batches since the reader began, peak 0.002 to 0.019 | فَلَددَاالِۦۦ
+205.8s  utterance ended  (nothing)
+207.8s  still here  31 batches since the reader began, peak 0.002 to 0.037 | فَلَددَاالِۦۦ
+208.6s  utterance ended  (nothing)
+210.9s  still here  31 batches since the reader began, peak 0.003 to 0.020 | فَلَددَاالِۦۦ
+211.5s  utterance ended  (nothing)
+214.0s  still here  31 batches since the reader began, peak 0.003 to 0.007 | فَلَددَاالِۦۦ
+214.4s  utterance ended  (nothing)
+217.1s  still here  31 batches since the reader began, peak 0.003 to 0.020 | فَلَددَاالِۦۦ
+217.2s  utterance ended  (nothing)
+220.2s  utterance ended  (nothing)
+220.2s  still here  31 batches since the reader began, peak 0.003 to 0.052 | فَلَددَاالِۦۦ
+222.9s  utterance ended  (nothing)
+223.3s  still here  31 batches since the reader began, peak 0.003 to 0.025 | فَلَددَاالِۦۦ
+225.8s  utterance ended  (nothing)
+226.4s  still here  31 batches since the reader began, peak 0.003 to 0.105 | فَلَددَاالِۦۦ
+228.8s  utterance ended  (nothing)
+229.5s  still here  31 batches since the reader began, peak 0.002 to 0.007 | فَلَددَاالِۦۦ
+231.7s  utterance ended  (nothing)
+232.6s  still here  31 batches since the reader began, peak 0.002 to 0.004 | فَلَددَاالِۦۦ
+234.5s  utterance ended  (nothing)
+235.7s  still here  31 batches since the reader began, peak 0.003 to 0.007 | فَلَددَاالِۦۦ
+237.3s  utterance ended  (nothing)
+238.8s  still here  31 batches since the reader began, peak 0.004 to 0.042 | فَلَددَاالِۦۦ
+240.2s  utterance ended  (nothing)
+241.9s  still here  31 batches since the reader began, peak 0.004 to 0.090 | فَلَددَاالِۦۦ
+243.1s  utterance ended  (nothing)
+245.0s  still here  31 batches since the reader began, peak 0.004 to 0.019 | فَلَددَاالِۦۦ
+246.0s  utterance ended  (nothing)
+248.1s  still here  31 batches since the reader began, peak 0.005 to 0.011 | فَلَددَاالِۦۦ
+249.0s  utterance ended  (nothing)
+251.2s  still here  31 batches since the reader began, peak 0.005 to 0.027 | فَلَددَاالِۦۦ
+251.8s  utterance ended  (nothing)

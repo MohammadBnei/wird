@@ -64,9 +64,25 @@ const followPerLetterShort = 0.01;
 const followMargin = 0.32;
 
 /// How alike the set's own text must be at two places for them to be one
-/// phrase said twice — copies, rather than places that only sound alike.
-/// Two letters in a full window.
-const followCopy = 0.9;
+/// phrase said twice — copies, settled by order, rather than places told
+/// apart by the margin. Swept on the bench at 0.9, 0.8, 0.75 and 0.7: no wrong
+/// place at any, fewest windows behind at 0.7. At 0.9 the basmala opening a
+/// second rakʿah — 1:3's near-copy — was refused and the reader had to recite
+/// on into 1:2.
+const followCopy = 0.7;
+
+/// The least margin asked of any pair that is not a copy, however alike the
+/// set says they are. Below it the difference is the recogniser's spelling,
+/// not the reciter's place: al-Fātiḥa's 1:3 lost to the passage's first word
+/// at a margin of 0.07 and the cursor jumped twenty words.
+const followMarginFloor = 0.15;
+
+/// How many more letters of the set than were heard a place is read against.
+/// Connected recitation drops letters the muṣḥaf writes — وَلَا ٱلضَّآلِّينَ is
+/// said walaḍ-ḍāllīn — and a window exactly as long as what was heard then
+/// pushed its first letters out of reach: the last word of al-Fātiḥa could
+/// not be named.
+const followSlack = 6;
 
 /// The score above which the word itself is worth pointing at, rather than
 /// only the aya it sits in. Below it the place is good enough to turn the page
@@ -136,7 +152,7 @@ class Recitation {
     length,
     min(a, b),
     max(a, b),
-  ), () => _alike(expected(a, length), expected(b, length)));
+  ), () => _alike(expected(a, length), expected(b, length + followSlack)));
 
   bool get isEmpty => stream.isEmpty;
 }
@@ -200,7 +216,8 @@ explain(Recitation set, String heard, {int? from}) {
   }
 
   final scores = [
-    for (final end in set.ends) _alike(tail, set.expected(end, tail.length)),
+    for (final end in set.ends)
+      _alike(tail, set.expected(end, tail.length + followSlack)),
   ];
 
   // The best place. Two ends within [_tie] of each other are one answer told
@@ -212,7 +229,7 @@ explain(Recitation set, String heard, {int? from}) {
   final bestEnd = set.ends[best];
   int wordOf(int i) => set.wordAt(set.ends[i] - 1);
   double asked(int i) => max(
-    _tie,
+    followMarginFloor,
     followMargin * (1 - set.twin(bestEnd, set.ends[i], tail.length)),
   );
 
