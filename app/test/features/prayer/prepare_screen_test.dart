@@ -176,4 +176,27 @@ void main() {
     await prayAndLeave(tester);
     expect((await prayerPrefs(db)).voice, isTrue);
   });
+
+  testWidgets('a double tap on Begin starts two prayers and writes both', (
+    tester,
+  ) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await tester.tap(find.byKey(const Key('begin')));
+    await tester.tap(find.byKey(const Key('begin')), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Exit'));
+    await tester.pumpAndSettle();
+    expect(find.text('the set'), findsOneWidget);
+    expect(await db.query('set_prayers'), hasLength(1));
+  });
+
+  testWidgets('a reference into Al-Fātiḥa offers it as a passage, recited '
+      'twice in one rakʿah', (tester) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await tester.tap(find.byKey(const Key('passage 1')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '1:1');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Go to'), findsNothing);
+  });
 }

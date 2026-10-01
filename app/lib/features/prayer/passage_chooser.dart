@@ -139,7 +139,11 @@ class _PassageChooserState extends State<PassageChooser> {
   }
 
   Widget _list(Nocturne n, AppLocalizations l) {
-    final ref = parseRef(_query, widget.suras);
+    // Al-Fātiḥa is refused here as it is in the list below.
+    final ref = switch (parseRef(_query, widget.suras)) {
+      final id? when id ~/ 1000 != 1 => id,
+      _ => null,
+    };
     final head = RegExp(r'^\s*(\d{1,3})\s*[:.]').firstMatch(_query);
     // A reference names one sūra; the list narrows to it rather than to every
     // sūra with those digits in its number.

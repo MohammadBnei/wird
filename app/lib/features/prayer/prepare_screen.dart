@@ -187,7 +187,13 @@ class _PrepareScreenState extends State<PrepareScreen> {
     });
   }
 
+  /// Set from the first tap on Begin, so a second one before the prayer is up
+  /// does not start a second prayer — written down twice, and popped twice.
+  var _starting = false;
+
   Future<void> _begin() async {
+    if (_starting) return;
+    _starting = true;
     final loaded = _loaded!;
     final plan = _plan;
     final outcome = PrayerOutcome();
