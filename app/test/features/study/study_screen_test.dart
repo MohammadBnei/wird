@@ -53,7 +53,7 @@ Text arabicOf(WidgetTester tester, int wordId) =>
 /// A root as the sheet names it, over the word open. The ring further down
 /// the sheet prints the same letters at its centre.
 Finder rootNamed(String display) => find.descendant(
-  of: find.byKey(const Key('swipe')),
+  of: find.byKey(const ValueKey('open-root')),
   matching: find.text(display),
 );
 
@@ -65,14 +65,12 @@ Color underlineOf(WidgetTester tester, int wordId) {
   return ((box.decoration! as BoxDecoration).border! as Border).bottom.color;
 }
 
-/// Whether a word is drawn as the one the reader is looking at: it sits on
-/// the filled chip the design draws, which no other word wears.
+/// Whether a word is drawn as the one the reader is looking at: its Arabic
+/// glows in the reading tone, which no other word wears.
 bool lit(WidgetTester tester, int wordId) {
-  final chip = tester.widget<Container>(
-    find.descendant(of: tile(wordId), matching: find.byType(Container)).first,
-  );
-  return (chip.decoration as BoxDecoration?)?.color ==
-      Nocturne.of(tester.element(tile(wordId))).color('accent-800');
+  final style = arabicOf(tester, wordId).style!;
+  return style.color == Nocturne.of(tester.element(tile(wordId))).accent &&
+      (style.shadows?.isNotEmpty ?? false);
 }
 
 /// The number that closes an aya, which is also how it is marked understood.
@@ -458,11 +456,12 @@ void main() {
         findsOneWidget,
       );
     }
-    // The gloss in this aya answers a different question and stays.
+    // What the word means in this aya answers a different question, and
+    // stays on the word's own row.
     expect(
       find.descendant(
         of: panel,
-        matching: find.textContaining('IN THIS VERSE'),
+        matching: find.byKey(const Key('meaning here')),
       ),
       findsOneWidget,
     );
@@ -522,6 +521,78 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(DeepDiveScreen), findsOneWidget);
+  });
+
+  /// The sheet's own scroll, under the sūra.
+  Finder sheetScroll() => find.descendant(
+    of: find.byType(RootSheet),
+    matching: find.byType(SingleChildScrollView),
+  );
+
+  testWidgets('scrolling the sheet expands it on its own', (tester) async {
+    await openStudy(tester);
+
+    await tester.drag(sheetScroll(), const Offset(0, -200));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('strip')), findsNothing);
+  });
+
+  testWidgets("a tap on the sheet's top bar does nothing", (tester) async {
+    await openStudy(tester);
+
+    await tester.tap(find.text('swipe'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('strip')), findsOneWidget);
+
+    await tester.tap(find.text('swipe'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('strip')), findsNothing);
+  });
+
+  testWidgets('the thumbs are not on the senses row, and the form is read '
+      'before the senses', (tester) async {
+    await seedSenses(db, {'قرأ': 'a recitation, the quran; to recite'});
+    await openStudy(tester);
+
+    final senses = tester.getCenter(find.text('SENSES')).dy;
+    final thumb = tester
+        .getCenter(find.bySemanticsLabel('This sense is right'))
+        .dy;
+    expect((thumb - senses).abs(), lessThan(16));
+    expect(
+      tester.getTopLeft(find.byKey(const Key('form'))).dy,
+      greaterThan(tester.getTopLeft(find.text('to recite')).dy),
+    );
+  });
+
+  testWidgets("the other ayas show a root's aya with none of its root's words "
+      'lit', (tester) async {
+    await openStudy(tester);
+    await tester.tap(find.byKey(const Key('more row')));
+    await tester.pumpAndSettle();
+    final row = find
+        .byWidgetPredicate(
+          (w) =>
+              w.key is ValueKey<String> &&
+              (w.key! as ValueKey<String>).value.startsWith('other aya '),
+        )
+        .first;
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+
+    var lit = 0;
+    for (final text in tester.widgetList<RichText>(
+      find.descendant(of: row, matching: find.byType(RichText)),
+    )) {
+      text.text.visitChildren((span) {
+        if (span is TextSpan && (span.style?.shadows?.isNotEmpty ?? false)) {
+          lit++;
+        }
+        return true;
+      });
+    }
+    expect(lit, greaterThan(0));
   });
 
   // Nothing in app/lib sets a preferred orientation and the manifest handles

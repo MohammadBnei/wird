@@ -110,7 +110,7 @@ A set is a run of consecutive ayas that are not understood. It stops before the 
   return _setFrom(db, order, taken);
 ```
 
-[sets.dart:259](../../../app/lib/data/sets.dart#L259-L270). When nothing is left, it returns null and the screen shows a "nothing left" message ([study_screen.dart:550](../../../app/lib/features/study/study_screen.dart#L550-L559)).
+[sets.dart:259](../../../app/lib/data/sets.dart#L259-L270). When nothing is left, it returns null and the screen shows a "nothing left" message ([study_screen.dart:550](../../../app/lib/features/study/study_screen.dart#L557-L566)).
 
 ### 2. How wide a set is
 
@@ -181,7 +181,7 @@ A `StudySet` holds two lists ([sets.dart:146](../../../app/lib/data/sets.dart#L1
 
 ### 5. Screen 1a opens a sūra where the reader stood
 
-Since [ADR 0014](../../adr/0014-the-reading-screen-reads-a-whole-sura-a-word-at-a-time.md) the reading screen holds one whole sūra. [`_load`](../../../app/lib/features/study/study_screen.dart#L120-L158) picks the word it opens on:
+Since [ADR 0014](../../adr/0014-the-reading-screen-reads-a-whole-sura-a-word-at-a-time.md) the reading screen holds one whole sūra. [`_load`](../../../app/lib/features/study/study_screen.dart#L127-L165) picks the word it opens on:
 
 ```dart
     var at = word ?? (target == null ? null : target * 1000 + 1);
@@ -192,7 +192,7 @@ Since [ADR 0014](../../adr/0014-the-reading-screen-reads-a-whole-sura-a-word-at-
       } else {
 ```
 
-[study_screen.dart:120](../../../app/lib/features/study/study_screen.dart#L120-L158).
+[study_screen.dart:120](../../../app/lib/features/study/study_screen.dart#L127-L165).
 
 - A word, from home's "Continue reading": that word.
 - An aya, from the index, a root or the walk's set on home: its first word.
@@ -202,13 +202,13 @@ The sūra comes from [`ayaSet`](../../../app/lib/data/sets.dart#L295-L337), whos
 
 ### 6. The sūra list is lazy both ways
 
-A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:511](../../../app/lib/features/study/study_screen.dart#L511-L537)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:782](../../../app/lib/features/study/study_screen.dart#L782-L797), [sets.dart:394](../../../app/lib/data/sets.dart#L394-L421)).
+A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:511](../../../app/lib/features/study/study_screen.dart#L518-L544)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:773](../../../app/lib/features/study/study_screen.dart#L773-L788), [sets.dart:394](../../../app/lib/data/sets.dart#L394-L421)).
 
 Each word arrives with its English gloss and, where The Last Dialogue's pages carry it, its French one ([ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md)). Each aya's translation, Pickthall's English or Rashid Maash's French, sits under it unless the reader turns it off in Settings ([ADR 0017](../../adr/0017-ayas-are-translated-into-english-from-pickthall.md)).
 
 ### 7. The root sheet walks the sūra a word at a time
 
-A tap on any word, particles included, opens it in the sheet under the list. [`_open`](../../../app/lib/features/study/study_screen.dart#L164-L203) reads everything the sheet shows before it draws any of it:
+A tap on any word, particles included, opens it in the sheet under the list. [`_open`](../../../app/lib/features/study/study_screen.dart#L171-L210) reads everything the sheet shows before it draws any of it:
 
 - the root;
 - its lemmas;
@@ -231,15 +231,17 @@ flowchart LR
   open --> carry["_carry<br/>recitation around the word"]
 ```
 
-A drag to the right moves to the next word, because Arabic runs leftward ([root_sheet.dart:110](../../../app/lib/features/study/root_sheet.dart#L110-L122)). The two ends of the hint row do the same and carry screen-reader labels. A drag that starts within 24px of the edge is left to the drawer and the back gesture.
+A drag to the right moves to the next word, because Arabic runs leftward. The sheet slides: the finger carries the content, and past 60px it keeps going off that side while the next word is read, then the new word comes in from the other side ([word_swipe.dart:100](../../../app/lib/features/study/word_swipe.dart#L100-L107)). The two ends of the hint row and the arrow keys slide the same way ([word_swipe.dart:58](../../../app/lib/features/study/word_swipe.dart#L58)); any other change of word, such as a tap in the sūra, fades instead. A drag that starts within 24px of the edge is left to the drawer and the back gesture.
 
-A step is found by aya ([`stepFrom`](../../../app/lib/features/study/reading_walk.dart#L17-L37)): past the end of an aya it goes to the next aya, read or not, and the screen reads that aya's chunk before stepping again ([study_screen.dart:256](../../../app/lib/features/study/study_screen.dart#L256-L272)). Counting along a flat list of the words read so far landed a step from 2:255 back near 2:1.
+The sheet reads in one order. The first row holds the root, the word as this aya writes it, and what it means here. Then come the root's senses, with the reader's thumbs on their heading. Then comes the word's form, meaning its parsing, with the corpus's attribution. The open word glows in the accent wherever it appears, in the sūra, on that row and on the one-line strip. Prayer keeps a near-white glow of its own, so the two never read alike ([glow.dart](../../../app/lib/theme/glow.dart#L13-L24)).
+
+A step is found by aya ([`stepFrom`](../../../app/lib/features/study/reading_walk.dart#L17-L37)): past the end of an aya it goes to the next aya, read or not, and the screen reads that aya's chunk before stepping again ([study_screen.dart:256](../../../app/lib/features/study/study_screen.dart#L263-L279)). Counting along a flat list of the words read so far landed a step from 2:255 back near 2:1.
 
 Once the reader has stayed on a word for two seconds, and again when they leave, it is written as their position in that sūra and queued for their other devices ([ADR 0015](../../adr/0015-the-reading-position-is-kept-per-sura-and-synced.md), [`movePosition`](../../../app/lib/data/db.dart#L437-L456)).
 
-Scrolling the sheet, its handle or its "Counts, forms, other ayas" row shrinks the sūra to one line and brings up the counts, the ring of the root's lemmas and the other ayas. An other aya opens in place of the sūra, with a way back to the word the reader was on and a way to read that aya's sūra from there.
+A tap on the sheet's top bar, or on its "Counts, forms, other ayas" row, shrinks the sūra to one line and brings up the counts, the ring of the root's lemmas and the other ayas; scrolling the sheet never does. Each other aya is shown as a line around the root's word in it, lit, so the word it is listed for is never cut off. An other aya opens in place of the sūra, with a way back to the word the reader was on and a way to read that aya's sūra from there.
 
-The root letters open the root's own screen. A screen that names an aya answers by popping its id back down, and the reader reloads in place rather than stacking a second reader ([study_screen.dart:319](../../../app/lib/features/study/study_screen.dart#L319-L323)):
+The root letters open the root's own screen. A screen that names an aya answers by popping its id back down, and the reader reloads in place rather than stacking a second reader ([study_screen.dart:319](../../../app/lib/features/study/study_screen.dart#L326-L330)):
 
 - the sūra index, reached from the sūra's name in the bar;
 - a root, its spine and the constellation, which call one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39));
@@ -249,13 +251,13 @@ The drawer and home catch an aya too, and push the reader with it ([wird_shell.d
 
 ### 8. Marking an aya understood
 
-The circle that closes each aya marks it understood when tapped ([study_screen.dart:297](../../../app/lib/features/study/study_screen.dart#L297-L301)). The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L298-L326) with a fresh op id per tap. It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. An aya already understood answers no tap: no op takes the mark back.
+The circle that closes each aya marks it understood when tapped ([study_screen.dart:297](../../../app/lib/features/study/study_screen.dart#L304-L308)). The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L298-L326) with a fresh op id per tap. It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. An aya already understood answers no tap: no op takes the mark back.
 
 Scrolling or walking past an aya marks nothing. Understood is what the reader says, and the position is where they are; neither is read from the other.
 
 ### 9. Praying a set
 
-The walk still proposes sets, and home still offers "Pray this set". The reading screen's Pray action prays the ayas around the open word, the reading width wide: the same set the recitation carries ([study_screen.dart:207](../../../app/lib/features/study/study_screen.dart#L207-L237)). Both call one function:
+The walk still proposes sets, and home still offers "Pray this set". The reading screen's Pray action prays the ayas around the open word, the reading width wide: the same set the recitation carries ([study_screen.dart:207](../../../app/lib/features/study/study_screen.dart#L214-L244)). Both call one function:
 
 ```dart
 Future<void> prayTheSet(BuildContext context, StudySet set) async {
@@ -267,7 +269,7 @@ Future<void> prayTheSet(BuildContext context, StudySet set) async {
 }
 ```
 
-[app.dart:312](../../../app/lib/app.dart#L328-L334). The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:16](../../../app/lib/features/prayer/prayer_screen.dart#L16-L31)). The prayer is recorded when the reader comes back, however they leave. [`recordSetPrayed`](../../../app/lib/data/db.dart#L339) inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
+[app.dart:312](../../../app/lib/app.dart#L328-L334). The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:16](../../../app/lib/features/prayer/prayer_screen.dart#L17-L32)). The prayer is recorded when the reader comes back, however they leave. [`recordSetPrayed`](../../../app/lib/data/db.dart#L339) inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
 
 A prayer the reader never returns from is not counted. The count may be short; it is never invented.
 
@@ -285,7 +287,7 @@ A prayer the reader never returns from is not counted. The count may be short; i
 
 ### 11. What progress counts
 
-Screen 1d replays the walk to count finished sets ([sets.dart:505](../../../app/lib/data/sets.dart#L505-L540)), instead of counting rows in `sets`. A set prayed twice and never marked is not a finished set. The prayer tile counts every recorded prayer, on the walk or not, and is labelled "prayers recorded" for that reason ([passage.dart:160](../../../app/lib/features/progress/passage.dart#L160-L166), [progress_screen.dart:156](../../../app/lib/features/progress/progress_screen.dart#L156-L157)).
+Screen 1d replays the walk to count finished sets ([sets.dart:498](../../../app/lib/data/sets.dart#L498-L533)), instead of counting rows in `sets`. A set prayed twice and never marked is not a finished set. The prayer tile counts every recorded prayer, on the walk or not, and is labelled "prayers recorded" for that reason ([passage.dart:160](../../../app/lib/features/progress/passage.dart#L160-L166), [progress_screen.dart:156](../../../app/lib/features/progress/progress_screen.dart#L156-L157)).
 
 ## Why it is this way
 

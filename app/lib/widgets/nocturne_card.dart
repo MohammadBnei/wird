@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/nocturne.dart';
+import 'nocturne_kicker.dart';
 
 enum NocturneElevation { sm, md, lg }
 
@@ -25,16 +26,7 @@ class NocturneCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
     final slots = <Widget>[
-      if (kicker != null)
-        Text(
-          kicker!.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            letterSpacing: 0.1 * 10,
-            height: 1.2,
-            color: n.accent,
-          ),
-        ),
+      if (kicker != null) NocturneKicker(kicker!, tone: KickerTone.accent),
       if (title != null)
         Text(title!, style: Theme.of(context).textTheme.titleMedium),
       if (body != null)

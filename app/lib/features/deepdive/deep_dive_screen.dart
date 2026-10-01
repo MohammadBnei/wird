@@ -3,8 +3,11 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../data/root_repo.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
+import '../../widgets/lit_aya.dart';
 import '../../widgets/nocturne_button.dart';
+import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_rule.dart';
 import '../../widgets/nocturne_segmented.dart';
 import '../root/root_sections.dart';
@@ -15,18 +18,6 @@ import '../root/root_sections.dart';
 /// thinnest of the three panes, so the same three panes stack into one
 /// column instead.
 const threePaneWidth = 964.0;
-
-/// One aya as this screen reads it: its place, its words, and which of them
-/// carry the root that was opened.
-typedef AyaReading = ({
-  String surahName,
-  int number,
-  List<AyaWord> words,
-});
-
-/// One word of the aya: its id, so the parsing of this occurrence can be read,
-/// and whether it carries the root that was opened.
-typedef AyaWord = ({int id, String text, bool lit});
 
 /// Screen 1c — one aya, its sources side by side, on a tablet.
 ///
@@ -94,7 +85,11 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
 
   Future<void> _load() async {
     final readIn = _readIn ?? Localizations.localeOf(context);
-    final reading = await rootReading(widget.db, widget.letters, readIn: readIn);
+    final reading = await rootReading(
+      widget.db,
+      widget.letters,
+      readIn: readIn,
+    );
     final aya = await ayaReading(widget.db, widget.ayahId, widget.letters);
     final keptId = await ayaKept(widget.db, widget.ayahId);
     final lit = aya == null ? null : _litWord(aya);
@@ -279,14 +274,9 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   /// [leading] rides the aya's kicker line, which in the three panes is the
   /// top line of the leftmost one and so the head of the screen.
   Widget _ayaPane(Nocturne n, AyaReading aya, {Widget? leading}) {
-    final kicker = Text(
-      _l10n.deepdive_aya_kicker(aya.surahName, aya.number).toUpperCase(),
-      style: TextStyle(
-        fontSize: 10,
-        height: 1.2,
-        letterSpacing: 0.11 * 10,
-        color: n.accent,
-      ),
+    final kicker = NocturneKicker(
+      _l10n.deepdive_aya_kicker(aya.surahName, aya.number),
+      tone: KickerTone.accent,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,27 +292,9 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
             ],
           ),
         const SizedBox(height: 14),
-        Text.rich(
-          TextSpan(
-            children: [
-              for (final (i, word) in aya.words.indexed)
-                TextSpan(
-                  text: i == 0 ? word.text : ' ${word.text}',
-                  style: word.lit
-                      ? TextStyle(
-                          color: n.color('accent-200'),
-                          shadows: [
-                            Shadow(
-                              color: n.accent.withValues(alpha: 0.55),
-                              blurRadius: 22,
-                            ),
-                          ],
-                        )
-                      : null,
-                ),
-            ],
-          ),
-          textDirection: TextDirection.rtl,
+        LitAya(
+          aya.words,
+          glow: Glow.reading,
           style: TextStyle(
             fontFamily: Nocturne.arabicFamily,
             fontSize: 25,
@@ -430,11 +402,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
         ),
       );
     }
-    return RootFamily(
-      reading: reading,
-      ayahId: widget.ayahId,
-      wordInAya: here,
-    );
+    return RootFamily(reading: reading, ayahId: widget.ayahId, wordInAya: here);
   }
 
   /// How this aya spells the root, or null where it does not carry it.
@@ -485,38 +453,6 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   /// What is left of the sources pane now the lexicon placeholder is gone. The
   /// rule above it went with it: it separated two sections and there is one.
   Widget _sourcesPane() => tafsirSection(ayahRef(widget.ayahId));
-}
-
-/// The aya as it is printed, with the words carrying [letters] marked. Null
-/// when the corpus has no such aya.
-Future<AyaReading?> ayaReading(Database db, int ayahId, String letters) async {
-  final place = await db.rawQuery(
-    '''SELECT a.number, s.name_en
-         FROM ayahs a
-         JOIN surahs s ON s.id = a.surah_id
-        WHERE a.id = ?''',
-    [ayahId],
-  );
-  if (place.isEmpty) return null;
-  final words = await db.query(
-    'words',
-    columns: ['id', 'text_ar', 'root_letters'],
-    where: 'ayah_id = ?',
-    whereArgs: [ayahId],
-    orderBy: 'position',
-  );
-  return (
-    surahName: place.first['name_en']! as String,
-    number: place.first['number']! as int,
-    words: [
-      for (final w in words)
-        (
-          id: w['id']! as int,
-          text: w['text_ar']! as String,
-          lit: w['root_letters'] == letters,
-        ),
-    ],
-  );
 }
 
 // ayaKept moved into app/lib/data/root_repo.dart beside rootKept: the undo

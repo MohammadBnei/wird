@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../data/sets.dart';
+import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
 
 /// What a word on screen IS.
@@ -142,20 +143,14 @@ class WordTile extends StatelessWidget {
       fontFamily: Nocturne.arabicFamily,
       fontSize: prefs.arabicSize,
       height: 1.75,
-      color: open
-          ? n.color('accent-100')
-          : sameRoot
-          ? n.color('accent-200')
-          : n.text,
-    );
+      color: sameRoot ? n.color('accent-200') : n.text,
+    ).merge(open ? glowing(n, Glow.reading) : null);
     // What the word is drawn against. The halo below carves the rule, so it
     // has to be the colour behind the rule rather than a grey guess.
     // ponytail: the page under the aya is flat. Put a gradient there and the
     // halo shows as a smudge, and the rule wants a painter that erases with
     // a blend mode instead of a second copy of the word.
-    final behind = open
-        ? n.color('accent-800')
-        : voice == WordVoice.sounding
+    final behind = voice == WordVoice.sounding
         ? Color.alphaBlend(n.accent.withValues(alpha: 0.16), n.bg)
         : n.bg;
     return GestureDetector(
@@ -164,18 +159,14 @@ class WordTile extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(n.space('1')),
         // The fill is the recitation's, and nothing else is drawn around the
-        // word. A frame and a glow were tried here and both reached the
-        // Arabic: the blur paints through a transparent box, so the tile read
+        // word. A frame and a box glow were tried here and both reached the
+        // Arabic: the blur painted through a transparent box, so the tile read
         // as a solid accent block that spilled onto its neighbour, and the
-        // frame ran across the leading hamza of aqra'. A box sized to the
-        // text's metrics will always cut the marks that sit above and below
-        // the line, so the word's states are said under the word instead.
-        // The open word sits on a filled chip, as the design draws it; the
-        // sounding word keeps its fainter fill.
+        // frame ran across the leading hamza of aqra'. The open word glows
+        // instead (Glow.reading): a text shadow follows the glyphs, and its
+        // 12px blur stays inside the gap to the next word.
         decoration: BoxDecoration(
-          color: open
-              ? n.color('accent-800')
-              : voice == WordVoice.sounding
+          color: voice == WordVoice.sounding
               ? n.accent.withValues(alpha: 0.16)
               : null,
           borderRadius: BorderRadius.circular(7),
@@ -242,7 +233,7 @@ class WordTile extends StatelessWidget {
                     // panel below is expanding, so it lights with it. It sits
                     // under the Arabic, where nothing it does can reach a
                     // harakat.
-                    color: open ? n.color('accent-100') : n.textAt(0.66),
+                    color: open ? n.accent : n.textAt(0.66),
                   ),
                 ),
               ),
@@ -290,8 +281,11 @@ class _Halo extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // No shadows: the word above already carries its glow, and a second one
+    // drawn from the stroke would double it.
     final stroked = style.copyWith(
       color: null,
+      shadows: const [],
       foreground: Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3

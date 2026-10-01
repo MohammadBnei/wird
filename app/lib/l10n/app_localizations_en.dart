@@ -1010,11 +1010,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_senses => 'Senses';
 
   @override
-  String study_inThisVerse(String gloss) {
-    return 'In this verse · $gloss';
-  }
-
-  @override
   String get study_particleNote => 'Particles and pronouns have no three-letter root. Swipe on to the next word.';
 
   @override
@@ -1072,4 +1067,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboard_continueReading => 'CONTINUE READING';
+
+  @override
+  String get study_form => 'Form';
 }

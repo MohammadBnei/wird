@@ -1010,11 +1010,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_senses => 'Sens';
 
   @override
-  String study_inThisVerse(String gloss) {
-    return 'Dans ce verset · $gloss';
-  }
-
-  @override
   String get study_particleNote => 'Les particules et les pronoms n’ont pas de racine trilitère. Glissez jusqu’au mot suivant.';
 
   @override
@@ -1072,4 +1067,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboard_continueReading => 'REPRENDRE LA LECTURE';
+
+  @override
+  String get study_form => 'Forme';
 }

@@ -1557,15 +1557,6 @@
   "@study_senses": {
     "description": "Small heading over the numbered senses of the root."
   },
-  "study_inThisVerse": "In this verse · {gloss}",
-  "@study_inThisVerse": {
-    "description": "Heading of the card that says what the word does in this aya. {gloss} is the word's gloss.",
-    "placeholders": {
-      "gloss": {
-        "type": "String"
-      }
-    }
-  },
   "study_particleNote": "Particles and pronouns have no three-letter root. Swipe on to the next word.",
   "@study_particleNote": {
     "description": "Under a word that has no root, at the foot of the root sheet."
@@ -1659,5 +1650,9 @@
   "dashboard_continueReading": "CONTINUE READING",
   "@dashboard_continueReading": {
     "description": "Home: heading over the sūras the reader is part-way through, each opening where they stopped."
+  },
+  "study_form": "Form",
+  "@study_form": {
+    "description": "Small heading in the reading screen's sheet over the word's parsing: its part of speech and features, as the corpus reads this occurrence."
   }
 }

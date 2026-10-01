@@ -1793,12 +1793,6 @@ abstract class AppLocalizations {
   /// **'Senses'**
   String get study_senses;
 
-  /// Heading of the card that says what the word does in this aya. {gloss} is the word's gloss.
-  ///
-  /// In en, this message translates to:
-  /// **'In this verse · {gloss}'**
-  String study_inThisVerse(String gloss);
-
   /// Under a word that has no root, at the foot of the root sheet.
   ///
   /// In en, this message translates to:
@@ -1900,6 +1894,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CONTINUE READING'**
   String get dashboard_continueReading;
+
+  /// Small heading in the reading screen's sheet over the word's parsing: its part of speech and features, as the corpus reads this occurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'Form'**
+  String get study_form;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

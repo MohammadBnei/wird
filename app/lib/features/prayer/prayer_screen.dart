@@ -7,6 +7,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../l10n/app_localizations.dart';
 import '../../data/sets.dart';
 import '../study/word_row.dart';
+import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import 'prayer_cursor.dart';
@@ -391,10 +392,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
     final locale = Localizations.localeOf(context);
     final gloss = here == null
         ? ''
-        : [
-            for (final w in here.aya.words)
-              ?w.glossIn(locale),
-          ].join(' ');
+        : [for (final w in here.aya.words) ?w.glossIn(locale)].join(' ');
     final note = here?.word.glossIn(locale) ?? here?.word.translit;
     return Stack(
       children: [
@@ -559,32 +557,25 @@ class _PrayerScreenState extends State<PrayerScreen> {
           word.text,
           key: WordKey(word.id),
           textDirection: TextDirection.rtl,
-          style: TextStyle(
-            fontFamily: Nocturne.arabicFamily,
-            fontSize: _reciting,
-            height: 1.95,
-            // The aya is what the screen is for: one is drawn at a time, at
-            // 52px, and a word either side of the truth is not visible from a
-            // metre away on the floor. The word inside it is singled out only
-            // when the recitation named one place clearly — otherwise every
-            // word of the aya is lit alike, which is the truth about what was
-            // heard rather than a claim the matcher never made.
-            color: !_cursor.sure
-                ? n.text
-                : word.id == here.word.id
-                ? n.color('accent-200')
-                : word.id < here.word.id
-                ? n.text
-                : n.textAt(0.3),
-            shadows: _cursor.sure && word.id == here.word.id
-                ? [
-                    Shadow(
-                      color: n.accent.withValues(alpha: 0.65),
-                      blurRadius: 28,
-                    ),
-                  ]
-                : null,
-          ),
+          style:
+              TextStyle(
+                fontFamily: Nocturne.arabicFamily,
+                fontSize: _reciting,
+                height: 1.95,
+                // The aya is what the screen is for: one is drawn at a time, at
+                // 52px, and a word either side of the truth is not visible from a
+                // metre away on the floor. The word inside it is singled out only
+                // when the recitation named one place clearly — otherwise every
+                // word of the aya is lit alike, which is the truth about what was
+                // heard rather than a claim the matcher never made.
+                color: !_cursor.sure || word.id < here.word.id
+                    ? n.text
+                    : n.textAt(0.3),
+              ).merge(
+                _cursor.sure && word.id == here.word.id
+                    ? glowing(n, Glow.recited)
+                    : null,
+              ),
         ),
     ],
   );
@@ -647,7 +638,6 @@ class _PrayerScreenState extends State<PrayerScreen> {
     );
   }
 }
-
 
 /// ponytail: screen 1a has its own copy at a different period, and
 /// lib/widgets/ belongs to one owner this phase. Lift them into a shared

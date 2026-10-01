@@ -283,7 +283,6 @@
   "study_expandSheet": "Afficher les nombres, les formes et les autres versets",
   "study_collapseSheet": "Revoir toute la sourate",
   "study_senses": "Sens",
-  "study_inThisVerse": "Dans ce verset · {gloss}",
   "study_particleNote": "Les particules et les pronoms n’ont pas de racine trilitère. Glissez jusqu’au mot suivant.",
   "study_moreRow": "Nombres, formes, autres versets",
   "study_acrossQuran": "Dans tout le Coran",
@@ -300,5 +299,6 @@
   "study_pauseRecitation": "Mettre la récitation en pause",
   "study_markUnderstood": "Marquer le verset {ref} comme compris",
   "study_openRoot": "Ouvrir la racine {root}",
-  "dashboard_continueReading": "REPRENDRE LA LECTURE"
+  "dashboard_continueReading": "REPRENDRE LA LECTURE",
+  "study_form": "Forme"
 }

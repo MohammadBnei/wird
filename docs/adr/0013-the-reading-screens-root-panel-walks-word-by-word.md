@@ -6,7 +6,7 @@ Date: 2026-09-30. Status: accepted, amended by ADR 0014.
 
 Screen 1a opened a root only when the reader tapped a word. Reading a passage for its roots therefore meant hunting for the next word to press, and a word with no root could not be opened at all.
 
-The root panel is capped at two fifths of the window ([study_screen.dart#L477-L481](../../app/lib/features/study/study_screen.dart#L477-L481)), so a row added to it is a row taken from somewhere. The row spent was the corpus attribution: `root.sources.join(', ')`, which drew the string `quranic-corpus-morphology` under the kin tags. The Quranic Arabic Corpus asks that its source be indicated and that a link reach corpus.quran.com. Both are answered by About > Sources, which carries the name, the version, the copyright notice and the link, and whose own comment says "This list is where that happens" ([about_screen.dart#L44-L57](../../app/lib/features/about/about_screen.dart#L44-L57)). The Iʿrāb section repeats it on screens 3a, 2b and 1c ([root_sections.dart#L479-L482](../../app/lib/features/root/root_sections.dart#L479-L482)).
+The root panel is capped at two fifths of the window ([study_screen.dart#L477-L481](https://github.com/MohammadBnei/wird/blob/f5935526eb5ae6c3ffe5427a901b8c4c7fa93f85/app/lib/features/study/study_screen.dart#L477-L481)), so a row added to it is a row taken from somewhere. The row spent was the corpus attribution: `root.sources.join(', ')`, which drew the string `quranic-corpus-morphology` under the kin tags. The Quranic Arabic Corpus asks that its source be indicated and that a link reach corpus.quran.com. Both are answered by About > Sources, which carries the name, the version, the copyright notice and the link, and whose own comment says "This list is where that happens" ([about_screen.dart#L44-L57](../../app/lib/features/about/about_screen.dart#L44-L57)). The Iʿrāb section repeats it on screens 3a, 2b and 1c ([root_sections.dart#L479-L482](../../app/lib/features/root/root_sections.dart#L479-L482)).
 
 ## Decision
 
@@ -28,7 +28,7 @@ About > Sources and the Iʿrāb section are now the only places in the app namin
 
 Screen 1a carries two steppers, one for the word and one for the set, a band apart. Their labels have to stay distinct.
 
-A word can now be open without a root, which was impossible before. The rule under a word means "there is a root here" and is drawn only under rooted words ([word_row.dart#L253-L260](../../app/lib/features/study/word_row.dart#L253-L260)).
+A word can now be open without a root, which was impossible before. The rule under a word means "there is a root here" and is drawn only under rooted words ([word_row.dart#L253-L260](https://github.com/MohammadBnei/wird/blob/f5935526eb5ae6c3ffe5427a901b8c4c7fa93f85/app/lib/features/study/word_row.dart#L253-L260)).
 
 ## Reversibility
 

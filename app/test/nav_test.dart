@@ -69,7 +69,7 @@ void main() {
   /// A root as the reader's sheet names it, over the word open. The ring
   /// further down the sheet prints the same letters at its centre.
   Finder rootNamed(String display) => find.descendant(
-    of: find.byKey(const Key('swipe')),
+    of: find.byKey(const ValueKey('open-root')),
     matching: find.text(display),
   );
 

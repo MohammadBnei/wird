@@ -13,9 +13,13 @@ import '../report/report.dart';
 import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
 import '../../shell/wird_shell.dart';
+import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
+import '../../widgets/lit_aya.dart';
+import '../../widgets/nocturne_kicker.dart';
 import 'reading_walk.dart';
 import 'root_sheet.dart';
+import 'word_swipe.dart';
 import 'study_chrome.dart' show DashedRule;
 import 'word_row.dart';
 
@@ -82,6 +86,9 @@ class _StudyScreenState extends State<StudyScreen> {
   int? _unheard;
 
   final _sheetScroll = ScrollController();
+
+  /// The sheet's slide, which the arrow keys drive like the sheet's arrows.
+  final _swipe = GlobalKey<WordSwipeState>();
 
   /// One key per word, kept for the screen's life, so the open word can be
   /// found to centre it. A single key moved from word to word re-created the
@@ -357,9 +364,9 @@ class _StudyScreenState extends State<StudyScreen> {
                 bindings: {
                   // Arabic reads leftward: the next word is to the left.
                   const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
-                      _stepTo(1)?.call(),
+                      _swipe.currentState?.slideNext(),
                   const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-                      _stepTo(-1)?.call(),
+                      _swipe.currentState?.slidePrevious(),
                 },
                 child: Focus(
                   autofocus: true,
@@ -389,10 +396,10 @@ class _StudyScreenState extends State<StudyScreen> {
                                   expanded: _expanded,
                                   previous: _beside(-1),
                                   next: _beside(1),
+                                  swipe: _swipe,
                                   onPrevious: _stepTo(-1),
                                   onNext: _stepTo(1),
                                   onToggle: () => _setExpanded(!_expanded),
-                                  onExpand: () => _setExpanded(true),
                                   onRoot: (letters) =>
                                       _visit(Routes.root, letters),
                                   onJudge: _judgeSense,
@@ -645,34 +652,19 @@ class _StudyScreenState extends State<StudyScreen> {
     );
   }
 
+  /// The Arabic of a one-line aya: the strip, the away strip.
+  TextStyle _lineStyle(Nocturne n) => TextStyle(
+    fontFamily: Nocturne.arabicFamily,
+    fontSize: 20,
+    height: 1.6,
+    color: n.textAt(0.62),
+  );
+
   /// One line: the aya open, and the open word with two either side of it.
   Widget _strip(Nocturne n) {
     final word = _word;
     final words = word == null ? null : _words[word.id ~/ 1000];
     if (word == null || words == null) return const SizedBox.shrink();
-    final at = words.indexWhere((w) => w.id == word.id);
-    final lo = (at - 2).clamp(0, words.length);
-    final hi = (at + 3).clamp(0, words.length);
-    final dim = n.textAt(0.4);
-    Widget arabic(String text, Color colour, {bool line = false}) => Container(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: line ? n.accent : Colors.transparent,
-            width: 2,
-          ),
-        ),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontFamily: Nocturne.arabicFamily,
-          fontSize: 20,
-          height: 1.6,
-          color: colour,
-        ),
-      ),
-    );
     return GestureDetector(
       key: const Key('strip'),
       behavior: HitTestBehavior.opaque,
@@ -687,23 +679,14 @@ class _StudyScreenState extends State<StudyScreen> {
               style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
             ),
             Expanded(
-              child: ClipRect(
-                child: Row(
-                  textDirection: TextDirection.rtl,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 9,
-                  children: [
-                    if (lo > 0) arabic('…', dim),
-                    for (final w in words.sublist(lo, hi))
-                      arabic(
-                        w.text,
-                        w.id == word.id
-                            ? n.color('accent-100')
-                            : n.textAt(0.62),
-                        line: w.id == word.id,
-                      ),
-                    if (hi < words.length) arabic('…', dim),
+              child: Center(
+                child: LitAya.window(
+                  [
+                    for (final w in words)
+                      (id: w.id, text: w.text, lit: w.id == word.id),
                   ],
+                  glow: Glow.reading,
+                  style: _lineStyle(n),
                 ),
               ),
             ),
@@ -713,6 +696,9 @@ class _StudyScreenState extends State<StudyScreen> {
       ),
     );
   }
+
+  /// The way back from another aya to the word the reader left.
+  String get _homeRef => ayahRef((_word?.id ?? 0) ~/ 1000);
 
   Widget _awayFull(Nocturne n, RootAya away) {
     final l = AppLocalizations.of(context)!;
@@ -725,21 +711,14 @@ class _StudyScreenState extends State<StudyScreen> {
             key: const Key('back to reading'),
             onPressed: () => setState(() => _away = null),
             icon: const Icon(Icons.chevron_left, size: 14),
-            label: Text(l.study_backTo(ayahRef((_word?.id ?? 0) ~/ 1000))),
+            label: Text(l.study_backTo(_homeRef)),
           ),
           const SizedBox(height: 18),
-          Text(
-            ayahRef(away.ayahId),
-            style: TextStyle(
-              fontSize: 10,
-              letterSpacing: 1.1,
-              color: n.color('accent-300'),
-            ),
-          ),
+          NocturneKicker(ayahRef(away.ayahId), tone: KickerTone.accent),
           const SizedBox(height: 6),
-          Text(
-            away.text,
-            textDirection: TextDirection.rtl,
+          LitAya(
+            away.words,
+            glow: Glow.reading,
             style: TextStyle(
               fontFamily: Nocturne.arabicFamily,
               fontSize: 28,
@@ -775,24 +754,14 @@ class _StudyScreenState extends State<StudyScreen> {
       children: [
         OutlinedButton(
           onPressed: () => setState(() => _away = null),
-          child: Text('‹ ${ayahRef((_word?.id ?? 0) ~/ 1000)}'),
+          child: Text('‹ $_homeRef'),
         ),
-        Text(
-          ayahRef(away.ayahId),
-          style: TextStyle(fontSize: 11, color: n.color('accent-300')),
-        ),
+        NocturneKicker(ayahRef(away.ayahId), tone: KickerTone.accent),
         Expanded(
-          child: Text(
-            away.text,
-            textDirection: TextDirection.rtl,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: Nocturne.arabicFamily,
-              fontSize: 18,
-              height: 1.6,
-              color: n.text,
-            ),
+          child: LitAya.window(
+            away.words,
+            glow: Glow.reading,
+            style: _lineStyle(n),
           ),
         ),
       ],

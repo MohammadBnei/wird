@@ -89,7 +89,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // The sheet opened full height, so the aya is on the strip above it.
-    expect(find.text(other.text), findsWidgets);
+    final rootWord = other.words.firstWhere((w) => w.lit).text;
+    expect(find.textContaining(rootWord, findRichText: true), findsWidgets);
     expect(find.text(ayahRef(other.ayahId)), findsWidgets);
 
     // And it can be read in full, with the way back to where the reader was.

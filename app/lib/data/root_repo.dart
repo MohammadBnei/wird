@@ -447,13 +447,64 @@ Future<int> rootCountInSurah(Database db, String root, int surah) async =>
     ) ??
     0;
 
-/// An aya where a root is read, for the list of other ayas under a root.
-typedef RootAya = ({int ayahId, String text, String? translation});
+/// One aya read for a root: its place, its words, and which of them carry
+/// the root.
+typedef AyaReading = ({String surahName, int number, List<AyaWord> words});
+
+/// One word of an aya: its id, so the parsing of this occurrence can be
+/// read, and whether it carries the root asked about.
+typedef AyaWord = ({int id, String text, bool lit});
+
+/// The words of each of [ayahIds], in order, marked where they carry
+/// [letters]. One query however many ayas: the root sheet asks for twenty.
+Future<Map<int, List<AyaWord>>> _litWords(
+  Database db,
+  List<int> ayahIds,
+  String letters,
+) async {
+  final byAya = {for (final id in ayahIds) id: <AyaWord>[]};
+  if (ayahIds.isEmpty) return byAya;
+  final marks = List.filled(ayahIds.length, '?').join(',');
+  for (final w in await db.rawQuery(
+    '''SELECT id, ayah_id, text_ar, root_letters FROM words
+        WHERE ayah_id IN ($marks) ORDER BY ayah_id, position''',
+    ayahIds,
+  )) {
+    byAya[w['ayah_id']! as int]!.add((
+      id: w['id']! as int,
+      text: w['text_ar']! as String,
+      lit: w['root_letters'] == letters,
+    ));
+  }
+  return byAya;
+}
+
+/// The aya as it is printed, with the words carrying [letters] marked. Null
+/// when the corpus has no such aya.
+Future<AyaReading?> ayaReading(Database db, int ayahId, String letters) async {
+  final place = await db.rawQuery(
+    '''SELECT a.number, s.name_en
+         FROM ayahs a
+         JOIN surahs s ON s.id = a.surah_id
+        WHERE a.id = ?''',
+    [ayahId],
+  );
+  if (place.isEmpty) return null;
+  return (
+    surahName: place.first['name_en']! as String,
+    number: place.first['number']! as int,
+    words: (await _litWords(db, [ayahId], letters))[ayahId]!,
+  );
+}
+
+/// An aya where a root is read, for the list of other ayas under a root: its
+/// words with the root's lit, and its translation where the corpus has one.
+typedef RootAya = ({int ayahId, List<AyaWord> words, String? translation});
 
 /// The ayas [root] is read in, in muṣḥaf order, leaving out [except].
 ///
-/// The translation is the one in [lang] where the corpus carries it, which
-/// today is French only; an English reader sees the Arabic alone.
+/// The translation is the reader's language's, Pickthall's English or Rashid
+/// Maash's French.
 ///
 /// ponytail: the first [limit] ayas, not a page. أ ل ه is read in some two
 /// thousand; page this list if a reader ever wants them all.
@@ -464,21 +515,19 @@ Future<List<RootAya>> rootAyas(
   int? except,
   int limit = 20,
 }) async {
-  final rows = await db.rawQuery(
-    '''SELECT DISTINCT a.id, a.text_uthmani FROM words w
-         JOIN ayahs a ON a.id = w.ayah_id
-        WHERE w.root_letters = ? AND a.id != ?
-        ORDER BY a.id LIMIT ?''',
-    [root, except ?? 0, limit],
-  );
-  final ids = [for (final r in rows) r['id']! as int];
+  final ids = [
+    for (final r in await db.rawQuery(
+      '''SELECT DISTINCT ayah_id FROM words
+          WHERE root_letters = ? AND ayah_id != ?
+          ORDER BY ayah_id LIMIT ?''',
+      [root, except ?? 0, limit],
+    ))
+      r['ayah_id']! as int,
+  ];
+  final words = await _litWords(db, ids, root);
   final translated = await translationsFor(db, ids, lang);
   return [
-    for (final r in rows)
-      (
-        ayahId: r['id']! as int,
-        text: r['text_uthmani']! as String,
-        translation: translated[r['id']],
-      ),
+    for (final id in ids)
+      (ayahId: id, words: words[id]!, translation: translated[id]),
   ];
 }
