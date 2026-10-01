@@ -130,6 +130,13 @@ env:
   # Not a secret: a certificate fingerprint is readable from any installed app.
   - name: WIRD_ANDROID_SHA256
     value: "45:85:EA:58:05:B0:DC:C7:86:E1:2C:12:A0:5A:59:80:7B:8C:0C:D2:CC:6D:7B:34:14:C2:CC:24:8C:22:F2:5E,97:D5:06:8B:7A:AB:B7:E3:E0:19:BF:61:4F:7D:A4:AB:0A:44:58:32:58:77:EB:49:D1:B4:48:4B:4D:B2:03:02"
+  # The APK /download/android redirects to, android/wird-<sha12>.apk in the
+  # models bucket. Written by .github/workflows/apk.yml on each version tag,
+  # never by hand: the key names the build's digest, so a new build is a new
+  # key and a download resumed across a release never mixes two builds.
+  # Empty answers 503, which the page reads as "not published yet".
+  - name: WIRD_APK_KEY
+    value: ""
   # Trailing slash deliberate: go-oidc compares the discovery document's
   # `issuer` claim against this string verbatim, and authentik publishes it
   # with the slash. app/lib/data/auth.dart carries the same value.

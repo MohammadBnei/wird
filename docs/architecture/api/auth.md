@@ -206,7 +206,7 @@ flowchart LR
   d -->|"left at default wird"| bad
 ```
 
-The local default audience is `wird`. A real Authentik ID token carries the **client id** in `aud`, not `wird`. Left at the default, the API refuses every real token with `expected audience "wird"`. The deployed values set `OIDC_AUDIENCE` to the client id ([values.yaml:138-147](../../../helm/values.yaml#L138-L147)).
+The local default audience is `wird`. A real Authentik ID token carries the **client id** in `aud`, not `wird`. Left at the default, the API refuses every real token with `expected audience "wird"`. The deployed values set `OIDC_AUDIENCE` to the client id ([values.yaml:145-154](../../../helm/values.yaml#L145-L154)).
 
 The check matters more than usual here. The identity provider signs tokens for many apps with one key, so a valid signature alone proves little. Only `aud` and `iss` tell a Wird token from another app's.
 
