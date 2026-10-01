@@ -142,11 +142,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('sheet handle')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('strip')), findsOneWidget);
+    expect(find.byKey(const Key('open aya')), findsOneWidget);
     await tester.tap(find.byKey(const Key('sheet handle')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('strip')), findsNothing);
+    expect(find.byKey(const Key('open aya')), findsNothing);
 
     expect(find.text('No root'), findsOneWidget);
     expect(next, findsOneWidget);

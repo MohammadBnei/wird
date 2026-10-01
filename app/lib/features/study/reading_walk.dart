@@ -1,3 +1,4 @@
+import '../../data/root_repo.dart' show ayahOfWord;
 import '../../data/sets.dart';
 
 /// Where a step lands: the aya, by its place in the sūra, and the word in it.
@@ -20,7 +21,7 @@ WalkStep? stepFrom(
   int fromWordId,
   int by,
 ) {
-  final ayaIndex = ayas.indexWhere((a) => a.id == fromWordId ~/ 1000);
+  final ayaIndex = ayas.indexWhere((a) => a.id == ayahOfWord(fromWordId));
   if (ayaIndex < 0) return null;
   final here = words[ayas[ayaIndex].id];
   final at = here?.indexWhere((w) => w.id == fromWordId) ?? -1;

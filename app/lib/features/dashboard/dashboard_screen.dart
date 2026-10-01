@@ -3,12 +3,13 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../app.dart';
 import '../../data/db.dart';
-import '../../data/root_repo.dart' show ayahRef;
+import '../../data/root_repo.dart' show ayahOfWord, ayahRef;
 import '../../data/sets.dart';
 import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
+import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_rule.dart';
 
 /// What the walk has ready, the sūras the reader is part-way through, and
@@ -26,7 +27,7 @@ const _readingShown = 3;
 
 Future<Waiting> whatIsWaiting(Database db, ReadingOrder order) async {
   final set = await nextSet(db, order);
-  final positions = (await readingPositions(db)).take(_readingShown).toList();
+  final positions = await readingPositions(db, limit: _readingShown);
   final names = {
     for (final r in await db.query('surahs', columns: ['id', 'name_en']))
       r['id']! as int: r['name_en']! as String,
@@ -151,14 +152,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        NocturneKicker(
           l10n.dashboard_setWaiting(waiting.number),
-          style: TextStyle(
-            fontSize: 10,
-            height: 1.2,
-            letterSpacing: 0.11 * 10,
-            color: n.accent,
-          ),
+          tone: KickerTone.accent,
         ),
         SizedBox(height: n.space('2')),
         Text(set.title, style: Theme.of(context).textTheme.displaySmall),
@@ -192,8 +188,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         NocturneButton(
           key: const Key('read the set'),
           block: true,
-          // The set itself: with no aya the reader opens where it last
-          // stood, which need not be this set.
+          // The set itself, named by its first aya: opened with no aya, the
+          // reader goes where it last stood, which need not be this set.
           onPressed: () =>
               Navigator.of(context)
                   .pushNamed(Routes.study, arguments: set.ayas.first.id),
@@ -210,15 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          l10n.dashboard_continueReading,
-          style: TextStyle(
-            fontSize: 10,
-            height: 1.2,
-            letterSpacing: 0.11 * 10,
-            color: n.accent,
-          ),
-        ),
+        NocturneKicker(l10n.dashboard_continueReading, tone: KickerTone.accent),
         const NocturneRule(fade: 30),
         for (final place in waiting.reading)
           GestureDetector(
@@ -238,7 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   Text(
-                    ayahRef(place.wordId ~/ 1000),
+                    ayahRef(ayahOfWord(place.wordId)),
                     style: TextStyle(fontSize: 12, color: n.textAt(0.55)),
                   ),
                   SizedBox(width: n.space('2')),
@@ -273,15 +261,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          l10n.dashboard_whereToGo,
-          style: TextStyle(
-            fontSize: 10,
-            height: 1.2,
-            letterSpacing: 0.11 * 10,
-            color: n.accent,
-          ),
-        ),
+        NocturneKicker(l10n.dashboard_whereToGo, tone: KickerTone.accent),
         const NocturneRule(fade: 30),
         for (final door in [
           (

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// The root sheet's content, which a sideways drag carries to the word before
@@ -25,9 +27,10 @@ class WordSwipe extends StatefulWidget {
   final int wordId;
   final Widget child;
 
-  /// Null where the sūra ends on that side.
-  final VoidCallback? onNext;
-  final VoidCallback? onPrevious;
+  /// Null where the sūra ends on that side. Each completes once the step has
+  /// landed on a word, or has come to nothing.
+  final Future<void> Function()? onNext;
+  final Future<void> Function()? onPrevious;
 
   @override
   State<WordSwipe> createState() => WordSwipeState();
@@ -55,15 +58,31 @@ class WordSwipeState extends State<WordSwipe> with TickerProviderStateMixin {
   /// drawer or the system's back gesture.
   bool _ignored = false;
 
-  void slideNext() => _leave(1, widget.onNext);
-  void slidePrevious() => _leave(-1, widget.onPrevious);
+  void slideNext() => unawaited(_leave(1, widget.onNext));
+  void slidePrevious() => unawaited(_leave(-1, widget.onPrevious));
 
-  /// Sends the content off to [side] and asks for the word there.
-  void _leave(double side, VoidCallback? go) {
+  /// Sends the content off to [side] and asks for the word there. A step
+  /// that lands nowhere — the words could not be read, or a newer step
+  /// overtook it — brings the content back, so it is never left off-screen.
+  Future<void> _leave(double side, Future<void> Function()? go) async {
     if (go == null) return;
     _enterFrom = -side;
-    _offset.animateTo(side * 1.1, duration: _travel, curve: Curves.easeIn);
-    go();
+    unawaited(
+      _offset.animateTo(side * 1.1, duration: _travel, curve: Curves.easeIn),
+    );
+    try {
+      await go();
+      // The new word reaches this widget on the next frame, not when the
+      // step completes; deciding before then would undo a slide that landed.
+      await WidgetsBinding.instance.endOfFrame;
+    } finally {
+      if (mounted && _enterFrom != null) {
+        _enterFrom = null;
+        unawaited(
+          _offset.animateTo(0, duration: _travel, curve: Curves.easeOut),
+        );
+      }
+    }
   }
 
   @override

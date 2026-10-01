@@ -535,19 +535,19 @@ void main() {
     await tester.drag(sheetScroll(), const Offset(0, -200));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('strip')), findsNothing);
+    expect(find.byKey(const Key('open aya')), findsNothing);
   });
 
   testWidgets("a tap on the sheet's top bar does nothing", (tester) async {
     await openStudy(tester);
 
-    await tester.tap(find.text('swipe'));
+    await tester.tap(find.byKey(const Key('sheet handle')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('strip')), findsOneWidget);
+    expect(find.byKey(const Key('open aya')), findsOneWidget);
 
-    await tester.tap(find.text('swipe'));
+    await tester.tap(find.byKey(const Key('sheet handle')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('strip')), findsNothing);
+    expect(find.byKey(const Key('open aya')), findsNothing);
   });
 
   testWidgets('the thumbs are not on the senses row, and the form is read '

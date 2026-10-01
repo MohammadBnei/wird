@@ -55,6 +55,24 @@ typedef IrabSegment = ({int position, String role, List<String> features});
 /// The sūra and aya an id names, written the way a reference is written.
 String ayahRef(int ayahId) => '${ayahId ~/ 1000}:${ayahId % 1000}';
 
+// The corpus's ids are its own references: an aya is sūra * 1000 + number,
+// a word is aya * 1000 + position. These say which is meant where one is
+// turned into the other.
+
+/// The aya a word belongs to.
+int ayahOfWord(int wordId) => wordId ~/ 1000;
+
+/// The sūra a word belongs to.
+int surahOfWord(int wordId) => wordId ~/ 1000000;
+
+/// An aya's first word.
+int firstWordOf(int ayahId) => ayahId * 1000 + 1;
+
+/// The work the parsing is drawn from, named as its licence asks. Not
+/// translated: the title, the version and the link are the attribution, and
+/// a translated attribution attributes nothing. See data/SOURCES.md.
+const irabWork = 'Quranic Arabic Corpus 0.4, corpus.quran.com';
+
 /// Everything this device knows about one root. The family and the parsing come
 /// from the bundled corpus; the sense comes from whatever pack was last fetched
 /// into it (`senses.dart`). Lexicon prose and tafsir are fetched per root and
@@ -190,7 +208,7 @@ Future<RootReading?> rootReading(
   final surahs = <int>{};
   for (final word in words) {
     final id = word['id']! as int;
-    surahs.add(id ~/ 1000000);
+    surahs.add(surahOfWord(id));
     final text = (word['text_ar']! as String)
         .replaceAll(_pauseMarks, '')
         .trim();
@@ -222,7 +240,7 @@ Future<RootReading?> rootReading(
             form: held[text]!['form'] as String?,
             note: held[text]!['note'] as String?,
             wordId: held[text]!['id']! as int,
-            ayahId: (held[text]!['id']! as int) ~/ 1000,
+            ayahId: ayahOfWord(held[text]!['id']! as int),
             occurrences: counts[text]!,
           ),
       ]..sort((a, b) {

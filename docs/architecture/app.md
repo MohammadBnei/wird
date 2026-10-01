@@ -113,11 +113,11 @@ Future<void> installCorpus(File target, Uint8List bytes) async {
 }
 ```
 
-[db.dart:162](../../app/lib/data/db.dart#L162-L167) · [openWird, db.dart:20](../../app/lib/data/db.dart#L20-L44)
+[db.dart:162](../../app/lib/data/db.dart#L163-L168) · [openWird, db.dart:20](../../app/lib/data/db.dart#L21-L45)
 
-A phone that already holds an older corpus is upgraded on launch. When the app's `bundledCorpusVersion` is above the installed `corpus_meta.corpus_version`, [`upgradeCorpus`](../../app/lib/data/db.dart#L82-L104) fills the new corpus in `wird.db.next`, copies across every table the corpus does not ship and the senses fetched into `root_notes`, then swaps the files by rename. If anything fails before the swap, the old file is kept and the next launch tries again.
+A phone that already holds an older corpus is upgraded on launch. When the app's `bundledCorpusVersion` is above the installed `corpus_meta.corpus_version`, [`upgradeCorpus`](../../app/lib/data/db.dart#L83-L105) fills the new corpus in `wird.db.next`, copies across every table the corpus does not ship and the senses fetched into `root_notes`, then swaps the files by rename. If anything fails before the swap, the old file is kept and the next launch tries again.
 
-Then [openWirdAt](../../app/lib/data/db.dart#L171) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
+Then [openWirdAt](../../app/lib/data/db.dart#L172) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
 
 The copy only happens when `wird.db` is missing. A later app update with a newer corpus does not replace it.
 

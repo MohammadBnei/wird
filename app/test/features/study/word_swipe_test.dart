@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wird/features/study/word_swipe.dart';
@@ -7,8 +9,8 @@ import 'package:wird/features/study/word_swipe.dart';
 class _Host extends StatefulWidget {
   const _Host({required this.onNext, required this.onPrevious});
 
-  final VoidCallback? onNext;
-  final VoidCallback? onPrevious;
+  final Future<void> Function()? onNext;
+  final Future<void> Function()? onPrevious;
 
   @override
   State<_Host> createState() => _HostState();
@@ -18,7 +20,20 @@ class _HostState extends State<_Host> {
   final swipe = GlobalKey<WordSwipeState>();
   int word = 1;
 
-  void arrive(int next) => setState(() => word = next);
+  /// The step under way, which completes when its word arrives.
+  Completer<void>? pending;
+
+  void arrive(int next) {
+    setState(() => word = next);
+    pending?.complete();
+    pending = null;
+  }
+
+  /// The step comes to nothing: no word arrives.
+  void fail() {
+    pending?.complete();
+    pending = null;
+  }
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -49,13 +64,19 @@ void main() {
     bool previous = true,
   }) async {
     asked = [];
+    late _HostState host;
+    Future<void> step(String which) {
+      asked.add(which);
+      return (host.pending = Completer<void>()).future;
+    }
+
     await tester.pumpWidget(
       _Host(
-        onNext: next ? () => asked.add('next') : null,
-        onPrevious: previous ? () => asked.add('previous') : null,
+        onNext: next ? () => step('next') : null,
+        onPrevious: previous ? () => step('previous') : null,
       ),
     );
-    return tester.state<_HostState>(find.byType(_Host));
+    return host = tester.state<_HostState>(find.byType(_Host));
   }
 
   /// Where the content sits, left edge, relative to where it rests.
@@ -94,7 +115,8 @@ void main() {
     expect(
       shift(tester, home),
       lessThan(0),
-      reason: 'the next word lies to the left in Arabic, so it enters from there',
+      reason:
+          'the next word lies to the left in Arabic, so it enters from there',
     );
     await tester.pumpAndSettle();
     expect(shift(tester, home), 0);
@@ -156,5 +178,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(asked, isEmpty);
+  });
+
+  testWidgets('a step that lands nowhere leaves the word off the side of the '
+      'sheet', (tester) async {
+    final host = await pump(tester);
+    final home = tester.getTopLeft(find.byKey(const Key('content'))).dx;
+
+    host.swipe.currentState!.slideNext();
+    await tester.pumpAndSettle();
+    host.fail();
+    await tester.pumpAndSettle();
+
+    expect(shift(tester, home), 0);
   });
 }

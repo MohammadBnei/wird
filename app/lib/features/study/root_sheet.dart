@@ -8,7 +8,6 @@ import '../../theme/nocturne.dart';
 import '../../widgets/lit_aya.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_tag.dart';
-import '../root/root_sections.dart' show irabWork;
 import 'lemma_ring.dart';
 import 'word_swipe.dart';
 
@@ -35,8 +34,6 @@ class RootSheet extends StatelessWidget {
     super.key,
     required this.sheet,
     required this.expanded,
-    required this.previous,
-    required this.next,
     required this.swipe,
     required this.onPrevious,
     required this.onNext,
@@ -46,21 +43,19 @@ class RootSheet extends StatelessWidget {
     required this.onRoot,
     required this.onJudge,
     required this.onConstellation,
+    required this.translations,
   });
 
   final SheetWord sheet;
   final bool expanded;
 
-  /// The words either side, for the hint row; null at the ends of the sūra.
-  final StudyWord? previous;
-  final StudyWord? next;
-
   /// The slide the arrows drive, so a step by arrow moves like a swipe.
   final GlobalKey<WordSwipeState> swipe;
 
-  /// Null where there is no word to step to.
-  final VoidCallback? onPrevious;
-  final VoidCallback? onNext;
+  /// Null where there is no word to step to. Each completes once the step
+  /// has landed, or has come to nothing.
+  final Future<void> Function()? onPrevious;
+  final Future<void> Function()? onNext;
 
   final VoidCallback onToggle;
   final void Function(RootAya aya) onAya;
@@ -76,9 +71,12 @@ class RootSheet extends StatelessWidget {
   /// The reader's yes or no on the root's sense (ADR 0010).
   final void Function(String root, bool good) onJudge;
 
-  /// Opens the deep dive: this aya and this root's whole family, drawn as a
+  /// Opens the deep dive on an aya and a root's whole family, drawn as a
   /// constellation where the window is wide enough.
-  final void Function(String letters) onConstellation;
+  final void Function(int ayahId, String letters) onConstellation;
+
+  /// Whether the reader shows translations, which the other ayas follow.
+  final bool translations;
 
   @override
   Widget build(BuildContext context) {
@@ -89,11 +87,13 @@ class RootSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: n.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        // A soft edge rather than a lid: the sheet sits under the sūra, it
+        // does not cover it.
         boxShadow: const [
           BoxShadow(
-            color: Color(0x59000000),
-            blurRadius: 30,
-            offset: Offset(0, -10),
+            color: Color(0x2E000000),
+            blurRadius: 16,
+            offset: Offset(0, -4),
           ),
         ],
       ),
@@ -113,12 +113,17 @@ class RootSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // The arrows sit at the sheet's edges; the rest is
+                    // indented as the design draws it.
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 6, 18, 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: _wordRow(context, n, l, root),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _wordRow(context, n, l, root),
                           if (root != null) ..._senses(n, l, root),
                           _form(n, l),
                         ],
@@ -149,92 +154,63 @@ class RootSheet extends StatelessWidget {
     );
   }
 
-  /// The handle and the hint row, one bar: a tap anywhere on it opens or
-  /// closes the lower half, except on its two ends, which step a word.
-  Widget _topBar(Nocturne n, AppLocalizations l) {
-    final hint = TextStyle(fontSize: 11, color: n.textAt(0.5));
-    final arabic = TextStyle(
-      fontFamily: Nocturne.arabicFamily,
-      fontSize: 15,
-      color: n.textAt(0.5),
-    );
-    Widget side(StudyWord? word, bool forward) {
-      final go = forward ? onNext : onPrevious;
-      return Expanded(
-        child: Semantics(
-          button: true,
-          enabled: go != null,
-          label: forward ? l.study_nextWord : l.study_previousWord,
-          child: GestureDetector(
-            key: Key(forward ? 'next word' : 'previous word'),
-            behavior: HitTestBehavior.opaque,
-            onTap: go == null
-                ? null
-                : () => forward
-                      ? swipe.currentState?.slideNext()
-                      : swipe.currentState?.slidePrevious(),
-            child: Row(
-              mainAxisAlignment: forward
-                  ? MainAxisAlignment.start
-                  : MainAxisAlignment.end,
-              children: [
-                if (forward) Text('‹ ', style: hint),
-                if (word != null)
-                  Flexible(
-                    child: Text(
-                      word.text,
-                      textDirection: TextDirection.rtl,
-                      overflow: TextOverflow.ellipsis,
-                      style: arabic,
-                    ),
-                  ),
-                if (!forward) Text(' ›', style: hint),
-              ],
+  /// The handle: a tap on it opens or closes the lower half.
+  Widget _topBar(Nocturne n, AppLocalizations l) => Semantics(
+    button: true,
+    label: expanded ? l.study_collapseSheet : l.study_expandSheet,
+    child: GestureDetector(
+      key: const Key('sheet handle'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onToggle,
+      // A faint mark with room around it to tap.
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Center(
+          child: Container(
+            width: 28,
+            height: 3,
+            decoration: BoxDecoration(
+              color: n.textAt(0.14),
+              borderRadius: BorderRadius.circular(1.5),
             ),
           ),
         ),
-      );
-    }
+      ),
+    ),
+  );
 
+  /// A step to the word on one side. Arabic reads leftward, so the next word
+  /// is the one on the left. It slides the sheet the way a swipe does.
+  Widget _arrow(Nocturne n, AppLocalizations l, {required bool forward}) {
+    final go = forward ? onNext : onPrevious;
     return Semantics(
       button: true,
-      label: expanded ? l.study_collapseSheet : l.study_expandSheet,
+      enabled: go != null,
+      label: forward ? l.study_nextWord : l.study_previousWord,
       child: GestureDetector(
-        key: const Key('sheet handle'),
+        key: Key(forward ? 'next word' : 'previous word'),
         behavior: HitTestBehavior.opaque,
-        onTap: onToggle,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-          child: Column(
-            children: [
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: n.color('neutral-700'),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  side(next, true),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(l.study_swipe, style: hint),
-                  ),
-                  side(previous, false),
-                ],
-              ),
-            ],
+        onTap: go == null
+            ? null
+            : () => forward
+                  ? swipe.currentState?.slideNext()
+                  : swipe.currentState?.slidePrevious(),
+        child: SizedBox(
+          width: 28,
+          height: 44,
+          child: Icon(
+            forward ? Icons.chevron_left : Icons.chevron_right,
+            size: 22,
+            color: go == null ? n.textAt(0.15) : n.textAt(0.6),
           ),
         ),
       ),
     );
   }
 
-  /// The root, the word as this aya writes it, and what it means here — or,
-  /// for a word with no root, the tag that says so where the root would be.
+  /// ‹ root · the word as this aya writes it · what it means here › — the
+  /// arrows at either end step a word. A word with no root carries the tag
+  /// that says so where the root would be.
   Widget _wordRow(
     BuildContext context,
     Nocturne n,
@@ -244,69 +220,80 @@ class RootSheet extends StatelessWidget {
     final word = sheet.word;
     final meaning = word.glossIn(Localizations.localeOf(context));
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      spacing: 14,
       children: [
-        if (root != null)
-          Semantics(
-            button: true,
-            label: l.study_openRoot(root.translit),
-            child: GestureDetector(
-              key: const ValueKey('open-root'),
-              onTap: () => onRoot(root.letters),
-              child: Column(
+        _arrow(n, l, forward: true),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: 14,
+            children: [
+              if (root != null)
+                Semantics(
+                  button: true,
+                  label: l.study_openRoot(root.translit),
+                  child: GestureDetector(
+                    key: const ValueKey('open-root'),
+                    onTap: () => onRoot(root.letters),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          root.display,
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            fontFamily: Nocturne.arabicFamily,
+                            fontSize: 34,
+                            height: 1.35,
+                            letterSpacing: 34 * 0.14,
+                            color: n.text,
+                          ),
+                        ),
+                        Text(
+                          root.translit,
+                          style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                NocturneTag(l.study_wordHasNoRoot),
+              Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    root.display,
+                    word.text,
                     textDirection: TextDirection.rtl,
+                    // Not glowing: the glow marks the word inside its aya.
                     style: TextStyle(
                       fontFamily: Nocturne.arabicFamily,
-                      fontSize: 34,
-                      height: 1.35,
-                      letterSpacing: 34 * 0.14,
-                      color: n.text,
+                      fontSize: 24,
+                      height: 1.4,
+                      color: n.color('accent-200'),
                     ),
                   ),
-                  Text(
-                    root.translit,
-                    style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
-                  ),
+                  if (word.translit != null)
+                    Text(
+                      word.translit!,
+                      style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
+                    ),
                 ],
               ),
-            ),
-          )
-        else
-          NocturneTag(l.study_wordHasNoRoot),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              word.text,
-              textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: Nocturne.arabicFamily,
-                fontSize: 24,
-                height: 1.4,
-              ).merge(glowing(n, Glow.reading)),
-            ),
-            if (word.translit != null)
-              Text(
-                word.translit!,
-                style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
-              ),
-          ],
-        ),
-        if (meaning != null)
-          Expanded(
-            child: Text(
-              meaning,
-              key: const Key('meaning here'),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 15, height: 1.35, color: n.text),
-            ),
+              if (meaning != null)
+                Flexible(
+                  child: Text(
+                    meaning,
+                    key: const Key('meaning here'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 15, height: 1.35, color: n.text),
+                  ),
+                ),
+            ],
           ),
+        ),
+        _arrow(n, l, forward: false),
       ],
     );
   }
@@ -482,7 +469,8 @@ class RootSheet extends StatelessWidget {
             Center(
               child: TextButton(
                 key: const Key('constellation'),
-                onPressed: () => onConstellation(root.letters),
+                onPressed: () =>
+                    onConstellation(ayahOfWord(sheet.word.id), root.letters),
                 child: Text(l.study_constellation),
               ),
             ),
@@ -559,7 +547,7 @@ class RootSheet extends StatelessWidget {
                     color: n.text,
                   ),
                 ),
-                if (aya.translation != null)
+                if (translations && aya.translation != null)
                   Text(
                     aya.translation!,
                     maxLines: 2,

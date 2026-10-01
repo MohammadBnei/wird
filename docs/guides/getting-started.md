@@ -70,7 +70,7 @@ On first launch the app copies the bundled **corpus** into a file called `wird.d
   } else if (await installedCorpusVersion(path) < bundledCorpusVersion) {
 ```
 
-[db.dart:30-32](../../app/lib/data/db.dart#L30-L32)
+[db.dart:30-32](../../app/lib/data/db.dart#L31-L33)
 
 So a rebuild of `app/assets/corpus.db` must bump the ETL's `-corpus-version` default and `bundledCorpusVersion` in `app/lib/data/db.dart` together; a test fails when they disagree. Your progress and kept items are carried across. A rebuild that keeps the same number is not picked up: delete the installed file and launch again.
 

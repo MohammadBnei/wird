@@ -8,23 +8,25 @@ import '../theme/glow.dart';
 
 /// An aya's words, right to left, with the lit ones glowing.
 ///
-/// [LitAya.window] draws one line: the word at [around] (or the first lit
-/// word) with [span] words either side, and "…" where the aya goes on. A
-/// long aya cut at the end of its line would otherwise drop the very word it
-/// is shown for.
+/// [LitAya.window] draws one line: the first lit word with [span] words
+/// either side, and "…" where the aya goes on. A long aya cut at the end of
+/// its line would otherwise drop the very word it is shown for.
 class LitAya extends StatelessWidget {
-  const LitAya(this.words, {super.key, required this.glow, required this.style})
-    : around = null,
-      span = null;
+  const LitAya(
+    this.words, {
+    super.key,
+    required this.glow,
+    required this.style,
+    this.textAlign = TextAlign.start,
+  }) : span = null;
 
   const LitAya.window(
     this.words, {
     super.key,
     required this.glow,
     required this.style,
-    this.around,
     int this.span = 2,
-  });
+  }) : textAlign = TextAlign.start;
 
   final List<AyaWord> words;
   final Glow glow;
@@ -32,12 +34,11 @@ class LitAya extends StatelessWidget {
   /// The unlit words' style: font, size, colour.
   final TextStyle style;
 
-  /// The word the window is centred on, by place; null centres on the first
-  /// lit word.
-  final int? around;
-
   /// Words shown either side in a window; null draws the whole aya.
   final int? span;
+
+  /// How a whole aya's wrapped lines sit: from the right, or centred.
+  final TextAlign textAlign;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +48,7 @@ class LitAya extends StatelessWidget {
     var shown = words;
     var before = false, after = false;
     if (span != null && words.isNotEmpty) {
-      final centre = around ?? max(0, words.indexWhere((w) => w.lit));
+      final centre = max(0, words.indexWhere((w) => w.lit));
       final lo = max(0, centre - span);
       final hi = min(words.length, centre + span + 1);
       shown = words.sublist(lo, hi);
@@ -67,6 +68,7 @@ class LitAya extends StatelessWidget {
         ],
       ),
       textDirection: TextDirection.rtl,
+      textAlign: textAlign,
       style: style,
       maxLines: span == null ? null : 1,
       softWrap: span == null,

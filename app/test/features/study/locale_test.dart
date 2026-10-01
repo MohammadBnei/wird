@@ -46,7 +46,7 @@ void main() {
         delegates: AppLocalizations.localizationsDelegates,
         child: Builder(
           builder: (context) => Text(
-            AppLocalizations.of(context)!.inThisAya,
+            AppLocalizations.of(context)!.study_form,
             textDirection: TextDirection.ltr,
           ),
         ),
@@ -54,13 +54,13 @@ void main() {
     );
 
     await pumpIn(const Locale('fr'));
-    expect(find.text('DANS CE VERSET'), findsOneWidget);
-    expect(find.text('IN THIS AYA'), findsNothing);
+    expect(find.text('Forme'), findsOneWidget);
+    expect(find.text('Form'), findsNothing);
 
     // The other way too, so this would fail if the delegate resolved to one
     // locale whatever it was handed.
     await pumpIn(const Locale('en'));
-    expect(find.text('IN THIS AYA'), findsOneWidget);
-    expect(find.text('DANS CE VERSET'), findsNothing);
+    expect(find.text('Form'), findsOneWidget);
+    expect(find.text('Forme'), findsNothing);
   });
 }

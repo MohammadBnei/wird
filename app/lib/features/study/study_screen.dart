@@ -16,7 +16,8 @@ import '../../shell/wird_shell.dart';
 import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/lit_aya.dart';
-import '../../widgets/nocturne_kicker.dart';
+import 'away_aya.dart';
+import 'aya_translation.dart';
 import 'reading_walk.dart';
 import 'root_sheet.dart';
 import 'word_swipe.dart';
@@ -99,10 +100,8 @@ class _StudyScreenState extends State<StudyScreen> {
   static final _silent = ValueNotifier<int?>(null);
   static final _paused = ValueNotifier<bool>(false);
 
-  /// The position is written once the reader has settled on a word, not on
-  /// every swipe: a sitting sends a handful of moves to their other devices.
-  Timer? _settle;
-  static const _settleAfter = Duration(seconds: 2);
+  /// Where the reader stands, written once they settle on a word.
+  late final _position = PositionKeeper(widget.db);
 
   Prefs get _prefs => Wird.of(context).prefs;
 
@@ -119,10 +118,7 @@ class _StudyScreenState extends State<StudyScreen> {
   @override
   void dispose() {
     // A reader who leaves before the position settled still left from there.
-    if (_settle?.isActive ?? false) {
-      _settle!.cancel();
-      if (_word case final word?) unawaited(_savePosition(word.id));
-    }
+    _position.flush();
     _sheetScroll.dispose();
     super.dispose();
   }
@@ -132,17 +128,17 @@ class _StudyScreenState extends State<StudyScreen> {
   Future<void> _load({int? target, int? word}) async {
     final generation = ++_generation;
     final order = _prefs.order;
-    var at = word ?? (target == null ? null : target * 1000 + 1);
+    var at = word ?? (target == null ? null : firstWordOf(target));
     if (at == null) {
-      final positions = await readingPositions(widget.db);
+      final positions = await readingPositions(widget.db, limit: 1);
       if (positions.isNotEmpty) {
         at = positions.first.wordId;
       } else {
         final next = await nextSet(widget.db, order);
-        at = (next?.ayas.first.id ?? 1001) * 1000 + 1;
+        at = firstWordOf(next?.ayas.first.id ?? 1001);
       }
     }
-    final surah = await ayaSet(widget.db, order, at ~/ 1000);
+    final surah = await ayaSet(widget.db, order, ayahOfWord(at));
     if (surah == null || !mounted || generation != _generation) return;
     final lang = Localizations.localeOf(context).languageCode;
     final rendered = await translationsFor(widget.db, [
@@ -154,8 +150,8 @@ class _StudyScreenState extends State<StudyScreen> {
         if (aya.words.isNotEmpty) aya.id: aya.words,
     };
     final open =
-        words[at ~/ 1000]?.where((w) => w.id == at).firstOrNull ??
-        words[at ~/ 1000]?.firstOrNull;
+        words[ayahOfWord(at)]?.where((w) => w.id == at).firstOrNull ??
+        words[ayahOfWord(at)]?.firstOrNull;
     setState(() {
       _surah = surah;
       _words = words;
@@ -163,6 +159,7 @@ class _StudyScreenState extends State<StudyScreen> {
         ..clear()
         ..addAll(rendered);
       _pending.clear();
+      _wordKeys.clear();
       _away = null;
       _loaded = true;
     });
@@ -176,53 +173,55 @@ class _StudyScreenState extends State<StudyScreen> {
   Future<void> _open(StudyWord word) async {
     final generation = _generation;
     _opening = word.id;
+    try {
+      final sheet = await _readSheet(word);
+      // Overtaken: a newer load, or a newer word opened while this one was
+      // being read, which must not be drawn over it.
+      if (!mounted || generation != _generation || _opening != word.id) {
+        return;
+      }
+      setState(() {
+        _word = word;
+        _sheet = sheet;
+        _away = null;
+      });
+    } finally {
+      // Cleared whatever happened, so a failed read never leaves the next
+      // step counting from a word the reader never saw.
+      if (_opening == word.id) _opening = null;
+    }
+    _sheetToTop();
+    _position.move(word.id);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _centre());
+    await _carry(ayahOfWord(word.id));
+  }
+
+  /// Everything the sheet shows for [word], read together.
+  Future<SheetWord> _readSheet(StudyWord word) async {
     final readIn = Localizations.localeOf(context);
     final letters = word.root;
-    final root = letters == null
-        ? null
-        : await rootReading(widget.db, letters, readIn: readIn);
-    final sheet = (
+    return (
       word: word,
-      root: root,
+      root: letters == null
+          ? null
+          : await rootReading(widget.db, letters, readIn: readIn),
       lemmas: letters == null
           ? const <Lemma>[]
           : await lemmasOf(widget.db, letters),
       inSurah: letters == null
           ? 0
-          : await rootCountInSurah(widget.db, letters, word.id ~/ 1000000),
+          : await rootCountInSurah(widget.db, letters, surahOfWord(word.id)),
       ayas: letters == null
           ? const <RootAya>[]
           : await rootAyas(
               widget.db,
               letters,
               lang: readIn.languageCode,
-              except: word.id ~/ 1000,
+              except: ayahOfWord(word.id),
             ),
       irab: await wordIrab(widget.db, word.id, readIn: readIn),
     );
-    if (!mounted || generation != _generation) return;
-    setState(() {
-      _word = word;
-      _sheet = sheet;
-      _opening = null;
-      _away = null;
-    });
-    if (_sheetScroll.hasClients) _sheetScroll.jumpTo(0);
-    _settle?.cancel();
-    _settle = Timer(_settleAfter, () => _savePosition(word.id));
-    WidgetsBinding.instance.addPostFrameCallback((_) => _centre());
-    await _carry(word.id ~/ 1000);
   }
-
-  /// Writes where the reader stands, after the screen has moved on. Nobody
-  /// waits for it, so a database closed under it (a reader signing out, a
-  /// test tearing down) leaves nothing to write to and is not an error; any
-  /// other failure still surfaces.
-  Future<void> _savePosition(int wordId) =>
-      movePosition(widget.db, wordId).catchError(
-        (_) {},
-        test: (e) => e is DatabaseException && e.isDatabaseClosedError(),
-      );
 
   /// Keeps the recitation on the ayas around the open word, so the play
   /// button and a prayer are always about where the reader is.
@@ -248,7 +247,14 @@ class _StudyScreenState extends State<StudyScreen> {
       },
     );
     final keep = await pathsToKeep(widget.db, order, set, onTheWalk: false);
-    if (!mounted || generation != _generation) return;
+    // The reader may have walked on to another aya while this was read.
+    final open = _word;
+    if (!mounted ||
+        generation != _generation ||
+        open == null ||
+        ayahOfWord(open.id) != ayahId) {
+      return;
+    }
     setState(() {
       _acted = set;
       _audio = recitation;
@@ -296,26 +302,13 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   /// Which way a step can go: null at the ends of the sūra.
-  VoidCallback? _stepTo(int by) {
+  Future<void> Function()? _stepTo(int by) {
     final surah = _surah;
     final from = _opening ?? _word?.id;
     if (surah == null || from == null) return null;
     return stepFrom(surah.reading, _words, from, by) == null
         ? null
         : () => _step(by);
-  }
-
-  /// The word next to the open one, for the sheet's hint row, when its aya
-  /// has been read.
-  StudyWord? _beside(int by) {
-    final surah = _surah;
-    final from = _word?.id;
-    if (surah == null || from == null) return null;
-    final step = stepFrom(surah.reading, _words, from, by);
-    if (step?.wordId == null) return null;
-    return _words[surah.reading[step!.ayaIndex].id]!.firstWhere(
-      (w) => w.id == step.wordId,
-    );
   }
 
   Future<void> _markUnderstood(StudyAya aya) async {
@@ -348,8 +341,16 @@ class _StudyScreenState extends State<StudyScreen> {
 
   void _setExpanded(bool expanded) {
     setState(() => _expanded = expanded);
-    if (!expanded && _sheetScroll.hasClients) _sheetScroll.jumpTo(0);
+    if (!expanded) _sheetToTop();
   }
+
+  void _sheetToTop() {
+    if (_sheetScroll.hasClients) _sheetScroll.jumpTo(0);
+  }
+
+  /// An aya's translation when the reader shows translations, else null.
+  String? _shownTranslation(int ayahId) =>
+      _prefs.ayaTranslation ? _translated[ayahId] : null;
 
   @override
   Widget build(BuildContext context) {
@@ -378,8 +379,9 @@ class _StudyScreenState extends State<StudyScreen> {
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 350),
                           curve: const Cubic(0.3, 0.7, 0.2, 1),
-                          // The design's 318 of 812.
-                          height: _expanded ? 58 : box.maxHeight * 0.39,
+                          // The design's 318 of 812 split; open, the aya
+                          // keeps a fifth, enough to be read whole.
+                          height: box.maxHeight * (_expanded ? 0.22 : 0.39),
                           decoration: BoxDecoration(
                             border: Border(
                               bottom: BorderSide(color: n.divider),
@@ -394,8 +396,6 @@ class _StudyScreenState extends State<StudyScreen> {
                               : RootSheet(
                                   sheet: _sheet!,
                                   expanded: _expanded,
-                                  previous: _beside(-1),
-                                  next: _beside(1),
                                   swipe: _swipe,
                                   onPrevious: _stepTo(-1),
                                   onNext: _stepTo(1),
@@ -403,16 +403,14 @@ class _StudyScreenState extends State<StudyScreen> {
                                   onRoot: (letters) =>
                                       _visit(Routes.root, letters),
                                   onJudge: _judgeSense,
-                                  onConstellation: (letters) =>
-                                      _visit(Routes.deepDive, (
-                                        ayahId: _word!.id ~/ 1000,
-                                        letters: letters,
-                                      )),
+                                  onConstellation: (ayahId, letters) => _visit(
+                                    Routes.deepDive,
+                                    (ayahId: ayahId, letters: letters),
+                                  ),
+                                  translations: _prefs.ayaTranslation,
                                   onAya: (aya) {
                                     setState(() => _away = aya);
-                                    if (_sheetScroll.hasClients) {
-                                      _sheetScroll.jumpTo(0);
-                                    }
+                                    _sheetToTop();
                                   },
                                   scroll: _sheetScroll,
                                 ),
@@ -468,7 +466,7 @@ class _StudyScreenState extends State<StudyScreen> {
           if (word != null)
             Flexible(
               child: Text(
-                _position(l, surah, word),
+                _positionLabel(l, surah, word),
                 key: const Key('position'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -512,8 +510,8 @@ class _StudyScreenState extends State<StudyScreen> {
 
   /// "2:255 · word 3/50": the aya and the word open, and where that word
   /// falls in the sūra, counting words whose ayas have not been read.
-  String _position(AppLocalizations l, StudySet surah, StudyWord word) {
-    final ayaId = word.id ~/ 1000;
+  String _positionLabel(AppLocalizations l, StudySet surah, StudyWord word) {
+    final ayaId = ayahOfWord(word.id);
     var before = 0;
     var total = 0;
     for (final aya in surah.reading) {
@@ -526,9 +524,16 @@ class _StudyScreenState extends State<StudyScreen> {
   Widget _top(Nocturne n, StudySet surah) {
     final away = _away;
     if (away != null) {
-      return _expanded ? _awayStrip(n, away) : _awayFull(n, away);
+      return AwayAya(
+        aya: away,
+        homeRef: ayahRef(ayahOfWord(_word?.id ?? 0)),
+        compact: _expanded,
+        translation: _prefs.ayaTranslation ? away.translation : null,
+        onBack: () => setState(() => _away = null),
+        onReadFromHere: () => _load(target: away.ayahId),
+      );
     }
-    return _expanded ? _strip(n) : _list(n, surah);
+    return _expanded ? _openAya(n) : _list(n, surah);
   }
 
   /// The whole sūra, hung from the aya it was opened at.
@@ -543,7 +548,9 @@ class _StudyScreenState extends State<StudyScreen> {
     return ValueListenableBuilder<int?>(
       valueListenable: _audio?.currentWordId ?? _silent,
       builder: (context, recited, _) => CustomScrollView(
-        key: ValueKey(ayas.first.id),
+        // Keyed by where it hangs from too: opening another aya of the same
+        // sūra must start from that aya, not from the old scroll offset.
+        key: ValueKey((ayas.first.id, focus)),
         center: _anchor,
         slivers: [
           SliverList(
@@ -630,143 +637,69 @@ class _StudyScreenState extends State<StudyScreen> {
               ),
             ],
           ),
-          if (_translated[aya.id] case final rendered?
-              when _prefs.ayaTranslation) ...[
-            SizedBox(height: n.space('2')),
-            Text(
-              rendered,
-              style: TextStyle(
-                fontSize: 13.5,
-                height: 1.55,
-                color: n.textAt(0.78),
-              ),
-            ),
-            SizedBox(height: n.space('1')),
-            Text(
-              l.study_ayaTranslated,
-              style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
-            ),
-          ],
+          AyaTranslation(_shownTranslation(aya.id)),
         ],
       ),
     );
   }
 
-  /// The Arabic of a one-line aya: the strip, the away strip.
-  TextStyle _lineStyle(Nocturne n) => TextStyle(
-    fontFamily: Nocturne.arabicFamily,
-    fontSize: 20,
-    height: 1.6,
-    color: n.textAt(0.62),
-  );
-
-  /// One line: the aya open, and the open word with two either side of it.
-  Widget _strip(Nocturne n) {
+  /// The open word's aya, whole, while the sheet below is open: it is the
+  /// sentence the sheet is about, so it stays readable, with its translation
+  /// when the reader shows translations. A long aya scrolls in its band. A
+  /// tap closes the sheet again.
+  ///
+  /// ponytail: the band does not scroll to the open word; in the longest
+  /// ayas it can sit below the fold. Scroll it into view if readers miss it.
+  Widget _openAya(Nocturne n) {
     final word = _word;
-    final words = word == null ? null : _words[word.id ~/ 1000];
+    final words = word == null ? null : _words[ayahOfWord(word.id)];
     if (word == null || words == null) return const SizedBox.shrink();
     return GestureDetector(
-      key: const Key('strip'),
+      key: const Key('open aya'),
       behavior: HitTestBehavior.opaque,
       onTap: () => _setExpanded(false),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          spacing: 10,
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+        child: Column(
           children: [
-            Text(
-              ayahRef(word.id ~/ 1000),
-              style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
+            Row(
+              children: [
+                Text(
+                  ayahRef(ayahOfWord(word.id)),
+                  style: TextStyle(fontSize: 11, color: n.textAt(0.6)),
+                ),
+                const Spacer(),
+                Icon(Icons.expand_more, size: 16, color: n.textAt(0.6)),
+              ],
             ),
             Expanded(
-              child: Center(
-                child: LitAya.window(
-                  [
-                    for (final w in words)
-                      (id: w.id, text: w.text, lit: w.id == word.id),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    LitAya(
+                      [
+                        for (final w in words)
+                          (id: w.id, text: w.text, lit: w.id == word.id),
+                      ],
+                      glow: Glow.reading,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: Nocturne.arabicFamily,
+                        fontSize: 24,
+                        height: 1.8,
+                        color: n.text,
+                      ),
+                    ),
+                    AyaTranslation(_shownTranslation(ayahOfWord(word.id))),
                   ],
-                  glow: Glow.reading,
-                  style: _lineStyle(n),
                 ),
               ),
             ),
-            Icon(Icons.expand_more, size: 16, color: n.textAt(0.6)),
           ],
         ),
       ),
     );
   }
-
-  /// The way back from another aya to the word the reader left.
-  String get _homeRef => ayahRef((_word?.id ?? 0) ~/ 1000);
-
-  Widget _awayFull(Nocturne n, RootAya away) {
-    final l = AppLocalizations.of(context)!;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          OutlinedButton.icon(
-            key: const Key('back to reading'),
-            onPressed: () => setState(() => _away = null),
-            icon: const Icon(Icons.chevron_left, size: 14),
-            label: Text(l.study_backTo(_homeRef)),
-          ),
-          const SizedBox(height: 18),
-          NocturneKicker(ayahRef(away.ayahId), tone: KickerTone.accent),
-          const SizedBox(height: 6),
-          LitAya(
-            away.words,
-            glow: Glow.reading,
-            style: TextStyle(
-              fontFamily: Nocturne.arabicFamily,
-              fontSize: 28,
-              height: 1.8,
-              color: n.text,
-            ),
-          ),
-          if (away.translation != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              away.translation!,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.55,
-                color: n.textAt(0.78),
-              ),
-            ),
-          ],
-          TextButton(
-            key: const Key('read from here'),
-            onPressed: () => _load(target: away.ayahId),
-            child: Text(l.study_readFromHere),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _awayStrip(Nocturne n, RootAya away) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: Row(
-      spacing: 10,
-      children: [
-        OutlinedButton(
-          onPressed: () => setState(() => _away = null),
-          child: Text('‹ $_homeRef'),
-        ),
-        NocturneKicker(ayahRef(away.ayahId), tone: KickerTone.accent),
-        Expanded(
-          child: LitAya.window(
-            away.words,
-            glow: Glow.reading,
-            style: _lineStyle(n),
-          ),
-        ),
-      ],
-    ),
-  );
 
   /// Reads the words of the ayas around [index], a chunk at a time, in one
   /// query however many ayas the chunk covers.
@@ -782,8 +715,14 @@ class _StudyScreenState extends State<StudyScreen> {
       if (!_words.containsKey(id) && _pending.add(id)) want.add(id);
     }
     if (want.isEmpty) return;
-    final read = await wordsFor(widget.db, want);
-    if (!mounted || generation != _generation) return;
-    setState(() => _words.addAll(read));
+    try {
+      final read = await wordsFor(widget.db, want);
+      if (!mounted || generation != _generation) return;
+      setState(() => _words.addAll(read));
+    } finally {
+      // Released either way, so a failed read is asked again rather than
+      // leaving its ayas as blank space for good.
+      _pending.removeAll(want);
+    }
   }
 }

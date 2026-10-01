@@ -103,16 +103,16 @@ Future<void> enqueue(
 }, conflictAlgorithm: ConflictAlgorithm.ignore);
 ```
 
-[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:143](../../../app/lib/data/db.dart#L266-L273)
+[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:143](../../../app/lib/data/db.dart#L267-L274)
 
 The callers, one per op kind:
 
 | Op kind | Written by |
 |---|---|
-| `ayah_understood` | [markSetUnderstood, db.dart:195](../../../app/lib/data/db.dart#L317-L325) |
-| `set_prayed` | [recordSetPrayed, db.dart:241](../../../app/lib/data/db.dart#L363) |
-| `position_moved` | [movePosition, db.dart:437](../../../app/lib/data/db.dart#L437-L456) |
-| `prefs_set` | [setReadingOrder, db.dart:312](../../../app/lib/data/db.dart#L471-L476) |
+| `ayah_understood` | [markSetUnderstood, db.dart:195](../../../app/lib/data/db.dart#L318-L326) |
+| `set_prayed` | [recordSetPrayed, db.dart:241](../../../app/lib/data/db.dart#L364) |
+| `position_moved` | [movePosition, db.dart:437](../../../app/lib/data/db.dart#L438-L457) |
+| `prefs_set` | [setReadingOrder, db.dart:312](../../../app/lib/data/db.dart#L511-L516) |
 | `kept_upsert` | [kept_repo.dart:99](../../../app/lib/data/kept_repo.dart#L99-L109) |
 | `kept_delete` | [kept_repo.dart:128](../../../app/lib/data/kept_repo.dart#L128-L133) |
 | `report_written` | [report.dart:76](../../../app/lib/features/report/report.dart#L82-L92) |

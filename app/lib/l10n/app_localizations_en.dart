@@ -28,9 +28,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get inThisAya => 'IN THIS AYA';
-
-  @override
   String get kept_empty_ayas => 'No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.';
 
   @override
@@ -98,12 +95,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kept_title => 'Kept';
-
-  @override
-  String get markSetUnderstood => 'Mark set understood';
-
-  @override
-  String get nextSet => 'Next set';
 
   @override
   String get notDownloaded => 'Not downloaded';
@@ -380,72 +371,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_write_another => 'Write another';
 
   @override
-  String get study_backToTheWalk => 'Back to the walk';
-
-  @override
   String get study_constellation => 'Constellation';
-
-  @override
-  String get study_everyAyaUnderstood => 'Every aya in this set is understood';
-
-  @override
-  String get study_goTo => 'Go to…';
-
-  @override
-  String get study_goToAnyAya => 'Go to any sūra or aya';
-
-  @override
-  String get study_kinOpensItsAya => 'A kin opens the aya it is first met in.';
 
   @override
   String get study_nextWord => 'Next word';
 
   @override
-  String get study_noAyaUnderstoodYet => 'No aya marked understood yet';
-
-  @override
   String get study_noRecitation => 'No recitation for this set';
-
-  @override
-  String get study_noRootInSet => 'No word in this set carries a root.';
-
-  @override
-  String get study_nothingLeftToServe => 'Every aya is understood. There is nothing left to serve.';
-
-  @override
-  String study_numbersAnd(Object first, Object last) {
-    return '$first and $last';
-  }
-
-  @override
-  String get study_previousSet => 'Previous set';
 
   @override
   String get study_previousWord => 'Previous word';
 
   @override
-  String get study_prayThisSet => 'Pray this set';
-
-  @override
-  String study_progressSplit(Object done, Object open) {
-    return 'Aya $done marked understood · aya $open open';
-  }
-
-  @override
-  String study_revelationKicker(Object order, Object place) {
-    return 'Revelation $order · $place';
-  }
-
-  @override
-  String study_surahKicker(Object surah, Object place) {
-    return 'Sūra $surah · $place';
-  }
-
-  @override
   String get study_wordHasNoRoot => 'No root';
-
-  @override
-  String get study_visiting => 'Visiting';
 
   @override
   String root_openAya(String ref) {
@@ -996,9 +934,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutSelfTerms => 'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.';
-
-  @override
-  String get study_swipe => 'swipe';
 
   @override
   String get study_expandSheet => 'Show counts, forms and other ayas';

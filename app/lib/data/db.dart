@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -437,7 +438,7 @@ Future<void> setReadingOrder(Database db, ReadingOrder order) =>
 Future<void> movePosition(Database db, int wordId, {DateTime? at}) =>
     db.transaction((txn) async {
       final when = (at ?? DateTime.now()).toIso8601String();
-      final surah = wordId ~/ 1000000;
+      final surah = surahOfWord(wordId);
       await txn.insert('reading_positions', {
         'surah_id': surah,
         'word_id': wordId,
@@ -455,12 +456,51 @@ Future<void> movePosition(Database db, int wordId, {DateTime? at}) =>
       );
     });
 
+/// Keeps the reader's position: written once they have settled on a word,
+/// not on every step, so a sitting sends a handful of moves to their other
+/// devices; and written at once by [flush] when the screen goes away.
+///
+/// Nobody waits for the write. A database closed under it (a reader signing
+/// out, a test tearing down) leaves nothing to write to and is not an error;
+/// any other failure still surfaces.
+class PositionKeeper {
+  PositionKeeper(this.db, {this.settle = const Duration(seconds: 2)});
+
+  final Database db;
+  final Duration settle;
+  Timer? _timer;
+  int? _wordId;
+
+  void move(int wordId) {
+    _timer?.cancel();
+    _wordId = wordId;
+    _timer = Timer(settle, flush);
+  }
+
+  void flush() {
+    final wordId = _wordId;
+    _timer?.cancel();
+    _wordId = null;
+    if (wordId == null) return;
+    unawaited(
+      movePosition(db, wordId).catchError(
+        (_) {},
+        test: (e) => e is DatabaseException && e.isDatabaseClosedError(),
+      ),
+    );
+  }
+}
+
 /// Where the reader stands in each sūra they have opened, the most recent
 /// first.
-Future<List<({int surah, int wordId})>> readingPositions(Database db) async => [
+Future<List<({int surah, int wordId})>> readingPositions(
+  Database db, {
+  int? limit,
+}) async => [
   for (final r in await db.query(
     'reading_positions',
     orderBy: 'updated_at DESC',
+    limit: limit,
   ))
     (surah: r['surah_id']! as int, wordId: r['word_id']! as int),
 ];

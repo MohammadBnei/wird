@@ -214,11 +214,11 @@ Before it records the version, the transaction counts the new senses whose root 
 ```
 [senses.dart:142](../../../app/lib/data/senses.dart#L143-L156)
 
-`sense_pack` holds at most one row ([db.dart:134](../../../app/lib/data/db.dart#L248-L262)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
+`sense_pack` holds at most one row ([db.dart:134](../../../app/lib/data/db.dart#L249-L263)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
 
 ### 6. The root screen reads it back
 
-`rootReading` takes the one root-level row for the root, and checks whether `sense_pack` has a row ([root_repo.dart:218](../../../app/lib/data/root_repo.dart#L218-L242)). `CoreSense` then picks one of three outcomes.
+`rootReading` takes the one root-level row for the root, and checks whether `sense_pack` has a row ([root_repo.dart:218](../../../app/lib/data/root_repo.dart#L236-L260)). `CoreSense` then picks one of three outcomes.
 
 ```mermaid
 flowchart TD
@@ -244,9 +244,9 @@ flowchart TD
       );
     }
 ```
-[root_sections.dart:147](../../../app/lib/features/root/root_sections.dart#L147-L158)
+[root_sections.dart:147](../../../app/lib/features/root/root_sections.dart#L141-L152)
 
-Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:210](../../../app/lib/features/root/root_sections.dart#L210-L240)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
+Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:210](../../../app/lib/features/root/root_sections.dart#L204-L234)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
 
 ### 7. Which language a sense is read in
 

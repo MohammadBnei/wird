@@ -223,14 +223,9 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
           children: [
             _back(),
             Expanded(
-              child: Text(
+              child: NocturneKicker(
                 _l10n.deepdive_kicker(ayahRef(widget.ayahId)),
-                style: TextStyle(
-                  fontSize: 10,
-                  height: 1.2,
-                  letterSpacing: 0.11 * 10,
-                  color: n.accent,
-                ),
+                tone: KickerTone.accent,
               ),
             ),
           ],
@@ -417,15 +412,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   Widget _rootName(Nocturne n, RootReading reading) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(
-        _l10n.deepdive_root_heading,
-        style: TextStyle(
-          fontSize: 10,
-          height: 1.2,
-          letterSpacing: 0.11 * 10,
-          color: n.accent,
-        ),
-      ),
+      NocturneKicker(_l10n.deepdive_root_heading, tone: KickerTone.accent),
       SizedBox(height: n.space('2')),
       Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,

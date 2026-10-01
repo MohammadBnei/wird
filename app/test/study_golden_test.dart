@@ -45,7 +45,7 @@ void main() {
   });
 
   testWidgets('the sheet the reader expands drifts away from the design: the '
-      'one-line strip of the sūra, the counts, the forms or the other ayas', (
+      'open aya above it, the counts, the forms or the other ayas', (
     tester,
   ) async {
     await pumpPhone(
