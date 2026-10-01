@@ -585,17 +585,21 @@ class PrayerChip extends StatelessWidget {
         child: Container(
           height: 32,
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? n.color('accent-900') : n.surface,
             border: Border.all(color: selected ? n.accent : n.divider),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12.5,
-              color: selected ? n.color('accent-100') : n.text,
+          // Centred on its own width: an aligned container would stretch to
+          // the row and every chip would be a full-width bar.
+          child: Center(
+            widthFactor: 1,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: selected ? n.color('accent-100') : n.text,
+              ),
             ),
           ),
         ),
