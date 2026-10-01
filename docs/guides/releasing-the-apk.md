@@ -48,10 +48,10 @@ The route is served by [`models.go`](../../server/internal/api/models.go#L46) an
 
 ## A build without a tag
 
-Run the `apk` workflow by hand from the Actions tab. It uploads to `app/dispatch-<commit>/` and leaves `latest` alone.
+Run the `apk` workflow by hand from the Actions tab, on `main`. The secret store accepts this workflow only from a tag or from `main`. It uploads to `app/dispatch-<commit>/` and leaves `latest` alone.
 
 ## One-time setup
 
-The workflow reads the release keystore and the store key over OIDC, with a machine identity that only this repository may use. Until that identity exists and its id replaces the placeholder in `.github/workflows/apk.yml`, the secret step fails. The identity is never the one the image build uses: that one can read a project every app shares, and the keystore must never live there.
+The workflow reads the release keystore and the store key over OIDC, from Wird's own secret project. The machine identity it uses can read only that project, and accepts only this workflow file, run from a tag or from `main`. The identity is never the one the image build uses: that one can read a project every app shares, and the keystore must never live there.
 
 After the first release, add the release certificate's SHA-256 to `WIRD_ANDROID_SHA256` in `helm/values.yaml`. The workflow log prints it. Without it, Android will not hand sign-in back to a release build.

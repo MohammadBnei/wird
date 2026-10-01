@@ -16,7 +16,10 @@ name: apk
 
 on:
   # A dispatch builds and uploads under app/dispatch-<sha>/ and leaves
-  # app/latest/ alone: latest names a tagged release only.
+  # app/latest/ alone: latest names a tagged release only. Dispatch from main:
+  # the Infisical identity accepts this file only from a tag or from main
+  # (its workflow_ref bound claim), so no other workflow or branch can read
+  # the keystore.
   workflow_dispatch:
   push:
     tags:
@@ -163,11 +166,15 @@ jobs:
             echo "::add-mask::${!v}"
           done
           printf '%s' "$WIRD_ANDROID_KEYSTORE_P12" | base64 -d > "$RUNNER_TEMP/release.p12"
+          # key.properties is read by java.util.Properties: in a value, a
+          # backslash starts an escape and leading spaces are dropped. Escape
+          # both, so a password is read back exactly as stored.
+          prop() { local v=${2//\\/\\\\}; [ "${v:0:1}" != ' ' ] || v="\\$v"; printf '%s=%s\n' "$1" "$v"; }
           {
-            echo "storeFile=$RUNNER_TEMP/release.p12"
-            echo "storePassword=$WIRD_ANDROID_KEYSTORE_PASSWORD"
-            echo "keyAlias=$WIRD_ANDROID_KEY_ALIAS"
-            echo "keyPassword=$WIRD_ANDROID_KEY_PASSWORD"
+            prop storeFile "$RUNNER_TEMP/release.p12"
+            prop storePassword "$WIRD_ANDROID_KEYSTORE_PASSWORD"
+            prop keyAlias "$WIRD_ANDROID_KEY_ALIAS"
+            prop keyPassword "$WIRD_ANDROID_KEY_PASSWORD"
           } > app/android/key.properties
 
       # --split-per-abi keeps 25 MB of x86_64 onnxruntime off an arm64 phone

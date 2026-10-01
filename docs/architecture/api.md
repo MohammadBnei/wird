@@ -36,6 +36,7 @@ sequenceDiagram
   App->>API: GET /models/..., no token
   API-->>App: 302 to a download link
   App->>OS: download the model
+  Note over App,OS: a browser fetches a release APK the same way, from GET /app/...
 ```
 
 ### The endpoints
