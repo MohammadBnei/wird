@@ -4,7 +4,7 @@
 
 ## Black box
 
-This part of the app answers one question with no network: what should the reader read next? It proposes a **set**, a few ayas that fit in the head for one prayer. It shows that set, or any place in a sūra the reader asks for, as a **passage** on the reader screen (screen 1a). From there the reader marks the set understood, or prays it. Both writes land in the **outbox** and reach the server later.
+This part of the app answers one question with no network: what should the reader read next? It proposes a **set**, a few ayas that fit in the head for one prayer. The reader screen (screen 1a) shows a whole sūra, opened where the reader last stood or at any aya they ask for. From there the reader marks ayas understood one by one, walks the sūra a word at a time, or prays the ayas around them. Both writes land in the **outbox** and reach the server later.
 
 | In | Out | Depends on |
 |---|---|---|
@@ -21,8 +21,10 @@ sequenceDiagram
   S->>C: which ayas are not understood yet?
   C-->>S: next few ayas, with their words
   S-->>R: passage on screen 1a
-  R->>S: Mark set understood
-  S->>O: ayas understood
+  R->>S: tap an aya's number
+  S->>O: aya understood
+  R->>S: stay on a word
+  S->>O: position moved
   R->>S: Pray this set
   S->>P: the set, already read
   P-->>S: reader comes back
@@ -37,7 +39,7 @@ flowchart LR
   index(["Sūra index"]) -->|"an aya"| reader
   root(["A root or its family"]) -->|"an aya"| reader
   reader -->|"Pray this set"| prayer["Prayer 1b"]
-  reader -->|"Mark set understood"| outbox[("Outbox")]
+  reader -->|"aya understood, position"| outbox[("Outbox")]
   prayer -->|"on the way back"| outbox
 ```
 
@@ -177,96 +179,83 @@ A `StudySet` holds two lists ([sets.dart:146](../../../app/lib/data/sets.dart#L1
 
 [sets.dart:309](../../../app/lib/data/sets.dart#L309-L317). Scrolling through 286 ayas of Al-Baqarah writes nothing, so the walk does not move.
 
-### 5. Screen 1a loads one of three things
+### 5. Screen 1a opens a sūra where the reader stood
 
-[`StudyScreen`](../../../app/lib/features/study/study_screen.dart#L23-L37) is built with an optional `target`. Its [`_load`](../../../app/lib/features/study/study_screen.dart#L180-L283) picks the source:
-
-```dart
-  Future<void> _load({int? target, AyaSpan? step}) async {
-    final generation = ++_generation;
-    final recitation = Wird.of(context).recitation;
-    final order = _prefs.order;
-    final at = step?.first ?? target;
-    final set = at == null
-        ? await nextSet(widget.db, order)
-        : await ayaSet(
-            widget.db,
-            order,
-            at,
-            ayas: step == null ? 1 : step.last - step.first + 1,
-          );
-```
-
-[study_screen.dart:167](../../../app/lib/features/study/study_screen.dart#L167-L179).
-
-- No target: the walk's next set.
-- A target, from the index or a root: that one aya, in its sūra.
-- A step from the footer arrows: a span as wide as the reader's usual set ([reading_nav.dart:7](../../../app/lib/features/study/reading_nav.dart#L7-L60), [study_screen.dart:290](../../../app/lib/features/study/study_screen.dart#L290-L299)).
-
-The `generation` counter lets a newer load win. An older load stops before it touches the screen or starts a download. Once the set is ready, the screen hands it to the app's one recitation player and fetches audio in the background ([study_screen.dart:233](../../../app/lib/features/study/study_screen.dart#L233-L282)).
-
-### 6. The passage list is lazy both ways
-
-A sūra can be 286 ayas and 6116 words. The list is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward:
+Since [ADR 0014](../../adr/0014-the-reading-screen-reads-a-whole-sura-a-word-at-a-time.md) the reading screen holds one whole sūra. [`_load`](../../../app/lib/features/study/study_screen.dart#L120-L158) picks the word it opens on:
 
 ```dart
-      builder: (context, recited, _) => CustomScrollView(
-        // A new passage starts at its own aya rather than at the offset the
-        // last one was left scrolled to.
-        key: ValueKey(set.ayas.first.id),
-        center: _anchor,
-        slivers: [
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => _ayaTile(n, ayas, focus - 1 - i, recited),
-              childCount: focus,
-            ),
-          ),
-          const SliverToBoxAdapter(key: _anchor, child: SizedBox.shrink()),
+    var at = word ?? (target == null ? null : target * 1000 + 1);
+    if (at == null) {
+      final positions = await readingPositions(widget.db);
+      if (positions.isNotEmpty) {
+        at = positions.first.wordId;
+      } else {
 ```
 
-[study_screen.dart:569](../../../app/lib/features/study/study_screen.dart#L569-L581). An aya with no words yet draws a placeholder of about the right height ([study_screen.dart:619](../../../app/lib/features/study/study_screen.dart#L619-L627)) and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:708](../../../app/lib/features/study/study_screen.dart#L708-L733), [sets.dart:394](../../../app/lib/data/sets.dart#L394-L421)).
+[study_screen.dart:120](../../../app/lib/features/study/study_screen.dart#L120-L158).
 
-Each word arrives with its English gloss and, where The Last Dialogue's pages carry it, its French one. The row picks by the screen's language when it draws, so switching language does not re-read the words; a word with no French shows its English ([`StudyWord.glossIn`](../../../app/lib/data/sets.dart#L88-L89), [ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md)).
+- A word, from home's "Continue reading": that word.
+- An aya, from the index, a root or the walk's set on home: its first word.
+- Nothing: where the reader last stood in any sūra, else the walk's next aya, else 1:1.
 
-Tapping a word opens its root in the panel below the passage. Two arrows beside "Mark set understood" move that panel to the word before or after, so a reader can walk the passage a word at a time instead of hunting for the next word to press.
+The sūra comes from [`ayaSet`](../../../app/lib/data/sets.dart#L295-L337), whose `reading` is every aya of it. The screen keeps that set while the reader walks, so the list never rebuilds under them.
 
-The arrows step through the words the screen is drawing, which off the walk is the whole sūra and not the acted set alone. The list is baked whenever the word cache changes, next to the list of what can be sounded, because whether an arrow is dark is a question every frame asks ([study_screen.dart:136](../../../app/lib/features/study/study_screen.dart#L136-L143)).
+### 6. The sūra list is lazy both ways
 
-Particles and proper nouns carry no root, and the arrows walk onto them like any other word: the panel shows the word and says it has no root, rather than going blank or skipping it ([study_screen.dart:360](../../../app/lib/features/study/study_screen.dart#L360-L383), [ADR 0013](../../adr/0013-the-reading-screens-root-panel-walks-word-by-word.md)).
+A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:511](../../../app/lib/features/study/study_screen.dart#L511-L537)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:782](../../../app/lib/features/study/study_screen.dart#L782-L797), [sets.dart:394](../../../app/lib/data/sets.dart#L394-L421)).
 
-### 7. Other screens answer down to 1a
+Each word arrives with its English gloss and, where The Last Dialogue's pages carry it, its French one ([ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md)). Each aya's translation, Pickthall's English or Rashid Maash's French, sits under it unless the reader turns it off in Settings ([ADR 0017](../../adr/0017-ayas-are-translated-into-english-from-pickthall.md)).
 
-There is only one reader screen, because there is only one recitation player. A second 1a pushed on top would fight the first for it. So a screen that names an aya pops the aya id back down, and 1a reloads in place:
+### 7. The root sheet walks the sūra a word at a time
 
-```dart
-  Future<void> _visit(String route, Object arguments) async {
-    final chosen = await Navigator.of(context)
-        .pushNamed(route, arguments: arguments);
-    if (mounted && chosen is int) await _load(target: chosen);
-  }
+A tap on any word, particles included, opens it in the sheet under the list. [`_open`](../../../app/lib/features/study/study_screen.dart#L164-L203) reads everything the sheet shows before it draws any of it:
+
+- the root;
+- its lemmas;
+- how often the root is read in this sūra;
+- up to 20 other ayas it is read in;
+- the word's parsing.
+
+That way the sheet never shows one word's root beside another word's counts.
+
+```mermaid
+flowchart LR
+  tap(["tap a word"]) --> open["_open"]
+  swipe(["drag the sheet<br/>past 60px"]) --> step["_step"]
+  arrows(["hint row ends<br/>or arrow keys"]) --> step
+  step --> walk["stepFrom<br/>by aya, not by index"]
+  walk -->|"aya not read yet"| read["_readWordsAround"]
+  read --> walk
+  walk --> open
+  open --> settle["after 2 s:<br/>movePosition"]
+  open --> carry["_carry<br/>recitation around the word"]
 ```
 
-[study_screen.dart:353](../../../app/lib/features/study/study_screen.dart#L353-L357). The screens that pop an aya:
+A drag to the right moves to the next word, because Arabic runs leftward ([root_sheet.dart:110](../../../app/lib/features/study/root_sheet.dart#L110-L122)). The two ends of the hint row do the same and carry screen-reader labels. A drag that starts within 24px of the edge is left to the drawer and the back gesture.
 
-- The sūra index. A row pops the sūra's first aya; the chevron unfolds the aya numbers, and each one pops its own aya ([index_screen.dart:75](../../../app/lib/features/index/index_screen.dart#L75), [index_screen.dart:159](../../../app/lib/features/index/index_screen.dart#L159), [index_screen.dart:277](../../../app/lib/features/index/index_screen.dart#L277)).
-- A root, its spine, or the constellation. Every aya reference in a family calls one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39)).
-- Progress (1d). "All 114" opens the index, then passes its answer on down ([progress_screen.dart:49](../../../app/lib/features/progress/progress_screen.dart#L49-L53)).
-- The drawer and the dashboard catch an aya too, and push 1a with it as `target` ([wird_shell.dart:229](../../../app/lib/shell/wird_shell.dart#L229-L242), [dashboard_screen.dart:89](../../../app/lib/features/dashboard/dashboard_screen.dart#L89-L93)).
+A step is found by aya ([`stepFrom`](../../../app/lib/features/study/reading_walk.dart#L17-L37)): past the end of an aya it goes to the next aya, read or not, and the screen reads that aya's chunk before stepping again ([study_screen.dart:256](../../../app/lib/features/study/study_screen.dart#L256-L272)). Counting along a flat list of the words read so far landed a step from 2:255 back near 2:1.
 
-The route table and the reason for each move sit in one comment block ([nav.dart:45](../../../app/lib/nav.dart#L45-L99)). The kept list (1e) shows kept ayas and roots but opens nothing ([kept_screen.dart:16](../../../app/lib/features/kept/kept_screen.dart#L16-L24)).
+Once the reader has stayed on a word for two seconds, and again when they leave, it is written as their position in that sūra and queued for their other devices ([ADR 0015](../../adr/0015-the-reading-position-is-kept-per-sura-and-synced.md), [`movePosition`](../../../app/lib/data/db.dart#L437-L456)).
 
-While visiting, the header shows "Back to the walk", which reloads with no target ([study_chrome.dart:99](../../../app/lib/features/study/study_chrome.dart#L99-L107)).
+Scrolling the sheet, its handle or its "Counts, forms, other ayas" row shrinks the sūra to one line and brings up the counts, the ring of the root's lemmas and the other ayas. An other aya opens in place of the sūra, with a way back to the word the reader was on and a way to read that aya's sūra from there.
 
-### 8. Marking a set understood
+The root letters open the root's own screen. A screen that names an aya answers by popping its id back down, and the reader reloads in place rather than stacking a second reader ([study_screen.dart:319](../../../app/lib/features/study/study_screen.dart#L319-L323)):
 
-[`_markUnderstood`](../../../app/lib/features/study/study_screen.dart#L308-L321) sends only the ayas that are still open. An aya the reader pulled the set across is already understood, and marking it again would move its date to today. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L298-L326). It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. The screen mints a fresh op id only after a press lands. A double tap reuses the same id, and the second write sees it in the outbox and does nothing ([db.dart:180](../../../app/lib/data/db.dart#L303-L309)).
+- the sūra index, reached from the sūra's name in the bar;
+- a root, its spine and the constellation, which call one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39));
+- Progress (1d), whose "All 114" opens the index and passes its answer on ([progress_screen.dart:49](../../../app/lib/features/progress/progress_screen.dart#L49-L53)).
 
-Once every aya is understood, the same button reads "Next set" and reloads the walk ([study_screen.dart:489](../../../app/lib/features/study/study_screen.dart#L489-L491)).
+The drawer and home catch an aya too, and push the reader with it ([wird_shell.dart:229](../../../app/lib/shell/wird_shell.dart#L229-L242)).
+
+### 8. Marking an aya understood
+
+The circle that closes each aya marks it understood when tapped ([study_screen.dart:297](../../../app/lib/features/study/study_screen.dart#L297-L301)). The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L298-L326) with a fresh op id per tap. It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. An aya already understood answers no tap: no op takes the mark back.
+
+Scrolling or walking past an aya marks nothing. Understood is what the reader says, and the position is where they are; neither is read from the other.
 
 ### 9. Praying a set
 
-"Pray this set" lives in the header of 1a ([study_chrome.dart:111](../../../app/lib/features/study/study_chrome.dart#L111-L119)) and on the dashboard. Both call one function:
+The walk still proposes sets, and home still offers "Pray this set". The reading screen's Pray action prays the ayas around the open word, the reading width wide: the same set the recitation carries ([study_screen.dart:207](../../../app/lib/features/study/study_screen.dart#L207-L237)). Both call one function:
 
 ```dart
 Future<void> prayTheSet(BuildContext context, StudySet set) async {
@@ -282,11 +271,9 @@ Future<void> prayTheSet(BuildContext context, StudySet set) async {
 
 A prayer the reader never returns from is not counted. The count may be short; it is never invented.
 
-Praying while visiting records a set over the visited ayas. That set is not one the walk will ever propose. [ADR 0006](../../adr/0006-a-passage-is-read-a-set-is-answered-for.md#open-what-the-prayer-tiles-on-screen-1d-count) keeps this open.
-
 ### 10. What stays on disk
 
-[`pathsToKeep`](../../../app/lib/data/audio.dart#L107-L127) pins the recitation files the reader will need. On the walk that is this set and the next one. Off the walk it is the visited ayas only, because the walk's next set has nothing to do with where the reader went:
+[`pathsToKeep`](../../../app/lib/data/audio.dart#L107-L127) pins the recitation files the reader will need. The reading screen asks for the ayas around the open word only, and asks again when the reader walks out of them. The walk's next set has nothing to do with where the reader is:
 
 ```dart
   final ahead = onTheWalk
