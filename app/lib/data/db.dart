@@ -260,9 +260,6 @@ Future<Database> openWirdAt(String path) async {
       word_id    INTEGER NOT NULL,
       updated_at TEXT NOT NULL
     )''');
-  // The op id is the primary key rather than a column, so a write that is
-  // replayed — a flush that timed out after the server had already applied it,
-  // a button pressed twice — lands on the same row instead of a second one.
   // How the reader last prepared a prayer, so the next one starts there. Its
   // own table and device-local, for the reason `display_prefs` is: the Arabic
   // size that suits a phone on the floor is not the one for a tablet on a
@@ -288,6 +285,9 @@ Future<Database> openWirdAt(String path) async {
       end_ayah_id   INTEGER NOT NULL,
       recited_at    TEXT NOT NULL
     )''');
+  // The op id is the primary key rather than a column, so a write that is
+  // replayed — a flush that timed out after the server had already applied it,
+  // a button pressed twice — lands on the same row instead of a second one.
   await db.execute('''
     CREATE TABLE IF NOT EXISTS outbox (
       client_op_id TEXT PRIMARY KEY,
@@ -354,8 +354,8 @@ Future<void> markSetUnderstood(
 ///
 /// Screen 1b writes nothing — it runs inside the prayer, where a database
 /// write has no safe moment: `dispose()` cannot await, and the back-swipe and
-/// the Android back button are not the Exit button. So screen 1a calls this
-/// when it gets the reader back.
+/// the Android back button are not the Exit button. So the prayer's
+/// preparation calls this when it gets the reader back.
 ///
 /// One op, not two. The set travels with the prayer that names it, so there is
 /// no second op to sort ahead of it and no set whose refusal takes the prayer

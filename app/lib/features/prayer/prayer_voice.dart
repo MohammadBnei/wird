@@ -57,9 +57,9 @@ class PrayerVoice {
   /// The last words the recogniser was sure enough about to move the prayer
   /// on, and nothing else.
   ///
-  /// The screen shows these while the reader recites. Only what matched: a
-  /// window the matcher refused is a window it could not read, and showing
-  /// that to somebody praying would be the screen talking about itself.
+  /// Read by the tests of the drain, which is the one place what matched can
+  /// be seen: the prayer screen no longer echoes it under the aya. Only what
+  /// matched — a window the matcher refused is a window it could not read.
   final matched = ValueNotifier<String>('');
 
   /// The rakʿah being recited. Both are replaced by [follow] when the next
