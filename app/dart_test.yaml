@@ -1,0 +1,4 @@
+# Tags the suite uses. `golden`: screenshot tests, rendered on macOS; CI on
+# Linux runs `flutter test --exclude-tags golden` (app-checks.yml).
+tags:
+  golden:

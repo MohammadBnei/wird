@@ -20,3 +20,5 @@ paths:
 - Debug builds also write `prayer-audio.f32` beside trail: raw f32 @16 kHz, every sample handed to recogniser → replay off device.
 - Tree not `dart format`-clean (SDK formatter ≠ committed style). Never `dart format lib`/`test` whole → format only files you touched, or diff explodes.
 - Two Wird builds on one Mac share container `dev.bnei.wird` → same `wird.db` → `disk I/O error` (6922) in the other. Stop one by PID, never `pkill -f wird.app`.
+- Release = Actions → `release-app` → patch/minor/major, on main. Only path. Never hand-edit `version:` in `pubspec.yaml`, never push `v*` tag (apk.yml ignores tag push). Version single source = pubspec line → `--dart-define=WIRD_VERSION`; non-release builds report `dev`. ADR 0022, `docs/guides/releasing-the-apk.md`.
+- CI `app-checks.yml` = analyze + `flutter test --exclude-tags golden` (Linux). New golden test file → `@Tags(['golden'])` + `library;` at top, or CI fails on pixel drift.

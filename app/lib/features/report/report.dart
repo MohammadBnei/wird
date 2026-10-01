@@ -12,10 +12,11 @@ enum ReportKind { bug, request, improvement }
 
 /// The build a report was written from.
 ///
-/// ponytail: the number is written here and pinned to pubspec.yaml by a test.
-/// Reading it at runtime means package_info_plus, a dependency and a platform
-/// channel, to learn one string that changes when a human edits pubspec.
-const appVersion = '0.0.1';
+/// Passed in by the release build (`--dart-define=WIRD_VERSION`), read from
+/// the pubspec's own version line, so the number is written in one place
+/// (ADR 0022). Any other build says `dev`: a report from a build nobody
+/// released should not claim a version that was.
+const appVersion = String.fromEnvironment('WIRD_VERSION', defaultValue: 'dev');
 
 /// The platform the report was written on, in the three words the server
 /// knows. Android, iOS and macOS are what this app builds for.
