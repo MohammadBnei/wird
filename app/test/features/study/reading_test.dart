@@ -182,6 +182,10 @@ void main() {
       'choosing Al-Baqarah is not a way to recite it', (tester) async {
     await pumpPhone(tester, await wholeApp(db, cache: audio));
     await goTo(tester, 'Sūra index');
+    // Searched for, not scrolled to: in the default revelation order
+    // Al-Baqarah is the 87th row.
+    await tester.enterText(find.byType(TextField), 'baqara');
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('sura-2')));
     await tester.pumpAndSettle();
 

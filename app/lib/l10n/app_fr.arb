@@ -5,6 +5,7 @@
   "index_hint": "Une sourate s’ouvre à son premier verset. La flèche en choisit un à l’intérieur.",
   "index_revealed_nth": "{order} sourate révélée",
   "index_pick_aya": "Choisir un verset de {sura}",
+  "index_go_to_hint": "S’ouvre à ce verset",
   "kept_empty_ayas": "Aucun verset gardé pour l’instant. « Garder ce verset », sur la constellation de la racine d’un mot, en garde un ici.",
   "kept_empty_notes": "Aucune note pour l’instant. Rien dans l’application n’en écrit encore ; un verset et une racine se gardent sans mots.",
   "kept_empty_roots": "Aucune racine gardée pour l’instant. L’icône de garde sur une racine en garde une ici.",

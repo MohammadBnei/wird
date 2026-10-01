@@ -6,7 +6,7 @@
   },
   "index_title": "All 114",
   "@index_title": {
-    "description": "The index screen's title: every sūra of the Qur'an, in written order."
+    "description": "The index screen's title: every sūra of the Qur'an, listed in the reader's reading order."
   },
   "index_hint": "A sūra opens at its first aya. The arrow picks one inside it.",
   "@index_hint": {
@@ -29,6 +29,10 @@
         "type": "String"
       }
     }
+  },
+  "index_go_to_hint": "Opens at this aya",
+  "@index_go_to_hint": {
+    "description": "Under 'Go to …' in the index, when the search is a reference like 2:255: choosing it opens the reader on that aya."
   },
   "kept_empty_ayas": "No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.",
   "@kept_empty_ayas": {

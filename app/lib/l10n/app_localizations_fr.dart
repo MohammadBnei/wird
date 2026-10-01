@@ -28,6 +28,9 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get index_go_to_hint => 'S’ouvre à ce verset';
+
+  @override
   String get kept_empty_ayas => 'Aucun verset gardé pour l’instant. « Garder ce verset », sur la constellation de la racine d’un mot, en garde un ici.';
 
   @override

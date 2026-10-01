@@ -1,6 +1,6 @@
 import '../../data/sets.dart';
 import '../index/index_screen.dart';
-import 'voice_follow.dart';
+export '../index/sura_picker.dart' show foldLatin, parseRef, searchSuras;
 
 /// The five obligatory prayers, each a preset for how many rakʿahs it has.
 ///
@@ -110,62 +110,6 @@ Duration recitingTime(int words, int wpm) {
     return Duration(seconds: five < 5 ? 5 : five);
   }
   return Duration(minutes: (seconds / 60).round());
-}
-
-/// The aya id a reference like `2:255` names, or null when it is not one or
-/// names an aya the sūra does not have. `2.255` is accepted too, because a
-/// phone keyboard in numbers mode offers the dot before the colon.
-int? parseRef(String query, List<SuraEntry> suras) {
-  final m = RegExp(r'^(\d{1,3})\s*[:.]\s*(\d{1,3})$').firstMatch(query.trim());
-  if (m == null) return null;
-  final sura = int.parse(m[1]!);
-  final aya = int.parse(m[2]!);
-  if (sura < 1 || sura > suras.length) return null;
-  if (aya < 1 || aya > suras[sura - 1].ayahCount) return null;
-  return sura * 1000 + aya;
-}
-
-/// The sūras [query] could mean: by number, by English name typed with or
-/// without the marks a transliteration carries, or by Arabic name typed with
-/// or without harakāt. An empty query is every sūra.
-List<SuraEntry> searchSuras(List<SuraEntry> suras, String query) {
-  final q = query.trim();
-  if (q.isEmpty) return suras;
-  final number = int.tryParse(q);
-  if (number != null) return suras.where((s) => s.id == number).toList();
-  final latin = foldLatin(q);
-  final arabic = recitationKey(q.replaceAll(' ', ''));
-  return [
-    for (final s in suras)
-      if ((latin.isNotEmpty && foldLatin(s.nameEn).contains(latin)) ||
-          (arabic.isNotEmpty &&
-              recitationKey(s.nameAr.replaceAll(' ', '')).contains(arabic)))
-        s,
-  ];
-}
-
-/// A transliterated name reduced to plain letters, so `Al-Fātiḥa`, `fatiha`
-/// and `Al-Fatihah` meet. The corpus spells its names in plain ASCII and the
-/// reader may not, so both sides fold.
-///
-/// ponytail: a table of the marks sūra-name transliterations use, not a
-/// Unicode decomposition. Dart has none built in; widen the table if a name
-/// turns up that it misses.
-String foldLatin(String s) {
-  const marks = {
-    'ā': 'a', 'á': 'a', 'à': 'a', 'â': 'a', 'ī': 'i', 'í': 'i', 'î': 'i', //
-    'ū': 'u', 'ú': 'u', 'û': 'u', 'ḥ': 'h', 'ṣ': 's', 'ḍ': 'd', 'ṭ': 't', //
-    'ẓ': 'z', 'é': 'e', 'è': 'e', 'ê': 'e',
-  };
-  final out = StringBuffer();
-  for (final ch in s.toLowerCase().split('')) {
-    final plain = marks[ch] ?? ch;
-    if (RegExp('[a-z0-9]').hasMatch(plain)) out.write(plain);
-  }
-  // A trailing h is how half the transliterations end a tāʾ marbūṭa and the
-  // other half do not, so it never decides a match.
-  final folded = out.toString();
-  return folded.endsWith('h') ? folded.substring(0, folded.length - 1) : folded;
 }
 
 /// What a passage is called where the reader chose it: the sūra's name for a
