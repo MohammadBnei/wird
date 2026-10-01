@@ -248,7 +248,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prepare_voice_setup =>
-      'Allow the microphone and download the recogniser in Settings';
+      'Allow the microphone and download the recogniser, below';
 
   @override
   String get prepare_steady_pace => 'Keep a steady pace';

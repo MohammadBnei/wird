@@ -249,7 +249,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prepare_voice_setup =>
-      'Autorisez le micro et téléchargez la reconnaissance dans les Réglages';
+      'Autorisez le micro et téléchargez la reconnaissance, ci-dessous';
 
   @override
   String get prepare_steady_pace => 'Garder un rythme régulier';

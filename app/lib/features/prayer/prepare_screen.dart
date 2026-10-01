@@ -12,6 +12,7 @@ import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../index/index_screen.dart';
+import '../settings/settings_screen.dart';
 import 'passage_chooser.dart';
 import 'prayer_plan.dart';
 import 'prayer_screen.dart';
@@ -47,7 +48,6 @@ typedef _Loaded = ({
   List<StudyAya> fatiha,
   StudySet? next,
   List<StudySet> recent,
-  bool voiceReady,
 });
 
 class _PrepareScreenState extends State<PrepareScreen> {
@@ -59,6 +59,13 @@ class _PrepareScreenState extends State<PrepareScreen> {
   StudySet? _second;
   var _sameAsFirst = true;
   var _voice = defaultPrayerPrefs.voice;
+
+  /// What voice-follow needs and whether the phone has it: the microphone
+  /// allowed, and the recogniser on disk. Both are settled right here, before
+  /// the prayer — the prayer screen itself may not ask for anything.
+  var _mic = MicPermission.notAsked;
+  var _model = false;
+  bool get _voiceReady => _mic == MicPermission.granted && _model;
 
   /// The reader's own answer to "follow my voice", kept while the phone
   /// cannot follow it: a recogniser not yet downloaded must not cost them the
@@ -91,8 +98,11 @@ class _PrepareScreenState extends State<PrepareScreen> {
       final set = await ayaSet(db, order, r.start, ayas: r.end - r.start + 1);
       if (set != null) recent.add(set);
     }
-    final voiceReady =
-        await micPermission(db) == MicPermission.granted &&
+    final mic = await micPermission(db);
+    // Looked for only behind a yes: without the microphone the recogniser
+    // is never offered, and the look is real file work.
+    final model =
+        mic == MicPermission.granted &&
         (await VoiceModel.beside(await getDatabasesPath())).ready;
     if (!mounted) return;
     setState(() {
@@ -102,8 +112,9 @@ class _PrepareScreenState extends State<PrepareScreen> {
         fatiha: fatiha,
         next: next,
         recent: recent,
-        voiceReady: voiceReady,
       );
+      _mic = mic;
+      _model = model;
       _preset = PrayerPreset.values.asNameMap()[prefs.preset];
       _rakahs = prefs.rakahs;
       // Al-Fātiḥa is recited in every rakʿah already, so a set of it — the
@@ -114,7 +125,7 @@ class _PrepareScreenState extends State<PrepareScreen> {
           .where((s) => s != null && s.ayas.every((a) => a.surahId != 1))
           .firstOrNull;
       _voiceWanted = prefs.voice;
-      _voice = prefs.voice && voiceReady;
+      _voice = prefs.voice && _voiceReady;
       _pace = prefs.pace;
       _wpm = prefs.wpm;
       _gloss = prefs.gloss;
@@ -135,7 +146,7 @@ class _PrepareScreenState extends State<PrepareScreen> {
   PrayerPrefs get _prefs => (
     preset: _preset?.name,
     rakahs: _rakahs,
-    voice: (_loaded?.voiceReady ?? false) ? _voice : _voiceWanted,
+    voice: _voiceReady ? _voice : _voiceWanted,
     pace: _pace,
     wpm: _wpm,
     gloss: _gloss,
@@ -633,6 +644,14 @@ class _PrepareScreenState extends State<PrepareScreen> {
     );
   }
 
+  /// The phone has gained what voice-follow needs; once it has all of it, the
+  /// reader who set it up is followed without a second tap.
+  void _ready({MicPermission? mic, bool? model}) {
+    _mic = mic ?? _mic;
+    _model = model ?? _model;
+    if (_voiceReady) _voice = true;
+  }
+
   Widget _moves(Nocturne n, AppLocalizations l, _Loaded loaded) {
     final note = _voice && _pace
         ? l.prepare_note_both(_wpm)
@@ -646,15 +665,31 @@ class _PrepareScreenState extends State<PrepareScreen> {
       children: [
         _row(
           n,
-          leading: _Check(on: _voice, enabled: loaded.voiceReady),
+          leading: _Check(on: _voice, enabled: _voiceReady),
           title: l.prepare_follow_voice,
-          sub: loaded.voiceReady
-              ? l.prepare_voice_ready
-              : l.prepare_voice_setup,
-          onTap: loaded.voiceReady
-              ? () => setState(() => _voice = !_voice)
-              : null,
+          sub: _voiceReady ? l.prepare_voice_ready : l.prepare_voice_setup,
+          onTap: _voiceReady ? () => setState(() => _voice = !_voice) : null,
         ),
+        // Under the row's own words rather than its checkbox: it is how this
+        // row is switched on.
+        if (_mic != MicPermission.granted)
+          Padding(
+            padding: const EdgeInsets.only(left: 32, bottom: 8),
+            child: NocturneButton(
+              onPressed: () async {
+                final mic = await askForMic(widget.db);
+                if (mounted) setState(() => _ready(mic: mic));
+              },
+              child: Text(l.settingsAllowMicrophone),
+            ),
+          )
+        else if (!_model)
+          Padding(
+            padding: const EdgeInsets.only(left: 32, bottom: 8),
+            child: VoiceModelPanel(
+              onReady: () => setState(() => _ready(model: true)),
+            ),
+          ),
         _row(
           n,
           leading: _Check(on: _pace),

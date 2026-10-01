@@ -41,6 +41,15 @@ Future<void> pumpPrepare(
   await tester.pumpAndSettle();
 }
 
+/// Opens the first rakʿah's chooser, which lands on its passage's range, and
+/// steps back to the whole list.
+Future<void> openTheList(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('passage 1')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byIcon(Icons.chevron_left));
+  await tester.pumpAndSettle();
+}
+
 /// Begins the prayer and leaves it at once by its Exit button.
 Future<void> prayAndLeave(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('begin')));
@@ -66,6 +75,15 @@ void main() {
     expect(find.text("Al-'Asr"), findsNWidgets(2));
     expect(find.textContaining('same as rakʿah 1'), findsOneWidget);
     expect(find.text('Begin Maghrib'), findsOneWidget);
+  });
+
+  testWidgets('changing how many ayas the passage recites means finding its '
+      'sūra again in a list of 114', (tester) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await tester.tap(find.byKey(const Key('passage 1')));
+    await tester.pumpAndSettle();
+    expect(find.text("AL-'ASR 103:1"), findsOneWidget);
+    expect(find.text("Recite Al-'Asr"), findsOneWidget);
   });
 
   testWidgets('a reader studying Al-Fātiḥa is prepared to recite it twice in '
@@ -99,8 +117,7 @@ void main() {
   testWidgets('a prayer that recited another passage credits the set it was '
       'opened from', (tester) async {
     await pumpPrepare(tester, db: db, from: asr);
-    await tester.tap(find.byKey(const Key('passage 1')));
-    await tester.pumpAndSettle();
+    await openTheList(tester);
     await tester.enterText(find.byType(TextField), 'ikhlas');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Al-Ikhlas'));
@@ -117,8 +134,7 @@ void main() {
   testWidgets('a reference typed in the search opens somewhere other than '
       'the aya it names', (tester) async {
     await pumpPrepare(tester, db: db, from: asr);
-    await tester.tap(find.byKey(const Key('passage 1')));
-    await tester.pumpAndSettle();
+    await openTheList(tester);
     await tester.enterText(find.byType(TextField), '2:255');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Go to Al-Baqarah 2:255'));
@@ -147,9 +163,12 @@ void main() {
       'run', (tester) async {
     await pumpPrepare(tester, db: db, from: asr);
     expect(
-      find.text('Allow the microphone and download the recogniser in Settings'),
+      find.text('Allow the microphone and download the recogniser, below'),
       findsOneWidget,
     );
+    // And it can be set up from here: nobody has to leave the prayer for
+    // Settings to find the button.
+    expect(find.text('Allow microphone'), findsOneWidget);
     // The pace alone, then: the note says so.
     expect(
       find.text(
@@ -197,8 +216,7 @@ void main() {
   testWidgets('a reference into Al-Fātiḥa offers it as a passage, recited '
       'twice in one rakʿah', (tester) async {
     await pumpPrepare(tester, db: db, from: asr);
-    await tester.tap(find.byKey(const Key('passage 1')));
-    await tester.pumpAndSettle();
+    await openTheList(tester);
     await tester.enterText(find.byType(TextField), '1:1');
     await tester.pumpAndSettle();
     expect(find.textContaining('Go to'), findsNothing);

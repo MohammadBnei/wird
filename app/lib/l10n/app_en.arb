@@ -257,7 +257,7 @@
   "@prepare_follow_voice": {"description": "Checkbox: the prayer follows the reader's recitation."},
   "prepare_voice_ready": "Recogniser ready on this phone",
   "@prepare_voice_ready": {"description": "Under 'Follow my voice' when the microphone is allowed and the model downloaded."},
-  "prepare_voice_setup": "Allow the microphone and download the recogniser in Settings",
+  "prepare_voice_setup": "Allow the microphone and download the recogniser, below",
   "@prepare_voice_setup": {"description": "Under 'Follow my voice' when it cannot run yet; the checkbox is off and dark."},
   "prepare_steady_pace": "Keep a steady pace",
   "@prepare_steady_pace": {"description": "Checkbox: the text moves on by itself at a set number of words a minute."},

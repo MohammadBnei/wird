@@ -47,6 +47,9 @@ void main() {
     await pump(tester);
     await tester.tap(find.byKey(const Key('passage 1')));
     await tester.pumpAndSettle();
+    // The chooser opens on the passage's own range; the list is a step back.
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
     await expectLater(
       find.byType(MaterialApp),
       matchesGoldenFile('goldens/chooser.png'),

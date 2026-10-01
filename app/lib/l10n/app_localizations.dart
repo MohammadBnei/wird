@@ -479,7 +479,7 @@ abstract class AppLocalizations {
   /// Under 'Follow my voice' when it cannot run yet; the checkbox is off and dark.
   ///
   /// In en, this message translates to:
-  /// **'Allow the microphone and download the recogniser in Settings'**
+  /// **'Allow the microphone and download the recogniser, below'**
   String get prepare_voice_setup;
 
   /// Checkbox: the text moves on by itself at a set number of words a minute.

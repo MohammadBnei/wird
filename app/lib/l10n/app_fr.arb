@@ -63,7 +63,7 @@
   "prepare_kicker_moves": "Comment le texte avance",
   "prepare_follow_voice": "Suivre ma voix",
   "prepare_voice_ready": "Reconnaissance prête sur ce téléphone",
-  "prepare_voice_setup": "Autorisez le micro et téléchargez la reconnaissance dans les Réglages",
+  "prepare_voice_setup": "Autorisez le micro et téléchargez la reconnaissance, ci-dessous",
   "prepare_steady_pace": "Garder un rythme régulier",
   "prepare_wpm": "{wpm} mots par minute",
   "prepare_slower": "Plus lent",

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -73,6 +75,22 @@ class _PassageChooserState extends State<PassageChooser> {
     );
     if (mounted && _range == (sura: sura, from: f, to: t)) {
       setState(() => _ranged = set);
+    }
+  }
+
+  /// A rakʿah that has a passage opens on its range: changing how many ayas
+  /// it recites is the common change, and should not cost a search for the
+  /// sūra it is already in. The back arrow leads to the whole list.
+  @override
+  void initState() {
+    super.initState();
+    final ayas = widget.current?.set?.ayas ?? const <StudyAya>[];
+    if (ayas.isNotEmpty &&
+        ayas.first.surahId == ayas.last.surahId &&
+        ayas.first.surahId != 1) {
+      unawaited(
+        _openRange(ayas.first.surahId, ayas.first.number, ayas.last.number),
+      );
     }
   }
 
