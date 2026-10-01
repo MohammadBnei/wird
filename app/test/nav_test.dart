@@ -13,7 +13,7 @@ import 'package:wird/features/dashboard/dashboard_screen.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/index/index_screen.dart';
 import 'package:wird/features/kept/kept_screen.dart';
-import 'package:wird/features/prayer/prayer_screen.dart';
+import 'package:wird/features/prayer/prepare_screen.dart';
 import 'package:wird/features/progress/progress_screen.dart';
 import 'package:wird/features/report/report_screen.dart';
 import 'package:wird/features/root/root_screen.dart';
@@ -88,7 +88,7 @@ void main() {
       // The argument is the aya screen 1a opens on, rather than the set the
       // walk would have handed the reader.
       Routes.study: (arguments: 2153, screen: StudyScreen),
-      Routes.prayer: (arguments: set, screen: PrayerScreen),
+      Routes.prepare: (arguments: set, screen: PrepareScreen),
       Routes.root: (arguments: 'علق', screen: RootScreen),
       Routes.rootSpine: (arguments: 'علق', screen: RootSpineScreen),
       Routes.deepDive: (

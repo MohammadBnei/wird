@@ -668,6 +668,10 @@
   "@dashboard_doorKept": {
     "description": "Home's destination row for the ayas and roots the reader saved."
   },
+  "dashboard_doorPray": "Prepare a prayer",
+  "@dashboard_doorPray": {"description": "A door on the dashboard to the prayer's preparation, without a set in hand."},
+  "dashboard_doorPrayWhy": "Any passage, any number of rakʿahs",
+  "@dashboard_doorPrayWhy": {"description": "Under 'Prepare a prayer'."},
   "dashboard_doorKeptWhy": "The ayas and roots you saved",
   "@dashboard_doorKeptWhy": {
     "description": "The subtitle under the kept row on home."

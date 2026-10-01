@@ -590,6 +590,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboard_doorKept => 'Kept';
 
   @override
+  String get dashboard_doorPray => 'Prepare a prayer';
+
+  @override
+  String get dashboard_doorPrayWhy => 'Any passage, any number of rakʿahs';
+
+  @override
   String get dashboard_doorKeptWhy => 'The ayas and roots you saved';
 
   @override

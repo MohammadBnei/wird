@@ -590,6 +590,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboard_doorKept => 'Gardés';
 
   @override
+  String get dashboard_doorPray => 'Préparer une prière';
+
+  @override
+  String get dashboard_doorPrayWhy => 'N’importe quel passage, autant de rakʿas que voulu';
+
+  @override
   String get dashboard_doorKeptWhy => 'Les versets et les racines que vous avez gardés';
 
   @override

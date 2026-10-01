@@ -1037,6 +1037,18 @@ abstract class AppLocalizations {
   /// **'Kept'**
   String get dashboard_doorKept;
 
+  /// A door on the dashboard to the prayer's preparation, without a set in hand.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare a prayer'**
+  String get dashboard_doorPray;
+
+  /// Under 'Prepare a prayer'.
+  ///
+  /// In en, this message translates to:
+  /// **'Any passage, any number of rakʿahs'**
+  String get dashboard_doorPrayWhy;
+
   /// The subtitle under the kept row on home.
   ///
   /// In en, this message translates to:

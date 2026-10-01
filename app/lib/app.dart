@@ -338,24 +338,20 @@ class Prefs extends ChangeNotifier {
   }
 }
 
-/// Enters the prayer and records it on the way out.
+/// Prepares a prayer on [set], which the prayer then answers for.
 ///
 /// Screen 1b writes nothing — it runs inside the prayer, where there is no
-/// safe moment for a database write — so the prayer is recorded here, when the
-/// reader comes back from it, however they left: the Exit button, the
-/// back-swipe or Android's back all complete the push.
-///
-/// A prayer the reader never returns from is not recorded. That is the price
-/// of 1b writing nothing, and it is the side to be wrong on: the prayer count
-/// is allowed to be short, never invented.
+/// safe moment for a database write — so the prayer is recorded by the
+/// screen that prepared it, when the reader comes back from it, however they
+/// left: the Exit button, the back-swipe or Android's back all complete the
+/// push. A prayer the reader never returns from is not recorded, and a
+/// preparation backed out of before Begin is no prayer at all.
 ///
 /// It lives here because starting a prayer is the application's act, not a
 /// screen's. It used to be a button in the reading screen's settings panel,
 /// which is the furthest thing from where the app's central act belongs.
 Future<void> prayTheSet(BuildContext context, StudySet set) async {
-  final db = Wird.of(context).db;
   final navigator = Navigator.of(context);
   await Wird.of(context).recitation.stop();
-  await navigator.pushNamed(Routes.prayer, arguments: set);
-  await recordSetPrayed(db, set);
+  await navigator.pushNamed(Routes.prepare, arguments: set);
 }
