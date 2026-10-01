@@ -198,6 +198,7 @@ excused_doors() {
 		installCorpus|db.dart unpacks the bundled corpus while opening
 		installedCorpusVersion|db.dart reads the installed corpus's version while opening
 		upgradeCorpus|db.dart upgrades an installed corpus while opening
+		movePosition|db.dart's PositionKeeper writes it once the reader settles; a screen keeps a position, it does not write one
 		openWirdAt|the entry point db.dart opens a database at a given path with; a screen opens the one database
 		foldArabic|kept_repo.dart folds both sides of its own search
 		setIdFor|sets.dart derives StudySet.id with it; the id is what everything else holds

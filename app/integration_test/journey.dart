@@ -99,7 +99,10 @@ Future<void> openTheSet(WidgetTester tester, String what) async {
 
 /// Opens the drawer and goes to a destination by name.
 Future<void> goThroughTheDrawer(WidgetTester tester, String label) async {
-  await tester.tap(find.byIcon(Icons.menu));
+  // Settled, and the topmost: during a route's transition the screen under
+  // it still draws its own menu, and a tap on that one opens nothing here.
+  await tester.pumpAndSettle();
+  await tester.tap(find.byIcon(Icons.menu).last);
   await tester.pumpAndSettle();
   await tester.tap(
     find.descendant(of: find.byType(WirdDrawer), matching: find.text(label)),
