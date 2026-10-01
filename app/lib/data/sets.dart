@@ -71,6 +71,7 @@ class StudyWord {
     this.gloss,
     this.glossFr,
     this.root,
+    this.lemmaKey,
   });
 
   final int id;
@@ -92,6 +93,10 @@ class StudyWord {
   /// The root's letters, or null where the word carries none — particles and
   /// proper nouns. Only a word with a root opens the root panel.
   final String? root;
+
+  /// The lemma of the word's root segment as the corpus keys it, which is
+  /// what the reading screen counts a form under. Null without a root.
+  final String? lemmaKey;
 }
 
 class StudyAya {
@@ -339,11 +344,12 @@ Future<int> readingWidth(Database db, ReadingOrder order) async =>
 /// 2:287, and offering it would hand the screen a set that does not exist.
 Future<int> ayahCount(Database db, int surahId) async =>
     (await db.query(
-      'surahs',
-      columns: ['ayah_count'],
-      where: 'id = ?',
-      whereArgs: [surahId],
-    )).single['ayah_count']! as int;
+          'surahs',
+          columns: ['ayah_count'],
+          where: 'id = ?',
+          whereArgs: [surahId],
+        )).single['ayah_count']!
+        as int;
 
 /// The aya on one side of [ayahId] in the written order, or null at the ends
 /// of the Qur'an.
@@ -355,10 +361,12 @@ Future<int> ayahCount(Database db, int surahId) async =>
 /// the edge left the reader pressing a control that could not move.
 Future<int?> ayaBeside(Database db, int ayahId, {required bool after}) async =>
     (await db.rawQuery(
-      'SELECT ${after ? 'MIN' : 'MAX'}(id) AS id FROM ayahs '
-      'WHERE id ${after ? '>' : '<'} ?',
-      [ayahId],
-    )).single['id'] as int?;
+          'SELECT ${after ? 'MIN' : 'MAX'}(id) AS id FROM ayahs '
+          'WHERE id ${after ? '>' : '<'} ?',
+          [ayahId],
+        )).single['id']
+        as int?;
+
 /// The whole-ayah translation for each of [ayahIds], where there is one.
 ///
 /// Read the way words are, an aya at a time as the reader approaches it, rather
@@ -384,7 +392,6 @@ Future<Map<int, String>> translationsFor(
   return {for (final r in rows) r['ayah_id']! as int: r['text']! as String};
 }
 
-
 /// The words of these ayas, keyed by aya, in one query.
 ///
 /// An aya that was asked for and has no words comes back with an empty list
@@ -399,7 +406,8 @@ Future<Map<int, List<StudyWord>>> wordsFor(
   if (byAya.isEmpty) return byAya;
   final marks = List.filled(byAya.length, '?').join(',');
   final rows = await db.rawQuery(
-    '''SELECT id, ayah_id, text_ar, translit, gloss_en, gloss_fr, root_letters
+    '''SELECT id, ayah_id, text_ar, translit, gloss_en, gloss_fr, root_letters,
+              lemma_key
          FROM words
         WHERE ayah_id IN ($marks)
         ORDER BY ayah_id, position''',
@@ -415,6 +423,7 @@ Future<Map<int, List<StudyWord>>> wordsFor(
         gloss: w['gloss_en'] as String?,
         glossFr: w['gloss_fr'] as String?,
         root: (root == null || root.isEmpty) ? null : root,
+        lemmaKey: w['lemma_key'] as String?,
       ),
     );
   }

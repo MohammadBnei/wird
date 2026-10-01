@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'kept_repo.dart';
+import 'sets.dart' show translationsFor;
 
 /// The most derivatives a dial can carry. Above this the root is read as a
 /// spine instead, because a ninth satellite has nowhere on the ring to sit.
@@ -190,7 +191,9 @@ Future<RootReading?> rootReading(
   for (final word in words) {
     final id = word['id']! as int;
     surahs.add(id ~/ 1000000);
-    final text = (word['text_ar']! as String).replaceAll(_pauseMarks, '').trim();
+    final text = (word['text_ar']! as String)
+        .replaceAll(_pauseMarks, '')
+        .trim();
     counts[text] = (counts[text] ?? 0) + 1;
     final seen = held[text];
     if (seen == null) {
@@ -210,21 +213,22 @@ Future<RootReading?> rootReading(
     }
   }
 
-  final derivatives = [
-    for (final text in order)
-      (
-        text: text,
-        gloss: held[text]!['gloss'] as String?,
-        form: held[text]!['form'] as String?,
-        note: held[text]!['note'] as String?,
-        wordId: held[text]!['id']! as int,
-        ayahId: (held[text]!['id']! as int) ~/ 1000,
-        occurrences: counts[text]!,
-      ),
-  ]..sort((a, b) {
-    final byWeight = b.occurrences.compareTo(a.occurrences);
-    return byWeight != 0 ? byWeight : a.ayahId.compareTo(b.ayahId);
-  });
+  final derivatives =
+      [
+        for (final text in order)
+          (
+            text: text,
+            gloss: held[text]!['gloss'] as String?,
+            form: held[text]!['form'] as String?,
+            note: held[text]!['note'] as String?,
+            wordId: held[text]!['id']! as int,
+            ayahId: (held[text]!['id']! as int) ~/ 1000,
+            occurrences: counts[text]!,
+          ),
+      ]..sort((a, b) {
+        final byWeight = b.occurrences.compareTo(a.occurrences);
+        return byWeight != 0 ? byWeight : a.ayahId.compareTo(b.ayahId);
+      });
 
   final core = await db.query(
     'root_notes',
@@ -257,11 +261,9 @@ Future<RootReading?> rootReading(
     senseEvidence: _evidenceWords(sense['evidence'] as String?),
     sensesFetched: pack.isNotEmpty,
     derivatives: derivatives,
-    irab: await _irab(
-      db,
-      [for (final d in derivatives) d.wordId],
-      french: french,
-    ),
+    irab: await _irab(db, [
+      for (final d in derivatives) d.wordId,
+    ], french: french),
   );
 }
 
@@ -410,4 +412,73 @@ Future<void> forgetAya(Database db, int ayahId) async {
   ])) {
     await forget(db, id);
   }
+}
+
+/// One lemma of a root: the dictionary form the corpus files its words under,
+/// and how many words of the Qur'an are that lemma. [key] is the corpus's own
+/// spelling of it, which tells apart two lemmas written alike.
+typedef Lemma = ({String key, String text, int occurrences});
+
+/// A root's lemmas, the commonest first. These are what the reading screen
+/// calls its forms: raḥīm, raḥma and raḥmān, not every spelling with a prefix
+/// or a suffix on it, which is how [RootReading.derivatives] groups them.
+Future<List<Lemma>> lemmasOf(Database db, String root) async => [
+  for (final r in await db.rawQuery(
+    '''SELECT lemma_key, lemma, COUNT(*) AS n FROM words
+        WHERE root_letters = ? AND lemma_key IS NOT NULL
+        GROUP BY lemma_key ORDER BY n DESC, MIN(id)''',
+    [root],
+  ))
+    (
+      key: r['lemma_key']! as String,
+      text: r['lemma']! as String,
+      occurrences: r['n']! as int,
+    ),
+];
+
+/// How many words of sūra [surah] are built on [root].
+Future<int> rootCountInSurah(Database db, String root, int surah) async =>
+    Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT COUNT(*) FROM words WHERE root_letters = ? '
+        'AND ayah_id BETWEEN ? AND ?',
+        [root, surah * 1000, surah * 1000 + 999],
+      ),
+    ) ??
+    0;
+
+/// An aya where a root is read, for the list of other ayas under a root.
+typedef RootAya = ({int ayahId, String text, String? translation});
+
+/// The ayas [root] is read in, in muṣḥaf order, leaving out [except].
+///
+/// The translation is the one in [lang] where the corpus carries it, which
+/// today is French only; an English reader sees the Arabic alone.
+///
+/// ponytail: the first [limit] ayas, not a page. أ ل ه is read in some two
+/// thousand; page this list if a reader ever wants them all.
+Future<List<RootAya>> rootAyas(
+  Database db,
+  String root, {
+  required String lang,
+  int? except,
+  int limit = 20,
+}) async {
+  final rows = await db.rawQuery(
+    '''SELECT DISTINCT a.id, a.text_uthmani FROM words w
+         JOIN ayahs a ON a.id = w.ayah_id
+        WHERE w.root_letters = ? AND a.id != ?
+        ORDER BY a.id LIMIT ?''',
+    [root, except ?? 0, limit],
+  );
+  final ids = [for (final r in rows) r['id']! as int];
+  final translated = await translationsFor(db, ids, lang);
+  return [
+    for (final r in rows)
+      (
+        ayahId: r['id']! as int,
+        text: r['text_uthmani']! as String,
+        translation: translated[r['id']],
+      ),
+  ];
 }
