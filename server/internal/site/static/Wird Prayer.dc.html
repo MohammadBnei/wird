@@ -353,7 +353,9 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;demoSpeed&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1×&quot;,&quot;2×&quot;,&quot;4×&quot;],&quot;default&quot;:&quot;2×&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Demo speed&quot;}}">
-const mk = (sura, rows) => rows.map((row, ai) => row.map(([ar, gl]) => ({ ar, gl, aya: sura + ':' + (ai + 1) })));
+const mk = (sura, rows) => rows.map((row, ai) => row.map(([ar, gl, glFr]) => ({ ar, gl, glFr, aya: sura + ':' + (ai + 1) })));
+// Wird adaptation: the page's language picks the corpus gloss.
+const G = (w, fr) => (fr && w.glFr) || w.gl;
 // Wird adaptation: the Qur'an text and glosses come from the corpus
 // (scripts/site-data.py), never typed by hand.
 const FATIHA = mk(1, window.WIRD_SITE.prayer[1]);
@@ -497,6 +499,7 @@ class Component extends DCLogic {
   commit(val) { this.setState(s => ({ sel: { ...s.sel, [s.ch.r]: val }, ch: null, rak: 1, w: 0 })); }
 
   renderVals() {
+    const fr = this.props.lang === 'fr';
     const st = this.state, n = st.n;
     const preset = PRESETS.find(p => p.id === st.preset);
     const prayerName = preset ? preset.name : 'prayer';
@@ -584,7 +587,7 @@ class Component extends DCLogic {
         pvPrev: around ? join(pa[c.ai - 1]) : '', pvNext: around ? join(pa[c.ai + 1]) : '',
         pvPrevH: around && st.size <= 60 ? '84px' : (around && st.size <= 72 ? '44px' : '0px'), pvNextOp: around && st.size <= 72 ? 1 : 0,
         pvWords: pa[c.ai].map((x, wi) => { const cur = wi === c.wi, past = wi < c.wi; return { ar: x.ar, cur: cur ? '1' : '0', col: cur ? 'var(--color-accent-100)' : past ? 'color-mix(in srgb,#e9e9ed 72%,transparent)' : 'color-mix(in srgb,#e9e9ed 40%,transparent)', glow: cur ? '0 0 26px color-mix(in srgb, var(--color-accent) 70%, transparent)' : 'none' }; }),
-        pvGloss: c.gl, pvPct: ((pv.w + 1) / pw.length * 100).toFixed(1) + '%',
+        pvGloss: G(c, fr), pvPct: ((pv.w + 1) / pw.length * 100).toFixed(1) + '%',
         pvMode: (this.moving() ? (st.voice && !st.pace ? 'Voice simulated at ' + st.wpm + ' wpm' : modeLabel) : 'Tap the text to step') + ' · loops',
         pvTabs: Array.from({ length: Math.min(n, 2) }, (_, k) => { const r = k + 1, onx = r === pv.r; return { r, bg: onx ? 'var(--color-accent-900)' : 'transparent', col: onx ? 'var(--color-accent-100)' : 'var(--color-text)', bd: onx ? 'var(--color-accent)' : 'transparent' }; })
       };
@@ -607,7 +610,7 @@ class Component extends DCLogic {
       prevAya: around ? join(ayas[ai - 1]) : '', nextAya: around ? join(ayas[ai + 1]) : '', aroundOp: around ? 1 : 0,
       prevH: around && st.size <= 60 ? '120px' : (around && st.size <= 72 ? '64px' : '0px'), nextOp: around && st.size <= 72 ? 1 : 0,
       winRef: this.winRef,
-      ayaWords, curGloss: cw.gl, glossOp: st.gloss ? 1 : 0,
+      ayaWords, curGloss: G(cw, fr), glossOp: st.gloss ? 1 : 0,
       rakPct: ((st.w + 1) / words.length * 100).toFixed(1) + '%',
       modeLabel, waitLabel: st.voice ? 'Begins when you recite' : 'Tap to begin', dots,
       isBetween: st.phase === 'between', isDone: st.phase === 'done', isIdle: st.phase === 'idle',

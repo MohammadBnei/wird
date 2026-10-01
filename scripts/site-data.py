@@ -105,10 +105,10 @@ def main():
     prayer = {}
     for surah, span in PRAYER.items():
         rows = []
-        for n, ar, _tr, en, _fr, _r in words_of(db, surah, span):
+        for n, ar, _tr, en, fr, _r in words_of(db, surah, span):
             while len(rows) < n - (span[0] - 1 if span else 0):
                 rows.append([])
-            rows[-1].append([bare(ar), en])
+            rows[-1].append([bare(ar), en, fr or en])
         prayer[surah] = rows
 
     data = {'reader': {'words': reader_words, 'roots': roots, 'ayas': ayas}, 'prayer': prayer}

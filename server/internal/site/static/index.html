@@ -38,7 +38,7 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
     <button onClick="{{ setEn }}" aria-pressed="{{ isEn }}" style="font:500 12px var(--font-body);padding:5px 10px;border:0;border-radius:6px;cursor:pointer;background:{{ enBg }};color:{{ enCol }}">EN</button>
     <button onClick="{{ setFr }}" aria-pressed="{{ isFr }}" style="font:500 12px var(--font-body);padding:5px 10px;border:0;border-radius:6px;cursor:pointer;background:{{ frBg }};color:{{ frCol }}">FR</button>
   </div>
-  <a class="btn btn-primary" href="/download/android" style="text-decoration:none">
+  <a class="btn btn-primary" href="/download/android" onClick="{{ download }}" style="text-decoration:none">
     <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">Download</sc-if>
     <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">Télécharger</sc-if>
   </a>
@@ -57,7 +57,7 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
       <p style="margin:18px 0 0;max-width:520px;font-size:18px;line-height:1.55;color:var(--color-neutral-300);text-wrap:pretty">Lisez le Coran mot à mot, à travers ses racines. Priez avec les mots sous les yeux.</p>
     </sc-if>
     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px">
-      <a class="btn btn-primary" href="/download/android" style="text-decoration:none;padding:12px 20px;font-size:15px;display:inline-flex;align-items:center;gap:10px">
+      <a class="btn btn-primary" href="/download/android" onClick="{{ download }}" style="text-decoration:none;padding:12px 20px;font-size:15px;display:inline-flex;align-items:center;gap:10px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>
         <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">Download for Android</sc-if>
         <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">Télécharger pour Android</sc-if>
@@ -68,7 +68,7 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
 
   <section id="read" data-screen-label="Read" style="padding:clamp(40px,7vw,80px) 0;display:flex;flex-wrap:wrap;align-items:center;gap:clamp(32px,6vw,80px)">
     <div class="demo" style="flex:none;margin:-44px -48px -60px">
-      <dc-import name="Wird Reader" show-notes="{{ false }}" hint-size="508px,996px"></dc-import>
+      <dc-import name="Wird Reader" show-notes="{{ false }}" lang="{{ lang }}" hint-size="508px,996px"></dc-import>
     </div>
     <div style="flex:1 1 300px;max-width:440px;display:flex;flex-direction:column;gap:16px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -108,7 +108,7 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
       </sc-if>
     </div>
     <div class="demo" style="margin:-44px -48px -60px">
-      <dc-import name="Wird Prayer" show-notes="{{ false }}" hint-size="100%,1050px"></dc-import>
+      <dc-import name="Wird Prayer" show-notes="{{ false }}" lang="{{ lang }}" hint-size="100%,1050px"></dc-import>
     </div>
   </section>
 
@@ -132,7 +132,7 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
       <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}"><h2 style="margin:0;font:500 clamp(26px,3.4vw,36px)/1.15 var(--font-heading)">Download Wird</h2></sc-if>
       <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}"><h2 style="margin:0;font:500 clamp(26px,3.4vw,36px)/1.15 var(--font-heading)">Télécharger Wird</h2></sc-if>
       <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px">
-        <a class="btn btn-primary" href="/download/android" style="text-decoration:none;padding:12px 20px;font-size:15px;display:inline-flex;align-items:center;gap:10px">
+        <a class="btn btn-primary" href="/download/android" onClick="{{ download }}" style="text-decoration:none;padding:12px 20px;font-size:15px;display:inline-flex;align-items:center;gap:10px">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>
           <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">Download for Android</sc-if>
           <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">Télécharger pour Android</sc-if>
@@ -149,21 +149,51 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
   <span class="ar" style="font-size:16px;line-height:1">وِرْد</span>
 </footer>
 
+<sc-if value="{{ showToast }}" hint-placeholder-val="{{ false }}">
+  <div role="status" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10;max-width:calc(100% - 32px);padding:12px 18px;border-radius:var(--radius-md);background:var(--color-surface);box-shadow:var(--shadow-md);font-size:14px;color:var(--color-text)">
+    <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">The Android build is not published yet. Try again soon.</sc-if>
+    <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">La version Android n'est pas encore publiée. Réessayez bientôt.</sc-if>
+  </div>
+</sc-if>
+
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;startLang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;English&quot;,&quot;Français&quot;],&quot;default&quot;:&quot;English&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Opening language&quot;}}">
+// Wird adaptation: the language is remembered in a cookie, and the download
+// is checked before the browser is sent anywhere.
+const LANG_COOKIE = 'wird_lang';
+const savedLang = () => { const m = document.cookie.match(/(?:^|; )wird_lang=(en|fr)/); return m ? m[1] : null; };
+const saveLang = (lang) => { document.cookie = LANG_COOKIE + '=' + lang + '; Max-Age=31536000; Path=/; SameSite=Lax'; };
+
 class Component extends DCLogic {
-  state = { lang: null };
+  state = { lang: savedLang(), toast: false };
+  setLang(lang) { saveLang(lang); this.setState({ lang }); }
+  async download(e) {
+    e.preventDefault();
+    let ok = false;
+    try {
+      // A published build answers 302 to the store; manual keeps it from being followed here.
+      const r = await fetch('/download/android', { method: 'HEAD', redirect: 'manual' });
+      ok = r.type === 'opaqueredirect' || r.ok;
+    } catch (_) {}
+    if (ok) { window.location.href = '/download/android'; return; }
+    this.setState({ toast: true });
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => this.setState({ toast: false }), 4000);
+  }
   renderVals() {
     const lang = this.state.lang ?? (this.props.startLang === 'Français' ? 'fr' : 'en');
+    document.documentElement.lang = lang;
     const on = 'var(--color-accent-800)', onC = 'var(--color-accent-100)', offC = 'var(--color-neutral-300)';
     const en = lang === 'en';
     return {
       isEn: en, isFr: !en,
       enBg: en ? on : 'transparent', enCol: en ? onC : offC,
       frBg: en ? 'transparent' : on, frCol: en ? offC : onC,
-      setEn: () => this.setState({ lang: 'en' }),
-      setFr: () => this.setState({ lang: 'fr' }),
+      lang, showToast: this.state.toast,
+      setEn: () => this.setLang('en'),
+      setFr: () => this.setLang('fr'),
+      download: (e) => this.download(e),
     };
   }
 }
