@@ -33,7 +33,7 @@ sequenceDiagram
   API-->>App: 200, or 401 if the token is not good
 ```
 
-Some routes are open and need no token at all: `/healthz`, `/auth/callback`, `/v1/senses`, `/models/` and the App Link file. Every other path goes through the check.
+Some routes are open and need no token at all: `/healthz`, `/auth/callback`, `/v1/senses`, `/models/`, `/app/`, `/download/android` and the App Link file. Every other path goes through the check.
 
 ## White box
 
@@ -173,7 +173,7 @@ Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE` ([main.
 
 ### 6. The middleware checks, then finds the reader
 
-The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:38-63](../../../server/internal/api/api.go#L40-L77)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
+The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:38-63](../../../server/internal/api/api.go#L40-L79)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
 
 ```go
 		token, err := a.verifier.Verify(r.Context(), raw)

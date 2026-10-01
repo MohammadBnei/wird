@@ -1,0 +1,217 @@
+# A version tag -> a release-signed APK per ABI -> s3://wird-models/app/<tag>/
+# and app/latest/. wird-api's GET /app/ presigns and redirects to those keys,
+# so https://wird.bnei.dev/app/latest/app-arm64-v8a-release.apk is a link that
+# never expires (server/internal/api/models.go). docs/guides/releasing-the-apk.md
+# is the human version of this file.
+#
+# WHY ubuntu-latest AND NOT ukubi-build. The build box has 9.6 GB free, 4 GB of
+# RAM and no JDK, and its disk is buildah's image store. An Android SDK, a
+# Flutter SDK and the Gradle caches do not fit beside it. Nothing here needs the
+# LAN: the store is reachable at https://s3.bnei.dev.
+#
+# WHY NO iOS. A signed IPA needs an Apple certificate and provisioning profile,
+# and nothing in this estate holds them. An unsigned build would produce
+# nothing installable.
+name: apk
+
+on:
+  # A dispatch builds and uploads under app/dispatch-<sha>/ and leaves
+  # app/latest/ alone: latest names a tagged release only.
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # The keystore and the store key live in Wird's own project. Not the root
+  # project: an identity there reads every PVE token and DB password in the
+  # estate. Not platform-commons: every app opted into commons can name any
+  # key there (infra-bootstrap ADR-0049), and the keystore is the one secret
+  # whose loss or theft cannot be rotated away. This identity reads wird-8k-fc
+  # only and is OIDC-bound to this repository only.
+  INFISICAL_DOMAIN: https://infisical.bnei.dev
+  INFISICAL_PROJECT_SLUG: wird-8k-fc
+  INFISICAL_ENV: dev
+  INFISICAL_IDENTITY_ID: 21b8fe87-ae1e-41f5-a05b-170caefeccdf
+  # Path-style only: the certificate covers s3.bnei.dev, not
+  # <bucket>.s3.bnei.dev, and a vhost URL fails as a TLS error.
+  AWS_ENDPOINT_URL: https://s3.bnei.dev
+  AWS_REGION: garage
+  BUCKET: wird-models
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # A tag that disagrees with the pubspec ships an APK whose About screen
+      # names a different version than its download link.
+      - name: Tag matches the pubspec version
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          want=$(sed -n -E 's/^version: ([^+]+).*/\1/p' app/pubspec.yaml)
+          [ "${GITHUB_REF_NAME#v}" = "$want" ] || { echo "::error::tag $GITHUB_REF_NAME but pubspec says $want"; exit 1; }
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The version app/.fvmrc pins, so CI builds what was tested locally.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      # One step per secret, so the job holds only what it uses even if the
+      # project grows rows for other Wird jobs.
+      - name: Keystore
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEYSTORE_P12
+          export-type: env
+      - name: Keystore password
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEYSTORE_PASSWORD
+          export-type: env
+      - name: Key alias
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEY_ALIAS
+          export-type: env
+      - name: Key password
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEY_PASSWORD
+          export-type: env
+      - name: Store access key
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_MODELS_S3_ACCESS_KEY
+          export-type: env
+      - name: Store secret
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_MODELS_S3_SECRET
+          export-type: env
+
+      # GitHub masks only `secrets.*`. An unmasked Infisical value has leaked
+      # in this estate before.
+      #
+      # An empty value must stop the build: app/android/app/build.gradle.kts
+      # falls back to the debug key when key.properties names no store, and a
+      # debug-signed APK can never be updated by a real one.
+      - name: Write key.properties
+        run: |
+          set -euo pipefail
+          for v in WIRD_ANDROID_KEYSTORE_P12 WIRD_ANDROID_KEYSTORE_PASSWORD WIRD_ANDROID_KEY_ALIAS \
+                   WIRD_ANDROID_KEY_PASSWORD WIRD_MODELS_S3_ACCESS_KEY WIRD_MODELS_S3_SECRET; do
+            [ -n "${!v:-}" ] || { echo "::error::Infisical returned no $v"; exit 1; }
+            echo "::add-mask::${!v}"
+          done
+          printf '%s' "$WIRD_ANDROID_KEYSTORE_P12" | base64 -d > "$RUNNER_TEMP/release.p12"
+          {
+            echo "storeFile=$RUNNER_TEMP/release.p12"
+            echo "storePassword=$WIRD_ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=$WIRD_ANDROID_KEY_ALIAS"
+            echo "keyPassword=$WIRD_ANDROID_KEY_PASSWORD"
+          } > app/android/key.properties
+
+      # --split-per-abi keeps 25 MB of x86_64 onnxruntime off an arm64 phone
+      # (build.gradle.kts). No force-version-code-ignoring-abi: that flag is for
+      # walk builds, and a release keeps the per-ABI version codes.
+      - name: Build
+        working-directory: app
+        run: flutter build apk --release --split-per-abi
+
+      # The second line of defence for the fallback above, checked on the
+      # artifact itself rather than on the inputs.
+      - name: Signed with the release key
+        run: |
+          set -euo pipefail
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          certs=$("$apksigner" verify --print-certs app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk)
+          echo "$certs"
+          if grep -q 'CN=Android Debug' <<<"$certs"; then echo "::error::signed with the debug key"; exit 1; fi
+
+      # aws s3 cp goes multipart above 8 MB. A single PUT through s3.bnei.dev
+      # is cut at 60 s with a 502, and an APK is well over that threshold.
+      #
+      # ponytail: app/<version>/ is never deleted and Garage has no lifecycle.
+      # Fine at one tag now and then; prune old prefixes here if they pile up.
+      - name: Upload
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.WIRD_MODELS_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.WIRD_MODELS_S3_SECRET }}
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || format('dispatch-{0}', github.sha) }}
+          IS_TAG: ${{ github.ref_type == 'tag' }}
+        run: |
+          set -euo pipefail
+          aws configure set default.s3.addressing_style path
+          out=app/build/app/outputs/flutter-apk
+          aws s3 cp "$out" "s3://$BUCKET/app/$VERSION/" --recursive --exclude '*' --include 'app-*-release.apk'
+          [ "$IS_TAG" != true ] || aws s3 sync "s3://$BUCKET/app/$VERSION/" "s3://$BUCKET/app/latest/" --delete
+          {
+            echo "### APK $VERSION"
+            for f in "$out"/app-*-release.apk; do
+              echo "- https://wird.bnei.dev/app/$VERSION/$(basename "$f")"
+            done
+            [ "$IS_TAG" != true ] || echo "- latest: https://wird.bnei.dev/app/latest/app-arm64-v8a-release.apk"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.p12" app/android/key.properties

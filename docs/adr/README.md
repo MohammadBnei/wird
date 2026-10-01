@@ -37,3 +37,4 @@ flowchart LR
 | [0016-installed-corpora-upgrade-and-words-carry-their-lemma.md](0016-installed-corpora-upgrade-and-words-carry-their-lemma.md) | Installed corpora upgrade, and words carry their lemma | accepted |
 | [0017-ayas-are-translated-into-english-from-pickthall.md](0017-ayas-are-translated-into-english-from-pickthall.md) | Ayas are translated into English from Pickthall | accepted |
 | [0018-the-public-site-is-served-by-the-api.md](0018-the-public-site-is-served-by-the-api.md) | The public page is embedded in wird-api, and its demos run on the corpus | accepted |
+| [0019-the-apk-is-built-on-a-tag-and-served-like-the-recogniser.md](0019-the-apk-is-built-on-a-tag-and-served-like-the-recogniser.md) | The APK is built on a tag and served like the recogniser | proposed |

@@ -51,6 +51,7 @@ There are two groups. The open group needs no token, because the app is fully us
 | `GET /v1/senses` | no | Every sense, with who wrote them; 304 when unchanged. `HEAD` checks without the body | yes |
 | `GET /`, `GET /{file}`, `GET /_ds/...` | no | The public page and the files it renders from. See [the site](#the-public-page) | no |
 | `GET /download/android` | no | 302 to the published APK; 503 until one is published | no |
+| `GET /app/...` | no | 302 to an APK the CI built from a tag, e.g. `/app/latest/app-arm64-v8a-release.apk`. See [Releasing the APK](../guides/releasing-the-apk.md) | no, a person's browser |
 | `POST /v1/sync` | yes | The one write path. See [Sync endpoints](api/sync-endpoints.md) | yes |
 | `GET /v1/changes` | yes | What changed since a cursor. See [Sync endpoints](api/sync-endpoints.md) | yes |
 | `GET /v1/me` | yes | The reader the token belongs to | no |
@@ -104,7 +105,7 @@ flowchart TB
 | `OIDC_AUDIENCE` | `wird` | The `aud` a token must carry; in production, the app's client id. [main.go:30](../../server/cmd/api/main.go#L30) |
 | `API_ADDR` | `:8080` | The listen address. [main.go:39](../../server/cmd/api/main.go#L39) |
 | `WIRD_ANDROID_SHA256` | unset, so 404 | Signing-key fingerprints for `assetlinks.json`. [applinks.go:37](../../server/internal/api/applinks.go#L37) |
-| `WIRD_MODELS_S3_*` | unset, so models answer "not configured" | Bucket, endpoint, key pair and region of the voice model store. [models.go:48-68](../../server/internal/api/models.go#L48-L68) |
+| `WIRD_MODELS_S3_*` | unset, so models answer "not configured" | Bucket, endpoint, key pair and region of the voice model store. [models.go:59-79](../../server/internal/api/models.go#L59-L79) |
 | `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. [apk.go:21](../../server/internal/api/apk.go#L21) |
 
 Migrations are embedded in the binary. The server and the test database both come up through `Open`, so a migration cannot work in one and fail in the other. [store.go:28-55](../../server/internal/store/store.go#L28-L55)
@@ -124,7 +125,7 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-79](../../server/internal/api/api.go#L26-L79)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-81](../../server/internal/api/api.go#L26-L81)
 
 ```go
 	v1 := http.NewServeMux()
@@ -139,11 +140,11 @@ func Migrate(ctx context.Context, url string) error {
 	v1.HandleFunc("GET /v1/roots/{letters}/lexicon", h.lexicon)
 ```
 
-`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:68-77](../../server/internal/api/api.go#L68-L77)
+`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:70-79](../../server/internal/api/api.go#L70-L79)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:69-76](../../server/internal/api/api.go#L69-L76)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:71-78](../../server/internal/api/api.go#L71-L78)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 
@@ -164,7 +165,7 @@ The middleware verifies the token, then finds the reader behind its subject, cre
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes. [httpx.go:10-22](../../server/internal/httpx/httpx.go#L10-L22)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:176-183](../../server/internal/api/api.go#L190-L197)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:176-183](../../server/internal/api/api.go#L192-L199)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -177,7 +178,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:150-158](../../server/internal/api/api.go#L164-L172)), a root must be at most 32 bytes of Arabic letters ([api.go:162-172](../../server/internal/api/api.go#L176-L186)), and a kept kind must be `aya`, `root` or `note` ([api.go:89-96](../../server/internal/api/api.go#L103-L110)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:150-158](../../server/internal/api/api.go#L166-L174)), a root must be at most 32 bytes of Arabic letters ([api.go:162-172](../../server/internal/api/api.go#L178-L188)), and a kept kind must be `aya`, `root` or `note` ([api.go:89-96](../../server/internal/api/api.go#L103-L110)).
 
 ### 4. The store holds every SQL statement
 
