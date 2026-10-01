@@ -192,7 +192,7 @@ List<Window> notTheSet(List<String> said) {
 
 /// R5's ratchet: the windows behind the reciter each noisy recitation was
 /// measured at when the margin became per-set and copies were settled by
-/// order (ADR 0020). Lower one when a change earns it; never raise one.
+/// order (ADR 0021). Lower one when a change earns it; never raise one.
 const _behindAtMost = {
   'al-ʿAsr slips 3': 1,
   'al-Kāfirūn slips 3': 3,
@@ -383,7 +383,7 @@ void main() {
             for (final (i, aya) in a.indexed)
               i == 4 ? aya.skip(1).toList() : aya,
           ]),
-          // One window late since the margin got a floor (ADR 0020): the
+          // One window late since the margin got a floor (ADR 0021): the
           // floor stopped a twenty-word jump on the owner's trail.
           behind: 1,
         ),

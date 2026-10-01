@@ -83,7 +83,7 @@ class FollowTuning {
   ///
   /// Asked of every pair alike, it refused every window on a set that says a
   /// phrase twice — al-Fātiḥa's ٱلرَّحْمَٰنِ ٱلرَّحِيمِ, in every rakʿah — and
-  /// the cursor pinned (ADR 0020). Swept at 0.2 to 0.4: alike up to 0.32,
+  /// the cursor pinned (ADR 0021). Swept at 0.2 to 0.4: alike up to 0.32,
   /// three conditions fail at 0.4.
   final double margin;
 

@@ -103,6 +103,6 @@ Every number the matcher decides with lives in one place, and a bench replays re
 
 → [Voice-follow: the bench](../architecture/app/voice-follow.md#the-bench)
 
-Where to go next: why the model hears phonemes and not a language is in [ADR 0009](../adr/0009-the-recogniser-hears-quranic-phonemes-not-language.md), and why copies are settled by order is in [ADR 0020](../adr/0020-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md). What walking it on real devices taught is in the [voice-follow walk](../journal/voice-follow-walk.md).
+Where to go next: why the model hears phonemes and not a language is in [ADR 0009](../adr/0009-the-recogniser-hears-quranic-phonemes-not-language.md), and why copies are settled by order is in [ADR 0021](../adr/0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md). What walking it on real devices taught is in the [voice-follow walk](../journal/voice-follow-walk.md).
 
 Next tour: [Signing in](signing-in.md)

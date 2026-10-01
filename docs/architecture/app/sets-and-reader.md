@@ -347,7 +347,7 @@ Screen 1d replays the walk to count finished sets ([sets.dart:498](../../../app/
 - [ADR 0002](../../adr/0002-set-identity.md) — a set's id is a UUID v5 of its range and order, and one `set_prayed` op records the set and the prayer together.
 - [ADR 0003](../../adr/0003-addressable-reader.md) — the reader screen can open any aya, changes in place, and never stacks a second reader.
 - [ADR 0006](../../adr/0006-a-passage-is-read-a-set-is-answered-for.md) — a passage is read, a set is answered for: `reading` versus `ayas`, and the lazy list.
-- [ADR 0018](../../adr/0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) — a prayer is prepared first; the set is credited only if a reached rakʿah recited it; the rest stays on the phone.
+- [ADR 0020](../../adr/0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) — a prayer is prepared first; the set is credited only if a reached rakʿah recited it; the rest stays on the phone.
 - [ADR 0001](../../adr/0001-stack.md) — the corpus lives on the phone and the app generates its own sets.
 
 ## Go deeper

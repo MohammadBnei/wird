@@ -20,7 +20,7 @@ image:
   # the registry entry in infra-bootstrap belongs after this repo's first CI
   # run has replaced this line, or the first sync is an ImagePullBackOff
   # against a tag that was never built.
-  tag: "bc153aefc07d"
+  tag: "6d681c28cd4a"
 
 # API_ADDR defaults to :8080 in server/cmd/api/main.go and nothing overrides it.
 service:
@@ -44,8 +44,8 @@ ingress:
   # reaches Cloudflare like any other client.
   hostname: wird.bnei.dev
 
-# /healthz is the one route outside the authenticator (server/internal/api/api.go),
-# which is what makes it usable as a probe — a probe carries no bearer token.
+# /healthz is outside the authenticator (server/internal/api/api.go), which is
+# what makes it usable as a probe — a probe carries no bearer token.
 livenessProbe:
   enabled: true
   path: /healthz
@@ -121,15 +121,22 @@ env:
   # back to it. Without this the browser keeps the link and the reader copies
   # an authorization code out of a web page by hand.
   #
-  # This is the DEBUG keystore's fingerprint, which is per-machine: an APK
-  # built anywhere else will not verify against it. It is here because it is
-  # what is installed on a phone today, and it is the first thing that has to
-  # change when a real release keystore exists — the list takes both, so a
-  # release key can be added before the debug one is removed.
+  # Two fingerprints, comma-separated. The first is the DEBUG keystore's, which
+  # is per-machine and is what was installed on a phone before releases
+  # existed. The second is the release key (CN=Wird, O=bnei.dev), which signs
+  # the APK the public page hands out at /download/android. Drop the debug one
+  # once no phone runs a debug build.
   #
   # Not a secret: a certificate fingerprint is readable from any installed app.
   - name: WIRD_ANDROID_SHA256
-    value: "45:85:EA:58:05:B0:DC:C7:86:E1:2C:12:A0:5A:59:80:7B:8C:0C:D2:CC:6D:7B:34:14:C2:CC:24:8C:22:F2:5E"
+    value: "45:85:EA:58:05:B0:DC:C7:86:E1:2C:12:A0:5A:59:80:7B:8C:0C:D2:CC:6D:7B:34:14:C2:CC:24:8C:22:F2:5E,97:D5:06:8B:7A:AB:B7:E3:E0:19:BF:61:4F:7D:A4:AB:0A:44:58:32:58:77:EB:49:D1:B4:48:4B:4D:B2:03:02"
+  # The APK /download/android redirects to, android/wird-<sha12>.apk in the
+  # models bucket. Written by .github/workflows/apk.yml on each version tag,
+  # never by hand: the key names the build's digest, so a new build is a new
+  # key and a download resumed across a release never mixes two builds.
+  # Empty answers 503, which the page reads as "not published yet".
+  - name: WIRD_APK_KEY
+    value: "android/wird-87f0955e544c.apk"
   # Trailing slash deliberate: go-oidc compares the discovery document's
   # `issuer` claim against this string verbatim, and authentik publishes it
   # with the slash. app/lib/data/auth.dart carries the same value.

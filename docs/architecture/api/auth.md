@@ -173,7 +173,7 @@ Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE` ([main.
 
 ### 6. The middleware checks, then finds the reader
 
-The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:38-63](../../../server/internal/api/api.go#L38-L63)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
+The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:38-63](../../../server/internal/api/api.go#L40-L77)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
 
 ```go
 		token, err := a.verifier.Verify(r.Context(), raw)
@@ -206,7 +206,7 @@ flowchart LR
   d -->|"left at default wird"| bad
 ```
 
-The local default audience is `wird`. A real Authentik ID token carries the **client id** in `aud`, not `wird`. Left at the default, the API refuses every real token with `expected audience "wird"`. The deployed values set `OIDC_AUDIENCE` to the client id ([values.yaml:138-147](../../../helm/values.yaml#L138-L147)).
+The local default audience is `wird`. A real Authentik ID token carries the **client id** in `aud`, not `wird`. Left at the default, the API refuses every real token with `expected audience "wird"`. The deployed values set `OIDC_AUDIENCE` to the client id ([values.yaml:145-154](../../../helm/values.yaml#L145-L154)).
 
 The check matters more than usual here. The identity provider signs tokens for many apps with one key, so a valid signature alone proves little. Only `aud` and `iss` tell a Wird token from another app's.
 

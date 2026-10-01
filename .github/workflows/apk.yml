@@ -1,0 +1,263 @@
+# A version tag -> a release-signed arm64 APK -> s3://wird-models/android/
+# wird-<sha12>.apk -> WIRD_APK_KEY bumped in helm/values.yaml -> ArgoCD rolls
+# the pod, and https://wird.bnei.dev/download/android (server/internal/api/
+# apk.go) hands out the new build. docs/guides/releasing-the-apk.md is the
+# human version of this file.
+#
+# WHY ubuntu-latest AND NOT ukubi-build. The build box has 9.6 GB free, 4 GB of
+# RAM and no JDK, and its disk is buildah's image store. An Android SDK, a
+# Flutter SDK and the Gradle caches do not fit beside it. Nothing here needs the
+# LAN: the store is reachable at https://s3.bnei.dev.
+#
+# WHY NO iOS. A signed IPA needs an Apple certificate and provisioning profile,
+# and nothing in this estate holds them. An unsigned build would produce
+# nothing installable.
+name: apk
+
+on:
+  # A dispatch builds and uploads but does not publish: only a tag moves
+  # /download/android. Dispatch from main:
+  # the Infisical identity accepts this file only from a tag or from main
+  # (its workflow_ref bound claim), so no other workflow or branch can read
+  # the keystore.
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # The keystore and the store key live in Wird's own project. Not the root
+  # project: an identity there reads every PVE token and DB password in the
+  # estate. Not platform-commons: every app opted into commons can name any
+  # key there (infra-bootstrap ADR-0049), and the keystore is the one secret
+  # whose loss or theft cannot be rotated away. This identity reads wird-8k-fc
+  # only and is OIDC-bound to this repository only.
+  INFISICAL_DOMAIN: https://infisical.bnei.dev
+  INFISICAL_PROJECT_SLUG: wird-8k-fc
+  INFISICAL_ENV: dev
+  INFISICAL_IDENTITY_ID: 21b8fe87-ae1e-41f5-a05b-170caefeccdf
+  # Path-style only: the certificate covers s3.bnei.dev, not
+  # <bucket>.s3.bnei.dev, and a vhost URL fails as a TLS error.
+  AWS_ENDPOINT_URL: https://s3.bnei.dev
+  AWS_REGION: garage
+  BUCKET: wird-models
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    # contents: write to push the WIRD_APK_KEY bump, the way release.yml
+    # pushes its image tag. id-token mints the OIDC token Infisical checks.
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # A tag that disagrees with the pubspec ships an APK whose About screen
+      # names a different version than its download link.
+      - name: Tag matches the pubspec version
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          want=$(sed -n -E 's/^version: ([^+]+).*/\1/p' app/pubspec.yaml)
+          [ "${GITHUB_REF_NAME#v}" = "$want" ] || { echo "::error::tag $GITHUB_REF_NAME but pubspec says $want"; exit 1; }
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The version app/.fvmrc pins, so CI builds what was tested locally.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      # One step per secret, so the job holds only what it uses even if the
+      # project grows rows for other Wird jobs.
+      - name: Keystore
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEYSTORE_P12
+          export-type: env
+      - name: Keystore password
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEYSTORE_PASSWORD
+          export-type: env
+      - name: Key alias
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEY_ALIAS
+          export-type: env
+      - name: Key password
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEY_PASSWORD
+          export-type: env
+      - name: Store access key
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_MODELS_S3_ACCESS_KEY
+          export-type: env
+      - name: Store secret
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_MODELS_S3_SECRET
+          export-type: env
+
+      # GitHub masks only `secrets.*`. An unmasked Infisical value has leaked
+      # in this estate before.
+      #
+      # An empty value must stop the build: app/android/app/build.gradle.kts
+      # falls back to the debug key when key.properties names no store, and a
+      # debug-signed APK can never be updated by a real one.
+      - name: Write key.properties
+        run: |
+          set -euo pipefail
+          for v in WIRD_ANDROID_KEYSTORE_P12 WIRD_ANDROID_KEYSTORE_PASSWORD WIRD_ANDROID_KEY_ALIAS \
+                   WIRD_ANDROID_KEY_PASSWORD WIRD_MODELS_S3_ACCESS_KEY WIRD_MODELS_S3_SECRET; do
+            [ -n "${!v:-}" ] || { echo "::error::Infisical returned no $v"; exit 1; }
+            # The alias is not secret, and masking it ("wird") would blank the
+            # bucket name and every URL in the logs and the summary.
+            [ "$v" = WIRD_ANDROID_KEY_ALIAS ] || echo "::add-mask::${!v}"
+          done
+          printf '%s' "$WIRD_ANDROID_KEYSTORE_P12" | base64 -d > "$RUNNER_TEMP/release.p12"
+          # key.properties is read by java.util.Properties: in a value, a
+          # backslash starts an escape and leading spaces are dropped. Escape
+          # both, so a password is read back exactly as stored.
+          prop() { local v=${2//\\/\\\\}; [ "${v:0:1}" != ' ' ] || v="\\$v"; printf '%s=%s\n' "$1" "$v"; }
+          {
+            prop storeFile "$RUNNER_TEMP/release.p12"
+            prop storePassword "$WIRD_ANDROID_KEYSTORE_PASSWORD"
+            prop keyAlias "$WIRD_ANDROID_KEY_ALIAS"
+            prop keyPassword "$WIRD_ANDROID_KEY_PASSWORD"
+          } > app/android/key.properties
+
+      # arm64 only: /download/android serves one file, and every phone Wird
+      # targets is 64-bit. --split-per-abi still matters, because it is what
+      # keeps sherpa_onnx's other-ABI libonnxruntime.so out (build.gradle.kts).
+      # No force-version-code-ignoring-abi: that flag is for walk builds, and a
+      # release keeps the per-ABI version code.
+      - name: Build
+        working-directory: app
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64
+
+      # The second line of defence for the fallback above, checked on the
+      # artifact itself rather than on the inputs.
+      - name: Signed with the release key
+        run: |
+          set -euo pipefail
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          certs=$("$apksigner" verify --print-certs app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk)
+          echo "$certs"
+          if grep -q 'CN=Android Debug' <<<"$certs"; then echo "::error::signed with the debug key"; exit 1; fi
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.p12" app/android/key.properties
+
+      # The key names the build's digest (deploy.md, ADR 0018): a published key
+      # is never overwritten, so a phone resuming a download cannot get half of
+      # one build and half of another.
+      #
+      # aws s3 cp goes multipart above 8 MB. A single PUT through s3.bnei.dev
+      # is cut at 60 s with a 502, and an APK is well over that threshold.
+      #
+      # The two checksum settings: AWS CLI 2.23+ adds CRC checksums to every
+      # upload by default, which S3-compatible stores do not all accept, and the
+      # failure reads like a signature fault. Send them only when required.
+      #
+      # ponytail: old android/ objects are never deleted and Garage has no
+      # lifecycle. Fine at one tag now and then; prune here if they pile up.
+      - name: Upload
+        id: upload
+        env:
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          AWS_ACCESS_KEY_ID: ${{ env.WIRD_MODELS_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.WIRD_MODELS_S3_SECRET }}
+        run: |
+          set -euo pipefail
+          aws configure set default.s3.addressing_style path
+          apk=app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          key="android/wird-$(sha256sum "$apk" | cut -c1-12).apk"
+          aws s3 cp "$apk" "s3://$BUCKET/$key" --content-type application/vnd.android.package-archive
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+          echo "Uploaded \`$key\` ($(du -h "$apk" | cut -f1))." >> "$GITHUB_STEP_SUMMARY"
+
+      # Only a tag publishes. The bump goes to main, the branch ArgoCD reads,
+      # whatever ref this run checked out. Pushing with GITHUB_TOKEN triggers
+      # no workflow, and release.yml ignores helm/** anyway, so no loop.
+      - name: Publish to /download/android
+        if: github.ref_type == 'tag'
+        env:
+          KEY: ${{ steps.upload.outputs.key }}
+        run: |
+          set -euo pipefail
+          git fetch -q origin main
+          git checkout -q -B main origin/main
+          # Matches the line after `- name: WIRD_APK_KEY` only.
+          sed -i -E "/^  - name: WIRD_APK_KEY$/{n;s|^(    value: ).*|\1\"${KEY}\"|}" helm/values.yaml
+          # A sed that stops matching would leave the old build published and
+          # this run green. Silence must not read as success.
+          grep -A1 -x '  - name: WIRD_APK_KEY' helm/values.yaml | grep -qx "    value: \"${KEY}\"" || {
+            echo "::error::WIRD_APK_KEY was not bumped — check the sed against helm/values.yaml"
+            exit 1
+          }
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add helm/values.yaml
+          git diff --cached --quiet && { echo "WIRD_APK_KEY already at ${KEY}"; exit 0; }
+          git commit -q -m "chore(deploy): publish ${GITHUB_REF_NAME} at /download/android"
+          # release.yml can push its own bump between the fetch and this push.
+          git pull -q --rebase origin main
+          git push -q origin main
+          echo "Published ${GITHUB_REF_NAME}: https://wird.bnei.dev/download/android once ArgoCD syncs." >> "$GITHUB_STEP_SUMMARY"

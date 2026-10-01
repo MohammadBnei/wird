@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/styles.css">
+<script src="_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#101220;color:var(--color-text);font-family:var(--font-body)}
+a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
+.ar{font-family:"Scheherazade New",serif}
+</style>
+</helmet>
+
+<section id="prayer" style="padding:44px 48px 60px">
+<sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;align-items:baseline;gap:10px">
+    <span style="font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:var(--color-accent-800);color:var(--color-accent-100);border-radius:4px">Prayer</span>
+    <span style="font:500 15px var(--font-heading)">Prepare, then pray</span>
+  </div>
+  <p style="margin:10px 0 0;max-width:820px;font-size:12.5px;line-height:1.65;color:color-mix(in srgb,#e9e9ed 64%,transparent);text-wrap:pretty">One setup screen. A prayer is a preset for the number of rakʿahs, which you can still change. The timeline follows that number, and each passage is chosen from the whole Qur'an with search. Both phones are live.</p>
+</sc-if>
+
+  <div style="display:flex;flex-wrap:wrap;gap:40px;margin-top:28px;align-items:flex-start">
+
+<div id="A" style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:11.5px;color:color-mix(in srgb,#e9e9ed 60%,transparent)"><b style="font-weight:600;color:var(--color-accent-300)">A</b> · Prepare</div>
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ yes }}" hint-size="412px,892px">
+<div data-screen-label="Prepare" style="height:812px;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden;position:relative">
+
+  <div style="flex:none;display:flex;align-items:center;gap:6px;padding:8px 16px 8px 8px">
+    <button class="btn btn-icon btn-ghost" aria-label="Back" style="width:40px;height:40px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 5-7 7 7 7"></path></svg></button>
+    <div style="flex:1;font-size:17px">Prepare prayer</div>
+  </div>
+
+  <div style="flex:1;min-height:0;overflow-y:auto;padding:4px 18px 18px">
+
+    <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 58%,transparent)">Prayer</div>
+    <div onClick="{{ onPreset }}" style="margin-top:8px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;padding:3px;border-radius:var(--radius-lg);background:var(--color-surface)">
+      <sc-for list="{{ presets }}" as="p" hint-placeholder-count="5">
+        <button data-p="{{ p.id }}" style="height:44px;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;font:inherit;font-size:12.5px;white-space:nowrap;cursor:pointer;background:{{ p.bg }};color:{{ p.col }};border:1px solid {{ p.bd }}">{{ p.name }}</button>
+      </sc-for>
+    </div>
+    <div style="margin-top:6px;display:flex;align-items:center;gap:10px;padding:7px 8px 7px 14px;border-radius:var(--radius-lg);background:var(--color-surface)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px">Rakʿahs</div>
+        <div style="font-size:11.5px;margin-top:2px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ rakHint }}</div>
+      </div>
+      <button class="btn btn-icon btn-secondary" onClick="{{ rakDec }}" aria-label="Fewer rakʿahs" style="width:36px;height:36px">−</button>
+      <span style="min-width:18px;text-align:center;font-size:16px">{{ rakN }}</span>
+      <button class="btn btn-icon btn-secondary" onClick="{{ rakInc }}" aria-label="More rakʿahs" style="width:36px;height:36px">+</button>
+    </div>
+
+    <div style="margin-top:22px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 58%,transparent)">What you recite</div>
+    <div onClick="{{ onOpenChooser }}" style="margin-top:10px;display:flex;flex-direction:column">
+      <sc-for list="{{ timeline }}" as="t" hint-placeholder-count="3">
+        <div style="display:flex;gap:12px">
+          <div style="flex:none;width:26px;display:flex;flex-direction:column;align-items:center">
+            <span style="flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;border:1px solid {{ t.cbd }};color:{{ t.ccol }}">{{ t.r }}</span>
+            <span style="flex:1;width:1px;margin:4px 0;background:var(--color-divider);opacity:{{ t.lineOp }}"></span>
+          </div>
+          <div style="flex:1;min-width:0;padding:4px 0 14px">
+            <div style="font-size:12.5px;color:color-mix(in srgb,#e9e9ed 62%,transparent)">Al-Fātiḥa</div>
+            <sc-if value="{{ t.rec }}" hint-placeholder-val="{{ true }}">
+              <div data-r="{{ t.r }}" style="margin-top:6px;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-lg);cursor:pointer;background:{{ t.pbg }};border:1px {{ t.pbs }} {{ t.pbd }}">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14px;color:{{ t.pcol }}">{{ t.title }}</div>
+                  <div dir="rtl" class="ar" style="font-size:18px;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:color-mix(in srgb,#e9e9ed 72%,transparent);display:{{ t.prevDisp }}">{{ t.preview }}</div>
+                  <div style="font-size:11.5px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ t.meta }}</div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none;opacity:.5"><path d="m9 5 7 7-7 7"></path></svg>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="margin-top:12px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 58%,transparent)">How the text moves</div>
+    <div style="margin-top:4px;display:flex;flex-direction:column">
+      <div onClick="{{ tVoice }}" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+        <span style="flex:none;width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;border:1.5px solid {{ cbVoice.bd }};background:{{ cbVoice.bg }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-100)" stroke-width="3" style="opacity:{{ cbVoice.op }}"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></span>
+        <div style="flex:1"><div style="font-size:14px">Follow my voice</div><div style="font-size:11.5px;margin-top:2px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">Recogniser ready on this phone</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider)">
+        <span onClick="{{ tPace }}" style="flex:none;width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid {{ cbPace.bd }};background:{{ cbPace.bg }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-100)" stroke-width="3" style="opacity:{{ cbPace.op }}"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></span>
+        <div onClick="{{ tPace }}" style="flex:1;cursor:pointer"><div style="font-size:14px">Keep a steady pace</div><div style="font-size:11.5px;margin-top:2px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ wpm }} words a minute</div></div>
+        <button class="btn btn-icon btn-secondary" onClick="{{ wpmDec }}" aria-label="Slower" style="width:32px;height:32px;opacity:{{ cbPace.ctl }}">−</button>
+        <button class="btn btn-icon btn-secondary" onClick="{{ wpmInc }}" aria-label="Faster" style="width:32px;height:32px;opacity:{{ cbPace.ctl }}">+</button>
+      </div>
+      <p style="margin:8px 0 0;font-size:12px;line-height:1.5;color:color-mix(in srgb,#e9e9ed 66%,transparent);text-wrap:pretty">{{ moveNote }}</p>
+    </div>
+
+    <div style="margin-top:22px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 58%,transparent)">On screen</div>
+    <div style="margin-top:4px;display:flex;flex-direction:column">
+      <div onClick="{{ tGloss }}" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+        <span style="flex:1;font-size:14px">Meaning of the current word</span>
+        <span style="flex:none;width:40px;height:24px;border-radius:12px;position:relative;background:{{ swGloss.bg }}"><span style="position:absolute;top:3px;left:{{ swGloss.x }};width:18px;height:18px;border-radius:50%;background:{{ swGloss.k }};transition:left .15s"></span></span>
+      </div>
+      <div onClick="{{ tAround }}" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+        <span style="flex:1;font-size:14px">Previous and next aya, faded</span>
+        <span style="flex:none;width:40px;height:24px;border-radius:12px;position:relative;background:{{ swAround.bg }}"><span style="position:absolute;top:3px;left:{{ swAround.x }};width:18px;height:18px;border-radius:50%;background:{{ swAround.k }};transition:left .15s"></span></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider)">
+        <div style="flex:1"><div style="font-size:14px">Arabic size</div><div style="font-size:11.5px;margin-top:2px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">Pinch on the prayer screen to change it</div></div>
+        <span style="font-size:13px;color:color-mix(in srgb,#e9e9ed 70%,transparent)">{{ size }} px</span>
+      </div>
+      <div onClick="{{ tDnd }}" style="display:flex;align-items:center;gap:12px;padding:11px 0;cursor:pointer">
+        <span style="flex:1;font-size:14px">Silence notifications</span>
+        <span style="flex:none;width:40px;height:24px;border-radius:12px;position:relative;background:{{ swDnd.bg }}"><span style="position:absolute;top:3px;left:{{ swDnd.x }};width:18px;height:18px;border-radius:50%;background:{{ swDnd.k }};transition:left .15s"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:none;display:flex;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--color-divider)">
+    <button class="btn btn-secondary" onClick="{{ openPreview }}" style="flex:none;height:52px;padding:0 18px;font-size:14px;gap:8px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="2.8"></circle></svg>Preview</button>
+    <button class="btn btn-primary" onClick="{{ begin }}" style="flex:1;height:52px;font-size:15px">Begin {{ prayerName }}</button>
+  </div>
+
+  <sc-if value="{{ pvOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closePreview }}" style="position:absolute;inset:0;background:rgba(6,7,12,.6)"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;height:78%;display:flex;flex-direction:column;border-radius:20px 20px 0 0;overflow:hidden;box-shadow:var(--shadow-lg);background:radial-gradient(120% 70% at 50% 38%,#1b1d31 0%,var(--color-bg) 62%)">
+      <div style="flex:none;display:flex;align-items:center;gap:10px;padding:10px 12px 8px 18px;border-bottom:1px solid var(--color-divider);background:var(--color-surface)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px">Preview · Rakʿah {{ pvR }}</div>
+          <div style="font-size:11.5px;margin-top:1px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ pvPart }}</div>
+        </div>
+        <button class="btn btn-icon btn-ghost" onClick="{{ pvRestart }}" aria-label="Restart" style="width:36px;height:36px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"></path></svg></button>
+        <button class="btn btn-icon btn-ghost" onClick="{{ closePreview }}" aria-label="Close preview" style="width:36px;height:36px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+      </div>
+
+      <div onClick="{{ pvTap }}" style="flex:1;min-height:0;display:flex;flex-direction:column;padding:0 22px;cursor:pointer">
+        <div style="flex:none;height:{{ pvPrevH }};display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;padding-bottom:4px">
+          <div dir="rtl" class="ar" style="font-size:22px;line-height:1.85;text-align:center;color:color-mix(in srgb,#e9e9ed 30%,transparent)">{{ pvPrev }}</div>
+        </div>
+        <div ref="{{ pvWinRef }}" style="flex:1;min-height:0;overflow:hidden;position:relative;padding-top:8px">
+          <div dir="rtl" class="ar" style="display:flex;flex-wrap:wrap;gap:0 {{ wordGap }};justify-content:center;align-items:baseline;font-size:{{ arSize }};line-height:1.9">
+            <sc-for list="{{ pvWords }}" as="w" hint-placeholder-count="4">
+              <span data-cur="{{ w.cur }}" style="color:{{ w.col }};text-shadow:{{ w.glow }};transition:color .25s,text-shadow .25s">{{ w.ar }}</span>
+            </sc-for>
+          </div>
+          <div dir="rtl" class="ar" style="margin-top:12px;font-size:22px;line-height:1.85;text-align:center;opacity:{{ pvNextOp }};color:color-mix(in srgb,#e9e9ed 22%,transparent)">{{ pvNext }}</div>
+        </div>
+        <div style="flex:none;padding:10px 0 12px;opacity:{{ glossOp }}">
+          <div style="height:1px;margin:0 34px;background:repeating-linear-gradient(to right,color-mix(in srgb,#e9e9ed 20%,transparent) 0 2px,transparent 2px 8px)"></div>
+          <p style="margin:10px 0 0;text-align:center;font-size:17px;line-height:1.45;color:color-mix(in srgb,#e9e9ed 82%,transparent)">{{ pvGloss }}</p>
+        </div>
+      </div>
+
+      <div style="flex:none;padding:10px 18px 14px;border-top:1px solid var(--color-divider);background:var(--color-surface);display:flex;flex-direction:column;gap:10px">
+        <div style="height:2px;border-radius:2px;background:var(--color-neutral-800);overflow:hidden"><div style="height:100%;width:{{ pvPct }};background:var(--color-accent);transition:width .3s"></div></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="flex:1;min-width:0;font-size:11.5px;color:color-mix(in srgb,#e9e9ed 66%,transparent)">{{ pvMode }}</span>
+          <div onClick="{{ pvPick }}" style="display:flex;gap:3px;padding:3px;border-radius:8px;background:var(--color-bg)">
+            <sc-for list="{{ pvTabs }}" as="t" hint-placeholder-count="2">
+              <button data-pv="{{ t.r }}" style="height:28px;padding:0 10px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer;background:{{ t.bg }};color:{{ t.col }};border:1px solid {{ t.bd }}">R{{ t.r }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="flex:1;font-size:12.5px">Arabic size</span>
+          <button class="btn btn-icon btn-secondary" onClick="{{ sizeDown }}" aria-label="Smaller" style="width:32px;height:32px">−</button>
+          <span style="min-width:44px;text-align:center;font-size:13px">{{ size }} px</span>
+          <button class="btn btn-icon btn-secondary" onClick="{{ sizeUp }}" aria-label="Larger" style="width:32px;height:32px">+</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ chOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:var(--color-bg);display:flex;flex-direction:column">
+      <div style="flex:none;display:flex;align-items:center;gap:6px;padding:8px 16px 4px 8px">
+        <button class="btn btn-icon btn-ghost" onClick="{{ chBack }}" aria-label="Back" style="width:40px;height:40px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="{{ chBackIcon }}"></path></svg></button>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px">{{ chTitle }}</div>
+          <div style="font-size:11.5px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">Rakʿah {{ chR }} · after Al-Fātiḥa</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ chList }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:none;padding:6px 18px 8px">
+          <div style="display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:var(--radius-lg);background:var(--color-surface);border:1px solid var(--color-divider)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="flex:none;opacity:.6"><circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path></svg>
+            <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search a sūra, or type 2:255" style="flex:1;min-width:0;height:100%;background:transparent;border:0;outline:none;color:var(--color-text);font:inherit;font-size:14px">
+          </div>
+        </div>
+        <div onClick="{{ onChPick }}" style="flex:1;min-height:0;overflow-y:auto;padding:0 18px 20px">
+          <sc-if value="{{ showRef }}" hint-placeholder-val="{{ false }}">
+            <div data-ref="1" style="display:flex;align-items:center;gap:12px;padding:12px;margin-top:4px;border-radius:var(--radius-lg);background:var(--color-accent-900);border:1px solid var(--color-accent-700);cursor:pointer">
+              <div style="flex:1"><div style="font-size:14px;color:var(--color-accent-100)">Go to {{ refLabel }}</div><div style="font-size:11.5px;margin-top:2px;color:color-mix(in srgb,#e9e9ed 66%,transparent)">Starts at this aya; you can widen it next</div></div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity:.6"><path d="m9 5 7 7-7 7"></path></svg>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showSugg }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:8px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 55%,transparent)">Suggested</div>
+            <sc-for list="{{ sugg }}" as="s" hint-placeholder-count="4">
+              <div data-sg="{{ s.k }}" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+                <div style="flex:1;min-width:0"><div style="font-size:14px">{{ s.title }}</div><div style="font-size:11.5px;margin-top:2px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ s.sub }}</div></div>
+                <span style="flex:none;width:8px;height:8px;border-radius:50%;background:{{ s.dot }}"></span>
+              </div>
+            </sc-for>
+            <div style="margin-top:16px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 55%,transparent)">All sūras</div>
+          </sc-if>
+          <sc-for list="{{ suraRows }}" as="s" hint-placeholder-count="8">
+            <div data-n="{{ s.n }}" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+              <span style="flex:none;width:30px;font-size:12px;color:color-mix(in srgb,#e9e9ed 50%,transparent)">{{ s.n }}</span>
+              <span style="flex:1;min-width:0;font-size:14px">{{ s.name }}</span>
+              <span style="flex:none;font-size:11.5px;color:color-mix(in srgb,#e9e9ed 55%,transparent)">{{ s.count }} ayas</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ noHits }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:20px 0 0;font-size:13px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">No sūra matches “{{ q }}”.</p>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ chRange }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:10px 18px 18px">
+          <div style="padding:14px;border-radius:var(--radius-lg);background:var(--color-surface)">
+            <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-300)">{{ rgRef }}</div>
+            <div dir="rtl" class="ar" style="margin-top:6px;font-size:24px;line-height:1.75;text-wrap:pretty">{{ rgPreview }}</div>
+            <div style="font-size:11.5px;margin-top:4px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ rgMeta }}</div>
+          </div>
+          <div style="margin-top:10px;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+              <span style="flex:1;font-size:14px">From aya</span>
+              <button class="btn btn-icon btn-secondary" onClick="{{ fromDec }}" aria-label="Earlier" style="width:36px;height:36px">−</button>
+              <span style="min-width:30px;text-align:center;font-size:16px">{{ rgFrom }}</span>
+              <button class="btn btn-icon btn-secondary" onClick="{{ fromInc }}" aria-label="Later" style="width:36px;height:36px">+</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+              <span style="flex:1;font-size:14px">To aya</span>
+              <button class="btn btn-icon btn-secondary" onClick="{{ toDec }}" aria-label="Fewer" style="width:36px;height:36px">−</button>
+              <span style="min-width:30px;text-align:center;font-size:16px">{{ rgTo }}</span>
+              <button class="btn btn-icon btn-secondary" onClick="{{ toInc }}" aria-label="More" style="width:36px;height:36px">+</button>
+            </div>
+          </div>
+          <div onClick="{{ onSpan }}" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">
+            <sc-for list="{{ spans }}" as="c" hint-placeholder-count="3">
+              <button data-sp="{{ c.k }}" style="height:32px;padding:0 12px;border-radius:16px;font:inherit;font-size:12.5px;cursor:pointer;background:{{ c.bg }};color:{{ c.col }};border:1px solid {{ c.bd }}">{{ c.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:none;padding:12px 18px 16px;border-top:1px solid var(--color-divider)">
+          <button class="btn btn-primary btn-block" onClick="{{ useRange }}" style="height:50px;font-size:14.5px">Recite {{ rgTitle }}</button>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-import>
+</div>
+
+<div id="B" style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:11.5px;color:color-mix(in srgb,#e9e9ed 60%,transparent)"><b style="font-weight:600;color:var(--color-accent-300)">B</b> · In prayer</div>
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ yes }}" hint-size="412px,892px">
+<div data-screen-label="In prayer" style="height:812px;display:flex;flex-direction:column;background:radial-gradient(120% 70% at 50% 38%,#1b1d31 0%,var(--color-bg) 62%);color:var(--color-text);font-family:var(--font-body);overflow:hidden;position:relative">
+
+  <div style="flex:none;display:flex;align-items:flex-start;justify-content:space-between;padding:14px 20px 0">
+    <div>
+      <div style="font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent-300)">{{ prayerLabel }} · Rakʿah {{ rak }} of {{ rakN }}</div>
+      <div style="font-size:12px;margin-top:4px;color:color-mix(in srgb,#e9e9ed 55%,transparent)">{{ partName }}</div>
+    </div>
+    <button class="btn btn-ghost" onClick="{{ exit }}" style="font-size:13px;color:color-mix(in srgb,#e9e9ed 62%,transparent)">Exit</button>
+  </div>
+
+  <div ref="{{ readRef }}" onPointerDown="{{ pDown }}" onPointerMove="{{ pMove }}" onPointerUp="{{ pUp }}" onPointerCancel="{{ pUp }}" onClick="{{ prayerTap }}" style="flex:1;min-height:0;display:flex;flex-direction:column;padding:0 22px;touch-action:none;position:relative">
+    <div style="flex:none;height:{{ prevH }};display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;padding-bottom:4px;transition:height .2s">
+      <div dir="rtl" class="ar" style="font-size:24px;line-height:1.85;text-align:center;opacity:{{ aroundOp }};color:color-mix(in srgb,#e9e9ed 30%,transparent)">{{ prevAya }}</div>
+    </div>
+
+    <div ref="{{ winRef }}" style="flex:1;min-height:0;overflow:hidden;position:relative;padding-top:10px">
+      <div dir="rtl" class="ar" style="display:flex;flex-wrap:wrap;gap:0 {{ wordGap }};justify-content:center;align-items:baseline;font-size:{{ arSize }};line-height:1.9">
+        <sc-for list="{{ ayaWords }}" as="w" hint-placeholder-count="4">
+          <span data-cur="{{ w.cur }}" style="color:{{ w.col }};text-shadow:{{ w.glow }};transition:color .25s,text-shadow .25s">{{ w.ar }}</span>
+        </sc-for>
+      </div>
+      <div dir="rtl" class="ar" style="margin-top:14px;font-size:24px;line-height:1.85;text-align:center;opacity:{{ nextOp }};color:color-mix(in srgb,#e9e9ed 22%,transparent)">{{ nextAya }}</div>
+    </div>
+
+    <div style="flex:none;padding:12px 0 16px;opacity:{{ glossOp }}">
+      <div style="height:1px;margin:0 34px;background:repeating-linear-gradient(to right,color-mix(in srgb,#e9e9ed 20%,transparent) 0 2px,transparent 2px 8px)"></div>
+      <p style="margin:12px 0 0;text-align:center;font-size:18px;line-height:1.45;color:color-mix(in srgb,#e9e9ed 82%,transparent)">{{ curGloss }}</p>
+    </div>
+
+    <sc-if value="{{ sizeFlash }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:50%;top:40px;transform:translateX(-50%);padding:6px 12px;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-md);font-size:12px;white-space:nowrap">{{ size }} px · remembered</div>
+    </sc-if>
+  </div>
+
+  <div style="flex:none;padding:0 22px 22px">
+    <div style="height:2px;border-radius:2px;background:var(--color-neutral-800);overflow:hidden"><div style="height:100%;width:{{ rakPct }};background:var(--color-accent);transition:width .3s"></div></div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+      <span style="flex:1;display:flex;align-items:center;gap:7px;font-size:11px;color:color-mix(in srgb,#e9e9ed 58%,transparent)"><span style="width:6px;height:6px;border-radius:50%;background:var(--color-accent);box-shadow:0 0 8px var(--color-accent)"></span>{{ modeLabel }}</span>
+      <div style="display:flex;gap:7px">
+        <sc-for list="{{ dots }}" as="d" hint-placeholder-count="3">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ d.bg }};box-shadow:{{ d.glow }}"></span>
+        </sc-for>
+      </div>
+      <span style="flex:1;text-align:right;font-size:11px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ rak }} of {{ rakN }}</span>
+    </div>
+  </div>
+
+  <sc-if value="{{ isBetween }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ prayerTap }}" style="position:absolute;inset:0;background:rgba(9,10,17,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer">
+      <div style="font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 40%,transparent)">Rakʿah {{ nextRak }} of {{ rakN }}</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:color-mix(in srgb,#e9e9ed 45%,transparent)"><span style="width:6px;height:6px;border-radius:50%;background:var(--color-accent-700)"></span>{{ waitLabel }}</div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:rgba(9,10,17,.94);display:flex;align-items:center;justify-content:center">
+      <div style="font-size:13px;color:color-mix(in srgb,#e9e9ed 42%,transparent)">Prayer complete</div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isIdle }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:var(--color-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 40px;text-align:center">
+      <div style="font-size:14px">Back where you were</div>
+      <div style="font-size:12.5px;line-height:1.5;color:color-mix(in srgb,#e9e9ed 58%,transparent)">The reader reopens at Al-Fātiḥa 1:4, word 11. Nothing else changes.</div>
+      <button class="btn btn-secondary" onClick="{{ begin }}" style="margin-top:12px;height:38px">Run the prayer again</button>
+    </div>
+  </sc-if>
+</div>
+</x-import>
+</div>
+
+<sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+<div style="max-width:300px;display:flex;flex-direction:column;gap:16px;padding-top:26px">
+  <div style="display:flex;flex-direction:column;gap:9px;font-size:12.5px;line-height:1.55">
+    <div style="display:flex;gap:10px"><span style="flex:none;width:72px;color:var(--color-accent-300)">Preset</span><span style="color:color-mix(in srgb,#e9e9ed 76%,transparent)">A prayer sets the rakʿahs. The stepper changes them freely, for example 2 for a shortened prayer while travelling.</span></div>
+    <div style="display:flex;gap:10px"><span style="flex:none;width:72px;color:var(--color-accent-300)">Choosing</span><span style="color:color-mix(in srgb,#e9e9ed 76%,transparent)">Tap a rakʿah's passage. Search by sūra name or number, or type a reference such as 2:255, then set the range.</span></div>
+    <div style="display:flex;gap:10px"><span style="flex:none;width:72px;color:var(--color-accent-300)">Voice + pace</span><span style="color:color-mix(in srgb,#e9e9ed 76%,transparent)">Both can be on, but they don't run together: your voice leads, and the pace only takes over when the recogniser loses you.</span></div>
+    <div style="display:flex;gap:10px"><span style="flex:none;width:72px;color:var(--color-accent-300)">Steady line</span><span style="color:color-mix(in srgb,#e9e9ed 76%,transparent)">The current line holds a third of the way down, whatever the size.</span></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--color-divider)">
+    <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 50%,transparent)">Demo controls</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" onClick="{{ sizeDown }}" style="flex:1">Pinch in</button>
+      <button class="btn btn-secondary" onClick="{{ sizeUp }}" style="flex:1">Pinch out</button>
+    </div>
+    <button class="btn btn-secondary" onClick="{{ skipEnd }}">Skip to the end of this rakʿah</button>
+    <div style="font-size:11px;line-height:1.5;color:color-mix(in srgb,#e9e9ed 48%,transparent)">Voice is simulated at the chosen pace. Only Al-Fātiḥa, Al-Baqara 1–5, Al-ʿAṣr, Al-Ikhlāṣ and Al-Kawthar have their text in this mockup.</div>
+  </div>
+</div>
+</sc-if>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;demoSpeed&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1×&quot;,&quot;2×&quot;,&quot;4×&quot;],&quot;default&quot;:&quot;2×&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Demo speed&quot;}}">
+const mk = (sura, rows) => rows.map((row, ai) => row.map(([ar, gl, glFr]) => ({ ar, gl, glFr, aya: sura + ':' + (ai + 1) })));
+// Wird adaptation: the page's language picks the corpus gloss.
+const G = (w, fr) => (fr && w.glFr) || w.gl;
+// Wird adaptation: the Qur'an text and glosses come from the corpus
+// (scripts/site-data.py), never typed by hand.
+const FATIHA = mk(1, window.WIRD_SITE.prayer[1]);
+const TEXT = Object.fromEntries([2, 103, 108, 112].map(n => [n, mk(n, window.WIRD_SITE.prayer[n])]));
+const SURAS = 'Al-Fātiḥa 7|Al-Baqara 286|Āl ʿImrān 200|An-Nisāʾ 176|Al-Māʾida 120|Al-Anʿām 165|Al-Aʿrāf 206|Al-Anfāl 75|At-Tawba 129|Yūnus 109|Hūd 123|Yūsuf 111|Ar-Raʿd 43|Ibrāhīm 52|Al-Ḥijr 99|An-Naḥl 128|Al-Isrāʾ 111|Al-Kahf 110|Maryam 98|Ṭā Hā 135|Al-Anbiyāʾ 112|Al-Ḥajj 78|Al-Muʾminūn 118|An-Nūr 64|Al-Furqān 77|Ash-Shuʿarāʾ 227|An-Naml 93|Al-Qaṣaṣ 88|Al-ʿAnkabūt 69|Ar-Rūm 60|Luqmān 34|As-Sajda 30|Al-Aḥzāb 73|Sabaʾ 54|Fāṭir 45|Yā Sīn 83|Aṣ-Ṣāffāt 182|Ṣād 88|Az-Zumar 75|Ghāfir 85|Fuṣṣilat 54|Ash-Shūrā 53|Az-Zukhruf 89|Ad-Dukhān 59|Al-Jāthiya 37|Al-Aḥqāf 35|Muḥammad 38|Al-Fatḥ 29|Al-Ḥujurāt 18|Qāf 45|Adh-Dhāriyāt 60|Aṭ-Ṭūr 49|An-Najm 62|Al-Qamar 55|Ar-Raḥmān 78|Al-Wāqiʿa 96|Al-Ḥadīd 29|Al-Mujādila 22|Al-Ḥashr 24|Al-Mumtaḥana 13|Aṣ-Ṣaff 14|Al-Jumuʿa 11|Al-Munāfiqūn 11|At-Taghābun 18|Aṭ-Ṭalāq 12|At-Taḥrīm 12|Al-Mulk 30|Al-Qalam 52|Al-Ḥāqqa 52|Al-Maʿārij 44|Nūḥ 28|Al-Jinn 28|Al-Muzzammil 20|Al-Muddaththir 56|Al-Qiyāma 40|Al-Insān 31|Al-Mursalāt 50|An-Nabaʾ 40|An-Nāziʿāt 46|ʿAbasa 42|At-Takwīr 29|Al-Infiṭār 19|Al-Muṭaffifīn 36|Al-Inshiqāq 25|Al-Burūj 22|Aṭ-Ṭāriq 17|Al-Aʿlā 19|Al-Ghāshiya 26|Al-Fajr 30|Al-Balad 20|Ash-Shams 15|Al-Layl 21|Aḍ-Ḍuḥā 11|Ash-Sharḥ 8|At-Tīn 8|Al-ʿAlaq 19|Al-Qadr 5|Al-Bayyina 8|Az-Zalzala 8|Al-ʿĀdiyāt 11|Al-Qāriʿa 11|At-Takāthur 8|Al-ʿAṣr 3|Al-Humaza 9|Al-Fīl 5|Quraysh 4|Al-Māʿūn 7|Al-Kawthar 3|Al-Kāfirūn 6|An-Naṣr 3|Al-Masad 5|Al-Ikhlāṣ 4|Al-Falaq 5|An-Nās 6'
+  .split('|').map((s, i) => { const k = s.lastIndexOf(' '); return { n: i + 1, name: s.slice(0, k), count: Number(s.slice(k + 1)) }; });
+const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[ʿʾ'’`\-\s]/g, '').toLowerCase();
+SURAS.forEach(s => { s.key = norm(s.name); s.bare = s.key.replace(/^(al|an|ar|as|at|ad|ash|az|adh)/, ''); });
+
+const PRESETS = [
+  { id: 'fajr', name: 'Fajr', n: 2 }, { id: 'zuhr', name: 'Ẓuhr', n: 4 }, { id: 'asr', name: 'ʿAṣr', n: 4 },
+  { id: 'maghrib', name: 'Maghrib', n: 3 }, { id: 'isha', name: 'ʿIshāʾ', n: 4 }
+];
+const SIZE_KEY = 'wird-prayer-arabic-size';
+const on = { bg: 'var(--color-accent-700)', k: 'var(--color-accent-100)', x: '19px' };
+const off = { bg: 'var(--color-neutral-800)', k: 'var(--color-neutral-500)', x: '3px' };
+const cb = (v) => v ? { bd: 'var(--color-accent)', bg: 'var(--color-accent-700)', op: 1, ctl: 1 } : { bd: 'var(--color-neutral-600)', bg: 'transparent', op: 0, ctl: 0.4 };
+const chipSt = (sel) => sel ? { bg: 'var(--color-accent-900)', col: 'var(--color-accent-100)', bd: 'var(--color-accent)' } : { bg: 'var(--color-surface)', col: 'var(--color-text)', bd: 'var(--color-divider)' };
+
+const range = (x) => x.from === x.to ? String(x.from) : x.from + '–' + x.to;
+const titleOf = (x) => { if (!x) return 'Al-Fātiḥa only'; const s = SURAS[x.num - 1]; return x.from === 1 && x.to === s.count ? s.name : s.name + ' ' + range(x); };
+const previewOf = (x) => x && TEXT[x.num] && TEXT[x.num][x.from - 1] ? TEXT[x.num][x.from - 1].map(w => w.ar).join(' ') : '';
+const wordsOf = (x) => { if (!x) return 0; const t = TEXT[x.num]; let n = 0; for (let a = x.from; a <= x.to; a++) n += t && t[a - 1] ? t[a - 1].length : 12; return n; };
+
+class Component extends DCLogic {
+  state = {
+    preset: 'maghrib', n: 3, sel: { 1: { num: 2, from: 1, to: 3 }, 2: { same: true } },
+    voice: true, pace: true, wpm: 40, gloss: true, around: true, dnd: true,
+    ch: null, pv: null,
+    phase: 'reading', rak: 1, w: 0, size: 52, sizeFlash: false
+  };
+  winRef = React.createRef();
+  pvWinRef = React.createRef();
+
+  pvSchedule() {
+    clearTimeout(this.pvT);
+    const pv = this.state.pv;
+    if (!pv || !this.moving()) return;
+    const len = this.wordsFor(pv.r).length;
+    if (pv.w + 1 >= len) { this.pvT = setTimeout(() => this.setState(s => s.pv ? { pv: { ...s.pv, w: 0 } } : null, () => this.pvSchedule()), 1600); return; }
+    this.pvT = setTimeout(() => this.setState(s => s.pv ? { pv: { ...s.pv, w: s.pv.w + 1 } } : null, () => { this.pvFollowSoon(); this.pvSchedule(); }), 60000 / this.state.wpm / this.speed());
+  }
+  pvFollowSoon() {
+    cancelAnimationFrame(this.pvRaf);
+    this.pvRaf = requestAnimationFrame(() => { this.pvRaf = requestAnimationFrame(() => this.followIn(this.pvWinRef.current, 'pv')); });
+  }
+  firstPassageWord(r) { return Math.max(0, this.wordsFor(r).findIndex(w => w.ai >= FATIHA.length)); }
+
+  componentDidMount() {
+    try { const s = Number(localStorage.getItem(SIZE_KEY)); if (s >= 30 && s <= 88) this.setState({ size: s }); } catch (_) {}
+    this.schedule();
+  }
+  componentWillUnmount() { clearTimeout(this.t); clearTimeout(this.ft); clearTimeout(this.pvT); cancelAnimationFrame(this.raf); cancelAnimationFrame(this.pvRaf); }
+  componentDidUpdate() {
+    cancelAnimationFrame(this.raf);
+    this.raf = requestAnimationFrame(() => { this.raf = requestAnimationFrame(() => this.follow()); });
+  }
+  follow() {
+    this.followIn(this.pvWinRef.current, 'pv');
+    this.followIn(this.winRef.current, 'main');
+  }
+  followIn(win, which) {
+    if (!win) return;
+    if (which === 'pv') {
+      const el = win.querySelector('[data-cur="1"]'); if (!el || !this.state.pv) return;
+      const pv = this.state.pv;
+      const key = pv.r + ':' + (this.wordsFor(pv.r)[pv.w] || {}).ai;
+      const newAya = key !== this._pvAyaKey; this._pvAyaKey = key;
+      const target = Math.max(0, el.offsetTop - Math.round(win.clientHeight * 0.3));
+      const visible = el.offsetTop >= win.scrollTop && el.offsetTop + el.offsetHeight <= win.scrollTop + win.clientHeight;
+      if (Math.abs(win.scrollTop - target) > 2) {
+        if (newAya || !visible) win.scrollTop = target;
+        else win.scrollTo({ top: target, behavior: 'smooth' });
+      }
+      return;
+    }
+    const el = win.querySelector('[data-cur="1"]'); if (!el) return;
+    const key = this.state.rak + ':' + (this.wordsFor(this.state.rak)[this.state.w] || {}).ai;
+    const newAya = key !== this._ayaKey; this._ayaKey = key;
+    const target = Math.max(0, el.offsetTop - Math.round(win.clientHeight * 0.3));
+    const visible = el.offsetTop >= win.scrollTop && el.offsetTop + el.offsetHeight <= win.scrollTop + win.clientHeight;
+    if (Math.abs(win.scrollTop - target) > 2) win.scrollTo({ top: target, behavior: newAya || !visible ? 'auto' : 'smooth' });
+  }
+
+  selFor(r) {
+    if (r > 2 || r > this.state.n) return null;
+    const x = this.state.sel[r]; if (!x) return null;
+    if (x.same) return r === 1 ? null : this.selFor(1);
+    return x.none ? null : x;
+  }
+  ayasFor(r) {
+    const ayas = [...FATIHA]; const x = this.selFor(r);
+    if (x) {
+      if (TEXT[x.num]) ayas.push(...TEXT[x.num].slice(x.from - 1, x.to));
+      else ayas.push([{ ar: '…', gl: titleOf(x) + ' (text not in this mockup)', aya: x.num + ':' + x.from }]);
+    }
+    return ayas;
+  }
+  wordsFor(r) { const out = []; this.ayasFor(r).forEach((a, ai) => a.forEach((w, wi) => out.push({ ...w, ai, wi }))); return out; }
+  speed() { const s = this.props.demoSpeed ?? '2×'; return s === '4×' ? 4 : s === '1×' ? 1 : 2; }
+  metaOf(x) { if (!x) return ''; const n = x.to - x.from + 1, sec = wordsOf(x) * 60 / this.state.wpm; return n + (n === 1 ? ' aya' : ' ayas') + ' · about ' + (sec < 60 ? Math.max(5, Math.round(sec / 5) * 5) + ' s' : Math.round(sec / 60) + ' min'); }
+  moving() { return this.state.voice || this.state.pace; }
+
+  schedule() {
+    clearTimeout(this.t);
+    const { phase } = this.state;
+    if (phase === 'reading' && this.moving()) this.t = setTimeout(() => this.advance(), 60000 / this.state.wpm / this.speed());
+    else if (phase === 'between' && this.state.voice) this.t = setTimeout(() => this.nextRak(), 3200);
+    else if (phase === 'done') this.t = setTimeout(() => this.setState({ phase: 'idle' }), 2400);
+  }
+  advance() {
+    const { rak, w } = this.state, len = this.wordsFor(rak).length;
+    if (w + 1 < len) this.setState({ w: w + 1 }, () => this.schedule());
+    else if (rak < this.state.n) this.setState({ phase: 'between' }, () => this.schedule());
+    else this.setState({ phase: 'done' }, () => this.schedule());
+  }
+  nextRak() { this.setState(s => ({ phase: 'reading', rak: s.rak + 1, w: 0 }), () => this.schedule()); }
+  start() { this.setState({ phase: 'reading', rak: 1, w: 0 }, () => this.schedule()); }
+  setN(n) { this.setState({ n: Math.max(1, Math.min(12, n)), rak: 1, w: 0 }); }
+
+  setSize(v) {
+    const size = Math.round(Math.max(30, Math.min(88, v)));
+    try { localStorage.setItem(SIZE_KEY, String(size)); } catch (_) {}
+    clearTimeout(this.ft);
+    this.setState({ size, sizeFlash: true });
+    this.ft = setTimeout(() => this.setState({ sizeFlash: false }), 1100);
+  }
+  attachWheel = (el) => {
+    if (this._el === el) return;
+    if (this._el) this._el.removeEventListener('wheel', this._wh);
+    this._el = el; if (!el) return;
+    this._wh = (e) => { if (e.ctrlKey) { e.preventDefault(); this.setSize(this.state.size * (1 - e.deltaY * 0.01)); } };
+    el.addEventListener('wheel', this._wh, { passive: false });
+  };
+
+  openRange(num, from, to) {
+    const c = SURAS[num - 1].count;
+    const f = Math.max(1, Math.min(c, from)); const t = Math.max(f, Math.min(c, to));
+    this.setState(s => ({ ch: { ...s.ch, step: 'range', num, from: f, to: t } }));
+  }
+  commit(val) { this.setState(s => ({ sel: { ...s.sel, [s.ch.r]: val }, ch: null, rak: 1, w: 0 })); }
+
+  renderVals() {
+    const fr = this.props.lang === 'fr';
+    const st = this.state, n = st.n;
+    const preset = PRESETS.find(p => p.id === st.preset);
+    const prayerName = preset ? preset.name : 'prayer';
+    const presets = PRESETS.map(p => ({ ...p, ...chipSt(p.id === st.preset), bg: p.id === st.preset ? 'var(--color-accent-900)' : 'transparent', bd: p.id === st.preset ? 'var(--color-accent)' : 'transparent' }));
+    const rakHint = !preset ? 'Any prayer, sunna or nafl' : n === preset.n ? 'Set by ' + preset.name : preset.name + ' is usually ' + preset.n;
+
+    const timeline = Array.from({ length: n }, (_, k) => {
+      const r = k + 1, x = this.selFor(r), rec = r <= 2, raw = st.sel[r];
+      const same = r === 2 && raw && raw.same && x;
+      return {
+        r, rec, lineOp: r === n ? 0 : 1,
+        cbd: rec ? 'var(--color-accent-700)' : 'var(--color-neutral-700)', ccol: rec ? 'var(--color-accent-300)' : 'color-mix(in srgb,#e9e9ed 45%,transparent)',
+        title: x ? titleOf(x) : 'Add a passage', preview: previewOf(x), prevDisp: previewOf(x) ? 'block' : 'none',
+        meta: x ? this.metaOf(x) + (same ? ' · same as rakʿah 1' : '') : 'Or recite Al-Fātiḥa only',
+        pbg: x ? 'var(--color-surface)' : 'transparent', pbs: x ? 'solid' : 'dashed', pbd: x ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
+        pcol: x ? 'var(--color-text)' : 'var(--color-accent-300)'
+      };
+    });
+
+    const ch = st.ch;
+    let chVals = { chOpen: false, chList: false, chRange: false, chR: 1, chTitle: '', chBackIcon: 'M6 6l12 12M18 6 6 18', q: '', showRef: false, refLabel: '', showSugg: false, sugg: [], suraRows: [], noHits: false, rgRef: '', rgPreview: '', rgMeta: '', rgFrom: 1, rgTo: 1, rgTitle: '', spans: [] };
+    if (ch) {
+      chVals.chOpen = true; chVals.chR = ch.r;
+      if (ch.step === 'list') {
+        const q = ch.q.trim(), m = q.match(/^(\d{1,3})\s*[:.]\s*(\d{1,3})$/);
+        const nq = norm(q);
+        let rows = SURAS;
+        if (q && !m) rows = SURAS.filter(s => String(s.n) === q || s.key.includes(nq) || s.bare.startsWith(nq));
+        const ref = m && SURAS[Number(m[1]) - 1] && Number(m[2]) >= 1 && Number(m[2]) <= SURAS[Number(m[1]) - 1].count;
+        if (m) rows = SURAS[Number(m[1]) - 1] ? [SURAS[Number(m[1]) - 1]] : [];
+        const cur = st.sel[ch.r];
+        const sugg = [];
+        if (ch.r === 2) sugg.push({ k: 'same', title: 'Same as rakʿah 1', sub: titleOf(this.selFor(1)), dot: cur && cur.same ? 'var(--color-accent)' : 'transparent' });
+        sugg.push({ k: 'cont', title: 'Continue where you left off', sub: 'Al-Baqara 1–3', dot: 'transparent' });
+        [103, 112, 108].forEach(num => { const s = SURAS[num - 1]; sugg.push({ k: 'r' + num, title: s.name, sub: 'Recently recited · ' + s.count + ' ayas', dot: cur && cur.num === num ? 'var(--color-accent)' : 'transparent' }); });
+        sugg.push({ k: 'none', title: 'Al-Fātiḥa only', sub: 'No passage in this rakʿah', dot: cur && cur.none ? 'var(--color-accent)' : 'transparent' });
+        Object.assign(chVals, {
+          chList: true, chTitle: 'Choose a passage', q: ch.q, showRef: !!ref, refLabel: ref ? SURAS[Number(m[1]) - 1].name + ' ' + m[1] + ':' + m[2] : '',
+          showSugg: !q, sugg, suraRows: rows, noHits: !!q && rows.length === 0 && !ref
+        });
+      } else {
+        const s = SURAS[ch.num - 1], x = { num: ch.num, from: ch.from, to: ch.to };
+        const pv = previewOf(x);
+        const spans = [['one', '1 aya'], ['three', '3 ayas'], ['five', '5 ayas']];
+        if (s.count <= 40) spans.push(['whole', 'Whole sūra']);
+        Object.assign(chVals, {
+          chRange: true, chTitle: s.name, chBackIcon: 'm15 5-7 7 7 7',
+          rgRef: s.name + ' ' + ch.num + ':' + ch.from, rgPreview: pv || '…', rgMeta: (pv ? '' : 'Arabic preview not in this mockup · ') + this.metaOf(x) + ' · ' + s.count + ' ayas in the sūra',
+          rgFrom: ch.from, rgTo: ch.to, rgTitle: titleOf(x),
+          spans: spans.map(([k, label]) => { const len = k === 'one' ? 1 : k === 'three' ? 3 : k === 'five' ? 5 : s.count; const selx = k === 'whole' ? (ch.from === 1 && ch.to === s.count) : (ch.to - ch.from + 1 === len); return { k, label, ...chipSt(selx) }; })
+        });
+      }
+    }
+
+    const rak = Math.min(st.rak, n);
+    const ayas = this.ayasFor(rak), words = this.wordsFor(rak);
+    const cw = words[Math.min(st.w, words.length - 1)];
+    const ai = cw.ai, around = st.around;
+    const join = (a) => a ? a.map(x => x.ar).join(' ') : '';
+    const px = this.selFor(rak);
+    const partName = ai < FATIHA.length ? 'Al-Fātiḥa · ' + cw.aya : (px ? SURAS[px.num - 1].name + ' · ' + cw.aya : '');
+    const ayaWords = ayas[ai].map((x, wi) => {
+      const cur = wi === cw.wi, past = wi < cw.wi;
+      return { ar: x.ar, cur: cur ? '1' : '0',
+        col: cur ? 'var(--color-accent-100)' : past ? 'color-mix(in srgb,#e9e9ed 72%,transparent)' : 'color-mix(in srgb,#e9e9ed 40%,transparent)',
+        glow: cur ? '0 0 26px color-mix(in srgb, var(--color-accent) 70%, transparent)' : 'none' };
+    });
+    const dots = Array.from({ length: n }, (_, k) => { const r = k + 1; return { bg: r < rak ? 'var(--color-accent-700)' : r === rak ? 'var(--color-accent)' : 'var(--color-neutral-800)', glow: r === rak ? '0 0 8px var(--color-accent)' : 'none' }; });
+
+    const moveNote = st.voice && st.pace ? 'Your voice leads. If the recogniser loses you, the text moves on at ' + st.wpm + ' words a minute until it finds you again.'
+      : st.voice ? 'The text waits for your voice. Each rakʿah begins when you start reciting.'
+      : st.pace ? 'The text moves at ' + st.wpm + ' words a minute. Each rakʿah begins on a tap.'
+      : 'Neither is on: tap the screen to move to the next word.';
+    const modeLabel = st.voice && st.pace ? 'Voice, pace as fallback' : st.voice ? 'Following your voice' : st.pace ? 'Steady · ' + st.wpm + ' wpm' : 'Tap to advance';
+
+    const pv = st.pv;
+    let pvVals = { pvOpen: false, pvR: 1, pvPart: '', pvPrev: '', pvNext: '', pvPrevH: '0px', pvNextOp: 0, pvWords: [], pvGloss: '', pvPct: '0%', pvMode: '', pvTabs: [] };
+    if (pv) {
+      const pa = this.ayasFor(pv.r), pw = this.wordsFor(pv.r);
+      const c = pw[Math.min(pv.w, pw.length - 1)];
+      const sx = this.selFor(pv.r);
+      pvVals = {
+        pvOpen: true, pvR: pv.r,
+        pvPart: c.ai < FATIHA.length ? 'Al-Fātiḥa · ' + c.aya : (sx ? SURAS[sx.num - 1].name + ' · ' + c.aya : ''),
+        pvPrev: around ? join(pa[c.ai - 1]) : '', pvNext: around ? join(pa[c.ai + 1]) : '',
+        pvPrevH: around && st.size <= 60 ? '84px' : (around && st.size <= 72 ? '44px' : '0px'), pvNextOp: around && st.size <= 72 ? 1 : 0,
+        pvWords: pa[c.ai].map((x, wi) => { const cur = wi === c.wi, past = wi < c.wi; return { ar: x.ar, cur: cur ? '1' : '0', col: cur ? 'var(--color-accent-100)' : past ? 'color-mix(in srgb,#e9e9ed 72%,transparent)' : 'color-mix(in srgb,#e9e9ed 40%,transparent)', glow: cur ? '0 0 26px color-mix(in srgb, var(--color-accent) 70%, transparent)' : 'none' }; }),
+        pvGloss: G(c, fr), pvPct: ((pv.w + 1) / pw.length * 100).toFixed(1) + '%',
+        pvMode: (this.moving() ? (st.voice && !st.pace ? 'Voice simulated at ' + st.wpm + ' wpm' : modeLabel) : 'Tap the text to step') + ' · loops',
+        pvTabs: Array.from({ length: Math.min(n, 2) }, (_, k) => { const r = k + 1, onx = r === pv.r; return { r, bg: onx ? 'var(--color-accent-900)' : 'transparent', col: onx ? 'var(--color-accent-100)' : 'var(--color-text)', bd: onx ? 'var(--color-accent)' : 'transparent' }; })
+      };
+    }
+
+    return {
+      yes: true, showNotes: this.props.showNotes ?? true, presets, rakN: n, rakHint, prayerName, prayerLabel: preset ? preset.name : 'Prayer',
+      ...pvVals, pvWinRef: this.pvWinRef,
+      openPreview: () => this.setState({ pv: { r: 1, w: this.firstPassageWord(1) } }, () => this.pvSchedule()),
+      closePreview: () => { clearTimeout(this.pvT); this.setState({ pv: null }); },
+      pvRestart: () => this.setState(s => ({ pv: { ...s.pv, w: this.firstPassageWord(s.pv.r) } }), () => this.pvSchedule()),
+      pvPick: (e) => { const b = e.target.closest('[data-pv]'); if (!b) return; const r = Number(b.getAttribute('data-pv')); this.setState({ pv: { r, w: this.firstPassageWord(r) } }, () => this.pvSchedule()); },
+      pvTap: () => { if (this.moving()) return; this.setState(s => { const len = this.wordsFor(s.pv.r).length; return { pv: { ...s.pv, w: (s.pv.w + 1) % len } }; }); },
+      timeline, ...chVals,
+      cbVoice: cb(st.voice), cbPace: cb(st.pace), wpm: st.wpm, moveNote,
+      swGloss: st.gloss ? on : off, swAround: st.around ? on : off, swDnd: st.dnd ? on : off,
+      size: st.size, arSize: st.size + 'px', wordGap: Math.round(st.size * 0.28) + 'px', sizeFlash: st.sizeFlash,
+
+      rak, nextRak: Math.min(rak + 1, n), partName,
+      prevAya: around ? join(ayas[ai - 1]) : '', nextAya: around ? join(ayas[ai + 1]) : '', aroundOp: around ? 1 : 0,
+      prevH: around && st.size <= 60 ? '120px' : (around && st.size <= 72 ? '64px' : '0px'), nextOp: around && st.size <= 72 ? 1 : 0,
+      winRef: this.winRef,
+      ayaWords, curGloss: G(cw, fr), glossOp: st.gloss ? 1 : 0,
+      rakPct: ((st.w + 1) / words.length * 100).toFixed(1) + '%',
+      modeLabel, waitLabel: st.voice ? 'Begins when you recite' : 'Tap to begin', dots,
+      isBetween: st.phase === 'between', isDone: st.phase === 'done', isIdle: st.phase === 'idle',
+      readRef: this.attachWheel,
+
+      onPreset: (e) => { const b = e.target.closest('[data-p]'); if (!b) return; const id = b.getAttribute('data-p'); if (id === st.preset) this.setState({ preset: null }); else this.setState({ preset: id, n: PRESETS.find(p => p.id === id).n, rak: 1, w: 0 }); },
+      rakDec: () => this.setN(st.n - 1),
+      rakInc: () => this.setN(st.n + 1),
+      onOpenChooser: (e) => { const b = e.target.closest('[data-r]'); if (b) this.setState({ ch: { r: Number(b.getAttribute('data-r')), step: 'list', q: '' } }); },
+      chBack: () => { if (st.ch && st.ch.step === 'range') this.setState(s => ({ ch: { ...s.ch, step: 'list' } })); else this.setState({ ch: null }); },
+      onQ: (e) => { const v = e.target.value; this.setState(s => ({ ch: { ...s.ch, q: v } })); },
+      onChPick: (e) => {
+        const ref = e.target.closest('[data-ref]');
+        if (ref) { const m = st.ch.q.trim().match(/^(\d{1,3})\s*[:.]\s*(\d{1,3})$/); const a = Number(m[2]); this.openRange(Number(m[1]), a, a + 2); return; }
+        const sg = e.target.closest('[data-sg]');
+        if (sg) { const k = sg.getAttribute('data-sg'); if (k === 'same') this.commit({ same: true }); else if (k === 'none') this.commit({ none: true }); else if (k === 'cont') this.openRange(2, 1, 3); else if (k[0] === 'r') { const num = Number(k.slice(1)); this.commit({ num, from: 1, to: SURAS[num - 1].count }); } return; }
+        const row = e.target.closest('[data-n]');
+        if (row) { const num = Number(row.getAttribute('data-n')); const c = SURAS[num - 1].count; this.openRange(num, 1, c <= 10 ? c : 3); }
+      },
+      fromDec: () => this.openRange(st.ch.num, st.ch.from - 1, st.ch.to),
+      fromInc: () => this.openRange(st.ch.num, st.ch.from + 1, Math.max(st.ch.to, st.ch.from + 1)),
+      toDec: () => this.openRange(st.ch.num, st.ch.from, Math.max(st.ch.from, st.ch.to - 1)),
+      toInc: () => this.openRange(st.ch.num, st.ch.from, st.ch.to + 1),
+      onSpan: (e) => { const b = e.target.closest('[data-sp]'); if (!b) return; const k = b.getAttribute('data-sp'); const c = SURAS[st.ch.num - 1].count; if (k === 'whole') this.openRange(st.ch.num, 1, c); else this.openRange(st.ch.num, st.ch.from, st.ch.from + (k === 'one' ? 0 : k === 'three' ? 2 : 4)); },
+      useRange: () => this.commit({ num: st.ch.num, from: st.ch.from, to: st.ch.to }),
+
+      tVoice: () => this.setState(s => ({ voice: !s.voice }), () => { this.schedule(); this.pvSchedule(); }),
+      tPace: () => this.setState(s => ({ pace: !s.pace }), () => { this.schedule(); this.pvSchedule(); }),
+      wpmDec: () => this.setState(s => ({ wpm: Math.max(15, s.wpm - 5) })),
+      wpmInc: () => this.setState(s => ({ wpm: Math.min(90, s.wpm + 5) })),
+      tGloss: () => this.setState(s => ({ gloss: !s.gloss })),
+      tAround: () => this.setState(s => ({ around: !s.around })),
+      tDnd: () => this.setState(s => ({ dnd: !s.dnd })),
+      begin: () => this.start(),
+      exit: () => { clearTimeout(this.t); this.setState({ phase: 'idle' }); },
+      prayerTap: () => {
+        if (this.state.phase === 'between' && !this.state.voice) this.nextRak();
+        else if (this.state.phase === 'reading' && !this.moving()) this.advance();
+      },
+      sizeDown: () => this.setSize(st.size - 6),
+      sizeUp: () => this.setSize(st.size + 6),
+      skipEnd: () => { if (st.phase !== 'reading') return; this.setState({ w: this.wordsFor(st.rak).length - 1 }, () => this.schedule()); },
+
+      pDown: (e) => {
+        this.pts = this.pts || new Map();
+        this.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (this.pts.size === 2) { const [a, b] = [...this.pts.values()]; this.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: this.state.size }; }
+      },
+      pMove: (e) => {
+        if (!this.pts || !this.pts.has(e.pointerId)) return;
+        this.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (this.pinch && this.pts.size === 2) { const [a, b] = [...this.pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (this.pinch.d > 0) this.setSize(this.pinch.s * d / this.pinch.d); }
+      },
+      pUp: (e) => { if (this.pts) this.pts.delete(e.pointerId); if (!this.pts || this.pts.size < 2) this.pinch = null; }
+    };
+  }
+}
+</script>
+</body>
+</html>

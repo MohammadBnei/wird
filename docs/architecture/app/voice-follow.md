@@ -479,7 +479,7 @@ A tap restarts the clock from the word the hand chose ([prayer_pace.dart:63](../
 
 ### Known issues
 
-The field walks are recorded in [the voice-follow walk](../../journal/voice-follow-walk.md). [Finding 9](../../journal/voice-follow-walk.md#9-the-margin-rule-pins-the-cursor-on-any-set-that-says-a-phrase-twice) is fixed: the margin rule refused every window on a set that says one phrase twice, such as ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ in Al-Fātiḥa, and pinned the cursor. The margin is now asked per pair and copies are settled by order ([ADR 0020](../../adr/0020-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md)). On the walk-two Mac trail the cursor moves in 21 of 49 windows, against 8 before.
+The field walks are recorded in [the voice-follow walk](../../journal/voice-follow-walk.md). [Finding 9](../../journal/voice-follow-walk.md#9-the-margin-rule-pins-the-cursor-on-any-set-that-says-a-phrase-twice) is fixed: the margin rule refused every window on a set that says one phrase twice, such as ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ in Al-Fātiḥa, and pinned the cursor. The margin is now asked per pair and copies are settled by order ([ADR 0021](../../adr/0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md)). On the walk-two Mac trail the cursor moves in 21 of 49 windows, against 8 before.
 
 What remains open is what the bench can see. Its real trails carry no truth about where the reader was, so a wrong jump on a trail is not graded. The floor under the margin was set by such a jump, and is pinned by a test of its own rather than by the bench ([follow_bench_test.dart:483](../../../app/test/features/prayer/follow_bench_test.dart#L483-L506)).
 
@@ -489,8 +489,8 @@ What remains open is what the bench can see. Its real trails carry no truth abou
 - [ADR 0007](../../adr/0007-the-voice-model-is-published-where-its-weights-already-live.md) — superseded; kept for why a signed-out phone must be able to fetch the model.
 - [ADR 0008](../../adr/0008-the-recogniser-is-served-from-wirds-own-host.md) — the model is served from `wird.bnei.dev/models/` as a redirect to the object store.
 - [ADR 0009](../../adr/0009-the-recogniser-hears-quranic-phonemes-not-language.md) — an Arabic-only phoneme CTC model replaced a multilingual one that drifted into other languages.
-- [ADR 0018](../../adr/0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) — one voice per prayer, pointed at each rakʿah in turn; Al-Fātiḥa opens a rakʿah; the unseen basmala; the pace as fallback; the taps kept.
-- [ADR 0020](../../adr/0020-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md) — the margin is asked per pair of places, a repeated phrase is settled by order from the cursor, and every number lives in `FollowTuning`, argued from the bench.
+- [ADR 0020](../../adr/0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) — one voice per prayer, pointed at each rakʿah in turn; Al-Fātiḥa opens a rakʿah; the unseen basmala; the pace as fallback; the taps kept.
+- [ADR 0021](../../adr/0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md) — the margin is asked per pair of places, a repeated phrase is settled by order from the cursor, and every number lives in `FollowTuning`, argued from the bench.
 
 ## Go deeper
 

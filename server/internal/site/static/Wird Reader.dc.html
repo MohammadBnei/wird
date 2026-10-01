@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/styles.css">
+<script src="_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#101220;color:var(--color-text);font-family:var(--font-body)}
+a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
+.ar{font-family:"Scheherazade New",serif}
+</style>
+</helmet>
+
+<section id="reader" style="padding:44px 48px 60px;display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ yes }}" hint-size="412px,892px">
+<div data-screen-label="Reader" style="height:812px;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden">
+
+  <div style="flex:none;display:flex;align-items:center;gap:6px;padding:8px 16px 8px 8px">
+    <button class="btn btn-icon btn-ghost" aria-label="Back" style="width:40px;height:40px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 5-7 7 7 7"></path></svg></button>
+    <div style="flex:1;display:flex;align-items:center;gap:6px;font-size:16px">Al-Fātiḥa <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity:.6"><path d="m6 9 6 6 6-6"></path></svg></div>
+    <div style="font-size:12px;color:color-mix(in srgb,#e9e9ed 62%,transparent)">{{ posLabel }}</div>
+  </div>
+
+  <div style="flex:none;height:{{ ayaH }};transition:height .35s cubic-bezier(.3,.7,.2,1);overflow:hidden;border-bottom:1px solid var(--color-divider)">
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div ref="{{ listRef }}" onClick="{{ onWordTap }}" style="position:relative;height:100%;overflow-y:auto;padding:10px 14px 40px">
+        <sc-for list="{{ ayas }}" as="a" hint-placeholder-count="3">
+          <div dir="rtl" style="display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;align-items:flex-end;padding:8px 0;border-bottom:1px dashed color-mix(in srgb,#e9e9ed 14%,transparent)">
+            <sc-for list="{{ a.words }}" as="w" hint-placeholder-count="4">
+              <div data-i="{{ w.i }}" data-cur="{{ w.cur }}" style="display:flex;flex-direction:column;align-items:center;padding:1px 5px 4px;border-radius:7px;cursor:pointer;background:{{ w.bg }}">
+                <span class="ar" style="font-size:27px;line-height:1.7;color:{{ w.col }}">{{ w.ar }}</span>
+                <span style="display:{{ glossDisplay }};font-size:10.5px;line-height:1.2;direction:ltr;text-align:center;color:{{ w.gcol }}">{{ w.gl }}</span>
+              </div>
+            </sc-for>
+            <div style="width:24px;height:24px;border-radius:50%;border:1px solid var(--color-accent-700);display:flex;align-items:center;justify-content:center;margin-bottom:18px"><span class="ar" style="font-size:12px;color:var(--color-accent-300)">{{ a.num }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showStrip }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ collapse }}" style="height:100%;display:flex;align-items:center;gap:10px;padding:0 16px;cursor:pointer">
+        <span style="flex:none;font-size:11px;color:color-mix(in srgb,#e9e9ed 60%,transparent)">{{ ayaRef }}</span>
+        <div dir="rtl" style="flex:1;min-width:0;display:flex;gap:9px;justify-content:center;align-items:baseline;overflow:hidden;white-space:nowrap">
+          <sc-for list="{{ strip }}" as="s" hint-placeholder-count="4">
+            <span class="ar" style="font-size:20px;line-height:1.6;color:{{ s.col }};border-bottom:2px solid {{ s.line }}">{{ s.ar }}</span>
+          </sc-for>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none;opacity:.6"><path d="m6 9 6 6 6-6"></path></svg>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showAwayFull }}" hint-placeholder-val="{{ false }}">
+      <div style="height:100%;overflow:auto;padding:14px 18px">
+        <button class="btn btn-secondary" onClick="{{ goBack }}" style="height:34px;font-size:12.5px;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m15 5-7 7 7 7"></path></svg>Back to {{ homeRef }}</button>
+        <div style="margin-top:18px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-300)">{{ away.ref }}</div>
+        <div dir="rtl" class="ar" style="margin-top:6px;font-size:28px;line-height:1.8;text-wrap:pretty">{{ away.ar }}</div>
+        <p style="margin:8px 0 0;font-size:14px;line-height:1.55;color:color-mix(in srgb,#e9e9ed 78%,transparent)">{{ away.en }}</p>
+        <button class="btn btn-ghost" style="margin-top:10px;padding-left:0;font-size:12.5px">Read this sūra from here</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showAwayStrip }}" hint-placeholder-val="{{ false }}">
+      <div style="height:100%;display:flex;align-items:center;gap:10px;padding:0 12px">
+        <button class="btn btn-secondary" onClick="{{ goBack }}" style="flex:none;height:32px;font-size:12px;padding:0 10px">‹ {{ homeRef }}</button>
+        <span style="flex:none;font-size:11px;color:var(--color-accent-300)">{{ away.ref }}</span>
+        <span dir="rtl" class="ar" style="flex:1;min-width:0;font-size:18px;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ away.ar }}</span>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:var(--color-surface);border-radius:20px 20px 0 0;margin-top:-1px;box-shadow:0 -10px 30px rgba(0,0,0,.35)">
+    <div onClick="{{ toggleExp }}" style="flex:none;display:flex;justify-content:center;padding:8px 0 4px;cursor:pointer"><div style="width:36px;height:4px;border-radius:2px;background:var(--color-neutral-700)"></div></div>
+
+    <div style="flex:none;display:flex;align-items:center;gap:8px;padding:0 16px 4px;font-size:11px;color:color-mix(in srgb,#e9e9ed 50%,transparent)">
+      <span style="flex:1;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden">‹ <span class="ar" style="font-size:15px">{{ nextAr }}</span></span>
+      <span style="flex:none">swipe</span>
+      <span style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:4px;white-space:nowrap;overflow:hidden"><span class="ar" style="font-size:15px">{{ prevAr }}</span> ›</span>
+    </div>
+
+    <div ref="{{ panelRef }}" onScroll="{{ onPanelScroll }}" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden">
+      <div onPointerDown="{{ pd }}" onPointerMove="{{ pm }}" onPointerUp="{{ pu }}" onPointerCancel="{{ pu }}" style="touch-action:pan-y;user-select:none;padding:6px 18px 4px;transform:translateX({{ dragX }});opacity:{{ dragOp }};transition:{{ dragTr }}">
+
+        <sc-if value="{{ hasRoot }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:baseline;gap:12px">
+            <span class="ar" style="flex:none;font-size:38px;line-height:1.35;letter-spacing:.14em;white-space:nowrap">{{ root.letters }}</span>
+            <span style="flex:none;font-size:12.5px;white-space:nowrap;color:color-mix(in srgb,#e9e9ed 62%,transparent)">{{ root.tl }}</span>
+            <span style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;min-width:0">
+              <span class="ar" style="font-size:20px;line-height:1.4;color:var(--color-accent-200)">{{ word.ar }}</span>
+              <span style="font-size:11px;color:color-mix(in srgb,#e9e9ed 60%,transparent)">{{ word.tr }}</span>
+            </span>
+          </div>
+
+          <div style="margin-top:12px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 55%,transparent)">Senses · machine draft, not yet read by a person</div>
+          <div style="margin-top:4px;display:flex;flex-direction:column">
+            <sc-for list="{{ senses }}" as="s" hint-placeholder-count="4">
+              <div style="display:flex;align-items:baseline;gap:10px;padding:4px 8px;margin:0 -8px;border-radius:6px;background:{{ s.bg }}">
+                <span style="flex:none;width:12px;font-size:11px;color:{{ s.ncol }}">{{ s.n }}</span>
+                <span style="flex:1;font-size:13.5px;line-height:1.4;color:{{ s.col }}">{{ s.t }}</span>
+                <span style="flex:none;font-size:10px;letter-spacing:.06em;color:var(--color-accent-300)">{{ s.tag }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ noRoot }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:baseline;gap:12px">
+            <span class="ar" style="font-size:34px;line-height:1.4;color:var(--color-accent-200)">{{ word.ar }}</span>
+            <span style="font-size:12.5px;color:color-mix(in srgb,#e9e9ed 62%,transparent)">{{ word.tr }}</span>
+            <span class="tag tag-neutral" style="margin-left:auto">No root</span>
+          </div>
+        </sc-if>
+
+        <div style="margin-top:14px;padding:12px 14px;border-radius:var(--radius-lg);background:color-mix(in srgb,var(--color-accent) 10%,var(--color-bg))">
+          <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-300)">In this verse · {{ ayaRef }}</div>
+          <div style="margin-top:5px;font-size:15px;color:var(--color-accent-200)">{{ word.gl }}</div>
+          <div style="height:1px;margin:10px 0;background:repeating-linear-gradient(to right,color-mix(in srgb,#e9e9ed 22%,transparent) 0 2px,transparent 2px 7px)"></div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:color-mix(in srgb,#e9e9ed 80%,transparent);text-wrap:pretty">{{ ayaText }}</p>
+        </div>
+      </div>
+
+      <sc-if value="{{ showMore }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ expand }}" class="btn btn-ghost" style="margin:6px 18px 0;width:calc(100% - 36px);height:40px;justify-content:space-between;border-top:1px solid var(--color-divider);border-radius:0;padding:0">
+          <span style="font-size:12.5px;color:color-mix(in srgb,#e9e9ed 70%,transparent)">Counts, constellation, other ayas</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 15 6-6 6 6"></path></svg>
+        </button>
+      </sc-if>
+
+      <sc-if value="{{ hasRoot }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:14px 18px 0">
+          <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 55%,transparent)">Across the Qur'an</div>
+          <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+            <div style="padding:10px;border-radius:var(--radius-md);background:var(--color-bg)"><div style="font-family:var(--font-heading);font-size:20px">{{ root.n }}</div><div style="font-size:11px;color:color-mix(in srgb,#e9e9ed 60%,transparent)">this root</div></div>
+            <div style="padding:10px;border-radius:var(--radius-md);background:var(--color-bg)"><div style="font-family:var(--font-heading);font-size:20px">{{ formN }}</div><div style="font-size:11px;display:flex;gap:4px;align-items:baseline;color:color-mix(in srgb,#e9e9ed 60%,transparent)">as <span class="ar" style="font-size:13px">{{ formAr }}</span></div></div>
+            <div style="padding:10px;border-radius:var(--radius-md);background:var(--color-bg)"><div style="font-family:var(--font-heading);font-size:20px">{{ suraN }}</div><div style="font-size:11px;color:color-mix(in srgb,#e9e9ed 60%,transparent)">in this sūra</div></div>
+          </div>
+
+          <div style="position:relative;width:376px;height:320px;margin:10px 0 0 -18px;background:radial-gradient(closest-side,#1c1e32,transparent)">
+            <sc-for list="{{ lines }}" as="l" hint-placeholder-count="6">
+              <div style="position:absolute;left:188px;top:160px;width:{{ l.len }};height:1px;transform-origin:0 50%;transform:rotate({{ l.deg }});background:{{ l.bg }}"></div>
+            </sc-for>
+            <div style="position:absolute;left:188px;top:160px;width:230px;height:230px;margin:-115px 0 0 -115px;border-radius:50%;border:1px dashed color-mix(in srgb,#e9e9ed 10%,transparent)"></div>
+            <sc-for list="{{ relNodes }}" as="r" hint-placeholder-count="3">
+              <div style="position:absolute;left:{{ r.x }};top:{{ r.y }};transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;padding:3px 7px;border-radius:8px;background:var(--color-surface);border:1px solid {{ r.border }}">
+                <span class="ar" style="font-size:16px;line-height:1.4;letter-spacing:.1em;white-space:nowrap">{{ r.l }}</span>
+                <span style="font-size:9.5px;white-space:nowrap;color:color-mix(in srgb,#e9e9ed 66%,transparent)">{{ r.gl }}</span>
+                <span style="font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:{{ r.kcol }}">{{ r.k }}</span>
+              </div>
+            </sc-for>
+            <sc-for list="{{ formNodes }}" as="f" hint-placeholder-count="3">
+              <div style="position:absolute;left:{{ f.x }};top:{{ f.y }};transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center">
+                <span style="width:{{ f.dot }};height:{{ f.dot }};border-radius:50%;background:{{ f.dcol }};box-shadow:{{ f.glow }}"></span>
+                <span class="ar" style="font-size:16px;line-height:1.4;white-space:nowrap;color:{{ f.col }}">{{ f.ar }}</span>
+                <span style="font-size:9px;white-space:nowrap;color:color-mix(in srgb,#e9e9ed 55%,transparent)">{{ f.n }}×</span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;left:188px;top:160px;width:68px;height:68px;margin:-34px 0 0 -34px;border-radius:50%;background:#2b2741;box-shadow:0 0 0 1px var(--color-accent),0 0 30px color-mix(in srgb,var(--color-accent) 30%,transparent);display:flex;align-items:center;justify-content:center">
+              <span class="ar" style="font-size:18px;letter-spacing:.1em;white-space:nowrap">{{ root.letters }}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;justify-content:center;font-size:10.5px;color:color-mix(in srgb,#e9e9ed 55%,transparent)">
+            <span>Its forms, with how often each occurs</span>
+          </div>
+
+          <div style="margin-top:20px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 55%,transparent)">Other ayas</div>
+          <div onClick="{{ onOccTap }}" style="margin-top:4px;display:flex;flex-direction:column;padding-bottom:28px">
+            <sc-for list="{{ occ }}" as="o" hint-placeholder-count="3">
+              <div data-o="{{ o.k }}" style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+                <span style="flex:none;width:44px;font-size:11.5px;color:var(--color-accent-300)">{{ o.ref }}</span>
+                <div style="flex:1;min-width:0">
+                  <div dir="rtl" class="ar" style="font-size:18px;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.ar }}</div>
+                  <div style="font-size:12px;line-height:1.4;color:color-mix(in srgb,#e9e9ed 66%,transparent)">{{ o.en }}</div>
+                </div>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none;opacity:.5"><path d="m9 5 7 7-7 7"></path></svg>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ noRoot }}" hint-placeholder-val="{{ false }}">
+        <p style="margin:16px 18px 28px;font-size:12px;line-height:1.5;color:color-mix(in srgb,#e9e9ed 55%,transparent)">Particles and pronouns have no three-letter root. Swipe on to the next word.</p>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-import>
+
+<sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+<div style="max-width:340px;display:flex;flex-direction:column;gap:16px;padding-top:8px">
+  <div>
+    <div style="font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent-300)">Reading view · live</div>
+    <div style="font:500 20px/1.3 var(--font-heading);margin-top:6px">The sūra above, the root below</div>
+  </div>
+  <p style="margin:0;font-size:13px;line-height:1.65;color:color-mix(in srgb,#e9e9ed 68%,transparent);text-wrap:pretty">The whole of Al-Fātiḥa scrolls on top and keeps the current word centred. The root sheet opens with the essentials: root, its senses (the one used here highlighted), then the form and what the word means in this verse. Scrolling the sheet, or tapping the row under it, shrinks the sūra to one line and brings up the counts, the constellation and the other ayas.</p>
+  <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.5">
+    <div style="display:flex;gap:10px"><span style="flex:none;width:58px;color:var(--color-accent-300)">Swipe</span><span style="color:color-mix(in srgb,#e9e9ed 78%,transparent)">Drag the sheet right for the next word, left for the previous one. Arabic runs leftward, so the next word comes in from the left. Arrow keys work too.</span></div>
+    <div style="display:flex;gap:10px"><span style="flex:none;width:58px;color:var(--color-accent-300)">Tap</span><span style="color:color-mix(in srgb,#e9e9ed 78%,transparent)">Any word in the sūra jumps to it.</span></div>
+    <div style="display:flex;gap:10px"><span style="flex:none;width:58px;color:var(--color-accent-300)">Other ayas</span><span style="color:color-mix(in srgb,#e9e9ed 78%,transparent)">Takes the reader there, with a back button to where you were.</span></div>
+    <div style="display:flex;gap:10px"><span style="flex:none;width:58px;color:var(--color-accent-300)">Collapse</span><span style="color:color-mix(in srgb,#e9e9ed 78%,transparent)">Tap the one-line aya or the handle.</span></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-secondary" onClick="{{ collapse }}" style="flex:1">Show split</button>
+    <button class="btn btn-secondary" onClick="{{ expand }}" style="flex:1">Show expanded</button>
+  </div>
+  <p style="margin:0;font-size:11px;line-height:1.5;color:color-mix(in srgb,#e9e9ed 48%,transparent)">Words, glosses, counts and ayas come from the Quranic Arabic Corpus as Wird bundles it. The senses are machine drafts no person has read yet.</p>
+</div>
+</sc-if>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startExpanded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Open with sheet expanded&quot;},&quot;showGloss&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Gloss under each word&quot;}}">
+// Wird adaptation: words, roots, senses, forms and ayas come from the corpus
+// (scripts/site-data.py), never from the mockup's hand-written tables.
+const SITE = window.WIRD_SITE.reader;
+const WORDS = SITE.words.map(w => ({ ...w, fi: -1 }));
+const ROOTS = SITE.roots;
+WORDS.forEach(w => { if (w.r) w.fi = ROOTS[w.r].forms.findIndex(f => f.ar === w.lemma); });
+const RING = 8; // forms shown on the ring, as the app's dial (root_repo.dart dialCapacity)
+
+const AR_NUM = ['٠','١','٢','٣','٤','٥','٦','٧'];
+const CX = 188, CY = 160;
+
+class Component extends DCLogic {
+  state = { i: 2, exp: null, away: null, dx: 0, dragging: false };
+  listRef = React.createRef();
+  panelRef = React.createRef();
+
+  componentDidMount() {
+    this.onKey = (e) => {
+      if (e.key === 'ArrowLeft') this.go(this.state.i + 1);
+      if (e.key === 'ArrowRight') this.go(this.state.i - 1);
+    };
+    window.addEventListener('keydown', this.onKey);
+    setTimeout(() => this.centre(false), 300);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); }
+  // The runtime passes no previous state, so the last centred view is kept here.
+  componentDidUpdate() {
+    const seen = [this.state.i, this.isExp(), this.state.away];
+    if (this.seen && seen.every((v, k) => v === this.seen[k])) return;
+    this.seen = seen;
+    this.centre(true);
+  }
+
+  isExp() { return this.state.exp ?? (this.props.startExpanded ?? false); }
+
+  centre(smooth) {
+    const sc = this.listRef.current;
+    if (!sc) return;
+    const el = sc.querySelector('[data-cur="1"]');
+    if (!el) return;
+    const top = el.offsetTop - sc.clientHeight / 2 + el.offsetHeight / 2;
+    sc.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  go(i) {
+    if (i < 0 || i >= WORDS.length) return;
+    this.setState({ i, away: null, dx: 0 });
+    if (this.panelRef.current) this.panelRef.current.scrollTop = 0;
+  }
+
+  renderVals() {
+    // Wird adaptation: the page's language picks the corpus's French or English.
+    const fr = this.props.lang === 'fr';
+    const pick = (en, frText) => (fr ? frText || en : en || frText);
+    const { i, away, dx, dragging } = this.state;
+    const exp = this.isExp();
+    const w = WORDS[i];
+    const root = w.r ? ROOTS[w.r] : null;
+    // A particle or pronoun has no root: an empty one keeps renderVals whole and the noRoot branch shows.
+    const R = root || { letters: '', tl: '', n: 0, senses: [], sensesFr: [], forms: [], occ: [] };
+
+    const ayas = [1,2,3,4,5,6,7].map(n => ({
+      num: AR_NUM[n],
+      words: WORDS.map((x, k) => ({ x, k })).filter(o => o.x.a === n).map(({ x, k }) => {
+        const cur = k === i, same = !cur && w.r && x.r === w.r;
+        return {
+          i: k, ar: x.ar, gl: pick(x.gl, x.glFr), cur: cur ? '1' : '0',
+          bg: cur ? 'var(--color-accent-800)' : 'transparent',
+          col: cur ? 'var(--color-accent-50, #f3f2ff)' : (same ? 'var(--color-accent-200)' : 'var(--color-text)'),
+          gcol: cur ? 'var(--color-accent-100)' : 'color-mix(in srgb, #e9e9ed 58%, transparent)'
+        };
+      })
+    }));
+
+    const ayaIdx = WORDS.map((x, k) => ({ x, k })).filter(o => o.x.a === w.a);
+    const pos = ayaIdx.findIndex(o => o.k === i);
+    const lo = Math.max(0, pos - 2), hi = Math.min(ayaIdx.length, pos + 3);
+    const strip = [];
+    if (hi < ayaIdx.length) strip.push({ ar: '…', col: 'color-mix(in srgb,#e9e9ed 40%,transparent)', line: 'transparent' });
+    ayaIdx.slice(lo, hi).forEach(o => strip.push({ ar: o.x.ar, col: o.k === i ? 'var(--color-accent-100)' : 'color-mix(in srgb,#e9e9ed 62%,transparent)', line: o.k === i ? 'var(--color-accent)' : 'transparent' }));
+    if (lo > 0) strip.push({ ar: '…', col: 'color-mix(in srgb,#e9e9ed 40%,transparent)', line: 'transparent' });
+    strip.reverse();
+
+    const senses = (fr && R.sensesFr.length ? R.sensesFr : R.senses).map((t, k) => ({
+      n: k + 1, t, bg: 'transparent', col: 'color-mix(in srgb, #e9e9ed 82%, transparent)',
+      ncol: 'color-mix(in srgb, #e9e9ed 40%, transparent)', tag: ''
+    }));
+
+    const ring = R.forms.slice(0, RING);
+    const nf = ring.length, rr = nf === 1 ? 0 : 112;
+    const formNodes = ring.map((f, k) => {
+      const d = -90 + k * 360 / nf, a = d * Math.PI / 180;
+      const on = k === w.fi;
+      return { ar: f.ar, n: f.n, x: (CX + rr * Math.cos(a)).toFixed(1) + 'px', y: (CY + rr * Math.sin(a)).toFixed(1) + 'px',
+        dot: on ? '9px' : '6px', dcol: on ? 'var(--color-accent-200)' : 'var(--color-accent)', glow: on ? '0 0 10px var(--color-accent)' : 'none',
+        col: on ? 'var(--color-accent-100)' : 'var(--color-text)', deg: d };
+    });
+    const relNodes = [];
+    const lines = formNodes.map(f => ({ len: (rr - 40) + 'px', deg: f.deg + 'deg', bg: 'color-mix(in srgb, var(--color-accent) 45%, transparent)' }));
+
+    const nx = WORDS[i + 1], pv = WORDS[i - 1];
+    const drag = dx !== 0;
+    return {
+      yes: true, showNotes: this.props.showNotes ?? true,
+      posLabel: w.a + ':' + (pos + 1) + ' · word ' + (i + 1) + '/' + WORDS.length,
+      ayaH: exp ? '58px' : '318px',
+      glossDisplay: (this.props.showGloss ?? true) ? 'block' : 'none',
+      showList: !away && !exp, showStrip: !away && exp, showAwayFull: !!away && !exp, showAwayStrip: !!away && exp,
+      showMore: !exp,
+      ayas, strip, ayaRef: '1:' + w.a, homeRef: '1:' + w.a,
+      away: away ? { ...away, en: pick(away.en, away.fr) } : { ref: '', ar: '', en: '' },
+      word: { ...w, gl: pick(w.gl, w.glFr) }, root: R, hasRoot: !!root, noRoot: !root, senses,
+      formN: R.forms[w.fi] ? R.forms[w.fi].n : '–', formAr: R.forms[w.fi] ? R.forms[w.fi].ar : '',
+      suraN: root ? WORDS.filter(x => x.r === w.r).length : 0,
+      formNodes, relNodes, lines,
+      occ: R.occ.map((o, k) => ({ ...o, en: pick(o.en, o.fr), k })),
+      ayaText: pick(SITE.ayas[w.a].en, SITE.ayas[w.a].fr),
+      nextAr: nx ? nx.ar : '', prevAr: pv ? pv.ar : '',
+      dragX: dx + 'px', dragOp: drag ? Math.max(0.35, 1 - Math.abs(dx) / 260) : 1, dragTr: dragging ? 'none' : 'transform .2s, opacity .2s',
+      listRef: this.listRef, panelRef: this.panelRef,
+      onWordTap: (e) => { const el = e.target.closest('[data-i]'); if (el) this.go(Number(el.getAttribute('data-i'))); },
+      onOccTap: (e) => { const el = e.target.closest('[data-o]'); if (el) { this.setState({ away: R.occ[Number(el.getAttribute('data-o'))] }); if (this.panelRef.current) this.panelRef.current.scrollTop = 0; } },
+      goBack: () => this.setState({ away: null }),
+      expand: () => this.setState({ exp: true }),
+      collapse: () => { this.setState({ exp: false }); if (this.panelRef.current) this.panelRef.current.scrollTop = 0; },
+      toggleExp: () => { const e = !this.isExp(); this.setState({ exp: e }); if (!e && this.panelRef.current) this.panelRef.current.scrollTop = 0; },
+      onPanelScroll: (e) => { if (!this.isExp() && e.currentTarget.scrollTop > 24) this.setState({ exp: true }); },
+      pd: (e) => { this.p0 = { x: e.clientX, y: e.clientY, lock: null, id: e.pointerId, el: e.currentTarget }; },
+      pm: (e) => {
+        const p = this.p0; if (!p) return;
+        const ddx = e.clientX - p.x, ddy = e.clientY - p.y;
+        if (p.lock === null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) {
+          p.lock = Math.abs(ddx) > Math.abs(ddy) ? 'x' : 'y';
+          if (p.lock === 'x') { try { p.el.setPointerCapture(p.id); } catch (_) {} }
+        }
+        if (p.lock === 'x') {
+          const atEnd = (ddx > 0 && i === WORDS.length - 1) || (ddx < 0 && i === 0);
+          this.setState({ dx: atEnd ? ddx * 0.25 : ddx, dragging: true });
+        }
+      },
+      pu: () => {
+        const p = this.p0; this.p0 = null;
+        const d = this.state.dx;
+        if (p && p.lock === 'x' && Math.abs(d) > 60) { this.setState({ dragging: false }); this.go(i + (d > 0 ? 1 : -1)); }
+        else this.setState({ dx: 0, dragging: false });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

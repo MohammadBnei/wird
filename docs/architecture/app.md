@@ -230,7 +230,7 @@ flowchart LR
 - [ADR 0002](../adr/0002-set-identity.md) — a set's id is derived, and one op records a prayer.
 - [ADR 0003](../adr/0003-addressable-reader.md) — screen 1a is addressable and changes in place.
 - [ADR 0006](../adr/0006-a-passage-is-read-a-set-is-answered-for.md) — a passage is read; a set is answered for.
-- [ADR 0018](../adr/0018-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) — a prayer is prepared, then recited one rakʿah at a time; the set is credited only if a reached rakʿah recited it.
+- [ADR 0020](../adr/0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) — a prayer is prepared, then recited one rakʿah at a time; the set is credited only if a reached rakʿah recited it.
 - [ADR 0010](../adr/0010-the-server-owns-the-roots-and-their-senses.md) — senses come from the server, not the bundle.
 
 ## Go deeper

@@ -15,7 +15,7 @@ enum ReportKind { bug, request, improvement }
 /// ponytail: the number is written here and pinned to pubspec.yaml by a test.
 /// Reading it at runtime means package_info_plus, a dependency and a platform
 /// channel, to learn one string that changes when a human edits pubspec.
-const appVersion = '1.0.0';
+const appVersion = '0.0.1';
 
 /// The platform the report was written on, in the three words the server
 /// knows. Android, iOS and macOS are what this app builds for.

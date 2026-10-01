@@ -1,6 +1,6 @@
-# 20. The matcher's margin is asked per pair of places, and a repeated phrase is settled by order
+# 21. The matcher's margin is asked per pair of places, and a repeated phrase is settled by order
 
-Date: 2026-10-01. Status: accepted. Amends ADR 0018 (the unseen basmala).
+Date: 2026-10-01. Status: accepted. Amends ADR 0020 (the unseen basmala).
 
 ## Context
 
@@ -43,7 +43,7 @@ The measured effect: on the walk-two Mac trail the old matcher moved in 8 of 49 
 ## Consequences
 
 - Where the screen stands is now an input to the matcher, but only to choose between copies of one phrase. Places that merely sound alike are still told apart by the margin alone.
-- The unseen basmala before the passage is a repeat of 1:1, settled by order, rather than refused. ADR 0018's "the margin refuses both" no longer holds.
+- The unseen basmala before the passage is a repeat of 1:1, settled by order, rather than refused. ADR 0020's "the margin refuses both" no longer holds.
 - A cursor that ran ahead of the reciter, by the pace or a reader going back, can take a copy that is ahead of them too. `repeatReach` bounds that guess to about one aya.
 - A change to any number goes through the bench. The real trails carry no position truth, so the bench cannot see every wrong jump. The floor of 0.15 is pinned by a test of its own for that reason.
 - Every caller shares one `explain`, so the trail, the Settings check and the prayer cannot disagree about why the screen stayed.
