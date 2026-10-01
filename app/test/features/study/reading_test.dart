@@ -171,11 +171,9 @@ void main() {
     await tester.tap(find.descendant(of: mark, matching: find.byType(Text)));
     await tester.pumpAndSettle();
 
-    expect(
-      (await db.query('ayah_understood')).map((r) => r['ayah_id']),
-      [_kursi],
-      reason: 'the aya the reader marked, not the sūra they read',
-    );
+    expect((await db.query('ayah_understood')).map((r) => r['ayah_id']), [
+      _kursi,
+    ], reason: 'the aya the reader marked, not the sūra they read');
   });
 
   testWidgets('the index hands the reader one aya of the sūra they chose, so '

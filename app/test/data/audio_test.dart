@@ -183,11 +183,9 @@ void main() {
         reason: '$path was evicted while the reader was about to pray it',
       );
     }
-    expect(
-      dir.listSync().map((f) => f.uri.pathSegments.last).toSet(),
-      {for (final path in paths) path.split('/').last},
-      reason: 'the stale files are gone, so the cache really did evict',
-    );
+    expect(dir.listSync().map((f) => f.uri.pathSegments.last).toSet(), {
+      for (final path in paths) path.split('/').last,
+    }, reason: 'the stale files are gone, so the cache really did evict');
   });
 
   test('the set the reader will be handed next is evicted before they are '
@@ -213,8 +211,11 @@ void main() {
 
     // What screen 1a downloads when it opens the set, against a cap that
     // cannot hold it: everything unpinned goes.
-    await AudioCache(dir, capBytes: 3 * 1024, fetch: FakeCdn().call)
-        .prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
+    await AudioCache(
+      dir,
+      capBytes: 3 * 1024,
+      fetch: FakeCdn().call,
+    ).prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
 
     expect(aheadPaths, hasLength(ahead.ayas.length));
     for (final path in aheadPaths) {

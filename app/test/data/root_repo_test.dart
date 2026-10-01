@@ -8,8 +8,11 @@ import '../corpus.dart';
 
 /// How many derivatives the corpus gives a root, counted the way the screen
 /// counts them.
-Future<int> forms(Database db, String letters) async =>
-    (await rootReading(db, letters, readIn: const Locale('en')))!.derivatives.length;
+Future<int> forms(Database db, String letters) async => (await rootReading(
+  db,
+  letters,
+  readIn: const Locale('en'),
+))!.derivatives.length;
 
 void main() {
   late Database db;
@@ -35,13 +38,23 @@ void main() {
     expect(await forms(db, 'هزأ'), 9);
     for (final letters in ['جحم', 'فلح', 'عسي']) {
       expect(
-        (await rootReading(db, letters, readIn: const Locale('en')))!.readsAsSpine,
+        (await rootReading(
+          db,
+          letters,
+          readIn: const Locale('en'),
+        ))!.readsAsSpine,
         isFalse,
         reason: '$letters fits on the ring',
       );
     }
-    expect((await rootReading(db, 'هزأ', readIn: const Locale('en')))!.readsAsSpine, isTrue);
-    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.readsAsSpine, isTrue);
+    expect(
+      (await rootReading(db, 'هزأ', readIn: const Locale('en')))!.readsAsSpine,
+      isTrue,
+    );
+    expect(
+      (await rootReading(db, 'صبر', readIn: const Locale('en')))!.readsAsSpine,
+      isTrue,
+    );
   });
 
   test('a derivative points at the wrong aya because the word id was printed '
@@ -119,9 +132,10 @@ void main() {
     // opens, so a row kept on screen 1e — or arriving from a sync — while the
     // deep dive sits open is invisible to the button.
     const aya = 112004;
-    Future<int> live() async => (await keptItems(db, kind: KeptKind.aya))
-        .where((item) => item.ayahId == aya)
-        .length;
+    Future<int> live() async => (await keptItems(
+      db,
+      kind: KeptKind.aya,
+    )).where((item) => item.ayahId == aya).length;
 
     expect(await keepAya(db, aya), await keepAya(db, aya));
     expect(await live(), 1);
@@ -134,9 +148,10 @@ void main() {
     // its id alone and kept_items_live is not unique, so two devices \u2014 one of
     // them offline \u2014 each mint one. Undoing has to clear all of them.
     const root = '\u062c\u0645\u0639';
-    Future<int> live() async => (await keptItems(db, kind: KeptKind.root))
-        .where((item) => item.rootLetters == root)
-        .length;
+    Future<int> live() async => (await keptItems(
+      db,
+      kind: KeptKind.root,
+    )).where((item) => item.rootLetters == root).length;
 
     await keep(db, kind: KeptKind.root, rootLetters: root);
     await keep(db, kind: KeptKind.root, rootLetters: root);
@@ -151,24 +166,26 @@ void main() {
   // The failure: a reader switches the app to French, opens a root, and reads
   // the English sense — which is what shipped before the language setting, when
   // note_fr was a column nothing drew.
-  test('a reader in French opens a root and is given the English sense',
-      () async {
-    await db.insert('root_notes', {
-      'root_letters': 'فلح',
-      'word_id': null,
-      'note': 'to succeed, to prosper',
-      'note_fr': 'réussir, prospérer',
-    });
+  test(
+    'a reader in French opens a root and is given the English sense',
+    () async {
+      await db.insert('root_notes', {
+        'root_letters': 'فلح',
+        'word_id': null,
+        'note': 'to succeed, to prosper',
+        'note_fr': 'réussir, prospérer',
+      });
 
-    expect(
-      (await rootReading(db, 'فلح', readIn: const Locale('fr')))!.coreSense,
-      'réussir, prospérer',
-    );
-    expect(
-      (await rootReading(db, 'فلح', readIn: const Locale('en')))!.coreSense,
-      'to succeed, to prosper',
-    );
-  });
+      expect(
+        (await rootReading(db, 'فلح', readIn: const Locale('fr')))!.coreSense,
+        'réussir, prospérer',
+      );
+      expect(
+        (await rootReading(db, 'فلح', readIn: const Locale('en')))!.coreSense,
+        'to succeed, to prosper',
+      );
+    },
+  );
 
   test('a root whose French never arrived draws no sense at all, so a reader '
       'in French is told none is written', () async {

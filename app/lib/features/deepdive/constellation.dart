@@ -40,7 +40,10 @@ typedef Star = ({Derivative derivative, Offset at, bool thisAya});
 List<Star> constellation(RootReading reading, String? wordInAya) {
   final derivatives = reading.derivatives;
   final here = reading.spelled(wordInAya);
-  final kin = [for (final d in derivatives) if (d != here) d];
+  final kin = [
+    for (final d in derivatives)
+      if (d != here) d,
+  ];
   return [
     for (var i = 0; i < _kinSlots.length && i < kin.length; i++)
       (derivative: kin[i], at: _kinSlots[i], thisAya: false),

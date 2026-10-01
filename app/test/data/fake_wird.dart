@@ -95,11 +95,12 @@ class FakeWird {
         continue;
       }
       if (request.uri.path == '/v1/sync') {
-        final body =
-            jsonDecode(await utf8.decoder.bind(request).join())
-                as Map<String, dynamic>;
+        final body = jsonDecode(
+          await utf8.decoder.bind(request).join(),
+        ) as Map<String, dynamic>;
         final ops = [
-          for (final op in body['ops'] as List) (op as Map).cast<String, dynamic>(),
+          for (final op in body['ops'] as List)
+            (op as Map).cast<String, dynamic>(),
         ];
         batches.add(ops);
         _answer(request, {

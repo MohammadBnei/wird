@@ -36,8 +36,7 @@ class _NocturneSegmentedState extends State<NocturneSegmented> {
         mainAxisSize: MainAxisSize.min,
         children: [
           for (final (i, option) in widget.options.indexed) ...[
-            if (i > 0)
-              Container(width: 1, height: 30, color: n.divider),
+            if (i > 0) Container(width: 1, height: 30, color: n.divider),
             FocusableActionDetector(
               mouseCursor: SystemMouseCursors.click,
               onShowHoverHighlight: (v) =>

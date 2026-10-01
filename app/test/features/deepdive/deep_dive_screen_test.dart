@@ -33,10 +33,7 @@ const inventedProse = [
 ];
 
 /// The two works those summaries were signed with.
-const namedScholars = [
-  'Ibn Fāris',
-  'Lane · Arabic-English Lexicon',
-];
+const namedScholars = ['Ibn Fāris', 'Lane · Arabic-English Lexicon'];
 
 /// 2:282, the longest aya in the Qur'an, and a root it carries.
 const longestAya = 2282;
@@ -95,7 +92,11 @@ void main() {
     // the app fetches them (docs/adr/0010). A served sense has no evidence
     // words, which is exactly the shape the sheet has to open for.
     await seedSenses(db, {patience: 'to bind oneself fast; to endure'});
-    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
+    final reading = (await rootReading(
+      db,
+      patience,
+      readIn: const Locale('en'),
+    ))!;
     for (final size in [tablet, phone]) {
       await open(tester, size: size);
       expect(find.text(reading.coreSense!), findsOneWidget);
@@ -252,7 +253,11 @@ void main() {
   testWidgets('the constellation’s five nodes are all the reader is ever '
       'shown of a root the corpus holds thirty-eight forms of', (tester) async {
     await open(tester, size: tablet);
-    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
+    final reading = (await rootReading(
+      db,
+      patience,
+      readIn: const Locale('en'),
+    ))!;
     expect(reading.derivatives.length, greaterThan(5));
 
     await tester.tap(find.text('List'));
@@ -385,7 +390,11 @@ void main() {
   test('the constellation captions a form the aya does not contain as the one '
       'being recited', () async {
     db = await testCorpus();
-    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
+    final reading = (await rootReading(
+      db,
+      patience,
+      readIn: const Locale('en'),
+    ))!;
     final aya = (await ayaReading(db, ayaOfPatience, patience))!;
     final lit = [
       for (final w in aya.words)

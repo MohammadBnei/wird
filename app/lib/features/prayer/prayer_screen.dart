@@ -96,12 +96,11 @@ const _aroundSize = 24.0;
 const _minSize = 30.0;
 const _maxSize = 88.0;
 
-/// How long the aya just finished stands before the next one arrives.
-///
-/// Not a flourish. The reciter's last syllable and the screen's next aya
-/// landing together reads as the screen hurrying them; a breath between the
-/// two reads as the screen having listened.
-const _dwell = Duration(seconds: 1);
+/// How long the aya just finished stands before the next one arrives, counted
+/// from its last word being heard. Long enough not to snatch the aya from
+/// under its last syllable, short enough that the next one is there when the
+/// reciter looks for it.
+const _dwell = Duration(milliseconds: 300);
 
 /// How long the voice may rest on the last word before the rakʿah is taken as
 /// recited: the end of the aya, and the breath before bowing.
@@ -242,6 +241,23 @@ class _PrayerScreenState extends State<PrayerScreen> {
     return at;
   }
 
+  /// The aya the screen should show: the cursor's, or the one after it once
+  /// the voice is sure of the last word — the reciter has finished the aya
+  /// and is about to begin the next. Not past the rakʿah's last aya, whose
+  /// last word ends the rakʿah instead.
+  int _wanted() {
+    final aya = _ayaOf(_cursor.at);
+    final last = aya + 1 < _ayaStarts.length
+        ? _ayaStarts[aya + 1] - 1
+        : _cursor.words - 1;
+    final finished =
+        !_theirHand &&
+        _cursor.sure &&
+        _cursor.at == last &&
+        aya + 1 < _ayaStarts.length;
+    return finished ? aya + 1 : aya;
+  }
+
   /// The word moved. Redraw at once — the word being recited is inside the
   /// aya already shown — and if it has crossed into another aya, decide
   /// whether the next one arrives now or after a breath.
@@ -268,7 +284,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
     if (_voice != null && !_theirHand && _cursor.at == _cursor.words - 1) {
       _finishing = Timer(_lastWordHeld, _endRakah);
     }
-    final wants = _ayaOf(_cursor.at);
+    final wants = _wanted();
     if (wants == _shown) {
       _turning?.cancel();
       _turning = null;
@@ -284,7 +300,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
     }
     _turning = Timer(_dwell, () {
       _turning = null;
-      if (mounted) setState(() => _shown = _ayaOf(_cursor.at));
+      if (mounted) setState(() => _shown = _wanted());
     });
   }
 

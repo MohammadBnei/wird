@@ -63,6 +63,11 @@ const followPerLetterShort = 0.01;
 /// ٱلرَّحْمَٰنِ ٱلرَّحِيمِ, in every rakʿah — and the cursor pinned (ADR 0019).
 const followMargin = 0.32;
 
+/// How alike the set's own text must be at two places for them to be one
+/// phrase said twice — copies, rather than places that only sound alike.
+/// Two letters in a full window.
+const followCopy = 0.9;
+
 /// The score above which the word itself is worth pointing at, rather than
 /// only the aya it sits in. Below it the place is good enough to turn the page
 /// and not good enough to put a finger on a word.
@@ -139,15 +144,13 @@ class Recitation {
 /// Which word of [set] the reciter has reached, and how sure that is, or null
 /// when no place fits well enough to move to.
 ///
-/// Where the screen currently stands is deliberately not an input. Preferring
-/// the nearer of two places that sound alike was tried and removed: it let a
-/// window move the prayer on evidence that named two places equally well, and
-/// which of them won depended on the order the set was scanned in. Refusing
-/// instead costs a window of lag — the reciter carries on, the next window is
-/// unambiguous, and the screen catches up — and lateness is the error this is
-/// allowed to make.
-({int word, double score})? locate(Recitation set, String heard) {
-  final said = explain(set, heard);
+/// Where the screen stands, [from], settles only a phrase the set says more
+/// than once, word for word (see [explain]). Places that merely sound alike
+/// are still told apart by the margin alone: preferring the nearer of those
+/// was tried and removed, because it moved the prayer on evidence that named
+/// two places equally well.
+({int word, double score})? locate(Recitation set, String heard, {int? from}) {
+  final said = explain(set, heard, from: from);
   if (said == null) return null;
   if (said.score < said.needed) return null;
   if (said.score - said.rival < said.margin) return null;
@@ -163,14 +166,26 @@ class Recitation {
 ///   is what that pair is asked for ([followMargin] scaled by
 ///   [Recitation.twin]).
 ///
+/// A phrase the set says word for word in more than one place ([followCopy])
+/// cannot be placed by what was heard at all. Those places are `copies`, and
+/// with [from] the first of them at or after it is taken: a reciter is at or
+/// past the cursor, so the nearest copy ahead of it is never ahead of them —
+/// at worst it is late. With every copy behind [from], or no [from], they
+/// hold. The margin is then asked against every place that is not a copy.
+///
 /// Kept as one implementation rather than two: a diagnosis that does not run
 /// the code being diagnosed is worth nothing, and this screen was written
 /// because four builds went to a reader with nobody able to see what their
 /// phone was doing.
-({int word, double score, double needed, double rival, double margin})? explain(
-  Recitation set,
-  String heard,
-) {
+({
+  int word,
+  double score,
+  double needed,
+  double rival,
+  double margin,
+  int copies,
+})?
+explain(Recitation set, String heard, {int? from}) {
   if (set.isEmpty) return null;
 
   final spoken = StringBuffer();
@@ -195,29 +210,49 @@ class Recitation {
     if (scores[i] > scores[best] + _tie) best = i;
   }
   final bestEnd = set.ends[best];
-  final word = set.wordAt(bestEnd - 1);
+  int wordOf(int i) => set.wordAt(set.ends[i] - 1);
+  double asked(int i) => max(
+    _tie,
+    followMargin * (1 - set.twin(bestEnd, set.ends[i], tail.length)),
+  );
+
+  // The places that say what the best one says, and score as well.
+  final copies = [
+    for (var i = 0; i < scores.length; i++)
+      if (i == best ||
+          ((wordOf(i) - wordOf(best)).abs() >= 2 &&
+              set.twin(bestEnd, set.ends[i], tail.length) >= followCopy &&
+              scores[best] - scores[i] < asked(i)))
+        i,
+  ];
+  // Settled when there is one, or when order picks one of them.
+  final ahead = [
+    for (final i in copies)
+      if (from != null && wordOf(i) >= from - 1) wordOf(i),
+  ];
+  final settled = copies.length == 1 || ahead.isNotEmpty;
+  final word = copies.length == 1 || ahead.isEmpty
+      ? wordOf(best)
+      : ahead.reduce(min);
 
   // The competitor that comes closest to holding the prayer where it is. A
   // reciter with an accent agrees with the muṣḥaf less well everywhere, so how
   // high the best score is says as much about the voice as about the place;
   // what does not depend on the voice is whether one place fits better than
-  // the rest.
+  // the rest. Settled copies are no rivals; unsettled, each one holds.
   var rival = 0.0, margin = followMargin, slack = double.infinity;
   for (var i = 0; i < scores.length; i++) {
-    final end = set.ends[i];
-    if ((set.wordAt(end - 1) - word).abs() < 2) continue;
+    final near = settled ? copies : [best];
+    if (near.any((c) => (wordOf(i) - wordOf(c)).abs() < 2)) continue;
     final gap = scores[best] - scores[i];
     // Clears even the margin asked of two unrelated places: no need to ask
     // the set how alike they are.
     if (gap >= followMargin && gap - followMargin >= slack) continue;
-    final asked = max(
-      _tie,
-      followMargin * (1 - set.twin(bestEnd, end, tail.length)),
-    );
-    if (gap - asked < slack) {
-      slack = gap - asked;
+    final need = asked(i);
+    if (gap - need < slack) {
+      slack = gap - need;
       rival = scores[i];
-      margin = asked;
+      margin = need;
     }
   }
 
@@ -234,6 +269,7 @@ class Recitation {
     needed: needed,
     rival: rival,
     margin: margin,
+    copies: copies.length,
   );
 }
 

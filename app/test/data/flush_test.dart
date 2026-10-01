@@ -125,37 +125,41 @@ void main() {
   // The other half of the same decision: a flush cheap enough to run on every
   // return is still a radio wake, and a phone is unlocked dozens of times an
   // hour.
-  test('every unlock wakes the radio, and the reader watches the battery go',
-      () async {
-    final server = ServerInTheRoom();
-    final flusher = Flusher(db, server);
+  test(
+    'every unlock wakes the radio, and the reader watches the battery go',
+    () async {
+      final server = ServerInTheRoom();
+      final flusher = Flusher(db, server);
 
-    await markSetUnderstood(db, newOpId(), [96001]);
-    await flusher.flush();
-    await markSetUnderstood(db, newOpId(), [68001]);
-    await flusher.flush();
+      await markSetUnderstood(db, newOpId(), [96001]);
+      await flusher.flush();
+      await markSetUnderstood(db, newOpId(), [68001]);
+      await flusher.flush();
 
-    expect(server.rounds, hasLength(1));
-    expect(
-      await queued(db),
-      1,
-      reason: 'the second write rides the next flush, once the floor is past',
-    );
-  });
+      expect(server.rounds, hasLength(1));
+      expect(
+        await queued(db),
+        1,
+        reason: 'the second write rides the next flush, once the floor is past',
+      );
+    },
+  );
 
   // The hazard the flush was always going to have: two of them over one
   // outbox. syncNow's "one attempt per op" set lives inside a single call, so
   // nothing but this guard stops a write being sent twice in one round and
   // spending two of its ten attempts on one answer.
-  test('a return to the foreground during a flush sends the queue twice',
-      () async {
-    await markSetUnderstood(db, newOpId(), [96001, 96002]);
-    final server = ServerInTheRoom();
-    final flusher = Flusher(db, server, gap: Duration.zero);
+  test(
+    'a return to the foreground during a flush sends the queue twice',
+    () async {
+      await markSetUnderstood(db, newOpId(), [96001, 96002]);
+      final server = ServerInTheRoom();
+      final flusher = Flusher(db, server, gap: Duration.zero);
 
-    await Future.wait([flusher.flush(), flusher.flush()]);
+      await Future.wait([flusher.flush(), flusher.flush()]);
 
-    expect(server.rounds, hasLength(1));
-    expect(await queued(db), 0);
-  });
+      expect(server.rounds, hasLength(1));
+      expect(await queued(db), 0);
+    },
+  );
 }

@@ -497,8 +497,9 @@ class PrayerVoice {
             trail.note('held', 'the reader moved the prayer themselves');
             continue;
           }
-          final why = explain(_set, heard);
-          final at = locate(_set, heard);
+          final on = _inHeard(_cursor.at);
+          final why = explain(_set, heard, from: on);
+          final at = locate(_set, heard, from: on);
           trail.note(
             'heard',
             '${_tail(heard)} | ${_verdict(why, at)} | on ${_cursor.at} '
@@ -602,6 +603,12 @@ class PrayerVoice {
   /// Where [heard], a word of [_set], stands on the screen: the same place
   /// before the unseen basmala, that many words earlier after it, and nowhere
   /// inside it — the reciter is saying it, and there is nothing to light.
+  /// The other way: where the screen's word [word] stands in what is heard.
+  int _inHeard(int word) {
+    if (_unseenAt < 0 || word < _unseenAt) return word;
+    return word + _set.words.length - _cursor.words;
+  }
+
   int? _onScreen(int heard) {
     if (_unseenAt < 0 || heard < _unseenAt) return heard;
     final unseen = _set.words.length - _cursor.words;
@@ -616,13 +623,24 @@ class PrayerVoice {
       heard.length > 40 ? heard.substring(heard.length - 40) : heard;
 
   static String _verdict(
-    ({int word, double score, double needed, double rival, double margin})?
+    ({
+      int word,
+      double score,
+      double needed,
+      double rival,
+      double margin,
+      int copies,
+    })?
     said,
     ({int word, double score})? at,
   ) {
     if (said == null) return 'too little heard';
     final where = 'word ${said.word} at ${said.score.toStringAsFixed(2)}';
-    if (at != null) return 'MOVE to $where';
+    if (at != null) {
+      return said.copies > 1
+          ? 'MOVE to $where, the next of ${said.copies} copies'
+          : 'MOVE to $where';
+    }
     if (said.score < said.needed) {
       return 'stay: $where under ${said.needed.toStringAsFixed(2)}';
     }

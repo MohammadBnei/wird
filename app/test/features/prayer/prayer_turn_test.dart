@@ -23,9 +23,14 @@ int litWord(WidgetTester tester) {
   fail('no word on the screen is lit as the one being recited');
 }
 
+/// Whether the word with corpus id [id] is drawn at all.
+bool drawn(WidgetTester tester, int id) => tester
+    .widgetList<Text>(find.byType(Text))
+    .any((t) => t.key is WordKey && (t.key! as WordKey).value == id);
+
 /// The dwell the screen waits before turning, plus a frame. A Timer is not an
 /// animation, so pumpAndSettle will not run it out.
-const _dwellInTests = Duration(milliseconds: 1100);
+const _dwellInTests = Duration(milliseconds: 400);
 
 void main() {
   late Database db;
@@ -61,7 +66,7 @@ void main() {
     // finished stands for a moment: a screen that changes on the last
     // syllable reads as impatience.
     cursor.moveTo(3);
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(
       litWord(tester),
       103001001,
@@ -81,14 +86,14 @@ void main() {
     // Into the next aya, and on again before the breath is up: somebody
     // reciting without pausing, who should not be watching the screen catch
     // up with them.
+    cursor.moveTo(2);
+    await tester.pump(const Duration(milliseconds: 100));
     cursor.moveTo(3);
-    await tester.pump(const Duration(milliseconds: 200));
-    cursor.moveTo(4);
     await tester.pumpAndSettle();
 
     expect(
       litWord(tester),
-      103002004,
+      103002003,
       reason:
           'the reciter was two words on and the screen was still holding '
           'the aya before, waiting out a breath they never took',
@@ -104,5 +109,30 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
     expect(litWord(tester), 103002001);
+  });
+
+  testWidgets('the reciter finishes an aya and the next one is not there '
+      'when they look for it', (tester) async {
+    final cursor = await pump(tester);
+    // 103:1 is one word, heard surely: the aya is finished, and the next one
+    // arrives a breath later without waiting for its first word to be heard.
+    cursor.moveTo(0, sure: true);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      drawn(tester, 103002001),
+      isFalse,
+      reason:
+          'the aya was snatched '
+          'from under its last syllable',
+    );
+    await tester.pump(_dwellInTests);
+    await tester.pumpAndSettle();
+    expect(
+      drawn(tester, 103002001),
+      isTrue,
+      reason:
+          'the reciter finished '
+          '103:1 and the screen still showed it',
+    );
   });
 }

@@ -106,7 +106,13 @@ class _PrepareScreenState extends State<PrepareScreen> {
       );
       _preset = PrayerPreset.values.asNameMap()[prefs.preset];
       _rakahs = prefs.rakahs;
-      _first = widget.from ?? next;
+      // Al-Fātiḥa is recited in every rakʿah already, so a set of it — the
+      // one the reader was studying, say — is no passage: it would recite it
+      // twice and every word would stand in two places. The chooser refuses
+      // it too.
+      _first = [widget.from, next]
+          .where((s) => s != null && s.ayas.every((a) => a.surahId != 1))
+          .firstOrNull;
       _voiceWanted = prefs.voice;
       _voice = prefs.voice && voiceReady;
       _pace = prefs.pace;

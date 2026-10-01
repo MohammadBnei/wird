@@ -26,15 +26,16 @@ Map<String, dynamic> _contract() {
   expect(
     file.existsSync(),
     isTrue,
-    reason: 'without the shared contract nothing checks the device against '
+    reason:
+        'without the shared contract nothing checks the device against '
         'the server',
   );
   return jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
 }
 
 List<Map<String, dynamic>> _section(String name) {
-  final vectors =
-      ((_contract()[name] as Map)['vectors'] as List).cast<Object>();
+  final vectors = ((_contract()[name] as Map)['vectors'] as List)
+      .cast<Object>();
   expect(
     vectors,
     isNotEmpty,
@@ -135,8 +136,10 @@ void main() {
             context: await reportContext(db, screen: 'prayer'),
           );
         default:
-          fail('the shared contract carries an op kind "$kind" that no write '
-              'path on this device builds, so nothing checks it');
+          fail(
+            'the shared contract carries an op kind "$kind" that no write '
+            'path on this device builds, so nothing checks it',
+          );
       }
 
       final row = (await db.query('outbox')).single;
@@ -145,7 +148,8 @@ void main() {
       expect(
         body.keys.toSet(),
         (vector['body'] as Map).keys.cast<String>().toSet(),
-        reason: '${vector['label']}: the server refuses a body whose keys are '
+        reason:
+            '${vector['label']}: the server refuses a body whose keys are '
             'not exactly these, and the refusal is permanent',
       );
     }
@@ -162,13 +166,15 @@ void main() {
       expect(
         verdict.landed,
         vector['landed'],
-        reason: '${vector['label']}: the device disagrees about whether the '
+        reason:
+            '${vector['label']}: the device disagrees about whether the '
             'server has this write',
       );
       expect(
         verdict.permanent,
         vector['permanent'],
-        reason: '${vector['label']}: the device disagrees about whether this '
+        reason:
+            '${vector['label']}: the device disagrees about whether this '
             'write can ever land',
       );
     }
@@ -216,9 +222,9 @@ void main() {
       'twice', () async {
     final set = (await nextSet(db, ReadingOrder.nuzul))!;
     await recordSetPrayed(db, set);
-    final body =
-        jsonDecode((await db.query('outbox')).single['body']! as String)
-            as Map<String, dynamic>;
+    final body = jsonDecode(
+      (await db.query('outbox')).single['body']! as String,
+    ) as Map<String, dynamic>;
     await db.delete('outbox');
 
     final server = await _Stream.serving([
@@ -281,15 +287,18 @@ void main() {
   // half of what a set id is derived from, so a third spelling is not a bad
   // value — it is a set no other device can name, and a prayer the server
   // refuses forever.
-  test('the device can send only the reading-order words the server accepts',
-      () {
-    expect(
-      {for (final order in ReadingOrder.values) order.name},
-      ((_contract()['reading_orders'] as Map)['vectors'] as List)
-          .cast<String>()
-          .toSet(),
-      reason: 'a word on one side of this that is not on the other is a set '
-          'the other half cannot name',
-    );
-  });
+  test(
+    'the device can send only the reading-order words the server accepts',
+    () {
+      expect(
+        {for (final order in ReadingOrder.values) order.name},
+        ((_contract()['reading_orders'] as Map)['vectors'] as List)
+            .cast<String>()
+            .toSet(),
+        reason:
+            'a word on one side of this that is not on the other is a set '
+            'the other half cannot name',
+      );
+    },
+  );
 }

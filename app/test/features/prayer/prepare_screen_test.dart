@@ -68,6 +68,13 @@ void main() {
     expect(find.text('Begin Maghrib'), findsOneWidget);
   });
 
+  testWidgets('a reader studying Al-Fātiḥa is prepared to recite it twice in '
+      'every rakʿah', (tester) async {
+    final fatiha = await setOf(db, [1001, 1002, 1003, 1004, 1005]);
+    await pumpPrepare(tester, db: db, from: fatiha);
+    expect(find.text('Al-Fatihah'), findsNothing);
+  });
+
   testWidgets('a prayer left by its Exit button goes unrecorded', (
     tester,
   ) async {

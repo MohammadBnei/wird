@@ -173,10 +173,7 @@ class KinSpine extends StatelessWidget {
                           derivative.gloss ?? '',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: n.textAt(0.78),
-                          ),
+                          style: TextStyle(fontSize: 12, color: n.textAt(0.78)),
                         ),
                       ),
                       // The mark and the reference are two different facts:
@@ -201,7 +198,7 @@ class KinSpine extends StatelessWidget {
                       derivative.note == null
                           ? derivativeWeight(l, derivative)
                           : '${derivativeWeight(l, derivative)} · '
-                              '${derivative.note}',
+                                '${derivative.note}',
                       style: TextStyle(
                         fontSize: 12,
                         height: 1.5,
@@ -235,10 +232,7 @@ class KinSpine extends StatelessWidget {
       color: n.bg,
       border: Border.all(color: n.accent, width: 1.5),
       boxShadow: [
-        BoxShadow(
-          color: n.accent.withValues(alpha: 0.55),
-          blurRadius: 10,
-        ),
+        BoxShadow(color: n.accent.withValues(alpha: 0.55), blurRadius: 10),
       ],
     ),
   );

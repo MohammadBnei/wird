@@ -501,9 +501,9 @@ final _entropy = Random.secure();
 
 /// 43 to 128 unreserved characters, per RFC 7636. 32 random bytes in base64url
 /// is 43 of them.
-String _randomToken() => base64UrlEncode([
-  for (var i = 0; i < 32; i++) _entropy.nextInt(256),
-]).replaceAll('=', '');
+String _randomToken() =>
+    base64UrlEncode([for (var i = 0; i < 32; i++) _entropy.nextInt(256)])
+        .replaceAll('=', '');
 
 String _challenge(String verifier) =>
     base64UrlEncode(sha256.convert(ascii.encode(verifier)).bytes)

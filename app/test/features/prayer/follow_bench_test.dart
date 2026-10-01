@@ -73,7 +73,7 @@ Score run(Condition c) {
   var at = 0, moved = 0, ahead = 0, behind = 0, maxLag = 0, furthest = 0;
   final wrongs = <String>[];
   for (final (i, w) in c.windows.indexed) {
-    final found = locate(set, w.heard);
+    final found = locate(set, w.heard, from: at);
     if (found != null && found.word != at) {
       moved++;
       if ((w.hi != null && found.word > w.hi!) ||
@@ -175,21 +175,19 @@ List<Window> notTheSet(List<String> said) {
   return out;
 }
 
-/// R5's ratchet: the windows behind the reciter each recitation was measured
-/// at when the margin became per-set (ADR 0019). Lower one when a change earns
-/// it; never raise one. A rakʿah spends one window behind by design: the
-/// basmala before its passage is al-Fātiḥa's exact twin and is waited out.
+/// R5's ratchet: the windows behind the reciter each noisy recitation was
+/// measured at when the margin became per-set and copies were settled by
+/// order (ADR 0019). Lower one when a change earns it; never raise one.
 const _behindAtMost = {
-  'al-ʿAsr slips 1': 2,
+  'al-ʿAsr slips 1': 1,
   'al-ʿAsr slips 3': 3,
-  'al-Kāfirūn slips 1': 2,
-  'al-Kāfirūn slips 3': 12,
-  'al-Ikhlāṣ slips 1': 2,
+  'al-Kāfirūn slips 1': 1,
+  'al-Kāfirūn slips 3': 10,
+  'al-Ikhlāṣ slips 1': 1,
   'al-Ikhlāṣ slips 3': 2,
-  'az-Zalzalah slips 1': 2,
+  'az-Zalzalah slips 1': 1,
   'az-Zalzalah slips 3': 2,
-  'al-Qāriʿah slips 1': 2,
-  'al-Qāriʿah slips 3': 10,
+  'al-Qāriʿah slips 3': 8,
 };
 
 Map<String, dynamic> _fixture(String name) =>
@@ -319,7 +317,7 @@ void main() {
           'rakah + $name',
           r.heard,
           recite(r.heard, _ayas(r)),
-          behind: 1,
+          behind: 0,
         ),
       );
       // The same, heard the way the recogniser hears a real voice.
@@ -327,7 +325,7 @@ void main() {
         conditions.add(
           Condition(
             '$name slips $seed',
-            behind: _behindAtMost['$name slips $seed'] ?? 1,
+            behind: _behindAtMost['$name slips $seed'] ?? 0,
             r.heard,
             recite(r.heard, _ayas(r), slips: 0.15, seed: seed),
           ),
@@ -358,7 +356,7 @@ void main() {
             for (final (i, aya) in a.indexed)
               i == 4 ? aya.skip(1).toList() : aya,
           ]),
-          behind: 1,
+          behind: 0,
         ),
       );
       // Speech that is not the set: al-Ikhlāṣ without its basmala, then the

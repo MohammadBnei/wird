@@ -105,7 +105,8 @@ class _NocturneGalleryState extends State<NocturneGallery> {
                 NocturneCard(
                   kicker: 'Surah 103',
                   title: 'Al-ʿAsr',
-                  body: 'Three ayas, read before Maghrib. Elevation '
+                  body:
+                      'Three ayas, read before Maghrib. Elevation '
                       '${elevation.name}.',
                   meta: const [Text('3 ayas'), Text('·'), Text('kept')],
                   elevation: elevation,
@@ -118,7 +119,10 @@ class _NocturneGalleryState extends State<NocturneGallery> {
                 selected: _segment,
                 onChanged: (i) => setState(() => _segment = i),
               ),
-              const NocturneInput(label: 'Search kept', hint: 'root, word or aya'),
+              const NocturneInput(
+                label: 'Search kept',
+                hint: 'root, word or aya',
+              ),
               const NocturneInput(hint: 'A note', multiline: true),
               const NocturneRule(),
               _section(context, 'Arabic'),

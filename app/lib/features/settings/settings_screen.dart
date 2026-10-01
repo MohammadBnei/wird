@@ -110,19 +110,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _section(n, l.settingsLanguage),
               NocturneSegmented(
-                options: [
-                  l.settingsLanguageEnglish,
-                  l.settingsLanguageFrench,
-                ],
+                options: [l.settingsLanguageEnglish, l.settingsLanguageFrench],
                 // The language being read, which is the reader's choice or
                 // their phone's until they make one. There is no third option
                 // for "my phone's": a reader picking their own language is not
                 // choosing between a language and a way of choosing one, and
                 // the phone's is already the one they can see selected.
-                selected:
-                    Localizations.localeOf(context).languageCode == 'fr' ? 1 : 0,
-                onChanged: (i) =>
-                    prefs.setLocale(Locale(i == 1 ? 'fr' : 'en')),
+                selected: Localizations.localeOf(context).languageCode == 'fr'
+                    ? 1
+                    : 0,
+                onChanged: (i) => prefs.setLocale(Locale(i == 1 ? 'fr' : 'en')),
               ),
               SizedBox(height: n.space('1')),
               _caption(n, l.settingsLanguageCaption),
@@ -153,10 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _caption(n, l.settingsAyaTranslationCaption),
               SizedBox(height: n.space('3')),
               NocturneSegmented(
-                options: [
-                  l.settingsOrderChronological,
-                  l.settingsOrderMushaf,
-                ],
+                options: [l.settingsOrderChronological, l.settingsOrderMushaf],
                 selected: prefs.order.index,
                 onChanged: (i) async {
                   await prefs.setOrder(ReadingOrder.values[i]);
@@ -603,10 +597,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             variant: NocturneButtonVariant.ghost,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => VoiceCheck(
-                model: _model,
-                words: widget.words,
-              ),
+                builder: (_) => VoiceCheck(model: _model, words: widget.words),
               ),
             ),
             child: Text(l.settingsCheckRecogniser),
@@ -618,8 +609,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             onPressed: _remove,
             child: Text(l.settingsRemoveRecogniser),
           ),
-        ]
-        else
+        ] else
           NocturneButton(
             key: VoiceModelPanel.download,
             onPressed: _download,

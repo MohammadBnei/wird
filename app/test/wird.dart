@@ -27,6 +27,7 @@ Future<Widget> wirdAround(
   AudioCache? cache,
   Recitation? recitation,
   RouteFactory? onGenerateRoute,
+
   /// The locale to draw in. Null follows the test binding's own, which is en.
   Locale? locale,
 }) async => Wird(
@@ -45,15 +46,10 @@ Future<Widget> wirdAround(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     locale: locale,
-    onGenerateRoute:
-        onGenerateRoute ?? (settings) => screenRoute(settings, db),
+    onGenerateRoute: onGenerateRoute ?? (settings) => screenRoute(settings, db),
     home: route == null
         ? screen
-        : WirdShell(
-            route: route,
-            bar: shellDrawsTheBar(route),
-            child: screen,
-          ),
+        : WirdShell(route: route, bar: shellDrawsTheBar(route), child: screen),
   ),
 );
 

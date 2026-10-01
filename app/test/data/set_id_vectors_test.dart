@@ -22,11 +22,12 @@ void main() {
     expect(
       file.existsSync(),
       isTrue,
-      reason: 'without the shared vectors nothing checks the device against '
+      reason:
+          'without the shared vectors nothing checks the device against '
           'the server',
     );
-    final vectors =
-        (jsonDecode(file.readAsStringSync())['vectors'] as List).cast<Map<String, dynamic>>();
+    final vectors = (jsonDecode(file.readAsStringSync())['vectors'] as List)
+        .cast<Map<String, dynamic>>();
     expect(
       vectors,
       isNotEmpty,
@@ -38,7 +39,8 @@ void main() {
       expect(
         setIdFor(order, v['start_ayah_id'] as int, v['end_ayah_id'] as int),
         v['expected_set_id'],
-        reason: '${v['label']}: the device names this set something the '
+        reason:
+            '${v['label']}: the device names this set something the '
             'server will refuse',
       );
     }

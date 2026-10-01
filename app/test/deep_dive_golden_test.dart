@@ -47,11 +47,7 @@ void main() {
         // null AppLocalizations and throws under test but not in the app.
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: DeepDiveScreen(
-          db: db,
-          ayahId: ayaOfPatience,
-          letters: patience,
-        ),
+        home: DeepDiveScreen(db: db, ayahId: ayaOfPatience, letters: patience),
       ),
     );
     await tester.pumpAndSettle();

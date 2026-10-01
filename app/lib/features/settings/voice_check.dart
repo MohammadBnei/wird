@@ -133,14 +133,14 @@ class _VoiceCheckState extends State<VoiceCheck> {
         if (!mounted) return;
         if (heard.isNotEmpty && !_set.isEmpty) {
           final was = _cursor.at;
-          final at = locate(_set, heard);
+          final at = locate(_set, heard, from: _cursor.at);
           if (at != null) _cursor.moveTo(at.word);
           if (_cursor.at != was) _moves++;
           // Why it did or did not move, which is the whole reason this screen
           // exists: a stuck prayer looks the same whether the recogniser
           // stopped, the best place was not good enough, or two places fitted
           // equally well.
-          final said = explain(_set, heard);
+          final said = explain(_set, heard, from: _cursor.at);
           _why = said == null
               ? l.settingsVoiceCheckTooLittle
               : said.score < said.needed

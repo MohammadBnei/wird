@@ -23,8 +23,11 @@ Future<void> reportFrom(WidgetTester tester, String destination) async {
 /// written down here. Written down, every rebuild of the asset reddens these
 /// tests over a number the ETL is supposed to bump.
 Future<int> shippedCorpusVersion(Database db) async =>
-    (await db.query('corpus_meta', columns: ['corpus_version'], limit: 1))
-            .single['corpus_version']!
+    (await db.query(
+          'corpus_meta',
+          columns: ['corpus_version'],
+          limit: 1,
+        )).single['corpus_version']!
         as int;
 
 Future<Map<String, dynamic>?> queued(Database db) async {
@@ -105,8 +108,9 @@ void main() {
   // The failure: the app asks to transmit something and shows the reader the
   // text but not the values it has gathered around it. A devotional app owes
   // the person a plain look at what is leaving their phone.
-  testWidgets('the context is sent without the reader being shown it',
-      (tester) async {
+  testWidgets('the context is sent without the reader being shown it', (
+    tester,
+  ) async {
     // A pack is installed first because an empty sense version is drawn as
     // nothing, and nothing on a screen is not evidence that it is shown.
     const senseVersion = '2-d41d8cd98f00b204e9800998ecf8427e';

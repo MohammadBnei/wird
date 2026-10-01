@@ -181,14 +181,16 @@ void main() {
   // with the radio off, so an account can never stand between the reader and
   // the Qur'an. A sign-in that greets them at launch, or a screen that waits
   // on one, is the failure.
-  testWidgets('the app asks who the reader is before it will open the Qur\'an',
-      (tester) async {
-    await pumpPhone(tester, await wholeApp(db, cache: audio));
+  testWidgets(
+    'the app asks who the reader is before it will open the Qur\'an',
+    (tester) async {
+      await pumpPhone(tester, await wholeApp(db, cache: audio));
 
-    expect(find.byType(DashboardScreen), findsOneWidget);
-    expect(find.text('Sign in'), findsNothing);
-    expect(find.textContaining('Signed in'), findsNothing);
-  });
+      expect(find.byType(DashboardScreen), findsOneWidget);
+      expect(find.text('Sign in'), findsNothing);
+      expect(find.textContaining('Signed in'), findsNothing);
+    },
+  );
 
   testWidgets('a reader who has not signed in is offered no way to', (
     tester,

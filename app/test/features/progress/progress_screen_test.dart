@@ -42,7 +42,10 @@ void main() {
     // Al-Fātiḥa 1:1 on its own: the nuzul walk opens at Al-ʿAlaq and will
     // never propose this set, so marking it is never asked of the reader and
     // it can only ever add to the numerator.
-    await recordSetPrayed(db, (await ayaSet(db, await readingOrder(db), 1001))!);
+    await recordSetPrayed(
+      db,
+      (await ayaSet(db, await readingOrder(db), 1001))!,
+    );
 
     final passage = await readPassage(db);
     expect(passage.setsUnderstood, 2);
@@ -133,5 +136,4 @@ void main() {
     expect(find.byType(IndexScreen), findsOneWidget);
     expect(find.byType(KeptScreen), findsNothing);
   });
-
 }

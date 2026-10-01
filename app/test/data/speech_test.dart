@@ -80,8 +80,7 @@ class ModelHost {
       // A store honours a range only while the object is the one the client
       // started against. If-Range naming anything else means the whole file,
       // which is what stops two halves being spliced together.
-      final stale =
-          ifRanges.last != null && ifRanges.last != etag;
+      final stale = ifRanges.last != null && ifRanges.last != etag;
       final from = range == null || stale
           ? 0
           : int.parse(range.split('=')[1].split('-')[0]);
@@ -289,19 +288,16 @@ void main() {
     },
   );
 
-  test(
-    'a model nobody has published is not handed to the reader as their own '
-    'bad connection',
-    () async {
-      // What wird.bnei.dev/models/ answered for a fortnight: a host with no
-      // such route, so the request fell through to the authenticator. A reader
-      // told to check their signal would have checked it forever.
-      host.refuse = 401;
-      final voice = model();
-      expect(await voice.fetch(), VoiceModelTrouble.notServed);
-      expect(voice.bytesOnDisk, 0, reason: 'a refusal is not a part file');
-    },
-  );
+  test('a model nobody has published is not handed to the reader as their own '
+      'bad connection', () async {
+    // What wird.bnei.dev/models/ answered for a fortnight: a host with no
+    // such route, so the request fell through to the authenticator. A reader
+    // told to check their signal would have checked it forever.
+    host.refuse = 401;
+    final voice = model();
+    expect(await voice.fetch(), VoiceModelTrouble.notServed);
+    expect(voice.bytesOnDisk, 0, reason: 'a refusal is not a part file');
+  });
 
   // Three files of the right names are all [VoiceModel.ready] can see, and a
   // truncated download leaves exactly that. Whether the bytes are a model is

@@ -45,23 +45,29 @@ void main() {
     );
   });
 
-  test('a second device praying the same range creates a set of its own',
-      () async {
-    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+  test(
+    'a second device praying the same range creates a set of its own',
+    () async {
+      final set = (await nextSet(db, ReadingOrder.nuzul))!;
 
-    expect(
-      setIdFor(ReadingOrder.nuzul, set.ayas.first.id, set.ayas.last.id),
-      set.id,
-      reason: 'any device with the same corpus derives this id and no other',
-    );
-    expect(
-      setIdFor(ReadingOrder.mushaf, set.ayas.first.id, set.ayas.last.id),
-      isNot(set.id),
-      reason: 'the reading order is half of what names a set',
-    );
-    expect(set.id, matches(RegExp(r'^[0-9a-f-]{36}$')));
-    expect(set.id[14], '5', reason: 'a version 5 uuid, which is the derived kind');
-  });
+      expect(
+        setIdFor(ReadingOrder.nuzul, set.ayas.first.id, set.ayas.last.id),
+        set.id,
+        reason: 'any device with the same corpus derives this id and no other',
+      );
+      expect(
+        setIdFor(ReadingOrder.mushaf, set.ayas.first.id, set.ayas.last.id),
+        isNot(set.id),
+        reason: 'the reading order is half of what names a set',
+      );
+      expect(set.id, matches(RegExp(r'^[0-9a-f-]{36}$')));
+      expect(
+        set.id[14],
+        '5',
+        reason: 'a version 5 uuid, which is the derived kind',
+      );
+    },
+  );
 
   test('praying one set twice records it as two sets', () async {
     final set = (await nextSet(db, ReadingOrder.nuzul))!;
