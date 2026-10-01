@@ -8,7 +8,7 @@ Date: 2026-10-01. Status: accepted. Amends ADR 0006.
 
 Voice-follow was built for one text. It listened to a set, and the reader re-started it by tapping. Three things broke once the prayer was split into rakʿahs:
 
-- Loading the model takes up to 20 seconds ([prayer_voice.dart:65](../../app/lib/features/prayer/prayer_voice.dart#L65-L69)). A new recogniser per rakʿah would miss the start of each one.
+- Loading the model takes up to 20 seconds ([prayer_voice.dart:83](../../app/lib/features/prayer/prayer_voice.dart#L83-L87)). A new recogniser per rakʿah would miss the start of each one.
 - Between two rakʿahs the reader says "al-ḥamdu lillāh" and "rabbanā wa laka l-ḥamd". A short window of that matches Al-Fātiḥa 1:2.
 - A reciter says the basmala before the passage, and the muṣḥaf does not show it there. The only place it fits is Al-Fātiḥa 1:1. Measured, "بسم الله" alone scored 0.83 on word 1, so the screen jumped back to the top of the prayer.
 
@@ -19,12 +19,12 @@ The design also asks for a steady pace for readers who do not use the voice, and
 A prayer is prepared on its own screen, then recited one rakʿah at a time.
 
 - **Preparation.** `PrepareScreen` sets the preset (Fajr 2, Ẓuhr 4, ʿAṣr 4, Maghrib 3, ʿIshāʾ 4, or none), the rakʿahs (1 to 12), the passage after Al-Fātiḥa in the first two rakʿahs, voice and pace (15 to 90 words a minute), gloss, faded neighbours and Arabic size ([prepare_screen.dart:19](../../app/lib/features/prayer/prepare_screen.dart#L19-L41)). `Routes.prayer` is gone. "Pray this set" opens `Routes.prepare` on the set, and a home door opens it with none ([app.dart:353](../../app/lib/app.dart#L353-L357)). "Silence notifications" is a reminder only.
-- **Recording.** 1b still writes nothing. It reports the rakʿah reached through `PrayerOutcome`. On the way back, Prepare writes `prayer_prefs` and one `prayer_history` row per recited passage, both device-local. It calls `recordSetPrayed` for the credited set only if a reached rakʿah recited it. The credited set is the one Prepare was opened on, else `nextSet` ([prepare_screen.dart:218](../../app/lib/features/prayer/prepare_screen.dart#L218-L233)).
-- **One voice per prayer.** The microphone and model open once. `follow` points them at each new rakʿah and drops any answer still in flight by a generation counter ([prayer_voice.dart:547](../../app/lib/features/prayer/prayer_voice.dart#L547-L557)).
-- **Al-Fātiḥa opens a rakʿah.** Between rakʿahs only a sure, full window landing in Al-Fātiḥa's first two ayas begins the next one ([prayer_voice.dart:561](../../app/lib/features/prayer/prayer_voice.dart#L561-L567)). A tap also begins it.
+- **Recording.** 1b still writes nothing. It reports the rakʿah reached through `PrayerOutcome`. On the way back, Prepare writes `prayer_prefs` and one `prayer_history` row per recited passage, both device-local. It calls `recordSetPrayed` for the credited set only if a reached rakʿah recited it. The credited set is the one Prepare was opened on, else `nextSet` ([prepare_screen.dart:224](../../app/lib/features/prayer/prepare_screen.dart#L224-L239)).
+- **One voice per prayer.** The microphone and model open once. `follow` points them at each new rakʿah and drops any answer still in flight by a generation counter ([prayer_voice.dart:573](../../app/lib/features/prayer/prayer_voice.dart#L573-L584)).
+- **Al-Fātiḥa opens a rakʿah.** Between rakʿahs only a sure, full window landing in Al-Fātiḥa's first two ayas begins the next one ([prayer_voice.dart:594](../../app/lib/features/prayer/prayer_voice.dart#L594-L600)). A tap also begins it.
 - **The unseen basmala.** What the voice hears carries a basmala before each passage, except At-Tawba. The screen never shows it ([prayer_plan.dart:83](../../app/lib/features/prayer/prayer_plan.dart#L83-L101)). A basmala then fits two places and the margin refuses both.
 - **Pace behind the voice.** The voice leads. After 3 seconds with no sure match, the pace steps the words from the last sure word. Any sure match pauses it, the same word again included. The pace's own steps never count as a match ([prayer_pace.dart:79](../../app/lib/features/prayer/prayer_pace.dart#L79-L92)).
-- **Taps stay.** The large zone goes to the next aya and the narrow one back an aya, in every mode. With neither voice nor pace, the large zone steps one word ([prayer_screen.dart:374](../../app/lib/features/prayer/prayer_screen.dart#L374-L401)). The 1-second dwell stays. The echo line of matched words is removed.
+- **Taps stay.** The large zone goes to the next aya and the narrow one back an aya, in every mode. With neither voice nor pace, the large zone steps one word ([prayer_screen.dart:376](../../app/lib/features/prayer/prayer_screen.dart#L376-L403)). The 1-second dwell stays. The echo line of matched words is removed.
 
 ## Alternatives
 

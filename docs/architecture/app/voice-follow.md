@@ -165,7 +165,7 @@ The model is "ready" only when every part exists ([speech.dart:207](../../../app
 
 ### 4. A prayer opens the microphone before the model loads
 
-The prayer screen calls `PrayerVoice.start` when it opens, if the reader chose "follow my voice" ([prayer_screen.dart:178](../../../app/lib/features/prayer/prayer_screen.dart#L178-L180), [prayer_screen.dart:333](../../../app/lib/features/prayer/prayer_screen.dart#L333-L368)). It checks the stored permission and the model files, and returns `null` if either is missing. The microphone opens first and the model loads second, because loading takes seconds and the first words of the recitation must not be lost:
+The prayer screen calls `PrayerVoice.start` when it opens, if the reader chose "follow my voice" ([prayer_screen.dart:178](../../../app/lib/features/prayer/prayer_screen.dart#L178-L180), [prayer_screen.dart:334](../../../app/lib/features/prayer/prayer_screen.dart#L334-L370)). It checks the stored permission and the model files, and returns `null` if either is missing. The microphone opens first and the model loads second, because loading takes seconds and the first words of the recitation must not be lost:
 
 ```dart
       if (await micPermission(db) != MicPermission.granted) return null;
@@ -185,9 +185,9 @@ The prayer screen calls `PrayerVoice.start` when it opens, if the reader chose "
       listening?.call(voice);
 ```
 
-[prayer_voice.dart:254](../../../app/lib/features/prayer/prayer_voice.dart#L254-L268)
+[prayer_voice.dart:275](../../../app/lib/features/prayer/prayer_voice.dart#L275-L289)
 
-Audio that arrives while the model loads waits in a buffer. Every failure after the microphone opens throws into one handler that stops everything ([prayer_voice.dart:283](../../../app/lib/features/prayer/prayer_voice.dart#L283-L292)). The stream is 16 kHz mono PCM with no auto gain and no noise suppression ([prayer_voice.dart:308](../../../app/lib/features/prayer/prayer_voice.dart#L308-L322)).
+Audio that arrives while the model loads waits in a buffer. Every failure after the microphone opens throws into one handler that stops everything ([prayer_voice.dart:304](../../../app/lib/features/prayer/prayer_voice.dart#L304-L313)). The stream is 16 kHz mono PCM with no auto gain and no noise suppression ([prayer_voice.dart:329](../../../app/lib/features/prayer/prayer_voice.dart#L329-L343)).
 
 ### 5. The recogniser runs on its own isolate
 
@@ -212,7 +212,7 @@ Audio that arrives while the model loads waits in a buffer. Every failure after 
 
 ### 6. The drain hands audio over in 300 ms slices
 
-`_handOver` takes the whole backlog at once and feeds it to the recogniser in slices of 300 ms ([prayer_voice.dart:329](../../../app/lib/features/prayer/prayer_voice.dart#L329-L500)). Before the reader's first word, quiet slices are skipped by a fixed level gate (`heardQuiet = 0.02`, [speech.dart:161](../../../app/lib/data/speech.dart#L161)). Once the reader begins, the gate latches open and every slice is heard, pauses included ([prayer_voice.dart:417](../../../app/lib/features/prayer/prayer_voice.dart#L417)). An answer that comes back after the screen has moved on to the next rakʿah is dropped: a generation counter, bumped by `follow`, tells the two apart.
+`_handOver` takes the whole backlog at once and feeds it to the recogniser in slices of 300 ms ([prayer_voice.dart:350](../../../app/lib/features/prayer/prayer_voice.dart#L350-L526)). Before the reader's first word, quiet slices are skipped by a fixed level gate (`heardQuiet = 0.02`, [speech.dart:161](../../../app/lib/data/speech.dart#L161)). Once the reader begins, the gate latches open and every slice is heard, pauses included ([prayer_voice.dart:438](../../../app/lib/features/prayer/prayer_voice.dart#L438)). An answer that comes back after the screen has moved on to the next rakʿah is dropped: a generation counter, bumped by `follow`, tells the two apart.
 
 ```dart
           _speaking = true;
@@ -230,11 +230,11 @@ Audio that arrives while the model loads waits in a buffer. Every failure after 
           _carried = carry(_carried, said);
 ```
 
-[prayer_voice.dart:424](../../../app/lib/features/prayer/prayer_voice.dart#L424-L436)
+[prayer_voice.dart:445](../../../app/lib/features/prayer/prayer_voice.dart#L445-L457)
 
 The text judged is the previous utterance plus the current one, so the matcher can read across the breath between two ayas. When an utterance ends, the carry is replaced by what it said, even if that was nothing ([prayer_voice.dart:47](../../../app/lib/features/prayer/prayer_voice.dart#L47-L48)). That empty reset is the fix for a bystander's words being matched on the strength of the reader's own last aya.
 
-Three more checks run before the matcher is asked ([prayer_voice.dart:458](../../../app/lib/features/prayer/prayer_voice.dart#L458-L476)): during a catch-up only the last slice moves the screen, an unchanged answer is not judged again, and for 4 seconds after a tap the reader's hand wins ([prayer_voice.dart:580](../../../app/lib/features/prayer/prayer_voice.dart#L580), [speech.dart:82](../../../app/lib/data/speech.dart#L82)). An unchanged answer that is still loud is a reciter holding a long vowel, so it tells the pace the reciter is still found, without moving anything ([prayer_voice.dart:468](../../../app/lib/features/prayer/prayer_voice.dart#L468-L471)).
+Three more checks run before the matcher is asked ([prayer_voice.dart:479](../../../app/lib/features/prayer/prayer_voice.dart#L479-L499)): during a catch-up only the last slice moves the screen, an unchanged answer is not judged again, and for 4 seconds after a tap the reader's hand wins ([prayer_voice.dart:613](../../../app/lib/features/prayer/prayer_voice.dart#L613), [speech.dart:82](../../../app/lib/data/speech.dart#L82)). An unchanged answer that is still loud is a reciter holding a long vowel, so it tells the pace the reciter is still found, without moving anything ([prayer_voice.dart:488](../../../app/lib/features/prayer/prayer_voice.dart#L488-L494)). It is believed for 6 seconds after the last new words were found, the longest a madd is held. Past that, loud and unchanged is a recogniser that has stopped writing, a reciter lost or a neighbour praying aloud, and the pace is let take over ([prayer_voice.dart:57](../../../app/lib/features/prayer/prayer_voice.dart#L57-L66)).
 
 ### 7. Both sides are folded to the letters they agree on
 
@@ -294,7 +294,7 @@ Settings has a check screen that runs the same `locate` and `explain` on live au
 
 ### 9. The cursor moves, and the screen turns the aya
 
-A match moves the cursor, marking the word as sure only above `followSure` ([prayer_voice.dart:484](../../../app/lib/features/prayer/prayer_voice.dart#L484-L492)). Nothing else is drawn. The line that used to echo the matched words under the aya is gone: a reader glancing at the phone wants the word, not what the phone heard. The cursor moves in either direction and stays silent when nothing changed:
+A match moves the cursor, marking the word as sure only above `followSure` ([prayer_voice.dart:507](../../../app/lib/features/prayer/prayer_voice.dart#L507-L492)). Nothing else is drawn. The line that used to echo the matched words under the aya is gone: a reader glancing at the phone wants the word, not what the phone heard. The cursor moves in either direction and stays silent when nothing changed:
 
 ```dart
   void moveTo(int word, {bool sure = true}) {
@@ -318,9 +318,9 @@ stateDiagram-v2
   Shown --> Shown: tap, turn at once
 ```
 
-The screen lets the aya just finished stand for a one-second dwell before turning ([prayer_screen.dart:104](../../../app/lib/features/prayer/prayer_screen.dart#L104)), unless the reciter keeps going or the move came from a tap ([prayer_screen.dart:258](../../../app/lib/features/prayer/prayer_screen.dart#L258-L289)). The word being recited is held about a third of the way down the field, whatever the Arabic size ([prayer_screen.dart:406](../../../app/lib/features/prayer/prayer_screen.dart#L406-L421)).
+The screen lets the aya just finished stand for a one-second dwell before turning ([prayer_screen.dart:104](../../../app/lib/features/prayer/prayer_screen.dart#L104)), unless the reciter keeps going or the move came from a tap ([prayer_screen.dart:258](../../../app/lib/features/prayer/prayer_screen.dart#L258-L289)). The word being recited is held about a third of the way down the field, whatever the Arabic size ([prayer_screen.dart:408](../../../app/lib/features/prayer/prayer_screen.dart#L408-L423)).
 
-The two tap zones are there whatever moves the text, because the voice and the pace can both be wrong ([prayer_screen.dart:374](../../../app/lib/features/prayer/prayer_screen.dart#L374-L401)). The large zone goes to the start of the next aya. The narrow one goes back to the start of the aya you are in, or to the aya before when you are already at its start. Both call `hold`, so the voice does not pull the screen straight back, and restart the pace from where the hand put it. With neither voice nor pace chosen, the large zone steps one word, because the hand is then the only pace. A tap past the last aya ends the rakʿah.
+The two tap zones are there whatever moves the text, because the voice and the pace can both be wrong ([prayer_screen.dart:376](../../../app/lib/features/prayer/prayer_screen.dart#L376-L403)). The large zone goes to the start of the next aya. The narrow one goes back to the start of the aya you are in, or to the aya before when you are already at its start. Both call `hold`, so the voice does not pull the screen straight back, and restart the pace from where the hand put it. With neither voice nor pace chosen, the large zone steps one word, because the hand is then the only pace. A tap past the last aya ends the rakʿah.
 
 ### 10. The prayer trail records what happened
 
@@ -341,17 +341,17 @@ A prayer cannot be watched, so each one writes `prayer-trail.log` beside the dat
 
 [prayer_trail.dart:46](../../../app/lib/features/prayer/prayer_trail.dart#L46-L55)
 
-The lines written include: a `prayer` line with the number of rakʿahs and the words in the first ([prayer_screen.dart:335](../../../app/lib/features/prayer/prayer_screen.dart#L335-L338)), `microphone` and `recogniser` load times ([prayer_voice.dart:267](../../../app/lib/features/prayer/prayer_voice.dart#L267-L276)), a `voice` line when voice-follow did not start ([prayer_screen.dart:357](../../../app/lib/features/prayer/prayer_screen.dart#L357)), `voice` when the reader begins, a `still here` heartbeat every 3 seconds with the range of batch levels ([prayer_voice.dart:400](../../../app/lib/features/prayer/prayer_voice.dart#L400-L412)), each `utterance ended`, each `held` for a new answer ignored during a hold, and each `heard` with the matcher's verdict: `too little heard`, `MOVE`, `stay` under the bar, or `stay` because the phrase was said twice ([prayer_voice.dart:585](../../../app/lib/features/prayer/prayer_voice.dart#L585-L597)). The trail is local only. On a Mac it lands next to `wird.db` in the app's sandboxed Documents folder ([Getting started](../../guides/getting-started.md#a-corpus-rebuild-reaches-your-machine-only-with-a-new-version)).
+The lines written include: a `prayer` line with the number of rakʿahs and the words in the first ([prayer_screen.dart:336](../../../app/lib/features/prayer/prayer_screen.dart#L336-L339)), `microphone` and `recogniser` load times ([prayer_voice.dart:288](../../../app/lib/features/prayer/prayer_voice.dart#L288-L297)), a `voice` line when voice-follow did not start ([prayer_screen.dart:358](../../../app/lib/features/prayer/prayer_screen.dart#L358)), `voice` when the reader begins, a `still here` heartbeat every 3 seconds with the range of batch levels ([prayer_voice.dart:421](../../../app/lib/features/prayer/prayer_voice.dart#L421-L433)), each `utterance ended`, each `held` for a new answer ignored during a hold, and each `heard` with the matcher's verdict: `too little heard`, `MOVE`, `stay` under the bar, or `stay` because the phrase was said twice ([prayer_voice.dart:618](../../../app/lib/features/prayer/prayer_voice.dart#L618-L630)). The trail is local only. On a Mac it lands next to `wird.db` in the app's sandboxed Documents folder ([Getting started](../../guides/getting-started.md#a-corpus-rebuild-reaches-your-machine-only-with-a-new-version)).
 
 ### 11. Leaving the prayer stops everything, once
 
-`stop` is idempotent and swallows every error, because it is reached from both the screen's way out and `start`'s own failure handler ([prayer_voice.dart:611](../../../app/lib/features/prayer/prayer_voice.dart#L611-L633)). The screen tracks the voice from the moment the microphone is live, so backing out while the model still loads also closes the microphone ([prayer_screen.dart:137](../../../app/lib/features/prayer/prayer_screen.dart#L137-L141), [prayer_screen.dart:195](../../../app/lib/features/prayer/prayer_screen.dart#L195)).
+`stop` is idempotent and swallows every error, because it is reached from both the screen's way out and `start`'s own failure handler ([prayer_voice.dart:644](../../../app/lib/features/prayer/prayer_voice.dart#L644-L666)). The screen tracks the voice from the moment the microphone is live, so backing out while the model still loads also closes the microphone ([prayer_screen.dart:137](../../../app/lib/features/prayer/prayer_screen.dart#L137-L141), [prayer_screen.dart:195](../../../app/lib/features/prayer/prayer_screen.dart#L195)).
 
 ### 12. One voice follows each rakʿah in turn
 
 A prayer is recited one rakʿah at a time, each Al-Fātiḥa and then its passage. The microphone and the model are opened once, for the first rakʿah. When a rakʿah is recited, the screen builds the next one on a cursor of its own and points the same voice at it with `follow` ([prayer_screen.dart:318](../../../app/lib/features/prayer/prayer_screen.dart#L318)). Loading the model again could cost up to 20 seconds between two rakʿahs.
 
-`follow` swaps the text and the cursor, clears what was carried and last heard, drops the reader's hold, and bumps the generation so an answer still being decoded for the old rakʿah is thrown away ([prayer_voice.dart:547](../../../app/lib/features/prayer/prayer_voice.dart#L547-L557)). The audio already waiting is kept: cutting a gap into the stream would cost the words on either side.
+`follow` swaps the text and the cursor, clears what was carried and last heard, drops the reader's hold, and bumps the generation so an answer still being decoded for the old rakʿah is thrown away ([prayer_voice.dart:573](../../../app/lib/features/prayer/prayer_voice.dart#L573-L584)). The audio already waiting is kept: cutting a gap into the stream would cost the words on either side.
 
 A rakʿah is over when the pace steps past its last word, when the reader taps past its last aya, or when the voice has rested on the last word for 2 seconds ([prayer_screen.dart:268](../../../app/lib/features/prayer/prayer_screen.dart#L268-L270)). The last rakʿah shows "Prayer complete" and closes itself after 2.4 seconds ([prayer_screen.dart:304](../../../app/lib/features/prayer/prayer_screen.dart#L304-L309)).
 
@@ -369,9 +369,9 @@ Between two rakʿahs the reader bows, stands and prostrates, and says "al-ḥamd
   }
 ```
 
-[prayer_voice.dart:561](../../../app/lib/features/prayer/prayer_voice.dart#L561-L567) · [openingWords](../../../app/lib/features/prayer/prayer_voice.dart#L52)
+[prayer_voice.dart:594](../../../app/lib/features/prayer/prayer_voice.dart#L594-L600) · [openingWords](../../../app/lib/features/prayer/prayer_voice.dart#L70)
 
-A tap on the waiting screen begins the rakʿah too ([prayer_screen.dart:375](../../../app/lib/features/prayer/prayer_screen.dart#L375)).
+A tap on the waiting screen begins the rakʿah too ([prayer_screen.dart:377](../../../app/lib/features/prayer/prayer_screen.dart#L377)).
 
 ### 14. The voice hears a basmala the screen does not show
 
@@ -382,7 +382,7 @@ flowchart LR
   f["Al-Fātiḥa<br/>shown and heard"] --> b["basmala<br/>heard only"] --> p["passage<br/>shown and heard"]
 ```
 
-The voice lights nothing while the reciter is inside that basmala, and shifts every word after it back onto the screen's numbering ([prayer_voice.dart:572](../../../app/lib/features/prayer/prayer_voice.dart#L572-L576)).
+The voice lights nothing while the reciter is inside that basmala, and shifts every word after it back onto the screen's numbering ([prayer_voice.dart:605](../../../app/lib/features/prayer/prayer_voice.dart#L605-L609)).
 
 ### 15. The pace covers for a lost voice
 
