@@ -269,6 +269,9 @@ class Component extends DCLogic {
   }
 
   renderVals() {
+    // Wird adaptation: the page's language picks the corpus's French or English.
+    const fr = this.props.lang === 'fr';
+    const pick = (en, frText) => (fr ? frText || en : en || frText);
     const { i, away, dx, dragging } = this.state;
     const exp = this.isExp();
     const w = WORDS[i];
@@ -281,7 +284,7 @@ class Component extends DCLogic {
       words: WORDS.map((x, k) => ({ x, k })).filter(o => o.x.a === n).map(({ x, k }) => {
         const cur = k === i, same = !cur && w.r && x.r === w.r;
         return {
-          i: k, ar: x.ar, gl: x.gl, cur: cur ? '1' : '0',
+          i: k, ar: x.ar, gl: pick(x.gl, x.glFr), cur: cur ? '1' : '0',
           bg: cur ? 'var(--color-accent-800)' : 'transparent',
           col: cur ? 'var(--color-accent-50, #f3f2ff)' : (same ? 'var(--color-accent-200)' : 'var(--color-text)'),
           gcol: cur ? 'var(--color-accent-100)' : 'color-mix(in srgb, #e9e9ed 58%, transparent)'
@@ -298,7 +301,7 @@ class Component extends DCLogic {
     if (lo > 0) strip.push({ ar: '…', col: 'color-mix(in srgb,#e9e9ed 40%,transparent)', line: 'transparent' });
     strip.reverse();
 
-    const senses = R.senses.map((t, k) => ({
+    const senses = (fr && R.sensesFr.length ? R.sensesFr : R.senses).map((t, k) => ({
       n: k + 1, t, bg: 'transparent', col: 'color-mix(in srgb, #e9e9ed 82%, transparent)',
       ncol: 'color-mix(in srgb, #e9e9ed 40%, transparent)', tag: ''
     }));
@@ -325,13 +328,13 @@ class Component extends DCLogic {
       showList: !away && !exp, showStrip: !away && exp, showAwayFull: !!away && !exp, showAwayStrip: !!away && exp,
       showMore: !exp,
       ayas, strip, ayaRef: '1:' + w.a, homeRef: '1:' + w.a,
-      away: away || { ref: '', ar: '', en: '' },
-      word: w, root: R, hasRoot: !!root, noRoot: !root, senses,
+      away: away ? { ...away, en: pick(away.en, away.fr) } : { ref: '', ar: '', en: '' },
+      word: { ...w, gl: pick(w.gl, w.glFr) }, root: R, hasRoot: !!root, noRoot: !root, senses,
       formN: R.forms[w.fi] ? R.forms[w.fi].n : '–', formAr: R.forms[w.fi] ? R.forms[w.fi].ar : '',
       suraN: root ? WORDS.filter(x => x.r === w.r).length : 0,
       formNodes, relNodes, lines,
-      occ: R.occ.map((o, k) => ({ ...o, en: o.en || o.fr, k })),
-      ayaText: SITE.ayas[w.a].en || SITE.ayas[w.a].fr,
+      occ: R.occ.map((o, k) => ({ ...o, en: pick(o.en, o.fr), k })),
+      ayaText: pick(SITE.ayas[w.a].en, SITE.ayas[w.a].fr),
       nextAr: nx ? nx.ar : '', prevAr: pv ? pv.ar : '',
       dragX: dx + 'px', dragOp: drag ? Math.max(0.35, 1 - Math.abs(dx) / 260) : 1, dragTr: dragging ? 'none' : 'transform .2s, opacity .2s',
       listRef: this.listRef, panelRef: this.panelRef,

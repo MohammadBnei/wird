@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -104,5 +105,25 @@ func TestTheDownloadButtonServesTheApkThroughTheApi(t *testing.T) {
 	}
 	if got := w.Header().Get("Cache-Control"); got != "no-store" {
 		t.Errorf("Cache-Control is %q", got)
+	}
+}
+
+// The page asks with HEAD before it sends the browser anywhere, and shows a
+// notice instead of a bare 503 page when nothing is published. A HEAD that
+// redirected while GET did not, or the reverse, would send a visitor to the
+// error page the check exists to spare them.
+func TestThePageCheckAndTheDownloadDisagree(t *testing.T) {
+	head := func(h *harness) int {
+		w := httptest.NewRecorder()
+		h.routes.ServeHTTP(w, httptest.NewRequest(http.MethodHead, "/download/android", nil))
+		return w.Code
+	}
+
+	if got := head(withStore(t)); got != http.StatusServiceUnavailable {
+		t.Errorf("unpublished: HEAD answered %d", got)
+	}
+	t.Setenv("WIRD_APK_KEY", "android/wird-3f2a9c.apk")
+	if got := head(withStore(t)); got != http.StatusFound {
+		t.Errorf("published: HEAD answered %d", got)
 	}
 }
