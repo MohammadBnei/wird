@@ -9,6 +9,7 @@ import '../../data/speech.dart';
 import 'alignment.dart';
 import 'prayer_cursor.dart';
 import 'prayer_trail.dart';
+import 'voice_follow.dart';
 
 /// The microphone, wired to the cursor.
 ///
@@ -22,7 +23,7 @@ import 'prayer_trail.dart';
 /// Contract 2 — nothing appears in front of someone praying — is kept by there
 /// being no path out of this class onto the screen. It cannot raise a dialog,
 /// it has no error to show, and the only thing it can do to the prayer is call
-/// [PrayerCursor.follow], which refuses to rewind and ceilings a jump.
+/// [PrayerCursor.moveTo], and only on a place `locate` named clearly.
 
 /// What survives the end of an utterance. An utterance that ended with nothing
 /// decoded is a reader who has stopped, not a breath between ayas.
@@ -46,8 +47,12 @@ import 'prayer_trail.dart';
 String carry(String previous, ({String text, bool ended}) said) =>
     said.ended ? said.text.trim() : previous;
 
+/// How many words of Al-Fātiḥa a rakʿah may be begun inside: its first two
+/// ayas, the basmala and `al-ḥamdu lillāhi rabbi l-ʿālamīn`, four words each.
+const openingWords = 8;
+
 class PrayerVoice {
-  PrayerVoice._(this._cursor, this._set, this._mic, this.trail);
+  PrayerVoice._(this._cursor, this._set, this._mic, this.trail, this._unseenAt);
 
   /// The last words the recogniser was sure enough about to move the prayer
   /// on, and nothing else.
@@ -57,8 +62,34 @@ class PrayerVoice {
   /// that to somebody praying would be the screen talking about itself.
   final matched = ValueNotifier<String>('');
 
-  final PrayerCursor _cursor;
-  final Recitation _set;
+  /// The rakʿah being recited. Both are replaced by [follow] when the next
+  /// one begins, because the model takes up to twenty seconds to load and a
+  /// prayer cannot wait that long between two rakʿahs.
+  PrayerCursor _cursor;
+  Recitation _set;
+
+  /// Where in [_set] the basmala the screen does not show begins, or -1. The
+  /// words heard there move nothing, and the ones after it are that many
+  /// further along in [_set] than on the screen: see `rakahOf`.
+  int _unseenAt;
+
+  /// Whether the next rakʿah is waiting to be begun. Between two rakʿahs the
+  /// reader is bowing, standing and prostrating, and what they say there —
+  /// `al-ḥamdu lillāh` among it — is the opening of Al-Fātiḥa as far as a short
+  /// window can tell. So only a full window, landing in Al-Fātiḥa's first two
+  /// ayas, begins the rakʿah: that is the reader reciting it, not praising.
+  var _opening = false;
+
+  /// Bumped by [follow], so an answer the recogniser was already working on
+  /// for the rakʿah just finished is not laid against the next one.
+  var _generation = 0;
+
+  /// Whether the last answer judged named the reciter's word surely.
+  var _lastSure = false;
+
+  /// Called whenever the voice names the reciter's word surely, the same word
+  /// again included, so the pace knows the reciter has not been lost.
+  void Function()? onRecognised;
 
   /// What happened, for reading afterwards. A prayer cannot be watched.
   final PrayerTrail trail;
@@ -198,6 +229,7 @@ class PrayerVoice {
     Database db,
     PrayerCursor cursor,
     List<String> words, {
+    int unseenAt = -1,
     PrayerTrail? trail,
     void Function(PrayerVoice)? listening,
   }) async {
@@ -230,7 +262,7 @@ class PrayerVoice {
       if (!await mic.hasPermission(request: false)) {
         throw StateError('the microphone was taken away since Settings');
       }
-      voice = PrayerVoice._(cursor, Recitation(words), mic, log);
+      voice = PrayerVoice._(cursor, Recitation(words), mic, log, unseenAt);
       await voice._listen();
       log.note('microphone', 'listening, ${since()}');
       listening?.call(voice);
@@ -344,7 +376,9 @@ class PrayerVoice {
         // a recogniser that has been closed answers every remaining piece with
         // `hear`'s ten-second timeout instead of an answer.
         for (var from = 0; from < batch.length && !_stopped; from += _slice) {
-          final to = from + _slice < batch.length ? from + _slice : batch.length;
+          final to = from + _slice < batch.length
+              ? from + _slice
+              : batch.length;
           final samples = batch.sublist(from, to);
           var peak = 0.0;
           for (final sample in samples) {
@@ -368,9 +402,9 @@ class PrayerVoice {
             trail.note(
               'still here',
               '$_peaks batches '
-              '${_speaking ? 'since the reader began' : 'of room'}, peak '
-              '${_quietest.toStringAsFixed(3)} to '
-              '${_loudest.toStringAsFixed(3)} | ${_tail(_lastHeard)}',
+                  '${_speaking ? 'since the reader began' : 'of room'}, peak '
+                  '${_quietest.toStringAsFixed(3)} to '
+                  '${_loudest.toStringAsFixed(3)} | ${_tail(_lastHeard)}',
             );
             _peaks = 0;
             _quietest = 1.0;
@@ -382,10 +416,17 @@ class PrayerVoice {
           // must not reach it.
           if (peak < heardQuiet && !_speaking) continue;
           if (!_speaking) {
-            trail.note('voice', 'the reader began, at ${peak.toStringAsFixed(2)}');
+            trail.note(
+              'voice',
+              'the reader began, at ${peak.toStringAsFixed(2)}',
+            );
           }
           _speaking = true;
+          final generation = _generation;
           final said = await hear(samples);
+          // The rakʿah changed while this was being decoded. What it says is
+          // about the rakʿah just finished, and the next one starts clean.
+          if (generation != _generation) continue;
           // What the reciter has said, as far as this side is concerned: the
           // phrase before this one and the one now being spoken.
           final heard = '$_carried ${said.text}'.trim();
@@ -419,7 +460,15 @@ class PrayerVoice {
           // it has already been answered. A reader who stops reciting leaves the
           // answer standing, and re-judging it forty times a second neither
           // changes it nor stops being work.
-          if (heard == _lastHeard) continue;
+          //
+          // Except that a reciter holding a long vowel is still being heard,
+          // and the pace must not take a held madd for a reciter it has lost.
+          // Loud and unchanged is that; quiet and unchanged is a reader who
+          // has stopped.
+          if (heard == _lastHeard) {
+            if (_lastSure && peak >= heardQuiet) onRecognised?.call();
+            continue;
+          }
           _lastHeard = heard;
           if (DateTime.now().isBefore(_theirs)) {
             trail.note('held', 'the reader moved the prayer themselves');
@@ -430,14 +479,17 @@ class PrayerVoice {
           trail.note(
             'heard',
             '${_tail(heard)} | ${_verdict(why, at)} | on ${_cursor.at} '
-            '| peak ${peak.toStringAsFixed(2)}',
+                '| peak ${peak.toStringAsFixed(2)}',
           );
           // Above the bar the word is named; at the bar the aya is as much as
           // the recitation actually said.
-          if (at != null) {
-            _cursor.moveTo(at.word, sure: at.score >= followSure);
-            matched.value = _tail(heard);
-          }
+          _lastSure = at != null && at.score >= followSure;
+          if (at == null || (_opening && !_opens(at.word, heard))) continue;
+          _opening = false;
+          final word = _onScreen(at.word);
+          if (word != null) _cursor.moveTo(word, sure: _lastSure);
+          matched.value = _tail(heard);
+          if (_lastSure) onRecognised?.call();
         }
       }
     } on Object {
@@ -462,16 +514,65 @@ class PrayerVoice {
     List<String> words,
     Float32List audio, {
     required Future<({String text, bool ended})> Function(Float32List) hear,
+    int unseenAt = -1,
   }) async {
     final voice = PrayerVoice._(
       cursor,
       Recitation(words),
       AudioRecorder(),
       PrayerTrail.none(),
+      unseenAt,
     ).._hear = hear;
-    voice._waiting.addAll(audio);
-    await voice._handOver();
+    await voice.feed(audio);
     return voice;
+  }
+
+  /// More audio through the same drain, for a test that has [follow]ed the
+  /// voice on to another rakʿah since [drain].
+  @visibleForTesting
+  Future<void> feed(Float32List audio) async {
+    _waiting.addAll(audio);
+    await _handOver();
+  }
+
+  /// Points the voice at the next rakʿah, without closing the microphone or
+  /// the model. The rakʿah is begun only by its own opening (see [_opening]):
+  /// the cursor stays where it is until then, and the screen begins the
+  /// rakʿah when it moves.
+  ///
+  /// What was carried, what was last heard and the reader's hold all belonged
+  /// to the rakʿah just finished, and an answer still being decoded is
+  /// dropped when it lands. The audio waiting is kept: the recogniser hears a
+  /// stream, and a gap cut into it costs the words on either side.
+  void follow(PrayerCursor cursor, List<String> words, {int unseenAt = -1}) {
+    _cursor = cursor;
+    _set = Recitation(words);
+    _unseenAt = unseenAt;
+    _opening = true;
+    _generation++;
+    _carried = '';
+    _lastHeard = '';
+    _lastSure = false;
+    _theirs = DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  /// Whether [word], heard surely in [heard], is the reader beginning
+  /// Al-Fātiḥa: a full window, landing inside its first two ayas.
+  bool _opens(int word, String heard) {
+    var letters = 0;
+    for (final w in heard.split(RegExp(r'\s+'))) {
+      letters += recitationKey(w).length;
+    }
+    return _lastSure && letters >= heardTailLetters && word < openingWords;
+  }
+
+  /// Where [heard], a word of [_set], stands on the screen: the same place
+  /// before the unseen basmala, that many words earlier after it, and nowhere
+  /// inside it — the reciter is saying it, and there is nothing to light.
+  int? _onScreen(int heard) {
+    if (_unseenAt < 0 || heard < _unseenAt) return heard;
+    final unseen = _set.words.length - _cursor.words;
+    return heard < _unseenAt + unseen ? null : heard - unseen;
   }
 
   /// The reader moved the prayer themselves. Their hand wins for a moment,
