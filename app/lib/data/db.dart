@@ -263,6 +263,31 @@ Future<Database> openWirdAt(String path) async {
   // The op id is the primary key rather than a column, so a write that is
   // replayed — a flush that timed out after the server had already applied it,
   // a button pressed twice — lands on the same row instead of a second one.
+  // How the reader last prepared a prayer, so the next one starts there. Its
+  // own table and device-local, for the reason `display_prefs` is: the Arabic
+  // size that suits a phone on the floor is not the one for a tablet on a
+  // stand. Not a column on that row, which is written whole by screen 1a.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS prayer_prefs (
+      id          INTEGER PRIMARY KEY CHECK (id = 1),
+      preset      TEXT,
+      rakahs      INTEGER NOT NULL,
+      voice       INTEGER NOT NULL,
+      pace        INTEGER NOT NULL,
+      wpm         INTEGER NOT NULL,
+      gloss       INTEGER NOT NULL,
+      around      INTEGER NOT NULL,
+      arabic_size REAL NOT NULL
+    )''');
+  // The passages recited in prayers, for the chooser's "recently recited".
+  // Device-local: what a prayer answers for is `set_prayers`, and this is only
+  // a memory of what was said.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS prayer_history (
+      start_ayah_id INTEGER NOT NULL,
+      end_ayah_id   INTEGER NOT NULL,
+      recited_at    TEXT NOT NULL
+    )''');
   await db.execute('''
     CREATE TABLE IF NOT EXISTS outbox (
       client_op_id TEXT PRIMARY KEY,
@@ -583,6 +608,89 @@ Future<void> setDisplayPrefs(
   'root_open': rootOpen ? 1 : 0,
   'aya_translation': ayaTranslation ? 1 : 0,
 }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+/// How a prayer is prepared until the reader changes it: Maghrib, voice and
+/// pace both on, forty words a minute, and the Arabic large enough to read
+/// from the floor.
+typedef PrayerPrefs = ({
+  String? preset,
+  int rakahs,
+  bool voice,
+  bool pace,
+  int wpm,
+  bool gloss,
+  bool around,
+  double arabicSize,
+});
+
+const defaultPrayerPrefs = (
+  preset: 'maghrib',
+  rakahs: 3,
+  voice: true,
+  pace: true,
+  wpm: 40,
+  gloss: true,
+  around: true,
+  arabicSize: 52.0,
+);
+
+Future<PrayerPrefs> prayerPrefs(Database db) async {
+  final rows = await db.query('prayer_prefs', limit: 1);
+  if (rows.isEmpty) return defaultPrayerPrefs;
+  final r = rows.first;
+  return (
+    preset: r['preset'] as String?,
+    rakahs: r['rakahs']! as int,
+    voice: r['voice'] == 1,
+    pace: r['pace'] == 1,
+    wpm: r['wpm']! as int,
+    gloss: r['gloss'] == 1,
+    around: r['around'] == 1,
+    arabicSize: r['arabic_size']! as double,
+  );
+}
+
+/// Writes the whole row, as [setDisplayPrefs] does and for the same reason.
+Future<void> setPrayerPrefs(Database db, PrayerPrefs p) =>
+    db.insert('prayer_prefs', {
+      'id': 1,
+      'preset': p.preset,
+      'rakahs': p.rakahs,
+      'voice': p.voice ? 1 : 0,
+      'pace': p.pace ? 1 : 0,
+      'wpm': p.wpm,
+      'gloss': p.gloss ? 1 : 0,
+      'around': p.around ? 1 : 0,
+      'arabic_size': p.arabicSize,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+/// Remembers that [set] was recited in a prayer.
+///
+/// ponytail: one row per recital and never pruned. A reader praying five
+/// times a day adds a few thousand short rows a year; trim to the last
+/// hundred here if that ever shows.
+Future<void> notePassageRecited(Database db, StudySet set) =>
+    db.insert('prayer_history', {
+      'start_ayah_id': set.ayas.first.id,
+      'end_ayah_id': set.ayas.last.id,
+      'recited_at': DateTime.now().toIso8601String(),
+    });
+
+/// The passages most recently recited, each once, the latest first.
+Future<List<({int start, int end})>> recentPassages(
+  Database db, {
+  int limit = 3,
+}) async => [
+  for (final r in await db.rawQuery(
+    '''SELECT start_ayah_id, end_ayah_id, MAX(recited_at) AS last
+         FROM prayer_history
+        GROUP BY start_ayah_id, end_ayah_id
+        ORDER BY last DESC
+        LIMIT ?''',
+    [limit],
+  ))
+    (start: r['start_ayah_id']! as int, end: r['end_ayah_id']! as int),
+];
 
 /// A root's family, as screen 1a's root panel reads it.
 ///
