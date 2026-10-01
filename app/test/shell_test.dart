@@ -7,10 +7,12 @@ import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
+import 'package:wird/features/about/about_screen.dart';
 import 'package:wird/features/dashboard/dashboard_screen.dart';
 import 'package:wird/features/index/index_screen.dart';
 import 'package:wird/features/progress/progress_screen.dart';
 import 'package:wird/features/settings/settings_screen.dart';
+import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/shell/wird_shell.dart';
@@ -266,21 +268,51 @@ void main() {
   ) async {
     await pumpPhone(tester, await wholeApp(db, cache: silent));
 
+    final en = lookupAppLocalizations(const Locale('en'));
     for (final destination in destinations) {
-      await goTo(tester, destination.label);
+      final label = destination.label(en);
+      await goTo(tester, label);
       expect(
         find.byIcon(Icons.menu),
         findsOneWidget,
-        reason: '${destination.label}: the drawer is how a destination is left',
+        reason: '$label: the drawer is how a destination is left',
       );
       for (final back in const [Icons.arrow_back_ios_new, Icons.arrow_back]) {
         expect(
           find.byIcon(back),
           findsNothing,
-          reason: '${destination.label}: a second control in the same corner',
+          reason: '$label: a second control in the same corner',
         );
       }
     }
+  });
+
+  testWidgets('a French reader opens the drawer and every row in it is '
+      'English', (tester) async {
+    await pumpPhone(
+      tester,
+      await wirdAround(
+        db,
+        const AboutScreen(),
+        route: Routes.about,
+        locale: const Locale('fr'),
+      ),
+    );
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    final drawer = find.byType(WirdDrawer);
+    for (final french in const ['Accueil', 'Le passage', 'Réglages']) {
+      expect(
+        find.descendant(of: drawer, matching: find.text(french)),
+        findsOneWidget,
+        reason: french,
+      );
+    }
+    expect(
+      find.descendant(of: drawer, matching: find.text('Home')),
+      findsNothing,
+    );
   });
 
   testWidgets('the index opened from "All 114" offers the drawer rather than '

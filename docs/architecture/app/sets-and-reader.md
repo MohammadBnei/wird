@@ -89,7 +89,7 @@ stateDiagram-v2
 
 ### 1. The walk finds the next set
 
-There is no stored position. [`nextSet`](../../../app/lib/data/sets.dart#L214-L258) looks for the first aya not yet understood in the chosen order, and reads up to 20 ayas from there. The order is one SQL expression per choice, so switching between revelation order (`nuzul`, the default) and written order (`mushaf`) never corrupts progress ([sets.dart:60](../../../app/lib/data/sets.dart#L60-L63)).
+There is no stored position. [`nextSet`](../../../app/lib/data/sets.dart#L227-L271) looks for the first aya not yet understood in the chosen order, and reads up to 20 ayas from there. The order is one SQL expression per choice, so switching between revelation order (`nuzul`, the default) and written order (`mushaf`) never corrupts progress ([sets.dart:61](../../../app/lib/data/sets.dart#L61-L64)).
 
 A set is a run of consecutive ayas that are not understood. It stops before the next understood aya, unless the reader widened the set on purpose:
 
@@ -108,11 +108,11 @@ A set is a run of consecutive ayas that are not understood. It stops before the 
   return _setFrom(db, order, taken);
 ```
 
-[sets.dart:246](../../../app/lib/data/sets.dart#L246-L257). When nothing is left, it returns null and the screen shows a "nothing left" message ([study_screen.dart:462](../../../app/lib/features/study/study_screen.dart#L462-L471)).
+[sets.dart:259](../../../app/lib/data/sets.dart#L259-L270). When nothing is left, it returns null and the screen shows a "nothing left" message ([study_screen.dart:550](../../../app/lib/features/study/study_screen.dart#L550-L559)).
 
 ### 2. How wide a set is
 
-The proposal is at most 5 ayas and 25 words ([sets.dart:12](../../../app/lib/data/sets.dart#L12-L19)). The first aya always goes in, whatever it costs, or 2:282 (128 words) would stall the walk forever. If the reader chose a width in Settings, that width wins, up to 20 ayas.
+The proposal is at most 5 ayas and 25 words ([sets.dart:13](../../../app/lib/data/sets.dart#L13-L20)). The first aya always goes in, whatever it costs, or 2:282 (128 words) would stall the walk forever. If the reader chose a width in Settings, that width wins, up to 20 ayas.
 
 ```dart
 int _setWidth(List<int> wordCounts, {int? span}) {
@@ -131,7 +131,7 @@ int _setWidth(List<int> wordCounts, {int? span}) {
 }
 ```
 
-[sets.dart:446](../../../app/lib/data/sets.dart#L446-L459). The chosen width is stored per starting aya in the local `set_span` table ([sets.dart:467](../../../app/lib/data/sets.dart#L467-L484)). It is a width, never a position, and it never leaves the phone. The Settings stepper writes it ([settings_screen.dart:71](../../../app/lib/features/settings/settings_screen.dart#L71-L78)).
+[sets.dart:460](../../../app/lib/data/sets.dart#L460-L473). The chosen width is stored per starting aya in the local `set_span` table ([sets.dart:481](../../../app/lib/data/sets.dart#L481-L498)). It is a width, never a position, and it never leaves the phone. The Settings stepper writes it ([settings_screen.dart:71](../../../app/lib/features/settings/settings_screen.dart#L71-L78)).
 
 ### 3. A set's id is derived, not minted
 
@@ -152,16 +152,16 @@ String setIdFor(ReadingOrder order, int startAyahId, int endAyahId) =>
     _uuidV5(_setNamespace, '${order.name}:$startAyahId:$endAyahId');
 ```
 
-[sets.dart:27](../../../app/lib/data/sets.dart#L27-L38). A set asks for its id through [`StudySet.id`](../../../app/lib/data/sets.dart#L178). The server recomputes the same id and refuses a mismatch ([sync.go:378](../../../server/internal/store/sync.go#L378)). Shared test vectors keep both sides honest: see [ADR 0002](../../adr/0002-set-identity.md#the-vectors).
+[sets.dart:28](../../../app/lib/data/sets.dart#L28-L39). A set asks for its id through [`StudySet.id`](../../../app/lib/data/sets.dart#L191). The server recomputes the same id and refuses a mismatch ([sync.go:378](../../../server/internal/store/sync.go#L378)). Shared test vectors keep both sides honest: see [ADR 0002](../../adr/0002-set-identity.md#the-vectors).
 
 ### 4. A passage: what is read versus what is acted on
 
-A `StudySet` holds two lists ([sets.dart:133](../../../app/lib/data/sets.dart#L133-L150)):
+A `StudySet` holds two lists ([sets.dart:146](../../../app/lib/data/sets.dart#L146-L163)):
 
 - `ayas` is what the reader acts on. It is marked, prayed, named in the header, pinned on disk, and it gives the set its id.
 - `reading` is what the screen draws. On the walk it is the same list. Off the walk it is the whole sūra.
 
-[`ayaSet`](../../../app/lib/data/sets.dart#L277-L305) builds the off-walk case. It reads every aya of the sūra, but only the acted ayas arrive with their words:
+[`ayaSet`](../../../app/lib/data/sets.dart#L290-L318) builds the off-walk case. It reads every aya of the sūra, but only the acted ayas arrive with their words:
 
 ```dart
   final at = rows.indexWhere((r) => r['id'] == ayahId);
@@ -175,11 +175,11 @@ A `StudySet` holds two lists ([sets.dart:133](../../../app/lib/data/sets.dart#L1
   );
 ```
 
-[sets.dart:296](../../../app/lib/data/sets.dart#L296-L304). Scrolling through 286 ayas of Al-Baqarah writes nothing, so the walk does not move.
+[sets.dart:309](../../../app/lib/data/sets.dart#L309-L317). Scrolling through 286 ayas of Al-Baqarah writes nothing, so the walk does not move.
 
 ### 5. Screen 1a loads one of three things
 
-[`StudyScreen`](../../../app/lib/features/study/study_screen.dart#L22-L36) is built with an optional `target`. Its [`_load`](../../../app/lib/features/study/study_screen.dart#L148-L249) picks the source:
+[`StudyScreen`](../../../app/lib/features/study/study_screen.dart#L23-L37) is built with an optional `target`. Its [`_load`](../../../app/lib/features/study/study_screen.dart#L180-L283) picks the source:
 
 ```dart
   Future<void> _load({int? target, AyaSpan? step}) async {
@@ -197,13 +197,13 @@ A `StudySet` holds two lists ([sets.dart:133](../../../app/lib/data/sets.dart#L1
           );
 ```
 
-[study_screen.dart:148](../../../app/lib/features/study/study_screen.dart#L148-L160).
+[study_screen.dart:167](../../../app/lib/features/study/study_screen.dart#L167-L179).
 
 - No target: the walk's next set.
 - A target, from the index or a root: that one aya, in its sūra.
-- A step from the footer arrows: a span as wide as the reader's usual set ([reading_nav.dart:7](../../../app/lib/features/study/reading_nav.dart#L7-L60), [study_screen.dart:256](../../../app/lib/features/study/study_screen.dart#L256-L265)).
+- A step from the footer arrows: a span as wide as the reader's usual set ([reading_nav.dart:7](../../../app/lib/features/study/reading_nav.dart#L7-L60), [study_screen.dart:290](../../../app/lib/features/study/study_screen.dart#L290-L299)).
 
-The `generation` counter lets a newer load win. An older load stops before it touches the screen or starts a download. Once the set is ready, the screen hands it to the app's one recitation player and fetches audio in the background ([study_screen.dart:200](../../../app/lib/features/study/study_screen.dart#L200-L248)).
+The `generation` counter lets a newer load win. An older load stops before it touches the screen or starts a download. Once the set is ready, the screen hands it to the app's one recitation player and fetches audio in the background ([study_screen.dart:233](../../../app/lib/features/study/study_screen.dart#L233-L282)).
 
 ### 6. The passage list is lazy both ways
 
@@ -225,7 +225,15 @@ A sūra can be 286 ayas and 6116 words. The list is a `CustomScrollView` hung fr
           const SliverToBoxAdapter(key: _anchor, child: SizedBox.shrink()),
 ```
 
-[study_screen.dart:486](../../../app/lib/features/study/study_screen.dart#L486-L498). An aya with no words yet draws a placeholder of about the right height ([study_screen.dart:532](../../../app/lib/features/study/study_screen.dart#L532-L539)) and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:620](../../../app/lib/features/study/study_screen.dart#L620-L645), [sets.dart:381](../../../app/lib/data/sets.dart#L381-L408)).
+[study_screen.dart:569](../../../app/lib/features/study/study_screen.dart#L569-L581). An aya with no words yet draws a placeholder of about the right height ([study_screen.dart:619](../../../app/lib/features/study/study_screen.dart#L619-L627)) and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:708](../../../app/lib/features/study/study_screen.dart#L708-L733), [sets.dart:394](../../../app/lib/data/sets.dart#L394-L421)).
+
+Each word arrives with its English gloss and, where The Last Dialogue's pages carry it, its French one. The row picks by the screen's language when it draws, so switching language does not re-read the words; a word with no French shows its English ([`StudyWord.glossIn`](../../../app/lib/data/sets.dart#L88-L89), [ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md)).
+
+Tapping a word opens its root in the panel below the passage. Two arrows beside "Mark set understood" move that panel to the word before or after, so a reader can walk the passage a word at a time instead of hunting for the next word to press.
+
+The arrows step through the words the screen is drawing, which off the walk is the whole sūra and not the acted set alone. The list is baked whenever the word cache changes, next to the list of what can be sounded, because whether an arrow is dark is a question every frame asks ([study_screen.dart:136](../../../app/lib/features/study/study_screen.dart#L136-L143)).
+
+Particles and proper nouns carry no root, and the arrows walk onto them like any other word: the panel shows the word and says it has no root, rather than going blank or skipping it ([study_screen.dart:360](../../../app/lib/features/study/study_screen.dart#L360-L383), [ADR 0013](../../adr/0013-the-reading-screens-root-panel-walks-word-by-word.md)).
 
 ### 7. Other screens answer down to 1a
 
@@ -239,12 +247,12 @@ There is only one reader screen, because there is only one recitation player. A 
   }
 ```
 
-[study_screen.dart:319](../../../app/lib/features/study/study_screen.dart#L319-L323). The screens that pop an aya:
+[study_screen.dart:353](../../../app/lib/features/study/study_screen.dart#L353-L357). The screens that pop an aya:
 
 - The sūra index. A row pops the sūra's first aya; the chevron unfolds the aya numbers, and each one pops its own aya ([index_screen.dart:75](../../../app/lib/features/index/index_screen.dart#L75), [index_screen.dart:159](../../../app/lib/features/index/index_screen.dart#L159), [index_screen.dart:277](../../../app/lib/features/index/index_screen.dart#L277)).
 - A root, its spine, or the constellation. Every aya reference in a family calls one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39)).
 - Progress (1d). "All 114" opens the index, then passes its answer on down ([progress_screen.dart:49](../../../app/lib/features/progress/progress_screen.dart#L49-L53)).
-- The drawer and the dashboard catch an aya too, and push 1a with it as `target` ([wird_shell.dart:227](../../../app/lib/shell/wird_shell.dart#L227-L240), [dashboard_screen.dart:89](../../../app/lib/features/dashboard/dashboard_screen.dart#L89-L93)).
+- The drawer and the dashboard catch an aya too, and push 1a with it as `target` ([wird_shell.dart:229](../../../app/lib/shell/wird_shell.dart#L229-L242), [dashboard_screen.dart:89](../../../app/lib/features/dashboard/dashboard_screen.dart#L89-L93)).
 
 The route table and the reason for each move sit in one comment block ([nav.dart:45](../../../app/lib/nav.dart#L45-L99)). The kept list (1e) shows kept ayas and roots but opens nothing ([kept_screen.dart:16](../../../app/lib/features/kept/kept_screen.dart#L16-L24)).
 
@@ -252,9 +260,9 @@ While visiting, the header shows "Back to the walk", which reloads with no targe
 
 ### 8. Marking a set understood
 
-[`_markUnderstood`](../../../app/lib/features/study/study_screen.dart#L274-L287) sends only the ayas that are still open. An aya the reader pulled the set across is already understood, and marking it again would move its date to today. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L174-L203). It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. The screen mints a fresh op id only after a press lands. A double tap reuses the same id, and the second write sees it in the outbox and does nothing ([db.dart:168](../../../app/lib/data/db.dart#L179-L185)).
+[`_markUnderstood`](../../../app/lib/features/study/study_screen.dart#L308-L321) sends only the ayas that are still open. An aya the reader pulled the set across is already understood, and marking it again would move its date to today. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L175-L204). It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. The screen mints a fresh op id only after a press lands. A double tap reuses the same id, and the second write sees it in the outbox and does nothing ([db.dart:180](../../../app/lib/data/db.dart#L180-L186)).
 
-Once every aya is understood, the same button reads "Next set" and reloads the walk ([study_screen.dart:402](../../../app/lib/features/study/study_screen.dart#L402-L405)).
+Once every aya is understood, the same button reads "Next set" and reloads the walk ([study_screen.dart:489](../../../app/lib/features/study/study_screen.dart#L489-L491)).
 
 ### 9. Praying a set
 
@@ -270,7 +278,7 @@ Future<void> prayTheSet(BuildContext context, StudySet set) async {
 }
 ```
 
-[app.dart:312](../../../app/lib/app.dart#L328-L334). The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:16](../../../app/lib/features/prayer/prayer_screen.dart#L16-L31)). The prayer is recorded when the reader comes back, however they leave. [`recordSetPrayed`](../../../app/lib/data/db.dart#L216) inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
+[app.dart:312](../../../app/lib/app.dart#L328-L334). The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:16](../../../app/lib/features/prayer/prayer_screen.dart#L16-L31)). The prayer is recorded when the reader comes back, however they leave. [`recordSetPrayed`](../../../app/lib/data/db.dart#L217) inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
 
 A prayer the reader never returns from is not counted. The count may be short; it is never invented.
 
@@ -290,7 +298,7 @@ Praying while visiting records a set over the visited ayas. That set is not one 
 
 ### 11. What progress counts
 
-Screen 1d replays the walk to count finished sets ([sets.dart:491](../../../app/lib/data/sets.dart#L491-L526)), instead of counting rows in `sets`. A set prayed twice and never marked is not a finished set. The prayer tile counts every recorded prayer, on the walk or not, and is labelled "prayers recorded" for that reason ([passage.dart:160](../../../app/lib/features/progress/passage.dart#L160-L166), [progress_screen.dart:156](../../../app/lib/features/progress/progress_screen.dart#L156-L157)).
+Screen 1d replays the walk to count finished sets ([sets.dart:505](../../../app/lib/data/sets.dart#L505-L540)), instead of counting rows in `sets`. A set prayed twice and never marked is not a finished set. The prayer tile counts every recorded prayer, on the walk or not, and is labelled "prayers recorded" for that reason ([passage.dart:160](../../../app/lib/features/progress/passage.dart#L160-L166), [progress_screen.dart:156](../../../app/lib/features/progress/progress_screen.dart#L156-L157)).
 
 ## Why it is this way
 

@@ -388,13 +388,14 @@ class _PrayerScreenState extends State<PrayerScreen> {
     StudyAya? before,
     StudyAya? after,
   ) {
+    final locale = Localizations.localeOf(context);
     final gloss = here == null
         ? ''
         : [
             for (final w in here.aya.words)
-              if (w.gloss != null) w.gloss!,
+              ?w.glossIn(locale),
           ].join(' ');
-    final note = here?.word.gloss ?? here?.word.translit;
+    final note = here?.word.glossIn(locale) ?? here?.word.translit;
     return Stack(
       children: [
         // An aya too long for the field runs off the top and bottom of it

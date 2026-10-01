@@ -142,11 +142,10 @@ class _RootDialState extends State<RootDial> {
               mainAxisAlignment: MainAxisAlignment.center,
               spacing: 16,
               children: [
-                _round(
-                  n,
-                  l.root_previousForm,
-                  Icons.chevron_left,
-                  () => _step(-1),
+                NocturneStep(
+                  label: l.root_previousForm,
+                  icon: Icons.chevron_left,
+                  onPressed: () => _step(-1),
                 ),
                 Text(
                   l.root_dialPosition(widget.index + 1, _count),
@@ -156,7 +155,11 @@ class _RootDialState extends State<RootDial> {
                     color: n.textAt(0.55),
                   ),
                 ),
-                _round(n, l.root_nextForm, Icons.chevron_right, () => _step(1)),
+                NocturneStep(
+                  label: l.root_nextForm,
+                  icon: Icons.chevron_right,
+                  onPressed: () => _step(1),
+                ),
               ],
             ),
           ),
@@ -284,23 +287,6 @@ class _RootDialState extends State<RootDial> {
           style: TextStyle(fontSize: 10, color: n.color('accent-300')),
         ),
       ],
-    ),
-  );
-
-  Widget _round(
-    Nocturne n,
-    String label,
-    IconData icon,
-    VoidCallback onPressed,
-  ) => DecoratedBox(
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      border: Border.all(color: n.divider),
-    ),
-    child: NocturneButton(
-      variant: NocturneButtonVariant.icon,
-      onPressed: onPressed,
-      child: Semantics(label: label, child: Icon(icon, size: 15)),
     ),
   );
 }

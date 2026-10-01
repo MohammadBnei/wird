@@ -40,22 +40,25 @@ void main() {
     expect(
       fr == 0 || fr == ayas,
       isTrue,
-      reason: 'a reading that is French for part of the Qurʼan and English for '
+      reason:
+          'a reading that is French for part of the Qurʼan and English for '
           'the rest is worse than one that is honestly English throughout; '
           '$fr of $ayas',
     );
   });
 
-  test('a language with no rendering is asked for and answered with nothing',
-      () async {
-    // Not an error and not a gap: the screen draws no paragraph at all.
-    expect(await translationsFor(db, [96001], 'de'), isEmpty);
-    expect(await translationsFor(db, const [], 'fr'), isEmpty);
-    expect(await translationsFor(db, [96001], 'fr'), isNotEmpty);
-  });
+  test(
+    'a language with no rendering is asked for and answered with nothing',
+    () async {
+      // Not an error and not a gap: the screen draws no paragraph at all.
+      expect(await translationsFor(db, [96001], 'de'), isEmpty);
+      expect(await translationsFor(db, const [], 'fr'), isEmpty);
+      expect(await translationsFor(db, [96001], 'fr'), isNotEmpty);
+    },
+  );
 
-  testWidgets('a French reader is read the aya in French, and told the glosses '
-      'are not', (tester) async {
+  testWidgets('a French reader sees English under each word, or the French '
+      'glosses go uncredited', (tester) async {
     await pumpPhone(
       tester,
       await wirdAround(
@@ -70,20 +73,28 @@ void main() {
 
     final rendered = (await translationsFor(db, [96001], 'fr'))[96001]!;
     expect(find.text(rendered), findsOneWidget);
-    // The honesty half, said once rather than under every aya.
-    expect(find.textContaining('mot à mot'), findsOneWidget);
+    // 96:1's first word, اقْرَأْ, in French under the Arabic.
+    expect(find.text('Lis'), findsWidgets);
+    // Whose the glosses are, said once rather than under every aya.
+    expect(find.textContaining('The Last Dialogue'), findsOneWidget);
   });
 
-  testWidgets('an English reader is shown no translation and no notice',
-      (tester) async {
+  testWidgets('an English reader is shown no translation and no notice', (
+    tester,
+  ) async {
     await pumpPhone(
       tester,
-      await wirdAround(db, StudyScreen(db: db), route: Routes.study, cache: audio),
+      await wirdAround(
+        db,
+        StudyScreen(db: db),
+        route: Routes.study,
+        cache: audio,
+      ),
     );
     await tester.pumpAndSettle();
 
     final rendered = (await translationsFor(db, [96001], 'fr'))[96001]!;
     expect(find.text(rendered), findsNothing);
-    expect(find.textContaining('mot à mot'), findsNothing);
+    expect(find.textContaining('The Last Dialogue'), findsNothing);
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../l10n/app_localizations.dart';
 import '../nav.dart';
 import '../theme/nocturne.dart';
 import '../widgets/nocturne_button.dart';
@@ -138,6 +139,7 @@ class SoundingNow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final recitation = Wird.of(context).recitation;
     return ValueListenableBuilder<Sounding?>(
       valueListenable: recitation.sounding,
@@ -159,8 +161,8 @@ class SoundingNow extends StatelessWidget {
                   children: [
                     Text(
                       switch (sounding.what) {
-                        Sounded.word => 'SOUNDING ONE WORD',
-                        Sounded.set => 'RECITING THE SET',
+                        Sounded.word => l10n.shell_soundingWord,
+                        Sounded.set => l10n.shell_recitingSet,
                       },
                       style: TextStyle(
                         fontSize: 10,
@@ -198,7 +200,7 @@ class SoundingNow extends StatelessWidget {
                 key: const Key('stop sounding'),
                 variant: NocturneButtonVariant.primary,
                 onPressed: recitation.stop,
-                child: const Text('Stop'),
+                child: Text(l10n.shell_stop),
               ),
             ],
           ),
@@ -242,6 +244,7 @@ class WirdDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Drawer(
       backgroundColor: n.surface,
       width: 296,
@@ -250,7 +253,7 @@ class WirdDrawer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _account(context, n),
+            _account(context, n, l10n),
             const NocturneRule(fade: 48),
             Expanded(
               child: ListView(
@@ -258,7 +261,7 @@ class WirdDrawer extends StatelessWidget {
                 children: [
                   for (final destination in destinations)
                     _DrawerRow(
-                      label: destination.label,
+                      label: destination.label(l10n),
                       current: destination.route == current,
                       onTap: () => _go(context, destination.route),
                     ),
@@ -278,36 +281,40 @@ class WirdDrawer extends StatelessWidget {
   /// space is here now because the head of the drawer is where an account
   /// lives, and moving the destinations down later to make room for it is a
   /// change the reader would feel.
-  Widget _account(BuildContext context, Nocturne n) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      n.space('6'),
-      n.space('6'),
-      n.space('6'),
-      n.space('2'),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'NOT SIGNED IN',
-          style: TextStyle(
-            fontSize: 10,
-            height: 1.2,
-            letterSpacing: 0.11 * 10,
-            color: n.accent,
-          ),
+  Widget _account(BuildContext context, Nocturne n, AppLocalizations l10n) =>
+      Padding(
+        padding: EdgeInsets.fromLTRB(
+          n.space('6'),
+          n.space('6'),
+          n.space('6'),
+          n.space('2'),
         ),
-        SizedBox(height: n.space('2')),
-        Text('Wird', style: Theme.of(context).textTheme.headlineMedium),
-        SizedBox(height: n.space('1')),
-        Text(
-          'Everything you have read and kept is on this phone. Accounts '
-          'arrive with the server they sync to.',
-          style: TextStyle(fontSize: 11.5, height: 1.45, color: n.textAt(0.5)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.shell_notSignedIn,
+              style: TextStyle(
+                fontSize: 10,
+                height: 1.2,
+                letterSpacing: 0.11 * 10,
+                color: n.accent,
+              ),
+            ),
+            SizedBox(height: n.space('2')),
+            Text('Wird', style: Theme.of(context).textTheme.headlineMedium),
+            SizedBox(height: n.space('1')),
+            Text(
+              l10n.shell_drawerBlurb,
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.45,
+                color: n.textAt(0.5),
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }
 
 /// One destination. Its own press and focus states, because the drawer is the

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:sqflite/sqflite.dart';
 
 enum ReadingOrder { nuzul, mushaf }
@@ -68,13 +69,25 @@ class StudyWord {
     required this.text,
     this.translit,
     this.gloss,
+    this.glossFr,
     this.root,
   });
 
   final int id;
   final String text;
   final String? translit;
+
+  /// The English under the word, and the French where The Last Dialogue's pages
+  /// carry this word (data/SOURCES.md). Both are held so a reader who switches
+  /// language sees the other without the words being read again.
   final String? gloss;
+  final String? glossFr;
+
+  /// The gloss a reader in [locale] is shown: the French where there is one,
+  /// and the English otherwise, because a word with no French is still worth a
+  /// meaning.
+  String? glossIn(Locale locale) =>
+      locale.languageCode == 'fr' ? glossFr ?? gloss : gloss;
 
   /// The root's letters, or null where the word carries none — particles and
   /// proper nouns. Only a word with a root opens the root panel.
@@ -386,7 +399,7 @@ Future<Map<int, List<StudyWord>>> wordsFor(
   if (byAya.isEmpty) return byAya;
   final marks = List.filled(byAya.length, '?').join(',');
   final rows = await db.rawQuery(
-    '''SELECT id, ayah_id, text_ar, translit, gloss_en, root_letters
+    '''SELECT id, ayah_id, text_ar, translit, gloss_en, gloss_fr, root_letters
          FROM words
         WHERE ayah_id IN ($marks)
         ORDER BY ayah_id, position''',
@@ -400,6 +413,7 @@ Future<Map<int, List<StudyWord>>> wordsFor(
         text: w['text_ar']! as String,
         translit: w['translit'] as String?,
         gloss: w['gloss_en'] as String?,
+        glossFr: w['gloss_fr'] as String?,
         root: (root == null || root.isEmpty) ? null : root,
       ),
     );

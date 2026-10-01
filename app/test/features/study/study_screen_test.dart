@@ -178,6 +178,20 @@ void main() {
     expect(find.text('ق ر أ'), findsOneWidget);
   });
 
+  testWidgets('a word with no root wears the rule that says a root is under '
+      'it, now the arrows can walk onto one', (tester) async {
+    await openStudy(tester);
+
+    // ٱلَّذِى, the set's fourth word and its first particle.
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byKey(const Key('next word')));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('No root'), findsOneWidget);
+    expect(lit(tester, 96001004), isFalse);
+  });
+
   testWidgets('the screen puts an aya the reader understood out of order back '
       'in front of them', (tester) async {
     await markSetUnderstood(db, newOpId(), [96002]);

@@ -184,4 +184,41 @@ void main() {
       'to succeed, to prosper',
     );
   });
+  // The failure: a French reader opens a root and reads its parsing in English
+  // beside a French sense — which is what shipped while `role_fr` was a column
+  // nothing read.
+  test('a reader in French reads the parsing of a root in English', () async {
+    final fr = (await rootReading(db, 'صبر', readIn: const Locale('fr')))!;
+    final en = (await rootReading(db, 'صبر', readIn: const Locale('en')))!;
+    final firstFr = fr.irab[fr.derivatives.first.wordId]!;
+    final firstEn = en.irab[en.derivatives.first.wordId]!;
+
+    expect(firstEn.map((s) => s.role), contains('Verb'));
+    expect(firstFr.map((s) => s.role), contains('Verbe'));
+    expect(firstFr.map((s) => s.role), isNot(contains('Verb')));
+    final alone = await wordIrab(
+      db,
+      fr.derivatives.first.wordId,
+      readIn: const Locale('fr'),
+    );
+    expect(alone.map((s) => s.role), firstFr.map((s) => s.role));
+    expect(alone.first.features, contains('Accompli'));
+  });
+
+  test('a reader in French reads the meaning under each form of a root in '
+      'English', () async {
+    final fr = (await rootReading(db, 'صبر', readIn: const Locale('fr')))!;
+    final en = (await rootReading(db, 'صبر', readIn: const Locale('en')))!;
+    // بِٱلصَّبْرِ, first read at 2:45.
+    const throughPatience = 2045002;
+
+    expect(
+      fr.derivatives.firstWhere((d) => d.wordId == throughPatience).gloss,
+      'dans la patience',
+    );
+    expect(
+      en.derivatives.firstWhere((d) => d.wordId == throughPatience).gloss,
+      'through patience',
+    );
+  });
 }

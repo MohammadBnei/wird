@@ -57,3 +57,11 @@ app/gate-shots/
 __pycache__/
 .claude/worktrees/
 .claude/settings.local.json
+
+# Android release signing. The keystore is unrecoverable — lose it and no
+# build can ever update an installed Wird again — and it lives in Infisical,
+# never here. key.properties names its path and holds its passwords.
+app/android/key.properties
+*.jks
+*.p12
+*.keystore

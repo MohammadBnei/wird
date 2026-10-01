@@ -127,7 +127,11 @@ file's name; the corpus is named in full, with its copyright block, in
 
 ### French reaches a reader one ayah at a time, and why
 
-**There is no French word-by-word gloss to be had.** `language=fr` on the verses
+*Since 2026-09-30 the French under each word comes from elsewhere: see
+[French word glosses: The Last Dialogue](#french-word-glosses-the-last-dialogue).
+This section is about quran.com, which still serves only the whole-aya French.*
+
+**quran.com has no French word-by-word gloss.** `language=fr` on the verses
 endpoint answers **English**, with `language_name: "english"` in the payload while
 it does so. Measured 2026-09-27 against the repository's own parameters: `ur`
 returns Urdu, `id` returns Indonesian, `bn` returns Bengali, and `fr` and `ru`
@@ -162,6 +166,49 @@ shipped `corpus.db` is storage without end. Adding a translation puts more prose
 on that same unresolved term. It does not resolve it, and it is not a second
 question.
 
+### French word glosses: The Last Dialogue
+
+`words.gloss_fr` is the French under each word, from The Last Dialogue's
+"Coran Mot à Mot" (<https://www.thelastdialogue.org/coran-mot-a-mot-francais/>).
+It is the one complete French word-by-word found after quran.com and
+corpus.quran.com both turned out to be English only (checked 2026-09-30:
+corpus.quran.com's word-by-word page has no language option and shows the same
+English glosses quran.com serves).
+
+**Permission.** The site's footer reads "© 2026 All Rights Reserved" and it
+publishes no licence, so the use rests on a written grant. The Last Dialogue
+wrote to the project owner by email on 2026-09-30:
+
+> "The Last Dialogue hereby agrees for the usage by wird of the french glosses, free of mentions"
+
+The owner keeps the email. "Free of mentions" means no attribution is required.
+Wird names them on its About screen anyway, because it names every source; the
+entry says the credit is Wird's convention and not a term of the grant.
+
+**What is taken, and how.** `server/cmd/ingest` saves the index page, the 114
+sura pages it links, and the 28 section pages the seven long suras split into,
+under `data/raw/tld/` (gitignored; the pages are not committed except three
+trimmed ones as ETL test fixtures). The ETL reads each word card — a
+part-of-speech label, the Arabic, the French, a transliteration — and keeps the
+French only. The label and the transliteration are not used: the parsing is the
+corpus's own and the transliteration is quran.com's.
+
+**Matched by the Arabic, never by position.** The pages skip a word here and
+there (2:54 has no card for ذَٰلِكُمْ), and three cards carry the wrong Arabic
+(39:37, 50:34, 53:50). Pairing by position would give every later word in those
+ayas its neighbour's meaning. So each aya's cards are aligned with its words on
+their bare letters (longest common subsequence), and a word no card matches
+keeps `gloss_en`. In the 2026-09-30 build that is 128 of 77,429 words. The
+French text is not edited.
+
+**The site marks the word-by-word as "In Beta · Work in progress".** A
+correction they publish reaches Wird only through a re-ingest and a corpus
+rebuild.
+
+`Corpus.Check` refuses a corpus where any aya has French on none of its words:
+that is what a page that failed to download, or a page whose layout the parser
+stopped reading, looks like.
+
 ### The parsing: the role names are written here, not copied
 
 `irab` and `irab_roles` are derived from the same file and are a different act
@@ -184,7 +231,10 @@ corpus.quran.com's documentation pages, so:
   named *of the kāna family* because its forms are كان, كانوا, كن, ليس;
 - the **French** half has no upstream at all. It is standard Arabic-grammar
   French, and it is review work: nothing can check that `MOOD:JUS` is *mode
-  apocopé* rather than *mode jussif*.
+  apocopé* rather than *mode jussif*. Since 2026-09-30 the app shows it to a
+  reader in French (the owner asked for it after reading the list), so a
+  wrong name is now one a reader sees; a correction is a change to
+  `server/cmd/etl/irab.go` and a rebuild.
 
 A translated vocabulary of Dukes's own annotation codes is a derivative of his
 annotation, so it travels under the same GPL row below as the morphology it is
@@ -212,6 +262,7 @@ is given so the reading can be checked rather than believed.
 | `surahs` (incl. `revelation_order`) | `api.quran.com/api/v4/chapters` | [Quran Foundation Developer Terms](https://api-docs.quran.foundation/legal/developer-terms/) §2.2, §3.1 | **Yes, conditionally** — see *The one-week rule* |
 | `ayahs.text_uthmani`, `words.text_ar` | `api.quran.com/api/v4/verses/by_chapter`; the text is [Tanzil](https://tanzil.net/download/)'s, which quran.com credits | Tanzil: verbatim copies, attribution, a link to tanzil.net. Delivery is governed by the QF terms | **Yes** for the text, unmodified and attributed; the delivery path carries the QF conditions |
 | `words.gloss_en`, `words.translit` | same endpoint | QF terms treat it as QF Content; **no upstream author is named anywhere I could find** | **Could not determine** — conditionally yes under the QF terms, with an unnamed source underneath |
+| `words.gloss_fr` | [The Last Dialogue, "Coran Mot à Mot"](https://www.thelastdialogue.org/coran-mot-a-mot-francais/), the sura pages saved by `ingest` | "© 2026 All Rights Reserved", and a written grant to Wird dated 2026-09-30, attribution not required | **Yes, by permission** — see *French word glosses* |
 | `ayah_translations` | `api.quran.com/api/v4/verses/by_chapter`, `translations=779` — Rashid Maash's French, arriving in the same response as the Arabic and keyed by verse | QF terms treat it as QF Content, and the translator is named where the word gloss's author is not | **Could not determine** — the same unresolved term as the row above, now carrying prose somebody is credited for |
 | `words.root_letters`, `words.form`, `words.morphology`, `roots` | [Quranic Arabic Corpus 0.4](https://corpus.quran.com/download/), the upstream file, placed by hand | GPL, verbatim copies only, attribution and a link; Tanzil underneath it | **Yes** — Wird is AGPL-3.0 and the notice ships in `corpus_meta.notice`; see above |
 | `irab` | the same file, one row per segment rather than one per word | as above — it is upstream's own tags and features, rearranged and not edited | **Yes**, under the same row above |

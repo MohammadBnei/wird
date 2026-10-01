@@ -98,7 +98,7 @@ Future<Bootstrap> _open(Future<Database> corpus) async {
 }
 ```
 
-[main.dart:15](../../app/lib/main.dart#L15-L20) · the bare frames: [main.dart:40](../../app/lib/main.dart#L40-L53)
+[main.dart:16](../../app/lib/main.dart#L16-L21) · the bare frames: [main.dart:41](../../app/lib/main.dart#L41-L58)
 
 ### 2. The bundled corpus becomes the one database
 
@@ -133,7 +133,7 @@ The copy only happens when `wird.db` is missing. A later app update with a newer
     child: MaterialApp(
 ```
 
-[nav.dart:187](../../app/lib/nav.dart#L187-L214) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:202](../../app/lib/app.dart#L202)
+[nav.dart:189](../../app/lib/nav.dart#L189-L216) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:202](../../app/lib/app.dart#L202)
 
 ### 4. Routes: destinations get the shell, pushed screens do not
 
@@ -153,7 +153,7 @@ Every screen is registered by name in one map. The drawer lists the destinations
     },
 ```
 
-[nav.dart:167](../../app/lib/nav.dart#L167-L177) · [the route map, nav.dart:73](../../app/lib/nav.dart#L73-L99) · [the drawer list, nav.dart:107](../../app/lib/nav.dart#L107-L116) · [WirdShell](../../app/lib/shell/wird_shell.dart#L22)
+[nav.dart:169](../../app/lib/nav.dart#L169-L179) · [the route map, nav.dart:73](../../app/lib/nav.dart#L73-L99) · [the drawer list, nav.dart:109](../../app/lib/nav.dart#L109-L118) · [WirdShell](../../app/lib/shell/wird_shell.dart#L23)
 
 ### 5. A prayer is recorded on the way back from it
 

@@ -398,6 +398,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_kinOpensItsAya => 'A kin opens the aya it is first met in.';
 
   @override
+  String get study_nextWord => 'Next word';
+
+  @override
   String get study_noAyaUnderstoodYet => 'No aya marked understood yet';
 
   @override
@@ -418,6 +421,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_previousSet => 'Previous set';
 
   @override
+  String get study_previousWord => 'Previous word';
+
+  @override
   String get study_prayThisSet => 'Pray this set';
 
   @override
@@ -434,6 +440,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String study_surahKicker(Object surah, Object place) {
     return 'Sūra $surah · $place';
   }
+
+  @override
+  String get study_wordHasNoRoot => 'No root';
 
   @override
   String get study_visiting => 'Visiting';
@@ -888,7 +897,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_ayaTranslated => 'Rashid Maash';
 
   @override
-  String get study_glossesStayEnglish => 'The word meanings under each word are in English; no word-by-word rendering exists in your language.';
+  String get study_glossesSource => 'The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.';
 
   @override
   String get root_senseJudgeThanks => 'Noted — thank you.';
@@ -898,4 +907,81 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get root_senseJudgeBadLabel => 'This sense is wrong';
+
+  @override
+  String get nav_home => 'Home';
+
+  @override
+  String get nav_theSet => 'The set';
+
+  @override
+  String get nav_sources => 'Sources';
+
+  @override
+  String get shell_stop => 'Stop';
+
+  @override
+  String get shell_soundingWord => 'SOUNDING ONE WORD';
+
+  @override
+  String get shell_recitingSet => 'RECITING THE SET';
+
+  @override
+  String get shell_notSignedIn => 'NOT SIGNED IN';
+
+  @override
+  String get shell_drawerBlurb => 'Everything you have read and kept is on this phone. Accounts arrive with the server they sync to.';
+
+  @override
+  String appCorpusWouldNotOpen(String error) {
+    return 'The corpus would not open.\n\n$error';
+  }
+
+  @override
+  String get aboutProvidesFrenchGloss => 'French word-by-word gloss';
+
+  @override
+  String get aboutLicenceVerbatim => 'Verbatim copies, attributed';
+
+  @override
+  String get aboutLicenceAuthored => 'Authored for Wird';
+
+  @override
+  String get aboutLicenceFetched => 'Fetched at playback, never redistributed';
+
+  @override
+  String get aboutLicencePermission => 'Used by permission';
+
+  @override
+  String get aboutTermsCorpus => 'Every root a word opens into comes from here. Verbatim copies only — changing the annotation is not allowed. Used on the condition that its source is clearly indicated and a link is made to corpus.quran.com, so you can keep track of what has changed since this build.';
+
+  @override
+  String get aboutTermsTanzil => 'The verified Uthmani text every aya is painted from, which the Quranic Arabic Corpus also builds on. Copied verbatim; changing the text is not allowed. Linked so you can keep track of changes.';
+
+  @override
+  String get aboutTermsQuranFoundation => 'The English under each word, served by the quran.com API. Their terms allow an application to show this content but not to store it indefinitely without a weekly re-sync, which a bundled corpus does not do. Unsettled, and recorded as unsettled.';
+
+  @override
+  String get aboutTermsLastDialogue => 'The French under each word, for a reader who reads Wird in French. The site marks its word-by-word as in beta. They granted Wird its use by email on 30 September 2026 without requiring attribution; Wird names them anyway, because it names every source.';
+
+  @override
+  String get aboutTermsNocturne => 'The design system every screen is drawn from. Dark only; there is no light mode.';
+
+  @override
+  String get aboutTermsScheherazade => 'Bundled unmodified, because platform Arabic faces mangle Qurʼanic diacritics.';
+
+  @override
+  String get aboutTermsInter => 'Bundled unmodified.';
+
+  @override
+  String get aboutTermsTimings => 'The millisecond each word is spoken at, which is what lets a word light up as you hear it. From github.com/cpfair/quran-align, aligned against this same muʿallim recording. Reindexed for this app: the published data is zero-based and end-exclusive, and it is stored here one-based against the word it belongs to. Offered as-is, without warranties.';
+
+  @override
+  String get aboutTermsRecitation => 'The muʿallim recording is downloaded by your device from everyayah.com when you press play, the way a browser loads a page, and cached on your phone. Wird does not bundle it, mirror it, or serve it. The archive publishes no terms of use, so nothing here is offered as permission to redistribute it — and that is why this app never does.';
+
+  @override
+  String get aboutTermsVoice => 'The recogniser that hears your recitation, downloaded on your word and run on this phone; nothing you say is sent anywhere. It writes Qurʼanic phonemes, including the marks of tajwīd. Wird uses that only to find where in the set you are, and never to judge how you recited: automatic tajwīd feedback can be wrong, and no software here or anywhere replaces a qualified teacher. Its licence forbids charging for the model or for any feature it powers, which Wird does not and will not do.';
+
+  @override
+  String get aboutSelfTerms => 'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.';
 }

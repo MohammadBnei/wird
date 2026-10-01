@@ -398,6 +398,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_kinOpensItsAya => 'Un mot apparenté ouvre le verset où il paraît pour la première fois.';
 
   @override
+  String get study_nextWord => 'Mot suivant';
+
+  @override
   String get study_noAyaUnderstoodYet => 'Aucun verset encore marqué comme compris';
 
   @override
@@ -418,6 +421,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_previousSet => 'Passage précédent';
 
   @override
+  String get study_previousWord => 'Mot précédent';
+
+  @override
   String get study_prayThisSet => 'Prier ce passage';
 
   @override
@@ -434,6 +440,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String study_surahKicker(Object surah, Object place) {
     return 'Sourate $surah · $place';
   }
+
+  @override
+  String get study_wordHasNoRoot => 'Pas de racine';
 
   @override
   String get study_visiting => 'En visite';
@@ -888,7 +897,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_ayaTranslated => 'Rashid Maash';
 
   @override
-  String get study_glossesStayEnglish => 'Le sens de chaque mot est en anglais : il n’existe pas de traduction mot à mot dans votre langue.';
+  String get study_glossesSource => 'Le sens sous chaque mot vient de The Last Dialogue ; les quelques mots qu’il ne couvre pas restent en anglais.';
 
   @override
   String get root_senseJudgeThanks => 'C’est noté — merci.';
@@ -898,4 +907,81 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get root_senseJudgeBadLabel => 'Ce sens est faux';
+
+  @override
+  String get nav_home => 'Accueil';
+
+  @override
+  String get nav_theSet => 'Le passage';
+
+  @override
+  String get nav_sources => 'Sources';
+
+  @override
+  String get shell_stop => 'Arrêter';
+
+  @override
+  String get shell_soundingWord => 'UN MOT EN LECTURE';
+
+  @override
+  String get shell_recitingSet => 'RÉCITATION DU PASSAGE';
+
+  @override
+  String get shell_notSignedIn => 'NON CONNECTÉ';
+
+  @override
+  String get shell_drawerBlurb => 'Tout ce que vous avez lu et gardé est sur ce téléphone. Les comptes arriveront avec le serveur avec lequel ils se synchronisent.';
+
+  @override
+  String appCorpusWouldNotOpen(String error) {
+    return 'Le corpus n’a pas pu s’ouvrir.\n\n$error';
+  }
+
+  @override
+  String get aboutProvidesFrenchGloss => 'Glose mot à mot en français';
+
+  @override
+  String get aboutLicenceVerbatim => 'Copies à l’identique, avec attribution';
+
+  @override
+  String get aboutLicenceAuthored => 'Conçu pour Wird';
+
+  @override
+  String get aboutLicenceFetched => 'Récupéré à la lecture, jamais redistribué';
+
+  @override
+  String get aboutLicencePermission => 'Utilisé avec autorisation';
+
+  @override
+  String get aboutTermsCorpus => 'Chaque racine vers laquelle un mot s’ouvre vient d’ici. Copies à l’identique uniquement — modifier l’annotation n’est pas permis. Utilisé à condition que sa source soit clairement indiquée et qu’un lien mène à corpus.quran.com, pour que vous puissiez suivre ce qui a changé depuis cette version.';
+
+  @override
+  String get aboutTermsTanzil => 'Le texte uthmani vérifié d’après lequel chaque verset est dessiné, et sur lequel le Quranic Arabic Corpus s’appuie aussi. Copié à l’identique ; modifier le texte n’est pas permis. Lié pour que vous puissiez suivre les modifications.';
+
+  @override
+  String get aboutTermsQuranFoundation => 'L’anglais sous chaque mot, servi par l’API de quran.com. En français, ce sont les gloses de The Last Dialogue qui s’affichent ; l’anglais ne reste que là où le français manque. Leurs conditions permettent à une application d’afficher ce contenu, mais pas de le conserver indéfiniment sans une resynchronisation hebdomadaire, ce que ne fait pas un corpus embarqué. Non réglé, et consigné comme non réglé.';
+
+  @override
+  String get aboutTermsLastDialogue => 'Le français sous chaque mot, pour qui lit Wird en français. Le site signale que son mot à mot est en version bêta. Ils en ont accordé l’usage à Wird par courriel le 30 septembre 2026, sans exiger d’être cités ; Wird les nomme tout de même, parce qu’il nomme chacune de ses sources.';
+
+  @override
+  String get aboutTermsNocturne => 'Le système de design d’après lequel chaque écran est dessiné. Sombre uniquement ; il n’y a pas de mode clair.';
+
+  @override
+  String get aboutTermsScheherazade => 'Embarquée sans modification, parce que les polices arabes du système abîment les signes diacritiques coraniques.';
+
+  @override
+  String get aboutTermsInter => 'Embarquée sans modification.';
+
+  @override
+  String get aboutTermsTimings => 'La milliseconde à laquelle chaque mot est prononcé : c’est ce qui permet à un mot de s’allumer au moment où vous l’entendez. Tiré de github.com/cpfair/quran-align, aligné sur ce même enregistrement muʿallim. Réindexé pour cette application : les données publiées comptent à partir de zéro et excluent leur borne de fin, et elles sont stockées ici à partir de un, rattachées au mot auquel elles appartiennent. Fourni tel quel, sans garantie.';
+
+  @override
+  String get aboutTermsRecitation => 'L’enregistrement muʿallim est téléchargé par votre appareil depuis everyayah.com quand vous appuyez sur lecture, comme un navigateur charge une page, puis mis en cache sur votre téléphone. Wird ne l’embarque pas, n’en fait pas de copie miroir et ne le sert pas. Les archives ne publient aucune condition d’utilisation : rien ici ne vaut donc permission de le redistribuer — et c’est pourquoi cette application ne le fait jamais.';
+
+  @override
+  String get aboutTermsVoice => 'Le reconnaisseur qui entend votre récitation, téléchargé à votre demande et exécuté sur ce téléphone ; rien de ce que vous dites n’est envoyé ailleurs. Il écrit des phonèmes coraniques, y compris les marques du tajwīd. Wird s’en sert uniquement pour savoir où vous en êtes dans le passage, et jamais pour juger votre récitation : un retour automatique sur le tajwīd peut se tromper, et aucun logiciel, ici ou ailleurs, ne remplace un enseignant qualifié. Sa licence interdit de faire payer le modèle ou toute fonction qu’il alimente, ce que Wird ne fait pas et ne fera pas.';
+
+  @override
+  String get aboutSelfTerms => 'Wird est un logiciel libre sous GNU Affero General Public License, version 3 ou ultérieure. L’AGPL plutôt que la GPL, parce que Wird a un serveur : quiconque le fait tourner comme service doit à ses utilisateurs le code source de ce qu’ils utilisent.';
 }

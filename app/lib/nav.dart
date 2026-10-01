@@ -98,21 +98,23 @@ final screens = <String, ScreenBuilder>{
   Routes.index: (db, _) => IndexScreen(db: db),
 };
 
-/// One place the drawer can send the reader.
-typedef Destination = ({String route, String label});
+/// One place the drawer can send the reader, and its row's words in the
+/// reader's language.
+typedef Destination = ({String route, String Function(AppLocalizations) label});
 
 /// The drawer, in the order it lists them: home, the reading, the two ways of
 /// finding a place in the text, what has been kept, and then the two screens a
-/// reader visits rarely.
-const destinations = <Destination>[
-  (route: Routes.dashboard, label: 'Home'),
-  (route: Routes.study, label: 'The set'),
-  (route: Routes.index, label: 'Sūra index'),
-  (route: Routes.progress, label: 'Your passage'),
-  (route: Routes.kept, label: 'Kept'),
-  (route: Routes.settings, label: 'Settings'),
-  (route: Routes.report, label: 'Report something'),
-  (route: Routes.about, label: 'Sources'),
+/// reader visits rarely. A row shares its key with the screen's own heading
+/// wherever the two say the same thing.
+final destinations = <Destination>[
+  (route: Routes.dashboard, label: (l) => l.nav_home),
+  (route: Routes.study, label: (l) => l.nav_theSet),
+  (route: Routes.index, label: (l) => l.dashboard_doorIndex),
+  (route: Routes.progress, label: (l) => l.progress_title),
+  (route: Routes.kept, label: (l) => l.kept_title),
+  (route: Routes.settings, label: (l) => l.settingsTitle),
+  (route: Routes.report, label: (l) => l.report_title),
+  (route: Routes.about, label: (l) => l.nav_sources),
 ];
 
 bool isDestination(String? route) => destinations.any((d) => d.route == route);

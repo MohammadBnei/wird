@@ -14,6 +14,7 @@ paths:
 ## Corpus
 - `ingest` → `data/raw/` (gitignored) → `etl` → `app/assets/corpus.db`.
 - Every table → licence row in `data/SOURCES.md`. New source w/o row = ✗.
+- Full `ingest` run also saves The Last Dialogue French word pages → `data/raw/tld/` (index + 114 sura + 28 section pages). ETL matches card→word by Arabic letters (LCS), never position. `Corpus.Check` ✗ if any aya has zero French words. ADR 0012.
 - After rebuild: `jidhrcorpus` (refresh `jidhr/testdata/quran.json`) + delete installed `wird.db` on test devices (`.claude/rules/app.md`).
 
 ## Senses (ADR 0010)

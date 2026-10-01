@@ -111,7 +111,7 @@ These words mean one thing each, everywhere in these docs.
 |---|---|
 | **Root** | The consonant skeleton an Arabic word is built on, usually three letters. Words sharing a root share a family of meaning. |
 | **Morphology** | The per-word analysis from the Quranic Arabic Corpus: each word's root, form and parsing. |
-| **Gloss** | The word-by-word English meaning shown under each word. Not a sense. |
+| **Gloss** | The word-by-word meaning shown under each word: English, or French from The Last Dialogue for a reader in French. Not a sense. |
 | **Sense** | What a root means: one entry per root, with an English and a French text. Senses are drafted by a language model and live on the server ([ADR 0010](adr/0010-the-server-owns-the-roots-and-their-senses.md)). jidhr's API calls them `meanings`. |
 | **Sense pack** | The whole answer of `GET /v1/senses`, with a version the app stores and sends back as an ETag. |
 | **Drafts log** | `data/root_senses_draft.tsv`: every drafted sense, appended, never rewritten. The last row for a root wins. |

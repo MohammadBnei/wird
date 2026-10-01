@@ -599,6 +599,10 @@
   "@study_kinOpensItsAya": {
     "description": "Reading screen, the unfolded root panel: what pressing one of the kin tags above it does."
   },
+  "study_nextWord": "Next word",
+  "@study_nextWord": {
+    "description": "Reading screen, the right chevron in the root panel: it opens the word after the one the panel is showing. Screen-reader label."
+  },
   "study_noAyaUnderstoodYet": "No aya marked understood yet",
   "@study_noAyaUnderstoodYet": {
     "description": "Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set has been marked."
@@ -630,6 +634,10 @@
   "study_previousSet": "Previous set",
   "@study_previousSet": {
     "description": "Reading screen footer, the up arrow: it steps to the set before this one. Also its screen-reader label, which the aya numbers are appended to."
+  },
+  "study_previousWord": "Previous word",
+  "@study_previousWord": {
+    "description": "Reading screen, the left chevron in the root panel: it opens the word before the one the panel is showing. Screen-reader label. It says word rather than set because the footer a band below steps by the set."
   },
   "study_prayThisSet": "Pray this set",
   "@study_prayThisSet": {
@@ -670,6 +678,10 @@
         "example": "Makkah"
       }
     }
+  },
+  "study_wordHasNoRoot": "No root",
+  "@study_wordHasNoRoot": {
+    "description": "Reading screen root panel, under a word the arrows walked onto that has no root — a particle or a proper noun. It names this one word, unlike study_noRootInSet, which is about the whole set."
   },
   "study_visiting": "Visiting",
   "@study_visiting": {
@@ -1392,9 +1404,9 @@
   "@study_ayaTranslated": {
     "description": "Who rendered the aya, shown under the translation."
   },
-  "study_glossesStayEnglish": "The word meanings under each word are in English; no word-by-word rendering exists in your language.",
-  "@study_glossesStayEnglish": {
-    "description": "Said once above the reading, where the aya is translated but the per-word glosses are not."
+  "study_glossesSource": "The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.",
+  "@study_glossesSource": {
+    "description": "Said once above the reading, where the aya is translated: whose the per-word glosses are, and that a few stay English."
   },
   "root_senseJudgeThanks": "Noted — thank you.",
   "@root_senseJudgeThanks": {
@@ -1407,5 +1419,110 @@
   "root_senseJudgeBadLabel": "This sense is wrong",
   "@root_senseJudgeBadLabel": {
     "description": "Screen-reader label for the no control."
+  },
+  "nav_home": "Home",
+  "@nav_home": {
+    "description": "The drawer's row for the home screen."
+  },
+  "nav_theSet": "The set",
+  "@nav_theSet": {
+    "description": "The drawer's row for the reading screen, which shows the set being read."
+  },
+  "nav_sources": "Sources",
+  "@nav_sources": {
+    "description": "The drawer's row for the sources and licences screen."
+  },
+  "shell_stop": "Stop",
+  "@shell_stop": {
+    "description": "The button in the bar at the foot of every screen that silences what is sounding."
+  },
+  "shell_soundingWord": "SOUNDING ONE WORD",
+  "@shell_soundingWord": {
+    "description": "The eyebrow of the bar at the foot of every screen while a single word is being sounded."
+  },
+  "shell_recitingSet": "RECITING THE SET",
+  "@shell_recitingSet": {
+    "description": "The eyebrow of the bar at the foot of every screen while the whole set is being recited."
+  },
+  "shell_notSignedIn": "NOT SIGNED IN",
+  "@shell_notSignedIn": {
+    "description": "The eyebrow at the head of the drawer, over the app's name."
+  },
+  "shell_drawerBlurb": "Everything you have read and kept is on this phone. Accounts arrive with the server they sync to.",
+  "@shell_drawerBlurb": {
+    "description": "The sentence under the app's name at the head of the drawer."
+  },
+  "appCorpusWouldNotOpen": "The corpus would not open.\n\n{error}",
+  "@appCorpusWouldNotOpen": {
+    "description": "The only thing on screen when the bundled corpus fails to open at launch. `error` is the raw error, untranslated.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aboutProvidesFrenchGloss": "French word-by-word gloss",
+  "@aboutProvidesFrenchGloss": {
+    "description": "The kicker on The Last Dialogue card of the sources screen: what of the app would be missing without it."
+  },
+  "aboutLicenceVerbatim": "Verbatim copies, attributed",
+  "@aboutLicenceVerbatim": {
+    "description": "The licence tag on the Tanzil Project card of the sources screen. Tanzil's terms have no title, so this describes them."
+  },
+  "aboutLicenceAuthored": "Authored for Wird",
+  "@aboutLicenceAuthored": {
+    "description": "The licence tag on the Nocturne card of the sources screen: the design system was written for this app."
+  },
+  "aboutLicenceFetched": "Fetched at playback, never redistributed",
+  "@aboutLicenceFetched": {
+    "description": "The licence tag on the recitation card of the sources screen. The archive publishes no terms, so this says how the recording is used instead."
+  },
+  "aboutLicencePermission": "Used by permission",
+  "@aboutLicencePermission": {
+    "description": "The licence tag on The Last Dialogue card of the sources screen: the use was granted by email rather than under a published licence."
+  },
+  "aboutTermsCorpus": "Every root a word opens into comes from here. Verbatim copies only — changing the annotation is not allowed. Used on the condition that its source is clearly indicated and a link is made to corpus.quran.com, so you can keep track of what has changed since this build.",
+  "@aboutTermsCorpus": {
+    "description": "The body of the Quranic Arabic Corpus card of the sources screen: what it provides and the conditions it is used on."
+  },
+  "aboutTermsTanzil": "The verified Uthmani text every aya is painted from, which the Quranic Arabic Corpus also builds on. Copied verbatim; changing the text is not allowed. Linked so you can keep track of changes.",
+  "@aboutTermsTanzil": {
+    "description": "The body of the Tanzil Project card of the sources screen."
+  },
+  "aboutTermsQuranFoundation": "The English under each word, served by the quran.com API. Their terms allow an application to show this content but not to store it indefinitely without a weekly re-sync, which a bundled corpus does not do. Unsettled, and recorded as unsettled.",
+  "@aboutTermsQuranFoundation": {
+    "description": "The body of the Quran Foundation card of the sources screen. The French adds that a French reader sees The Last Dialogue's glosses, with the English only as the fallback."
+  },
+  "aboutTermsLastDialogue": "The French under each word, for a reader who reads Wird in French. The site marks its word-by-word as in beta. They granted Wird its use by email on 30 September 2026 without requiring attribution; Wird names them anyway, because it names every source.",
+  "@aboutTermsLastDialogue": {
+    "description": "The body of The Last Dialogue card of the sources screen."
+  },
+  "aboutTermsNocturne": "The design system every screen is drawn from. Dark only; there is no light mode.",
+  "@aboutTermsNocturne": {
+    "description": "The body of the Nocturne card of the sources screen."
+  },
+  "aboutTermsScheherazade": "Bundled unmodified, because platform Arabic faces mangle Qurʼanic diacritics.",
+  "@aboutTermsScheherazade": {
+    "description": "The body of the Scheherazade New card of the sources screen. Feminine in French: it agrees with « police »."
+  },
+  "aboutTermsInter": "Bundled unmodified.",
+  "@aboutTermsInter": {
+    "description": "The body of the Inter card of the sources screen. Feminine in French: it agrees with « police »."
+  },
+  "aboutTermsTimings": "The millisecond each word is spoken at, which is what lets a word light up as you hear it. From github.com/cpfair/quran-align, aligned against this same muʿallim recording. Reindexed for this app: the published data is zero-based and end-exclusive, and it is stored here one-based against the word it belongs to. Offered as-is, without warranties.",
+  "@aboutTermsTimings": {
+    "description": "The body of the quran-align card of the sources screen. CC BY 4.0 requires that changes be indicated, which is what the reindexing sentence does; keep it in every locale."
+  },
+  "aboutTermsRecitation": "The muʿallim recording is downloaded by your device from everyayah.com when you press play, the way a browser loads a page, and cached on your phone. Wird does not bundle it, mirror it, or serve it. The archive publishes no terms of use, so nothing here is offered as permission to redistribute it — and that is why this app never does.",
+  "@aboutTermsRecitation": {
+    "description": "The body of the recitation card of the sources screen."
+  },
+  "aboutTermsVoice": "The recogniser that hears your recitation, downloaded on your word and run on this phone; nothing you say is sent anywhere. It writes Qurʼanic phonemes, including the marks of tajwīd. Wird uses that only to find where in the set you are, and never to judge how you recited: automatic tajwīd feedback can be wrong, and no software here or anywhere replaces a qualified teacher. Its licence forbids charging for the model or for any feature it powers, which Wird does not and will not do.",
+  "@aboutTermsVoice": {
+    "description": "The body of the recogniser card of the sources screen. Its licence requires an app built on it to say that automatic tajwīd feedback can be wrong and does not replace a qualified teacher; keep both in every locale."
+  },
+  "aboutSelfTerms": "Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.",
+  "@aboutSelfTerms": {
+    "description": "The body of the first card of the sources screen, Wird's own terms. The licence title stays in English: it is the licence's own name."
   }
 }

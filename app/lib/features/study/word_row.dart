@@ -131,6 +131,7 @@ class WordTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
     final word = face.word;
+    final gloss = word.glossIn(Localizations.localeOf(context));
     final arabic = TextStyle(
       fontFamily: Nocturne.arabicFamily,
       fontSize: prefs.arabicSize,
@@ -209,11 +210,11 @@ class WordTile extends StatelessWidget {
                   color: n.color('accent-400'),
                 ),
               ),
-            if (prefs.showGloss && word.gloss != null)
+            if (prefs.showGloss && gloss != null)
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 88),
                 child: Text(
-                  word.gloss!,
+                  gloss,
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -250,8 +251,11 @@ class WordTile extends StatelessWidget {
   /// transport says it once for the set. Sounding is per word and keeps the
   /// fill; unheard is per word and puts up the transliteration.
   Color _line(Nocturne n) {
-    if (open) return n.accent;
-    return face.rooted ? n.textAt(0.20) : Colors.transparent;
+    // Rooted words only. The panel's arrows open particles too, and an
+    // accented rule under one would claim a root it has not got. The open
+    // particle is found by its gloss, which lights in an accent tone.
+    if (!face.rooted) return Colors.transparent;
+    return open ? n.accent : n.textAt(0.20);
   }
 }
 

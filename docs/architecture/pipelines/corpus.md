@@ -8,7 +8,7 @@ The corpus lane turns public Quran data into one SQLite file, `app/assets/corpus
 
 | In | Out | Depends on |
 |---|---|---|
-| Sūra and aya data with word-by-word gloss and a French translation, from the Quran Foundation API · the Quranic Arabic Corpus 0.4 morphology file, saved by a person · the quran-align timing release | `app/assets/corpus.db` · `data/manifest.json` (what was downloaded, checksums, counts) | Network for the downloads, a person to accept the morphology licence, the gate for the size check |
+| Sūra and aya data with word-by-word gloss and a French translation, from the Quran Foundation API · the French word-by-word pages of The Last Dialogue · the Quranic Arabic Corpus 0.4 morphology file, saved by a person · the quran-align timing release | `app/assets/corpus.db` · `data/manifest.json` (what was downloaded, checksums, counts) | Network for the downloads, a person to accept the morphology licence, the gate for the size check |
 
 ```mermaid
 flowchart LR
@@ -16,6 +16,7 @@ flowchart LR
   qc["Quran Foundation API<br/>text, gloss, French"]
   qac["Quranic Arabic Corpus<br/>morphology file"]
   qa["quran-align release<br/>word timings"]
+  tld["The Last Dialogue<br/>French word glosses"]
   lane["Corpus lane"]
   asset[("app/assets/corpus.db")]
   man["data/manifest.json"]
@@ -27,6 +28,7 @@ flowchart LR
   qc --> lane
   qac --> lane
   qa --> lane
+  tld --> lane
   lane --> asset
   lane --> man
   asset -->|bundled| app
@@ -43,8 +45,9 @@ flowchart TB
     i1["1. refuse without the morphology file"]
     i2["2. fetch the timing release"]
     i3["3. fetch sūras and ayas"]
+    i3b["3b. fetch the French word pages"]
     i4["4. verify, write the manifest"]
-    i1 --> i2 --> i3 --> i4
+    i1 --> i2 --> i3 --> i3b --> i4
   end
   raw[("data/raw/")]
   man["data/manifest.json"]
@@ -58,6 +61,7 @@ flowchart TB
   gate["8. the gate: under 60 MB"]
   i2 --> raw
   i3 --> raw
+  i3b --> raw
   raw -->|"read back"| i4
   i4 --> man
   raw --> e5
@@ -89,6 +93,8 @@ erDiagram
   words {
     int id PK "ayah_id*1000 + position"
     text root_letters
+    text gloss_en
+    text gloss_fr "NULL where no French card matched"
   }
   roots {
     text letters PK "joined, not spaced"
@@ -116,7 +122,7 @@ if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
 }
 ```
 
-[ingest/main.go:60](../../../server/cmd/ingest/main.go#L60-L63) · [the copyright check](../../../server/cmd/ingest/verify.go#L103-L134)
+[ingest/main.go:61](../../../server/cmd/ingest/main.go#L61-L64) · [the copyright check](../../../server/cmd/ingest/verify.go#L103-L134)
 
 ### 2. Timings come from the quran-align release
 
@@ -131,7 +137,7 @@ if err := extractTimings(filepath.Join(dir, alignZip), dir, recitation); err != 
 }
 ```
 
-[ingest/main.go:69](../../../server/cmd/ingest/main.go#L69-L74) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
+[ingest/main.go:70](../../../server/cmd/ingest/main.go#L70-L75) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
 
 ### 3. Sūras and ayas, one file each
 
@@ -145,7 +151,28 @@ if len(suras) != 114 {
 }
 ```
 
-[ingest/main.go:88](../../../server/cmd/ingest/main.go#L88-L92) · [the refusal](../../../server/cmd/ingest/main.go#L134-L145)
+[ingest/main.go:89](../../../server/cmd/ingest/main.go#L89-L93) · [the refusal](../../../server/cmd/ingest/main.go#L141-L154)
+
+### 3b. The French under each word, from The Last Dialogue
+
+quran.com has no French word-by-word, so a full run also saves The Last Dialogue's "Coran Mot à Mot" pages under `data/raw/tld/`: the index, the 114 sūra pages it links, and the section pages the seven long sūras are split into. They are used by permission ([ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md), [SOURCES.md](../../../data/SOURCES.md#french-word-glosses-the-last-dialogue)).
+
+The ETL reads each word card and matches it to a word by its Arabic, never by its place in the aya. The pages skip a word here and there, and matching by place would give every later word its neighbour's meaning. A word no card matches keeps its English gloss.
+
+```mermaid
+flowchart LR
+  cards["cards of one aya<br/>(Arabic, French)"]
+  words["words of the same aya"]
+  lcs["align on bare letters<br/>(longest common subsequence)"]
+  fr["gloss_fr = the card's French"]
+  en["gloss_fr = NULL<br/>app shows gloss_en"]
+  cards --> lcs
+  words --> lcs
+  lcs -->|matched| fr
+  lcs -->|no card| en
+```
+
+[ingest/tld.go](../../../server/cmd/ingest/tld.go) · [etl/glosses_fr.go](../../../server/cmd/etl/glosses_fr.go)
 
 ### 4. Verify what is on disk, then write the manifest
 
@@ -171,11 +198,11 @@ func ayahID(surah, ayah int) int   { return surah*1000 + ayah }
 func wordID(ayahID, pos int) int64 { return int64(ayahID)*1000 + int64(pos) }
 ```
 
-[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L243-L246)
+[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L250-L253)
 
 ### 6. Check: refuse a corpus that would mislead
 
-The check is a build gate, not a report. Among other things, it refuses a corpus whose notice does not credit both licensed sources, a partial Quran, an aya without audio, a word pointing at an unknown root, timings that jump backwards, and French for some ayas but not all.
+The check is a build gate, not a report. Among other things, it refuses a corpus whose notice does not credit both licensed sources, a partial Quran, an aya without audio, a word pointing at an unknown root, timings that jump backwards, French for some ayas but not all, and an aya none of whose words carries a French gloss.
 
 ```go
 if full {
@@ -192,7 +219,7 @@ if full {
 }
 ```
 
-[etl/check.go:37](../../../server/cmd/etl/check.go#L37-L48) · [the notice check](../../../server/cmd/etl/check.go#L23-L35) · [the whole check](../../../server/cmd/etl/check.go#L18-L115)
+[etl/check.go:37](../../../server/cmd/etl/check.go#L37-L48) · [the notice check](../../../server/cmd/etl/check.go#L23-L35) · [the whole check](../../../server/cmd/etl/check.go#L18-L116)
 
 ### 7. Write the tables and stamp the version
 
@@ -205,12 +232,12 @@ if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?,?)`,
 }
 ```
 
-[etl/write.go:184](../../../server/cmd/etl/write.go#L184-L187) · [the schema](../../../server/cmd/etl/write.go#L16-L126) · [why root_notes is empty](../../../server/cmd/etl/write.go#L226-L240)
+[etl/write.go:187](../../../server/cmd/etl/write.go#L187-L190) · [the schema](../../../server/cmd/etl/write.go#L16-L129) · [why root_notes is empty](../../../server/cmd/etl/write.go#L229-L243)
 
-`corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 4. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
+`corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 5. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
 
 ```go
-version := flag.Int("corpus-version", 4, "corpus_version the API negotiates")
+version := flag.Int("corpus-version", 5, "corpus_version the API negotiates")
 ```
 
 [etl/main.go:24](../../../server/cmd/etl/main.go#L24)
@@ -236,6 +263,7 @@ Each source has its own terms. They are recorded, with the date they were read, 
 |---|---|
 | Morphology, roots, parsing | [The morphology: Quranic Arabic Corpus 0.4](../../../data/SOURCES.md#the-morphology-quranic-arabic-corpus-04) |
 | French translation | [French reaches a reader one ayah at a time, and why](../../../data/SOURCES.md#french-reaches-a-reader-one-ayah-at-a-time-and-why) |
+| French word glosses | [French word glosses: The Last Dialogue](../../../data/SOURCES.md#french-word-glosses-the-last-dialogue) |
 | Text, gloss, transliteration | [Provenance and licence](../../../data/SOURCES.md#provenance-and-licence), [The one-week rule](../../../data/SOURCES.md#the-one-week-rule) |
 | Word timings | [The word timings](../../../data/SOURCES.md#the-word-timings-cpfairquran-align) |
 | Recitation audio, not bundled | [The recitation audio](../../../data/SOURCES.md#the-recitation-audio) |
@@ -249,6 +277,7 @@ The morphology's licence is GPL, which is why the whole repository is AGPL-3.0.
 - [ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md) — what came from upstream is bundled, what Wird wrote is served. So the corpus carries no senses.
 - Natural ids, so a rebuilt corpus joins with data already on a device ([etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24)).
 - Audio paths stay relative, so moving the audio host never needs an app release ([etl/check.go:57](../../../server/cmd/etl/check.go#L57-L63)).
+- [ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md) — the French under each word comes from The Last Dialogue, matched by its Arabic.
 - [ADR 0005, deploying the API](../../adr/0005-deploying-the-api.md) — `corpus.db` is not in the server image.
 
 ## Go deeper

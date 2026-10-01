@@ -29,3 +29,4 @@ flowchart LR
 | [0009-the-recogniser-hears-quranic-phonemes-not-language.md](0009-the-recogniser-hears-quranic-phonemes-not-language.md) | The recogniser hears Qur'anic phonemes, not language | accepted |
 | [0010-the-server-owns-the-roots-and-their-senses.md](0010-the-server-owns-the-roots-and-their-senses.md) | The server owns the roots and their senses | accepted |
 | [0011-two-doc-families.md](0011-two-doc-families.md) | Agent docs and human docs are two families with two styles | accepted |
+| [0013-the-reading-screens-root-panel-walks-word-by-word.md](0013-the-reading-screens-root-panel-walks-word-by-word.md) | The reading screen's root panel walks word by word, where the corpus attribution stood | accepted |

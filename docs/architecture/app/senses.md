@@ -214,11 +214,11 @@ Before it records the version, the transaction counts the new senses whose root 
 ```
 [senses.dart:142](../../../app/lib/data/senses.dart#L143-L156)
 
-`sense_pack` holds at most one row ([db.dart:122](../../../app/lib/data/db.dart#L133-L138)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
+`sense_pack` holds at most one row ([db.dart:134](../../../app/lib/data/db.dart#L134-L139)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
 
 ### 6. The root screen reads it back
 
-`rootReading` takes the one root-level row for the root, and checks whether `sense_pack` has a row ([root_repo.dart:210](../../../app/lib/data/root_repo.dart#L210-L234)). `CoreSense` then picks one of three outcomes.
+`rootReading` takes the one root-level row for the root, and checks whether `sense_pack` has a row ([root_repo.dart:218](../../../app/lib/data/root_repo.dart#L218-L242)). `CoreSense` then picks one of three outcomes.
 
 ```mermaid
 flowchart TD

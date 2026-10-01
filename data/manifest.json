@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T16:49:45Z",
+  "generated_at": "2026-09-30T05:18:02Z",
   "complete": true,
   "suras": [
     1,
@@ -121,7 +121,8 @@
     "https://api.quran.com/api/v4/chapters?language=en",
     "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&translations=779&fields=text_uthmani&per_page=300",
     "https://github.com/cpfair/quran-align/releases/download/release-2016-11-24/quran-align-data-2016-11-24.zip",
-    "https://corpus.quran.com/download/"
+    "https://corpus.quran.com/download/",
+    "https://www.thelastdialogue.org/coran-mot-a-mot-francais/"
   ],
   "counts": {
     "surahs": 114,

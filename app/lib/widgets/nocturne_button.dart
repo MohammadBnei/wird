@@ -154,3 +154,39 @@ class _NocturneButtonState extends State<NocturneButton> {
     );
   }
 }
+
+/// A round step control: one icon in a circle, at the two ends of something
+/// the reader moves through.
+///
+/// The circle is not a [NocturneButton] variant because it is not another way
+/// to draw an action — it is the one shape the design gives to "go one along",
+/// and it says so wherever it appears. It carries its own [label] because an
+/// arrow alone is not a name.
+class NocturneStep extends StatelessWidget {
+  const NocturneStep({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  /// What the step does, for a reader who cannot see the arrow.
+  final String label;
+  final IconData icon;
+
+  /// Null where there is nowhere to step, which draws the control dark.
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: Nocturne.of(context).divider),
+    ),
+    child: NocturneButton(
+      variant: NocturneButtonVariant.icon,
+      onPressed: onPressed,
+      child: Semantics(label: label, child: Icon(icon, size: 15)),
+    ),
+  );
+}

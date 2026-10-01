@@ -73,9 +73,9 @@ void main() {
         findsOneWidget,
         reason:
             '${source.name} provides ${source.provides(l)} and is used '
-            'under ${source.licence}',
+            'under ${source.licence(l)}',
       );
-      expect(find.text(source.licence), findsWidgets);
+      expect(find.text(source.licence(l)), findsWidgets);
       // NocturneCard shouts its kicker.
       expect(
         find.text(source.provides(l).toUpperCase()),
@@ -138,7 +138,7 @@ void main() {
     final timings = sources.firstWhere((s) => s.name == 'quran-align');
     expect(timings.url, 'https://creativecommons.org/licenses/by/4.0/');
     expect(
-      timings.terms,
+      timings.terms(lookupAppLocalizations(const Locale('en'))),
       contains('zero-based'),
       reason:
           'CC BY 4.0 also requires that changes be indicated, and the '

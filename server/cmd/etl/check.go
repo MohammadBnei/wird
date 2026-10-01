@@ -110,6 +110,7 @@ func (c *Corpus) Check(full bool) error {
 		}
 	}
 
+	errs = append(errs, c.checkFrenchGlosses()...)
 	errs = append(errs, c.checkSenses()...)
 	return errors.Join(errs...)
 }
@@ -299,4 +300,40 @@ func (c *Corpus) checkSenses() []error {
 		}
 	}
 	return errs
+}
+
+// checkFrenchGlosses refuses a corpus where the French word glosses stop at an
+// aya. A page that failed to download, or one whose cards the parser no longer
+// reads, leaves every word of its ayas English while the rest of the Qur'an is
+// French — the failure a count of filled rows cannot see, because the other
+// suras fill it. So every aya has to carry French on at least one word.
+//
+// Not every word: the pages skip a word here and there, and those keep their
+// English (pinFrenchGlosses). How many is printed by the build, not bounded.
+func (c *Corpus) checkFrenchGlosses() []error {
+	french := map[int]bool{}
+	for _, w := range c.Words {
+		if w.GlossFr != "" {
+			french[w.AyahID] = true
+		}
+	}
+	if len(french) == 0 {
+		return nil
+	}
+	var bare []string
+	for _, a := range c.Ayahs {
+		if !french[a.ID] {
+			bare = append(bare, fmt.Sprintf("%d:%d", a.SurahID, a.Number))
+		}
+	}
+	if len(bare) == 0 {
+		return nil
+	}
+	shown := bare
+	if len(shown) > 10 {
+		shown = shown[:10]
+	}
+	return []error{fmt.Errorf("%d ayas carry no French word gloss (%s), so a French reader "+
+		"would meet them in English among French ones; is data/raw/%s missing their page?",
+		len(bare), strings.Join(shown, ", "), tldDir)}
 }
