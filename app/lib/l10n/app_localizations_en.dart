@@ -1069,4 +1069,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String study_openRoot(String root) {
     return 'Open the root $root';
   }
+
+  @override
+  String get dashboard_continueReading => 'CONTINUE READING';
 }

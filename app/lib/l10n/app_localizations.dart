@@ -1894,6 +1894,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open the root {root}'**
   String study_openRoot(String root);
+
+  /// Home: heading over the sūras the reader is part-way through, each opening where they stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'CONTINUE READING'**
+  String get dashboard_continueReading;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

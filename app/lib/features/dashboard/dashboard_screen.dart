@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../app.dart';
 import '../../data/db.dart';
+import '../../data/root_repo.dart' show ayahRef;
 import '../../data/sets.dart';
 import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
@@ -10,12 +11,31 @@ import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
 
-/// What the walk has ready, and nothing the reader has to work out.
-typedef Waiting = ({StudySet? set, int number, int prayers});
+/// What the walk has ready, the sūras the reader is part-way through, and
+/// nothing the reader has to work out.
+typedef Waiting = ({
+  StudySet? set,
+  int number,
+  int prayers,
+  List<({int wordId, String surah})> reading,
+});
+
+/// ponytail: the three sūras last read. Make it a list of its own if readers
+/// keep more than three going at once.
+const _readingShown = 3;
 
 Future<Waiting> whatIsWaiting(Database db, ReadingOrder order) async {
   final set = await nextSet(db, order);
+  final positions = (await readingPositions(db)).take(_readingShown).toList();
+  final names = {
+    for (final r in await db.query('surahs', columns: ['id', 'name_en']))
+      r['id']! as int: r['name_en']! as String,
+  };
   return (
+    reading: [
+      for (final p in positions)
+        (wordId: p.wordId, surah: names[p.surah] ?? '${p.surah}'),
+    ],
     set: set,
     // The sets already finished, plus the one being read. It comes from the
     // walk rather than from counting rows, because the rows record sets
@@ -114,6 +134,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _next(n, set, waiting)
                   else
                     _finished(n),
+                  if (waiting.reading.isNotEmpty) ...[
+                    SizedBox(height: n.space('8')),
+                    _reading(n, waiting),
+                  ],
                   SizedBox(height: n.space('8')),
                   _doors(n),
                 ],
@@ -168,9 +192,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
         NocturneButton(
           key: const Key('read the set'),
           block: true,
-          onPressed: () => _open(Routes.study),
+          // The set itself: with no aya the reader opens where it last
+          // stood, which need not be this set.
+          onPressed: () =>
+              Navigator.of(context)
+                  .pushNamed(Routes.study, arguments: set.ayas.first.id),
           child: Text(l10n.dashboard_readFirst),
         ),
+      ],
+    );
+  }
+
+  /// The sūras the reader is part-way through, each opening on the word
+  /// they last stood on.
+  Widget _reading(Nocturne n, Waiting waiting) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.dashboard_continueReading,
+          style: TextStyle(
+            fontSize: 10,
+            height: 1.2,
+            letterSpacing: 0.11 * 10,
+            color: n.accent,
+          ),
+        ),
+        const NocturneRule(fade: 30),
+        for (final place in waiting.reading)
+          GestureDetector(
+            key: ValueKey('continue ${place.wordId}'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () =>
+                Navigator.of(context)
+                    .pushNamed(Routes.study, arguments: AtWord(place.wordId)),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: n.space('3')),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      place.surah,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  Text(
+                    ayahRef(place.wordId ~/ 1000),
+                    style: TextStyle(fontSize: 12, color: n.textAt(0.55)),
+                  ),
+                  SizedBox(width: n.space('2')),
+                  Icon(Icons.arrow_forward, size: 16, color: n.accent),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }

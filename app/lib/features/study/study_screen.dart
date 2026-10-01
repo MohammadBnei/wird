@@ -26,12 +26,15 @@ import 'word_row.dart';
 /// the sheet shrinks the sūra to one line and brings up the counts, the root's
 /// forms and the other ayas it is read in (ADR 0014).
 class StudyScreen extends StatefulWidget {
-  const StudyScreen({super.key, required this.db, this.target});
+  const StudyScreen({super.key, required this.db, this.target, this.word});
 
   final Database db;
 
   /// The aya to open on, or null to open where the reader last stood.
   final int? target;
+
+  /// The word to open on, which wins over [target].
+  final int? word;
 
   @override
   State<StudyScreen> createState() => _StudyScreenState();
@@ -97,7 +100,7 @@ class _StudyScreenState extends State<StudyScreen> {
     final locale = Localizations.localeOf(context);
     if (!_loaded || locale != _readIn) {
       _readIn = locale;
-      _load(target: widget.target, word: _word?.id);
+      _load(target: widget.target, word: _word?.id ?? widget.word);
     }
   }
 

@@ -1655,5 +1655,9 @@
         "type": "String"
       }
     }
+  },
+  "dashboard_continueReading": "CONTINUE READING",
+  "@dashboard_continueReading": {
+    "description": "Home: heading over the sūras the reader is part-way through, each opening where they stopped."
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter/material.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 
 import '../../corpus.dart';
@@ -57,5 +59,21 @@ void main() {
 
     expect(find.text(mushaf.title), findsOneWidget);
     expect(find.text(chronological.title), findsNothing);
+  });
+
+  // The failure: home only knows the walk, so a reader part-way through
+  // Al-Baqarah finds no way back to 2:255 but the index and a scroll.
+  testWidgets('a reader part-way through a sūra finds no way back to the word '
+      'they stopped on', (tester) async {
+    await movePosition(db, 2255003);
+    await openHome(tester);
+
+    await tester.tap(find.byKey(const ValueKey('continue 2255003')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('position'))).data,
+      startsWith('2:255 · word '),
+    );
   });
 }

@@ -299,5 +299,6 @@
   "study_recite": "Réciter",
   "study_pauseRecitation": "Mettre la récitation en pause",
   "study_markUnderstood": "Marquer le verset {ref} comme compris",
-  "study_openRoot": "Ouvrir la racine {root}"
+  "study_openRoot": "Ouvrir la racine {root}",
+  "dashboard_continueReading": "REPRENDRE LA LECTURE"
 }

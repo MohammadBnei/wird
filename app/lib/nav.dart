@@ -73,8 +73,10 @@ typedef ScreenBuilder = Widget Function(Database db, Object? arguments);
 final screens = <String, ScreenBuilder>{
   Routes.dashboard: (db, _) => const DashboardScreen(),
   // The target is how the screen is built on an aya the reader asked for,
-  // rather than on the one the walk hands them.
-  Routes.study: (db, args) => StudyScreen(db: db, target: args as int?),
+  // rather than on where they last stood; an AtWord opens it on one word.
+  Routes.study: (db, args) => args is AtWord
+      ? StudyScreen(db: db, word: args.wordId)
+      : StudyScreen(db: db, target: args as int?),
   Routes.prayer: (db, args) => PrayerScreen(db: db, set: args! as StudySet),
   Routes.root: (db, args) => RootScreen(db: db, letters: args! as String),
   Routes.rootSpine: (db, args) =>
@@ -136,6 +138,14 @@ bool shellDrawsTheBar(String route) => route != Routes.study;
 /// to come back from. The difference rides on the route, so the screen never
 /// has to know which way it was entered — it drew its own way back before,
 /// and inside the shell that put a second navigation control under the first.
+/// Opens the reading screen on one word rather than at the start of an aya:
+/// where the reader stood in a sūra they are part-way through.
+final class AtWord {
+  const AtWord(this.wordId);
+
+  final int wordId;
+}
+
 final class AStepFrom {
   const AStepFrom([this.arguments]);
 
