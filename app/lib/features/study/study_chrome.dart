@@ -253,6 +253,8 @@ class RootPanel extends StatelessWidget {
     required this.allUnderstood,
     required this.onMark,
     required this.onJudge,
+    required this.onPrevious,
+    required this.onNext,
   });
 
   final RootDetail? root;
@@ -277,6 +279,12 @@ class RootPanel extends StatelessWidget {
 
   /// A reader's verdict on the sense drawn for this root.
   final void Function(String root, bool good) onJudge;
+
+  /// The word before and after this one in the passage, or null at its two
+  /// ends, which draws that arrow dark. A word carrying no root is not an end:
+  /// the walk goes through particles, it does not stop at them.
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   @override
   Widget build(BuildContext context) {
@@ -321,20 +329,16 @@ class RootPanel extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (root == null)
-                    Text(
-                      l10n.study_noRootInSet,
-                      style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
-                    )
-                  else if (!open)
-                    // Folded, the root line is the handle: there is nowhere else to
-                    // press, so it unfolds the panel rather than opening the root
-                    // screen.
+                  if (!open)
+                    // Folded, the one line is the handle: it unfolds rather
+                    // than opening the root screen. The word's own line where
+                    // the word has no root, or a folded panel walked onto a
+                    // particle is a strip the reader cannot reopen.
                     GestureDetector(
                       key: const Key('toggle root panel'),
                       behavior: HitTestBehavior.opaque,
                       onTap: onToggle,
-                      child: _rootLine(n, root, trailing: Icons.expand_less),
+                      child: _handle(context, n, trailing: Icons.expand_less),
                     )
                   else ...[
                     Row(
@@ -350,7 +354,7 @@ class RootPanel extends StatelessWidget {
                             onTap: letters == null
                                 ? null
                                 : () => onVisit(Routes.root, letters),
-                            child: _rootLine(n, root),
+                            child: _handle(context, n),
                           ),
                         ),
                         SizedBox(width: n.space('2')),
@@ -362,10 +366,20 @@ class RootPanel extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: n.space('3')),
-                      child: const DashedRule(),
-                    ),
+                    if (word != null)
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: n.space('3')),
+                        child: const DashedRule(),
+                      ),
+                    // A particle or a proper noun. Said here rather than
+                    // going blank; study_noRootInSet is about the whole set
+                    // and would be a lie on a set full of roots.
+                    if (root == null)
+                      Text(
+                        l10n.study_wordHasNoRoot,
+                        style: TextStyle(fontSize: 12.5, color: n.textAt(0.6)),
+                      )
+                    else ...[
                     // The root the panel is holding already carries its sense: `root`
                     // is a RootReading, the same object the root screen, the spine and
                     // the deep dive all hand to CoreSense. This was the only one of the
@@ -432,7 +446,7 @@ class RootPanel extends StatelessWidget {
                     ),
                     SizedBox(height: n.space('1')),
                     Text(
-                      word?.gloss ?? '—',
+                      word?.glossIn(Localizations.localeOf(context)) ?? '—',
                       style: TextStyle(
                         fontSize: 13.5,
                         height: 1.5,
@@ -465,10 +479,10 @@ class RootPanel extends StatelessWidget {
                               ),
                             ),
                           ),
-                        Text(
-                          root.sources.join(', '),
-                          style: TextStyle(fontSize: 11, color: n.textAt(0.45)),
-                        ),
+                        // The corpus attribution stood here and is gone:
+                        // ADR 0013. About > Sources carries the name, the
+                        // notice and the link the licence asks for, and
+                        // IrabSection says it again on 3a, 2b and 1c.
                       ],
                     ),
                     SizedBox(height: n.space('2')),
@@ -476,22 +490,97 @@ class RootPanel extends StatelessWidget {
                       l10n.study_kinOpensItsAya,
                       style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
                     ),
+                    ],
                   ],
                 ],
               ),
             ),
           ),
           SizedBox(height: n.space('3')),
-          NocturneButton(
-            block: true,
-            variant: NocturneButtonVariant.primary,
-            onPressed: onMark,
-            child: Text(allUnderstood ? l10n.nextSet : l10n.markSetUnderstood),
+          // The arrows flank the act rather than taking a band of their own.
+          // A band cost the panel 48px of scrolling body, which put the kin
+          // out of sight on the phone the design is drawn for; here they cost
+          // nothing, and they are pinned, so the walk never scrolls away.
+          Row(
+            spacing: n.space('3'),
+            children: [
+              NocturneStep(
+                key: const Key('previous word'),
+                label: l10n.study_previousWord,
+                icon: Icons.chevron_left,
+                onPressed: onPrevious,
+              ),
+              Expanded(
+                child: NocturneButton(
+                  block: true,
+                  variant: NocturneButtonVariant.primary,
+                  onPressed: onMark,
+                  child: Text(
+                    allUnderstood ? l10n.nextSet : l10n.markSetUnderstood,
+                  ),
+                ),
+              ),
+              NocturneStep(
+                key: const Key('next word'),
+                label: l10n.study_nextWord,
+                icon: Icons.chevron_right,
+                onPressed: onNext,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+
+  /// The panel's top line: the root where there is one, else the word the
+  /// arrows walked onto, else the sentence that says the set has no root at
+  /// all. It is the fold handle too, so it is never nothing.
+  Widget _handle(BuildContext context, Nocturne n, {IconData? trailing}) {
+    final root = this.root;
+    final word = this.word;
+    if (root != null) return _rootLine(n, root, trailing: trailing);
+    if (word != null) return _wordLine(context, n, word, trailing: trailing);
+    return Text(
+      AppLocalizations.of(context)!.study_noRootInSet,
+      style: TextStyle(fontSize: 13, color: n.textAt(0.62)),
+    );
+  }
+
+  /// A word with no root, drawn where the root line goes: the word itself and
+  /// its meaning, which is all there is to say about it.
+  Widget _wordLine(
+    BuildContext context,
+    Nocturne n,
+    StudyWord word, {
+    IconData? trailing,
+  }) => Row(
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+      Text(
+        word.text,
+        textDirection: TextDirection.rtl,
+        style: TextStyle(
+          fontFamily: Nocturne.arabicFamily,
+          fontSize: 26,
+          color: n.text,
+        ),
+      ),
+      SizedBox(width: n.space('3')),
+      Expanded(
+        child: Text(
+          word.glossIn(Localizations.localeOf(context)) ?? '',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 12.5, color: n.textAt(0.6)),
+        ),
+      ),
+      if (trailing != null) ...[
+        SizedBox(width: n.space('2')),
+        Icon(trailing, size: 16, color: n.textAt(0.45)),
+      ],
+    ],
+  );
 
   Widget _rootLine(Nocturne n, RootDetail root, {IconData? trailing}) => Row(
     crossAxisAlignment: CrossAxisAlignment.end,

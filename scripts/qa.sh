@@ -267,6 +267,7 @@ url_rows() {
 		https://corpus.quran.com|-||a credit on the About screen, handed to the reader's browser
 		https://tanzil.net|-||a credit on the About screen, handed to the reader's browser
 		https://quran.foundation|-||a credit on the About screen, handed to the reader's browser
+		https://www.thelastdialogue.org/coran-mot-a-mot-francais/|-||a credit on the About screen, handed to the reader's browser
 		https://openfontlicense.org|-||a licence link on the About screen, handed to the reader's browser
 		https://creativecommons.org/licenses/by/4.0/|-||a licence link on the About screen, handed to the reader's browser
 		https://everyayah.com|-||a credit on the About screen, handed to the reader's browser

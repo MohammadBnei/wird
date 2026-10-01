@@ -166,7 +166,7 @@ Future<RootReading?> rootReading(
   final root = rows.first;
 
   final words = await db.rawQuery(
-    '''SELECT w.id, w.text_ar, w.gloss_en, w.form, MIN(n.note) AS note
+    '''SELECT w.id, w.text_ar, w.gloss_en, w.gloss_fr, w.form, MIN(n.note) AS note
          FROM words w
          LEFT JOIN root_notes n ON n.word_id = w.id
         WHERE w.root_letters = ?
@@ -174,6 +174,14 @@ Future<RootReading?> rootReading(
         ORDER BY w.id''',
     [letters],
   );
+
+  // ponytail: two locales, so one column and a fallback. A third language is a
+  // third column and a code-to-column map here, not a different shape.
+  final french = readIn.languageCode == 'fr';
+  // The French where there is one: a word the French pages skip keeps its
+  // English rather than going blank.
+  Object? glossOf(Map<String, Object?> word) =>
+      (french ? word['gloss_fr'] : null) ?? word['gloss_en'];
 
   final order = <String>[];
   final held = <String, Map<String, Object?>>{};
@@ -189,14 +197,14 @@ Future<RootReading?> rootReading(
       order.add(text);
       held[text] = {
         'id': id,
-        'gloss': word['gloss_en'],
+        'gloss': glossOf(word),
         'form': word['form'],
         'note': word['note'],
       };
     } else {
       // A form occurs many times and not every occurrence was annotated, so
       // the first answer any of them gives is the one the reader sees.
-      seen['gloss'] ??= word['gloss_en'];
+      seen['gloss'] ??= glossOf(word);
       seen['form'] ??= word['form'];
       seen['note'] ??= word['note'];
     }
@@ -227,10 +235,6 @@ Future<RootReading?> rootReading(
   );
   final sense = core.isEmpty ? const <String, Object?>{} : core.first;
 
-  // ponytail: two locales, so one column and a fallback. A third language is a
-  // third column and a code-to-column map here, not a different shape.
-  final french = readIn.languageCode == 'fr';
-
   // One row or none, and only its presence is read. The version itself belongs
   // to the report a thumb sends, not to the screen.
   final pack = await db.query('sense_pack', columns: ['version'], limit: 1);
@@ -253,14 +257,23 @@ Future<RootReading?> rootReading(
     senseEvidence: _evidenceWords(sense['evidence'] as String?),
     sensesFetched: pack.isNotEmpty,
     derivatives: derivatives,
-    irab: await _irab(db, [for (final d in derivatives) d.wordId]),
+    irab: await _irab(
+      db,
+      [for (final d in derivatives) d.wordId],
+      french: french,
+    ),
   );
 }
 
 /// The parsing of one word, segment by segment. Empty only for a word the
 /// corpus carries no morphology for, which the ETL's own gate refuses to write.
-Future<List<IrabSegment>> wordIrab(Database db, int wordId) async =>
-    (await _irab(db, [wordId]))[wordId] ?? const [];
+Future<List<IrabSegment>> wordIrab(
+  Database db,
+  int wordId, {
+  required Locale readIn,
+}) async =>
+    (await _irab(db, [wordId], french: readIn.languageCode == 'fr'))[wordId] ??
+    const [];
 
 /// The parsing of several words at once, keyed by word id.
 ///
@@ -269,18 +282,18 @@ Future<List<IrabSegment>> wordIrab(Database db, int wordId) async =>
 /// join can spread. The vocabulary is 142 rows, so it is read whole and looked
 /// up here.
 ///
-/// ponytail: `role_en`, and a French reader reads these role names in English
-/// beside a French sense. `role_fr` is the row next to it and the locale now
-/// reaches this file, so the fix is one column expression — held back only
-/// because nobody has read the French role names to say they are right.
+/// The role names are read in the reader's language: a French sense beside an
+/// English parsing is two apps on one screen.
 Future<Map<int, List<IrabSegment>>> _irab(
   Database db,
-  List<int> wordIds,
-) async {
+  List<int> wordIds, {
+  required bool french,
+}) async {
   if (wordIds.isEmpty) return const {};
+  final column = french ? 'role_fr' : 'role_en';
   final roles = {
-    for (final row in await db.query('irab_roles', columns: ['code', 'role_en']))
-      row['code']! as String: row['role_en']! as String,
+    for (final row in await db.query('irab_roles', columns: ['code', column]))
+      row['code']! as String: row[column]! as String,
   };
   final rows = await db.query(
     'irab',

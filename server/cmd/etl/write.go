@@ -29,8 +29,8 @@ CREATE TABLE ayahs (
   text_uthmani TEXT NOT NULL
 );
 -- One whole-ayah translation per row, in its own table rather than a column on
--- ayahs. There is no French word-by-word gloss to be had, so this is the only
--- shape French reaches a reader in; and the licence position on it is the one
+-- ayahs. The French under each word is words.gloss_fr, from another source;
+-- this is the whole-aya rendering, and the licence position on it is the one
 -- data/SOURCES.md rates "could not determine", so taking the French back out
 -- should be a DROP TABLE and not a schema migration. resource_id is quran.com's
 -- own number for the translation, kept so a row says which rendering it is
@@ -51,7 +51,10 @@ CREATE TABLE words (
   gloss_en     TEXT,
   root_letters TEXT,
   form         TEXT,
-  morphology   TEXT
+  morphology   TEXT,
+  -- The Last Dialogue's French for this word, used by permission (data/SOURCES.md).
+  -- NULL where their pages have no card for the word; the app then shows gloss_en.
+  gloss_fr     TEXT
 );
 CREATE TABLE roots (
   letters           TEXT PRIMARY KEY,
@@ -210,10 +213,10 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 		return err
 	}
 
-	if err := insert(`INSERT INTO words VALUES (?,?,?,?,?,?,?,?,?)`, len(c.Words), func(i int) []any {
+	if err := insert(`INSERT INTO words VALUES (?,?,?,?,?,?,?,?,?,?)`, len(c.Words), func(i int) []any {
 		w := c.Words[i]
 		return []any{w.ID, w.AyahID, w.Position, w.TextAr, w.Translit, w.GlossEn,
-			nullable(w.RootLetters), nullable(w.Form), nullable(w.Morphology)}
+			nullable(w.RootLetters), nullable(w.Form), nullable(w.Morphology), nullable(w.GlossFr)}
 	}); err != nil {
 		return err
 	}

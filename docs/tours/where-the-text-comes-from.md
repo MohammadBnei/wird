@@ -13,7 +13,7 @@ sequenceDiagram
   participant A as Wird app
   D->>Src: accept the morphology terms, save the file
   D->>I: run ingest
-  I->>Src: text, gloss, French, timings
+  I->>Src: text, gloss, French, French word pages, timings
   I->>I: verify on disk, write the manifest
   D->>E: run etl
   E->>E: load, check, refuse what would mislead
@@ -23,7 +23,7 @@ sequenceDiagram
 
 ## 1. Three sources, each with its own terms
 
-The text, the word-by-word gloss and the French translation come from the Quran Foundation API. The morphology comes from the Quranic Arabic Corpus. The word timings come from the quran-align release.
+The text, the English word-by-word gloss and the French translation come from the Quran Foundation API. The French under each word comes from The Last Dialogue, by permission, matched to each word by its Arabic ([ADR 0012](../adr/0012-french-word-glosses-from-the-last-dialogue.md)). The morphology comes from the Quranic Arabic Corpus. The word timings come from the quran-align release.
 
 → [Corpus: black box](../architecture/pipelines/corpus.md#black-box)
 

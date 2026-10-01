@@ -45,8 +45,8 @@ type Ayah struct {
 // The resource id of Rashid Maash's French, which is what quran.com identifies a
 // translation by. There is no French word-by-word gloss anywhere on quran.com —
 // `language=fr` answers English and says `language_name: "english"` while doing
-// it — so French reaches a reader one ayah at a time. data/SOURCES.md has the
-// provenance and the licence position.
+// it — so the French under each word comes from elsewhere (glosses_fr.go).
+// data/SOURCES.md has the provenance and the licence position of both.
 const frenchTranslation = 779
 
 // footnote is the markup quran.com wraps a translator's note in:
@@ -61,6 +61,10 @@ type Word struct {
 	AyahID, Position                             int
 	TextAr, Translit, GlossEn, RootLetters, Form string
 	Morphology                                   string
+
+	// The word's French, from The Last Dialogue's pages (glosses_fr.go). Empty
+	// where no card on those pages is this word; the reader then sees GlossEn.
+	GlossFr string
 }
 
 type Root struct {
@@ -101,6 +105,9 @@ type Corpus struct {
 	// The senses Wird wrote for its roots, checked once when they were written
 	// and checked again by Check before any of them reaches corpus.db.
 	Senses *Senses
+
+	// Words no French card matched, which a French reader reads in English.
+	FrenchGlossesMissed int
 
 	Clamped int // segments whose timings had to be pulled straight
 	Orphans int // ayas whose timings could not be reconciled with the text
@@ -257,6 +264,14 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 			c.Segments = append(c.Segments, n.segments...)
 			c.Clamped += n.clamped
 		}
+	}
+
+	glosses, err := loadFrenchGlosses(dir)
+	if err != nil {
+		return nil, err
+	}
+	if glosses != nil {
+		c.FrenchGlossesMissed = pinFrenchGlosses(c.Words, glosses)
 	}
 
 	for letters, n := range rootCount {

@@ -155,13 +155,13 @@ abstract class AppLocalizations {
   /// **'Ayas'**
   String get kept_filter_ayas;
 
-  /// Second option of the segmented filter above the kept list's cards.
+  /// Third option of the segmented filter above the kept list's cards.
   ///
   /// In en, this message translates to:
   /// **'Notes'**
   String get kept_filter_notes;
 
-  /// First option of the segmented filter above the kept list's cards.
+  /// Second option of the segmented filter above the kept list's cards.
   ///
   /// In en, this message translates to:
   /// **'Roots'**
@@ -641,13 +641,13 @@ abstract class AppLocalizations {
   /// **'Bug'**
   String get report_kind_bug;
 
-  /// First option of the kind chooser on the report screen: something is missing.
+  /// Second option of the kind chooser on the report screen: something is missing.
   ///
   /// In en, this message translates to:
   /// **'Request'**
   String get report_kind_request;
 
-  /// Second option of the kind chooser on the report screen: something could be better.
+  /// Third option of the kind chooser on the report screen: something could be better.
   ///
   /// In en, this message translates to:
   /// **'Improvement'**
@@ -749,6 +749,12 @@ abstract class AppLocalizations {
   /// **'A kin opens the aya it is first met in.'**
   String get study_kinOpensItsAya;
 
+  /// Reading screen, the right chevron in the root panel: it opens the word after the one the panel is showing. Screen-reader label.
+  ///
+  /// In en, this message translates to:
+  /// **'Next word'**
+  String get study_nextWord;
+
   /// Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set has been marked.
   ///
   /// In en, this message translates to:
@@ -785,6 +791,12 @@ abstract class AppLocalizations {
   /// **'Previous set'**
   String get study_previousSet;
 
+  /// Reading screen, the left chevron in the root panel: it opens the word before the one the panel is showing. Screen-reader label. It says word rather than set because the footer a band below steps by the set.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous word'**
+  String get study_previousWord;
+
   /// Reading screen header, the act the reading is for: it opens the prayer screen on this set.
   ///
   /// In en, this message translates to:
@@ -808,6 +820,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sūra {surah} · {place}'**
   String study_surahKicker(Object surah, Object place);
+
+  /// Reading screen root panel, under a word the arrows walked onto that has no root — a particle or a proper noun. It names this one word, unlike study_noRootInSet, which is about the whole set.
+  ///
+  /// In en, this message translates to:
+  /// **'No root'**
+  String get study_wordHasNoRoot;
 
   /// Reading screen, the kicker before the set's title: the reader asked for this aya rather than being handed it by the walk.
   ///
@@ -1097,13 +1115,13 @@ abstract class AppLocalizations {
   /// **'Gloss'**
   String get settingsWordGloss;
 
-  /// First option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control.
+  /// Second option of the settings screen's word-display segmented control: print the transliteration under each Arabic word. Abbreviated to fit the control.
   ///
   /// In en, this message translates to:
   /// **'Translit'**
   String get settingsWordTranslit;
 
-  /// Second option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word.
+  /// Third option of the settings screen's word-display segmented control: print gloss and transliteration under each Arabic word.
   ///
   /// In en, this message translates to:
   /// **'Both'**
@@ -1127,7 +1145,7 @@ abstract class AppLocalizations {
   /// **'Chronological'**
   String get settingsOrderChronological;
 
-  /// First option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is.
+  /// Second option of the settings screen's reading-order segmented control: walk the suras in the written order of the codex, whose transliterated Arabic name this is.
   ///
   /// In en, this message translates to:
   /// **'Muṣḥaf'**
@@ -1553,11 +1571,11 @@ abstract class AppLocalizations {
   /// **'Rashid Maash'**
   String get study_ayaTranslated;
 
-  /// Said once above the reading, where the aya is translated but the per-word glosses are not.
+  /// Said once above the reading, where the aya is translated: whose the per-word glosses are, and that a few stay English.
   ///
   /// In en, this message translates to:
-  /// **'The word meanings under each word are in English; no word-by-word rendering exists in your language.'**
-  String get study_glossesStayEnglish;
+  /// **'The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.'**
+  String get study_glossesSource;
 
   /// Shown once a verdict has been recorded.
   ///
@@ -1576,6 +1594,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This sense is wrong'**
   String get root_senseJudgeBadLabel;
+
+  /// The drawer's row for the home screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get nav_home;
+
+  /// The drawer's row for the reading screen, which shows the set being read.
+  ///
+  /// In en, this message translates to:
+  /// **'The set'**
+  String get nav_theSet;
+
+  /// The drawer's row for the sources and licences screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get nav_sources;
+
+  /// The button in the bar at the foot of every screen that silences what is sounding.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get shell_stop;
+
+  /// The eyebrow of the bar at the foot of every screen while a single word is being sounded.
+  ///
+  /// In en, this message translates to:
+  /// **'SOUNDING ONE WORD'**
+  String get shell_soundingWord;
+
+  /// The eyebrow of the bar at the foot of every screen while the whole set is being recited.
+  ///
+  /// In en, this message translates to:
+  /// **'RECITING THE SET'**
+  String get shell_recitingSet;
+
+  /// The eyebrow at the head of the drawer, over the app's name.
+  ///
+  /// In en, this message translates to:
+  /// **'NOT SIGNED IN'**
+  String get shell_notSignedIn;
+
+  /// The sentence under the app's name at the head of the drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything you have read and kept is on this phone. Accounts arrive with the server they sync to.'**
+  String get shell_drawerBlurb;
+
+  /// The only thing on screen when the bundled corpus fails to open at launch. `error` is the raw error, untranslated.
+  ///
+  /// In en, this message translates to:
+  /// **'The corpus would not open.\n\n{error}'**
+  String appCorpusWouldNotOpen(String error);
+
+  /// The kicker on The Last Dialogue card of the sources screen: what of the app would be missing without it.
+  ///
+  /// In en, this message translates to:
+  /// **'French word-by-word gloss'**
+  String get aboutProvidesFrenchGloss;
+
+  /// The licence tag on the Tanzil Project card of the sources screen. Tanzil's terms have no title, so this describes them.
+  ///
+  /// In en, this message translates to:
+  /// **'Verbatim copies, attributed'**
+  String get aboutLicenceVerbatim;
+
+  /// The licence tag on the Nocturne card of the sources screen: the design system was written for this app.
+  ///
+  /// In en, this message translates to:
+  /// **'Authored for Wird'**
+  String get aboutLicenceAuthored;
+
+  /// The licence tag on the recitation card of the sources screen. The archive publishes no terms, so this says how the recording is used instead.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetched at playback, never redistributed'**
+  String get aboutLicenceFetched;
+
+  /// The licence tag on The Last Dialogue card of the sources screen: the use was granted by email rather than under a published licence.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by permission'**
+  String get aboutLicencePermission;
+
+  /// The body of the Quranic Arabic Corpus card of the sources screen: what it provides and the conditions it is used on.
+  ///
+  /// In en, this message translates to:
+  /// **'Every root a word opens into comes from here. Verbatim copies only — changing the annotation is not allowed. Used on the condition that its source is clearly indicated and a link is made to corpus.quran.com, so you can keep track of what has changed since this build.'**
+  String get aboutTermsCorpus;
+
+  /// The body of the Tanzil Project card of the sources screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The verified Uthmani text every aya is painted from, which the Quranic Arabic Corpus also builds on. Copied verbatim; changing the text is not allowed. Linked so you can keep track of changes.'**
+  String get aboutTermsTanzil;
+
+  /// The body of the Quran Foundation card of the sources screen. The French adds that a French reader sees The Last Dialogue's glosses, with the English only as the fallback.
+  ///
+  /// In en, this message translates to:
+  /// **'The English under each word, served by the quran.com API. Their terms allow an application to show this content but not to store it indefinitely without a weekly re-sync, which a bundled corpus does not do. Unsettled, and recorded as unsettled.'**
+  String get aboutTermsQuranFoundation;
+
+  /// The body of The Last Dialogue card of the sources screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The French under each word, for a reader who reads Wird in French. The site marks its word-by-word as in beta. They granted Wird its use by email on 30 September 2026 without requiring attribution; Wird names them anyway, because it names every source.'**
+  String get aboutTermsLastDialogue;
+
+  /// The body of the Nocturne card of the sources screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The design system every screen is drawn from. Dark only; there is no light mode.'**
+  String get aboutTermsNocturne;
+
+  /// The body of the Scheherazade New card of the sources screen. Feminine in French: it agrees with « police ».
+  ///
+  /// In en, this message translates to:
+  /// **'Bundled unmodified, because platform Arabic faces mangle Qurʼanic diacritics.'**
+  String get aboutTermsScheherazade;
+
+  /// The body of the Inter card of the sources screen. Feminine in French: it agrees with « police ».
+  ///
+  /// In en, this message translates to:
+  /// **'Bundled unmodified.'**
+  String get aboutTermsInter;
+
+  /// The body of the quran-align card of the sources screen. CC BY 4.0 requires that changes be indicated, which is what the reindexing sentence does; keep it in every locale.
+  ///
+  /// In en, this message translates to:
+  /// **'The millisecond each word is spoken at, which is what lets a word light up as you hear it. From github.com/cpfair/quran-align, aligned against this same muʿallim recording. Reindexed for this app: the published data is zero-based and end-exclusive, and it is stored here one-based against the word it belongs to. Offered as-is, without warranties.'**
+  String get aboutTermsTimings;
+
+  /// The body of the recitation card of the sources screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The muʿallim recording is downloaded by your device from everyayah.com when you press play, the way a browser loads a page, and cached on your phone. Wird does not bundle it, mirror it, or serve it. The archive publishes no terms of use, so nothing here is offered as permission to redistribute it — and that is why this app never does.'**
+  String get aboutTermsRecitation;
+
+  /// The body of the recogniser card of the sources screen. Its licence requires an app built on it to say that automatic tajwīd feedback can be wrong and does not replace a qualified teacher; keep both in every locale.
+  ///
+  /// In en, this message translates to:
+  /// **'The recogniser that hears your recitation, downloaded on your word and run on this phone; nothing you say is sent anywhere. It writes Qurʼanic phonemes, including the marks of tajwīd. Wird uses that only to find where in the set you are, and never to judge how you recited: automatic tajwīd feedback can be wrong, and no software here or anywhere replaces a qualified teacher. Its licence forbids charging for the model or for any feature it powers, which Wird does not and will not do.'**
+  String get aboutTermsVoice;
+
+  /// The body of the first card of the sources screen, Wird's own terms. The licence title stays in English: it is the licence's own name.
+  ///
+  /// In en, this message translates to:
+  /// **'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.'**
+  String get aboutSelfTerms;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

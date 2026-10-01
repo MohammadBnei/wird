@@ -68,6 +68,27 @@ class _NocturneGalleryState extends State<NocturneGallery> {
                 block: true,
                 child: const Text('secondary block off'),
               ),
+              Row(
+                spacing: n.space('3'),
+                children: [
+                  NocturneStep(
+                    label: 'step back',
+                    icon: Icons.chevron_left,
+                    onPressed: () {},
+                  ),
+                  NocturneStep(
+                    label: 'step on',
+                    icon: Icons.chevron_right,
+                    onPressed: () {},
+                  ),
+                  // Dark: the end of whatever is being stepped through.
+                  const NocturneStep(
+                    label: 'step on, at the end',
+                    icon: Icons.chevron_right,
+                    onPressed: null,
+                  ),
+                ],
+              ),
               const NocturneRule(),
               _section(context, 'Tags'),
               Wrap(

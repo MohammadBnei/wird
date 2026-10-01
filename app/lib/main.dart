@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'app.dart';
 import 'data/db.dart';
 import 'data/flush.dart';
+import 'l10n/app_localizations.dart';
 import 'nav.dart';
 import 'theme/nocturne.dart';
 
@@ -46,7 +47,11 @@ class _WirdAppState extends State<WirdApp> {
         flusher: data.flusher,
       ),
       AsyncSnapshot(hasError: true, :final error?) => _beforeTheCorpus(
-        Text('The corpus would not open.\n\n$error'),
+        Builder(
+          builder: (context) => Text(
+            AppLocalizations.of(context)!.appCorpusWouldNotOpen('$error'),
+          ),
+        ),
       ),
       _ => _beforeTheCorpus(const SizedBox.shrink()),
     },
@@ -61,6 +66,10 @@ class _WirdAppState extends State<WirdApp> {
     key: const ValueKey('opening the corpus'),
     title: 'Wird',
     theme: nocturneTheme(),
+    // The reader's chosen language lives in the corpus that failed to open, so
+    // this frame follows the phone's instead.
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(
       body: Center(
         child: Padding(padding: const EdgeInsets.all(24), child: body),

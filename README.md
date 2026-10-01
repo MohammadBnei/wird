@@ -108,6 +108,15 @@ Same shape as the corpus, same answer: unmodified, named, linked.
 every seven days through the Content Sync APIs. A bundled `corpus.db` is
 storage without end, so this row is **not yet settled** — see *Open questions*.
 
+### The Last Dialogue — French word-by-word gloss
+
+<https://www.thelastdialogue.org/coran-mot-a-mot-francais/>
+
+`words.gloss_fr`, the French under each word for a reader who reads Wird in
+French. The site reserves all rights; The Last Dialogue granted Wird the use of
+its French glosses by email on 2026-09-30, without requiring attribution. The
+grant is quoted in [data/SOURCES.md](data/SOURCES.md).
+
 ### Nocturne — the design system
 
 Every colour, space, radius and shadow in the app comes from the Nocturne

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Prints one Flutter device id for `flutter run -d` / `flutter test integration_test/ -d`.
-# Order: attached iPhone > the iPhone 16 simulator on iOS 18.6 > the macOS desktop target.
+# Order: $WIRD_E2E_DEVICE if set > attached iPhone > the iPhone 16 simulator on iOS 18.6 > the macOS desktop target.
 # Resolved by name every time: a pinned UDID rots on the next machine.
 set -uo pipefail
 
 RUNTIME=${WIRD_IOS_RUNTIME:-iOS-18-6}
 SIM_NAME=${WIRD_SIM_NAME:-iPhone 16}
 PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/app/ios/Runner.xcodeproj"
+
+[ -n "${WIRD_E2E_DEVICE:-}" ] && { echo "$WIRD_E2E_DEVICE"; exit 0; }
 
 # Xcode resolves a build destination separately from simctl's device list, and
 # with the iOS platform not installed every iOS destination is ineligible — so

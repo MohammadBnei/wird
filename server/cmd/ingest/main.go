@@ -21,8 +21,9 @@ const (
 	// as the Arabic and keyed by verse. There is no French WORD-BY-WORD gloss
 	// anywhere on quran.com — `language=fr` silently answers English with
 	// `language_name: "english"`, which is a trap worth naming because a
-	// presence check cannot see it — so French reaches a reader one ayah at a
-	// time. data/SOURCES.md carries the provenance.
+	// presence check cannot see it — so the French under each word is fetched
+	// from The Last Dialogue instead (tld.go). data/SOURCES.md carries the
+	// provenance of both.
 	versesURL = "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&translations=" + frenchTranslation + "&fields=text_uthmani&per_page=300"
 
 	// The resource id, not the name: quran.com identifies a translation by
@@ -37,7 +38,7 @@ const (
 	corpusFile = "quranic-corpus-morphology-0.4.txt"
 )
 
-var sourceURLs = []string{chaptersURL, versesURL, alignURL, corpusPage}
+var sourceURLs = []string{chaptersURL, versesURL, alignURL, corpusPage, tldIndexURL}
 
 func main() {
 	out := flag.String("out", "./data/raw/", "directory the downloads land in; gitignored")
@@ -94,6 +95,12 @@ func run(dir, manifestPath, only, recitation string, delay time.Duration, retrie
 	for _, n := range suras {
 		v := filepath.Join(dir, "verses", fmt.Sprintf("%03d.json", n))
 		if err := f.download(ctx, fmt.Sprintf(versesURL, n), v, force); err != nil {
+			return err
+		}
+	}
+
+	if len(suras) == 114 {
+		if err := downloadFrenchGlosses(ctx, f, dir, force); err != nil {
 			return err
 		}
 	}

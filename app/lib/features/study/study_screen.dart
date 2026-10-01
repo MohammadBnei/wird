@@ -92,6 +92,19 @@ class _StudyScreenState extends State<StudyScreen> {
   /// Al-Baqarah is 6116 of them and the screen shows twenty.
   Map<int, List<StudyWord>> _words = {};
 
+  /// The words the passage is drawing, in reading order: what the arrows step
+  /// through. The cache rather than the set, because off the walk the reading
+  /// is the whole sūra and every word of it can be tapped.
+  ///
+  /// Baked where _words changes rather than read at build, like [_speakable]:
+  /// whether an arrow is dark is a question every frame asks.
+  List<StudyWord> _walk = const [];
+
+  /// The word being opened, while its root is still being read. [_stepWord]
+  /// counts from here, so two quick presses move two words rather than both
+  /// moving from the same one.
+  int? _stepping;
+
   /// The reader's own language rendering of each aya, by aya, as far as it has
   /// been read. Empty in English: there is nothing to draw beside a reading that
   /// is already in the reader's language, and nothing to read either.
@@ -120,7 +133,13 @@ class _StudyScreenState extends State<StudyScreen> {
   /// nothing and the only thing left to do is walk on.
   bool _allUnderstood(StudySet set) => set.ayas.every((a) => a.understood);
 
-  void _bake() => _speakable = _audio?.speakable ?? const {};
+  void _bake() {
+    _speakable = _audio?.speakable ?? const {};
+    _walk = [
+      for (final aya in _set?.reading ?? const <StudyAya>[])
+        ...?_words[aya.id],
+    ];
+  }
 
   Prefs get _prefs => Wird.of(context).prefs;
   double get _arabicSize => _prefs.arabicSize;
@@ -245,6 +264,7 @@ class _StudyScreenState extends State<StudyScreen> {
       _set = set;
       _word = first;
       _root = root;
+      _stepping = null;
       _audio = set == null ? null : recitation;
       _loaded = true;
       _pending.clear();
@@ -338,18 +358,66 @@ class _StudyScreenState extends State<StudyScreen> {
 
   /// The panel keeps the root it is showing until the next one has been read,
   /// so a tap never blanks the screen the reader is looking at.
-  Future<void> _openRoot(StudyWord word) async {
-    final detail = await rootReading(
-      widget.db,
-      word.root!,
-      readIn: Localizations.localeOf(context),
-    );
-    if (!mounted || detail == null) return;
+  ///
+  /// A word with no root — and a word whose letters the roots table has no row
+  /// for — lands all the same, carrying no root. The arrows walk onto
+  /// particles, and a press that did nothing would read as a dead button.
+  Future<void> _openWord(StudyWord word) async {
+    final generation = _generation;
+    _stepping = word.id;
+    final letters = word.root;
+    final detail = letters == null
+        ? null
+        : await rootReading(
+            widget.db,
+            letters,
+            readIn: Localizations.localeOf(context),
+          );
+    // The set may have changed under the read — back to the walk, a kin, a
+    // step — and this word belongs to the set that was.
+    if (!mounted || generation != _generation) return;
     setState(() {
       _word = word;
       _root = detail;
+      _stepping = null;
     });
   }
+
+  /// The word [by] along from the open one, anywhere in the passage.
+  ///
+  /// Particles come with the rest: a reader walking an aya is walking every
+  /// word of it. The ends are the passage's, and [_walk] only holds the ayas
+  /// whose words have been read, so a step at that edge reads the next chunk
+  /// first — one query against the bundled corpus.
+  Future<void> _stepWord(int by) async {
+    final from = _stepping ?? _word?.id;
+    final at = _walk.indexWhere((w) => w.id == from) + by;
+    if (at < 0) return;
+    if (at >= _walk.length) {
+      final ayas = _set?.reading ?? const <StudyAya>[];
+      final next = ayas.indexWhere((a) => !_words.containsKey(a.id));
+      if (next < 0) return;
+      await _readWordsAround(next, ayas);
+      if (!mounted || at >= _walk.length) return;
+    }
+    await _openWord(_walk[at]);
+  }
+
+  /// Which arrows the panel can offer: null where the passage ends.
+  VoidCallback? _stepTo(int by) {
+    final at = _walk.indexWhere((w) => w.id == (_stepping ?? _word?.id)) + by;
+    if (at < 0) return null;
+    if (at >= _walk.length && _walk.length == _wordsInReading) return null;
+    return () => _stepWord(by);
+  }
+
+  /// How many words the passage holds once every aya of it has been read. The
+  /// count is on the aya whether or not its words are ([StudyAya.wordCount]),
+  /// so the last arrow goes dark at the end of the sūra and not at the end of
+  /// the chunk.
+  int get _wordsInReading => [
+    for (final aya in _set?.reading ?? const <StudyAya>[]) aya.wordCount,
+  ].fold(0, (a, b) => a + b);
 
   @override
   Widget build(BuildContext context) {
@@ -422,6 +490,8 @@ class _StudyScreenState extends State<StudyScreen> {
                           ? () => _load()
                           : () => _markUnderstood(set),
                       onJudge: _judgeSense,
+                      onPrevious: _stepTo(-1),
+                      onNext: _stepTo(1),
                     ),
                   ),
                 ],
@@ -573,7 +643,7 @@ class _StudyScreenState extends State<StudyScreen> {
             // Once, above the reading, not under every aya: a reader learns this
             // on the first screenful and does not need telling six more times.
             Text(
-              AppLocalizations.of(context)!.study_glossesStayEnglish,
+              AppLocalizations.of(context)!.study_glossesSource,
               style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
             ),
           ],
@@ -597,7 +667,7 @@ class _StudyScreenState extends State<StudyScreen> {
                   voice: word.voice(sounding: recited, unheard: _unheard),
                   open: word.word.id == _word?.id,
                   prefs: _prefs,
-                  onOpen: _openRoot,
+                  onOpen: _openWord,
                   onHear: _speak,
                 ),
               AyaMark(aya: face.aya, arabicSize: _arabicSize),
@@ -659,6 +729,7 @@ class _StudyScreenState extends State<StudyScreen> {
     setState(() {
       _words.addAll(read);
       _translated.addAll(rendered);
+      _bake();
     });
   }
 

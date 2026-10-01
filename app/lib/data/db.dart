@@ -83,6 +83,7 @@ Future<Database> openWirdAt(String path) async {
       root_open   INTEGER NOT NULL DEFAULT 1
     )''');
   await ensureChromeColumns(db);
+  await _ensureFrenchGlossColumn(db);
   // The language the reader chose, when they chose one. Its own table and not
   // a column on `display_prefs`, because that row is written whole: a column
   // added there would be reset by the next change of Arabic size. Absent means
@@ -394,4 +395,19 @@ Future<String?> reciterLabel(Database db) async {
   final style = rows.first['style'] as String?;
   final name = rows.first['reciter_name']! as String;
   return style == null ? name : '$name · $style';
+}
+
+/// Gives a corpus installed before the French word glosses a `gloss_fr` column,
+/// empty, so every query can name it and every word falls back to its English.
+///
+/// ponytail: `openWird` installs the corpus only when no file is there, so an
+/// install from before corpus 5 never receives the French itself. The upgrade
+/// is replacing the corpus tables when `corpus_meta.corpus_version` moves while
+/// keeping the reader's own tables, which share this file.
+Future<void> _ensureFrenchGlossColumn(Database db) async {
+  final columns = await db.rawQuery('PRAGMA table_info(words)');
+  // No words table is a database the corpus was never copied into, which only
+  // a test opens; there is nothing to add a column to.
+  if (columns.isEmpty || columns.any((c) => c['name'] == 'gloss_fr')) return;
+  await db.execute('ALTER TABLE words ADD COLUMN gloss_fr TEXT');
 }

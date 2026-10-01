@@ -23,16 +23,17 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 ## Data
 ### Bundled `app/assets/corpus.db` (SQLite, tracked binary)
 - Tables: `surahs ayahs words roots root_notes recitations ayah_audio word_segments ayah_translations irab irab_roles corpus_meta`.
-- `corpus_version` = 4. ~30 MB. Budget 60 MB (gate `corpus_under_budget`).
+- `corpus_version` = 5. ~31 MB. Budget 60 MB (gate `corpus_under_budget`).
 - Natural keys: `ayah_id = surah*1000 + ayah`, `word_id = ayah_id*1000 + position`, roots keyed by joined letters (`وصي`, not spaced).
 - `root_notes` ships EMPTY since ADR 0010; senses arrive over HTTP.
 - `surahs.revelation_order` = Egyptian standard chronology.
-- Sources + licences per table: `data/SOURCES.md`. Morphology = Quranic Arabic Corpus (GPL) → why repo is AGPL-3.0. Timings = quran-align (CC BY 4.0), notice in `corpus_meta.notice`; ETL refuses build without it. Gloss/translit = Quran Foundation API; one-week storage rule → unsettled.
+- Sources + licences per table: `data/SOURCES.md`. Morphology = Quranic Arabic Corpus (GPL) → why repo is AGPL-3.0. Timings = quran-align (CC BY 4.0), notice in `corpus_meta.notice`; ETL refuses build without it. Gloss/translit = Quran Foundation API; one-week storage rule → unsettled. `words.gloss_fr` = The Last Dialogue pages, written grant 2026-09-30 (ADR 0012); matched by Arabic (LCS), never position; 128 words NULL → app shows `gloss_en`. `irab_roles.role_fr` drawn for French reader.
 - Exactly one agent/lane rebuilds `corpus.db` at a time.
 - ETL: `go run ./server/cmd/etl -in <abs path>/data/raw/ -out <out> -corpus-version N`. `data/raw/` gitignored → worktrees have none; pass absolute path to owner's checkout.
 - ETL hazards: word text + segment timings must come from same segmentation; overlapping segments exist → assert monotonic starts, not non-overlap.
 ### Device `wird.db`
 - One sqflite file = corpus copy + user tables (joins; no ATTACH). `openWird` (`app/lib/data/db.dart`) installs asset only when file absent; atomic via `.part` rename.
+- Old install (corpus < 5) lacks `words.gloss_fr` → `_ensureFrenchGlossColumn` (`app/lib/data/db.dart`) adds empty column at open → English fallback. Never query new corpus column without same guard.
 - User tables: `ayah_understood user_prefs display_prefs mic_consent sets set_prayers set_span sense_pack outbox auth_tokens`.
 - `sqflite_common_ffi` required under `flutter test`.
 ### Server Postgres (migrations `server/migrations/00001..00009`)
