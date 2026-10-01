@@ -23,26 +23,6 @@ void main() {
   Future<void> openHome(WidgetTester tester) async =>
       pumpPhone(tester, await wholeApp(db, cache: audio));
 
-  testWidgets('home goes on offering the set the reader has just marked '
-      'understood', (tester) async {
-    final finished = (await nextSet(db, ReadingOrder.nuzul))!;
-    await openHome(tester);
-    expect(find.text(finished.title), findsOneWidget);
-
-    await goTo(tester, 'The set');
-    await tester.tap(find.text('Mark set understood'));
-    await tester.pumpAndSettle();
-    await goTo(tester, 'Home');
-
-    expect(find.text(finished.title), findsNothing);
-    expect(find.text((await nextSet(db, ReadingOrder.nuzul))!.title),
-        findsOneWidget);
-  },
-      // Removed by ADR 0014: the reader has no Mark set understood; a reader
-      // marks one aya at a time
-      skip: true,
-  );
-
   testWidgets('home offers the set of the reading order the reader has just '
       'left', (tester) async {
     final chronological = (await nextSet(db, ReadingOrder.nuzul))!;

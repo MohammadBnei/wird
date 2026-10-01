@@ -6,7 +6,6 @@ import 'package:wird/features/study/word_row.dart';
 import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
-import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/features/settings/settings_screen.dart';
@@ -126,34 +125,6 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Pulls the set's end out one aya at a time, the way the reader does.
-  Future<void> widen(WidgetTester tester, int times) async {
-    for (var i = 0; i < times; i++) {
-      await tester.tap(find.byKey(const Key('widen set')));
-      await tester.pumpAndSettle();
-    }
-  }
-
-  testWidgets(
-    'a set that crosses a sūra boundary drops the ayas on the far '
-    'side of it',
-    (tester) async {
-      await db.execute(
-        "INSERT INTO ayah_understood SELECT id, '' FROM ayahs "
-        'WHERE surah_id = 96 AND number < 19',
-      );
-
-      await openStudy(tester);
-
-      expect(find.text(await word(db, 96019001)), findsOneWidget);
-      expect(find.text(await word(db, 68001001)), findsOneWidget);
-      expect(find.textContaining('Al-Qalam'), findsOneWidget);
-    },
-    // Removed by ADR 0014: the reader holds one whole sūra, so no set
-    // crosses into the next
-    skip: true,
-  );
-
   testWidgets('the aya paints left to right, or loses the harakat the corpus '
       'stores', (tester) async {
     await openStudy(tester);
@@ -188,21 +159,6 @@ void main() {
     expect(rootNamed('ق ر أ'), findsNothing);
   });
 
-  testWidgets(
-    'tapping a word that carries no root throws away the root the '
-    'reader was reading',
-    (tester) async {
-      await openStudy(tester);
-
-      await tester.tap(tile(96001004));
-      await tester.pumpAndSettle();
-
-      expect(rootNamed('ق ر أ'), findsOneWidget);
-    },
-    // Removed by ADR 0014: a tap on a particle opens it in the sheet
-    skip: true,
-  );
-
   testWidgets('a word with no root wears the rule that says a root is under '
       'it, now the arrows can walk onto one', (tester) async {
     await openStudy(tester);
@@ -216,30 +172,6 @@ void main() {
     expect(find.text('No root'), findsOneWidget);
     expect(underlineOf(tester, 96001004), Colors.transparent);
   });
-
-  testWidgets(
-    'the screen puts an aya the reader understood out of order back '
-    'in front of them',
-    (tester) async {
-      await markSetUnderstood(db, newOpId(), [96002]);
-
-      await openStudy(tester);
-
-      expect(tile(96001001), findsOneWidget);
-      expect(
-        tile(96002004),
-        findsNothing,
-        reason: 'aya 2 is understood, so the set ends before it',
-      );
-      // The sentence spelling the marks out lives in the unfolded header.
-      await tester.tap(find.byKey(const Key('toggle header')));
-      await tester.pumpAndSettle();
-      expect(find.text('No aya marked understood yet'), findsOneWidget);
-    },
-    // Removed by ADR 0014: the reader shows the whole sūra, not a set that
-    // ends before an understood aya
-    skip: true,
-  );
 
   testWidgets('turning the gloss off takes the Arabic with it', (tester) async {
     await openStudy(tester);
@@ -620,29 +552,6 @@ void main() {
     }
   }
 
-  testWidgets(
-    'the reader is stuck in the order they started, with no way to '
-    'read the muṣḥaf from its first sūra',
-    (tester) async {
-      await openStudy(tester);
-      expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
-
-      await openSettings(tester);
-      await tester.tap(find.text('Muṣḥaf'));
-      await tester.pumpAndSettle();
-      // Reaching settings leaves the set behind — the drawer pops to home
-      // first — so the order is seen on the set the reader opens next.
-      await tester.pumpWidget(const SizedBox.shrink());
-      await openStudy(tester);
-
-      expect(find.textContaining('Al-Fatihah 1'), findsOneWidget);
-      expect(await readingOrder(db), ReadingOrder.mushaf);
-    },
-    // Removed by ADR 0014: the reader reopens where it last stood (ADR
-    // 0015), so the order only picks where a first reading starts
-    skip: true,
-  );
-
   testWidgets('the microphone is asked for on the way into the prayer, where '
       'no dialog may appear', (tester) async {
     RecordPlatform.instance = FakeMic();
@@ -662,52 +571,6 @@ void main() {
     // is a separate, printed, opt-in download.
     expect(find.textContaining('Download recogniser'), findsOneWidget);
   });
-
-  testWidgets(
-    'the reader is carried off the set the moment they mark it, '
-    'before the marks they just made are on screen',
-    (tester) async {
-      await openStudy(tester);
-      expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
-
-      await tester.tap(find.text('Mark set understood'));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining("Al-'Alaq 1"), findsOneWidget);
-      await tester.tap(find.byKey(const Key('toggle header')));
-      await tester.pumpAndSettle();
-      expect(find.text('Every aya in this set is understood'), findsOneWidget);
-      expect((await db.query('outbox')).length, 1);
-      expect((await db.query('ayah_understood')).length, 5);
-
-      await tester.tap(find.text('Next set'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining("Al-'Alaq 6"), findsOneWidget);
-    },
-    // Removed by ADR 0014: there is no set to be carried off; a reader marks
-    // one aya at a time and stays where they are
-    skip: true,
-  );
-
-  testWidgets(
-    'the set the reader pulled wider is five ayas again when they '
-    'come back to screen 1a',
-    (tester) async {
-      await openStudy(tester);
-      await openSettings(tester);
-      expect(find.text('5 ayas'), findsOneWidget);
-
-      await widen(tester, 3);
-
-      // Away from 1a and back, which is where an in-memory width is lost.
-      await tester.pumpWidget(const SizedBox.shrink());
-      await openStudy(tester);
-
-      expect(find.textContaining("Al-'Alaq 1–8"), findsOneWidget);
-    },
-    // Removed by ADR 0014: the reader has no set to pull wider
-    skip: true,
-  );
 
   testWidgets('the second aya the reader marks is thrown away, because it is '
       'queued under the op id the first one already used', (tester) async {
@@ -735,42 +598,6 @@ void main() {
     );
     expect(ops.map((op) => op['client_op_id']).toSet(), hasLength(2));
   });
-
-  testWidgets(
-    'a set pulled across an aya the reader already understood marks '
-    'it a second time, moving the day they understood it',
-    (tester) async {
-      await markSetUnderstood(db, newOpId(), [96003]);
-      final before = await db.query('ayah_understood');
-
-      await openStudy(tester);
-      await openSettings(tester);
-      // The proposal stops before aya 3; the reader pulls the set across it.
-      expect(find.text('2 ayas'), findsOneWidget);
-      await widen(tester, 3);
-      await tester.pumpWidget(const SizedBox.shrink());
-      await openStudy(tester);
-      expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
-
-      await tester.tap(find.text('Mark set understood'));
-      await tester.pumpAndSettle();
-
-      final ops = await db.query('outbox', orderBy: 'created_at, client_op_id');
-      expect(jsonDecode(ops.last['body']! as String)['ayah_ids'], [
-        96001,
-        96002,
-        96004,
-        96005,
-      ], reason: 'the aya the set was pulled across is recited, not re-marked');
-      expect(
-        await db.query('ayah_understood', where: 'ayah_id = 96003'),
-        before,
-      );
-    },
-    // Removed by ADR 0014: the reader has no set to pull across an
-    // understood aya
-    skip: true,
-  );
 
   testWidgets('the prayer is lost when the reader leaves the prayer screen by '
       'the back gesture instead of its Exit button', (tester) async {

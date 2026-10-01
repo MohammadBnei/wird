@@ -14,7 +14,6 @@ import 'package:wird/features/progress/progress_screen.dart';
 import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/nav.dart';
-import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/shell/wird_shell.dart';
 
 import 'corpus.dart';
@@ -180,26 +179,6 @@ void main() {
       reason: 'the reader pressed stop and the word is still named as playing',
     );
   });
-
-  testWidgets(
-    'the sign that a recitation is running scrolls away with the '
-    'words, so a reader who has scrolled sees nothing',
-    (tester) async {
-      final recitation = downloaded;
-      await openTheSet(tester, recitation);
-      unawaitedToggle(recitation);
-      await beats(tester);
-
-      await tester.drag(find.byType(StudyScreen), const Offset(0, -400));
-      await beats(tester);
-
-      expect(find.text('RECITING THE SET'), findsOneWidget);
-      expect(find.byKey(const Key('stop sounding')), findsOneWidget);
-    },
-    // Removed by ADR 0014: the transport left the reader, which carries its
-    // own play button in its bar
-    skip: true,
-  );
 
   testWidgets('the app opens on the set, with nothing saying which portion is '
       'waiting or whether it has been prayed', (tester) async {
