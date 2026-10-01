@@ -260,7 +260,7 @@ While visiting, the header shows "Back to the walk", which reloads with no targe
 
 ### 8. Marking a set understood
 
-[`_markUnderstood`](../../../app/lib/features/study/study_screen.dart#L308-L321) sends only the ayas that are still open. An aya the reader pulled the set across is already understood, and marking it again would move its date to today. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L175-L204). It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. The screen mints a fresh op id only after a press lands. A double tap reuses the same id, and the second write sees it in the outbox and does nothing ([db.dart:180](../../../app/lib/data/db.dart#L180-L186)).
+[`_markUnderstood`](../../../app/lib/features/study/study_screen.dart#L308-L321) sends only the ayas that are still open. An aya the reader pulled the set across is already understood, and marking it again would move its date to today. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L289-L317). It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. The screen mints a fresh op id only after a press lands. A double tap reuses the same id, and the second write sees it in the outbox and does nothing ([db.dart:180](../../../app/lib/data/db.dart#L294-L300)).
 
 Once every aya is understood, the same button reads "Next set" and reloads the walk ([study_screen.dart:489](../../../app/lib/features/study/study_screen.dart#L489-L491)).
 
@@ -278,7 +278,7 @@ Future<void> prayTheSet(BuildContext context, StudySet set) async {
 }
 ```
 
-[app.dart:312](../../../app/lib/app.dart#L328-L334). The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:16](../../../app/lib/features/prayer/prayer_screen.dart#L16-L31)). The prayer is recorded when the reader comes back, however they leave. [`recordSetPrayed`](../../../app/lib/data/db.dart#L217) inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
+[app.dart:312](../../../app/lib/app.dart#L328-L334). The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:16](../../../app/lib/features/prayer/prayer_screen.dart#L16-L31)). The prayer is recorded when the reader comes back, however they leave. [`recordSetPrayed`](../../../app/lib/data/db.dart#L330) inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
 
 A prayer the reader never returns from is not counted. The count may be short; it is never invented.
 

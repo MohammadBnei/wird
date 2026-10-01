@@ -103,15 +103,15 @@ Future<void> enqueue(
 }, conflictAlgorithm: ConflictAlgorithm.ignore);
 ```
 
-[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:143](../../../app/lib/data/db.dart#L143-L150)
+[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:143](../../../app/lib/data/db.dart#L257-L264)
 
 The callers, one per op kind:
 
 | Op kind | Written by |
 |---|---|
-| `ayah_understood` | [markSetUnderstood, db.dart:195](../../../app/lib/data/db.dart#L195-L203) |
-| `set_prayed` | [recordSetPrayed, db.dart:241](../../../app/lib/data/db.dart#L241) |
-| `prefs_set` | [setReadingOrder, db.dart:312](../../../app/lib/data/db.dart#L312-L317) |
+| `ayah_understood` | [markSetUnderstood, db.dart:195](../../../app/lib/data/db.dart#L308-L316) |
+| `set_prayed` | [recordSetPrayed, db.dart:241](../../../app/lib/data/db.dart#L354) |
+| `prefs_set` | [setReadingOrder, db.dart:312](../../../app/lib/data/db.dart#L424-L429) |
 | `kept_upsert` | [kept_repo.dart:99](../../../app/lib/data/kept_repo.dart#L99-L109) |
 | `kept_delete` | [kept_repo.dart:128](../../../app/lib/data/kept_repo.dart#L128-L133) |
 | `report_written` | [report.dart:76](../../../app/lib/features/report/report.dart#L82-L92) |

@@ -95,6 +95,8 @@ erDiagram
     text root_letters
     text gloss_en
     text gloss_fr "NULL where no French card matched"
+    text lemma_key "Buckwalter, digit kept"
+    text lemma "decoded, NULL without a root"
   }
   roots {
     text letters PK "joined, not spaced"
@@ -198,11 +200,11 @@ func ayahID(surah, ayah int) int   { return surah*1000 + ayah }
 func wordID(ayahID, pos int) int64 { return int64(ayahID)*1000 + int64(pos) }
 ```
 
-[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L250-L253)
+[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L256-L259)
 
 ### 6. Check: refuse a corpus that would mislead
 
-The check is a build gate, not a report. Among other things, it refuses a corpus whose notice does not credit both licensed sources, a partial Quran, an aya without audio, a word pointing at an unknown root, timings that jump backwards, French for some ayas but not all, and an aya none of whose words carries a French gloss.
+The check is a build gate, not a report. Among other things, it refuses a corpus whose notice does not credit both licensed sources, a partial Quran, an aya without audio, a word pointing at an unknown root, timings that jump backwards, French for some ayas but not all, an aya none of whose words carries a French gloss, and a rooted word with no lemma. On a full build it also holds the three commonest lemmas of r-ḥ-m to 116, 114 and 57, the counts corpus.quran.com gives, so a lemma read from the wrong segment or two lemmas merged into one cannot ship.
 
 ```go
 if full {
@@ -219,7 +221,7 @@ if full {
 }
 ```
 
-[etl/check.go:37](../../../server/cmd/etl/check.go#L37-L48) · [the notice check](../../../server/cmd/etl/check.go#L23-L35) · [the whole check](../../../server/cmd/etl/check.go#L18-L116)
+[etl/check.go:37](../../../server/cmd/etl/check.go#L37-L48) · [the notice check](../../../server/cmd/etl/check.go#L23-L35) · [the whole check](../../../server/cmd/etl/check.go#L18-L117)
 
 ### 7. Write the tables and stamp the version
 
@@ -232,12 +234,14 @@ if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?,?)`,
 }
 ```
 
-[etl/write.go:187](../../../server/cmd/etl/write.go#L187-L190) · [the schema](../../../server/cmd/etl/write.go#L16-L129) · [why root_notes is empty](../../../server/cmd/etl/write.go#L229-L243)
+[etl/write.go:192](../../../server/cmd/etl/write.go#L192-L195) · [the schema](../../../server/cmd/etl/write.go#L16-L134) · [why root_notes is empty](../../../server/cmd/etl/write.go#L235-L249)
 
-`corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 5. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
+`corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 6. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
+
+It is also how a phone already holding an older corpus gets the new one. The app carries the same number as `bundledCorpusVersion`. When the installed file's version is lower, the app fills the new corpus beside it, copies the reader's own tables and the fetched senses across, and swaps the file in by rename. A failed upgrade keeps the old file. A rebuild that keeps the same number is therefore never delivered: bump it.
 
 ```go
-version := flag.Int("corpus-version", 5, "corpus_version the API negotiates")
+version := flag.Int("corpus-version", 6, "corpus_version the API negotiates")
 ```
 
 [etl/main.go:24](../../../server/cmd/etl/main.go#L24)

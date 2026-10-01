@@ -60,31 +60,25 @@ The app talks to `https://wird.bnei.dev` by default. A compile-time define point
 fvm flutter run -d macos --dart-define=WIRD_ORIGIN=http://localhost:8080
 ```
 
-### The one trap: delete `wird.db` after a corpus rebuild
+### A corpus rebuild reaches your machine only with a new version
 
-On first launch the app copies the bundled **corpus** into a file called `wird.db`, and adds your own tables beside it. It copies only when that file is missing.
+On first launch the app copies the bundled **corpus** into a file called `wird.db`, and adds your own tables beside it. After that, it replaces the corpus only when the app's version number is higher than the installed one.
 
 ```dart
-  final path = '${await getDatabasesPath()}/$_fileName';
-  final file = File(path);
   if (!file.existsSync()) {
-    final asset = await rootBundle.load(_corpusAsset);
-    await installCorpus(
-      file,
-      asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes),
-    );
-  }
+    await installCorpus(file, await _bundledCorpus());
+  } else if (await installedCorpusVersion(path) < bundledCorpusVersion) {
 ```
 
-[db.dart:23-31](../../app/lib/data/db.dart#L24-L32)
+[db.dart:30-32](../../app/lib/data/db.dart#L30-L32)
 
-So after anyone rebuilds `app/assets/corpus.db`, your machine keeps running the old copy. Reads of any new column then throw. Delete the installed file and launch again:
+So a rebuild of `app/assets/corpus.db` must bump the ETL's `-corpus-version` default and `bundledCorpusVersion` in `app/lib/data/db.dart` together; a test fails when they disagree. Your progress and kept items are carried across. A rebuild that keeps the same number is not picked up: delete the installed file and launch again.
 
 ```bash
 rm ~/Library/Containers/dev.bnei.wird/Data/Documents/wird.db
 ```
 
-This also wipes your local progress. The downloaded voice model sits in a `voice/` folder next to it and survives.
+That wipes your local progress. The downloaded voice model sits in a `voice/` folder next to it and survives.
 
 ## 4. Run the API locally
 

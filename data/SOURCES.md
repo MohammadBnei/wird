@@ -120,8 +120,10 @@ they are readings and not copies:
   Form I verbs are left blank, because a participle is not itself a verb form —
   that is the 2,231-row difference above.
 
-`words.morphology` keeps upstream's Buckwalter for forms, lemmas and tags; only
-roots are decoded, because only roots are rendered. `roots.sources` carries the
+`words.morphology` keeps upstream's Buckwalter for forms, lemmas and tags. Roots
+and the lemma of each word's root segment are decoded, because the reading
+screen renders them: `words.lemma_key` keeps the lemma as published, digit
+included, and `words.lemma` is its Arabic. `roots.sources` carries the
 file's name; the corpus is named in full, with its copyright block, in
 `corpus_meta.notice`.
 

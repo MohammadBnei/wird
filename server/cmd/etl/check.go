@@ -111,6 +111,7 @@ func (c *Corpus) Check(full bool) error {
 	}
 
 	errs = append(errs, c.checkFrenchGlosses()...)
+	errs = append(errs, c.checkLemmas(full)...)
 	errs = append(errs, c.checkSenses()...)
 	return errors.Join(errs...)
 }
@@ -336,4 +337,33 @@ func (c *Corpus) checkFrenchGlosses() []error {
 	return []error{fmt.Errorf("%d ayas carry no French word gloss (%s), so a French reader "+
 		"would meet them in English among French ones; is data/raw/%s missing their page?",
 		len(bare), strings.Join(shown, ", "), tldDir)}
+}
+
+// checkLemmas refuses a rooted word with no lemma, which the reading screen
+// would count under no form, and on a full build holds the three forms of
+// r-ḥ-m to the counts corpus.quran.com gives. A parser that took the lemma from
+// the wrong segment, or folded two lemmas into one, moves those counts.
+func (c *Corpus) checkLemmas(full bool) []error {
+	var errs []error
+	mercy := map[string]int{}
+	for _, w := range c.Words {
+		if w.RootLetters != "" && w.Lemma == "" {
+			errs = append(errs, fmt.Errorf("word %d has the root %s and no lemma, so the "+
+				"reading screen would count it under no form", w.ID, w.RootLetters))
+			break
+		}
+		if w.RootLetters == "رحم" {
+			mercy[w.LemmaKey]++
+		}
+	}
+	if !full {
+		return errs
+	}
+	for key, want := range map[string]int{"r~aHiym": 116, "raHomap": 114, "r~aHoma`n": 57} {
+		if mercy[key] != want {
+			errs = append(errs, fmt.Errorf("the lemma %s of r-ḥ-m occurs %d times, want %d: "+
+				"lemmas are being read from the wrong segment or merged", key, mercy[key], want))
+		}
+	}
+	return errs
 }

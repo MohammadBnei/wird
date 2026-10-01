@@ -214,7 +214,7 @@ Before it records the version, the transaction counts the new senses whose root 
 ```
 [senses.dart:142](../../../app/lib/data/senses.dart#L143-L156)
 
-`sense_pack` holds at most one row ([db.dart:134](../../../app/lib/data/db.dart#L134-L139)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
+`sense_pack` holds at most one row ([db.dart:134](../../../app/lib/data/db.dart#L248-L253)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
 
 ### 6. The root screen reads it back
 
