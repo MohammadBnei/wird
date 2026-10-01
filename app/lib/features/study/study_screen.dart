@@ -82,7 +82,12 @@ class _StudyScreenState extends State<StudyScreen> {
   int? _unheard;
 
   final _sheetScroll = ScrollController();
-  final _current = GlobalKey();
+
+  /// One key per word, kept for the screen's life, so the open word can be
+  /// found to centre it. A single key moved from word to word re-created the
+  /// tile it landed on, and the aya flashed under every tap.
+  final _wordKeys = <int, GlobalKey>{};
+  GlobalKey _keyOf(int wordId) => _wordKeys.putIfAbsent(wordId, GlobalKey.new);
   static const _anchor = ValueKey('reading-anchor');
   static final _silent = ValueNotifier<int?>(null);
   static final _paused = ValueNotifier<bool>(false);
@@ -243,7 +248,9 @@ class _StudyScreenState extends State<StudyScreen> {
   /// opens a sūra; move the anchor if a jump inside a long sūra ever lands
   /// out of sight.
   void _centre() {
-    final context = _current.currentContext;
+    final word = _word;
+    if (word == null) return;
+    final context = _keyOf(word.id).currentContext;
     if (context == null) return;
     Scrollable.ensureVisible(
       context,
@@ -379,6 +386,11 @@ class _StudyScreenState extends State<StudyScreen> {
                                   onRoot: (letters) =>
                                       _visit(Routes.root, letters),
                                   onJudge: _judgeSense,
+                                  onConstellation: (letters) =>
+                                      _visit(Routes.deepDive, (
+                                        ayahId: _word!.id ~/ 1000,
+                                        letters: letters,
+                                      )),
                                   onAya: (aya) {
                                     setState(() => _away = aya);
                                     if (_sheetScroll.hasClients) {
@@ -578,7 +590,7 @@ class _StudyScreenState extends State<StudyScreen> {
             children: [
               for (final word in face.words)
                 KeyedSubtree(
-                  key: word.word.id == open?.id ? _current : null,
+                  key: _keyOf(word.word.id),
                   child: WordTile(
                     key: WordKey(word.word.id),
                     face: word,

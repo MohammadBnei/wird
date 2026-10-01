@@ -34,7 +34,13 @@ void main() {
         reason: 'no word of the first set carries a root to open',
       );
 
-      await tester.tap(find.text('Constellation'));
+      // The link sits under the root's ring, in the half of the sheet that
+      // opens when the reader asks for the counts.
+      await tester.tap(find.byKey(const Key('more row')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('constellation')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('constellation')));
       await tester.pumpAndSettle();
 
       expect(

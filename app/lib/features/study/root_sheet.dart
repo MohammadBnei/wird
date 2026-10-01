@@ -44,6 +44,7 @@ class RootSheet extends StatefulWidget {
     required this.scroll,
     required this.onRoot,
     required this.onJudge,
+    required this.onConstellation,
   });
 
   final SheetWord sheet;
@@ -71,6 +72,10 @@ class RootSheet extends StatefulWidget {
 
   /// The reader's yes or no on the root's sense (ADR 0010).
   final void Function(String root, bool good) onJudge;
+
+  /// Opens the deep dive: this aya and this root's whole family, drawn as a
+  /// constellation where the window is wide enough.
+  final void Function(String letters) onConstellation;
 
   @override
   State<RootSheet> createState() => _RootSheetState();
@@ -548,6 +553,13 @@ class _RootSheetState extends State<RootSheet> {
               child: Text(
                 l.study_ringCaption,
                 style: TextStyle(fontSize: 10.5, color: n.textAt(0.55)),
+              ),
+            ),
+            Center(
+              child: TextButton(
+                key: const Key('constellation'),
+                onPressed: () => widget.onConstellation(root.letters),
+                child: Text(l.study_constellation),
               ),
             ),
           ],

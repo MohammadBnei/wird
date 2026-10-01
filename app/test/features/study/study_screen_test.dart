@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/mic.dart';
+import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/features/study/root_sheet.dart';
 import 'package:wird/features/study/study_screen.dart';
@@ -490,6 +491,37 @@ void main() {
     final queued = await db.query('outbox', where: "kind = 'report_written'");
     expect(queued, hasLength(1));
     expect(queued.single['body'] as String, contains('قرأ'));
+  });
+
+  // The failure: the key that finds the open word for centring moved from
+  // tile to tile, so every tap re-created a tile and the aya flashed.
+  testWidgets('a tap on a word rebuilds the aya under it from scratch', (
+    tester,
+  ) async {
+    await openStudy(tester);
+    final before = tester.element(tile(96002001));
+
+    await tester.tap(tile(96002001));
+    await tester.pumpAndSettle();
+
+    expect(tester.element(tile(96002001)), same(before));
+  });
+
+  // The failure: the root sheet's ring is the only constellation left on the
+  // reading screen, and the deep dive with the whole family is out of reach.
+  testWidgets('the deep dive cannot be reached from the reading screen', (
+    tester,
+  ) async {
+    await openStudy(tester);
+    await tester.tap(find.byKey(const Key('more row')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('constellation')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('constellation')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DeepDiveScreen), findsOneWidget);
   });
 
   // Nothing in app/lib sets a preferred orientation and the manifest handles
