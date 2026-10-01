@@ -1553,6 +1553,12 @@ abstract class AppLocalizations {
   /// **'Your reading order'**
   String get settingsParkedOrder;
 
+  /// A parked write: the reading position in one sūra, sent to the reader's other devices.
+  ///
+  /// In en, this message translates to:
+  /// **'Where you are in a sūra'**
+  String get settingsParkedPosition;
+
   /// A parked write named in the settings screen's parked-writes panel: a bug or request the reader wrote.
   ///
   /// In en, this message translates to:

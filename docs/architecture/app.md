@@ -177,7 +177,7 @@ That write, like every other write, goes to the **outbox** inside the same trans
 
 ### 6. The network, and who calls it
 
-Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:136](../../app/lib/data/flush.dart#L136-L146). Audio playback is the fifth, fetched from the recitation site and cached; it never reaches `wird-api`.
+Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:136](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the recitation site and cached; it never reaches `wird-api`.
 
 ```mermaid
 flowchart LR

@@ -361,6 +361,7 @@ const _theReadersOwn = [
   'ayah_understood',
   'kept_items',
   'user_prefs',
+  'reading_positions',
   'sets',
   'set_prayers',
   'set_span',

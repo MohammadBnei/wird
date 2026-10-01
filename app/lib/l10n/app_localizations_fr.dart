@@ -888,6 +888,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsParkedOrder => 'Votre ordre de lecture';
 
   @override
+  String get settingsParkedPosition => 'Où vous en êtes dans une sourate';
+
+  @override
   String get settingsParkedReport => 'Quelque chose que vous avez signalé';
 
   @override

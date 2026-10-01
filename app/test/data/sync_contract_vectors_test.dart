@@ -125,6 +125,8 @@ void main() {
           await recordSetPrayed(db, (await nextSet(db, ReadingOrder.nuzul))!);
         case 'prefs_set':
           await setReadingOrder(db, ReadingOrder.mushaf);
+        case 'position_moved':
+          await movePosition(db, 2255003);
         case 'report_written':
           await sendReport(
             db,

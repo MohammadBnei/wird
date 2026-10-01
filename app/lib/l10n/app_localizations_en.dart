@@ -888,6 +888,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsParkedOrder => 'Your reading order';
 
   @override
+  String get settingsParkedPosition => 'Where you are in a sūra';
+
+  @override
   String get settingsParkedReport => 'Something you reported';
 
   @override

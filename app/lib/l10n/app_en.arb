@@ -1392,6 +1392,10 @@
   "@settingsParkedOrder": {
     "description": "A parked write named in the settings screen's parked-writes panel: the reading order the reader chose."
   },
+  "settingsParkedPosition": "Where you are in a sūra",
+  "@settingsParkedPosition": {
+    "description": "A parked write: the reading position in one sūra, sent to the reader's other devices."
+  },
   "settingsParkedReport": "Something you reported",
   "@settingsParkedReport": {
     "description": "A parked write named in the settings screen's parked-writes panel: a bug or request the reader wrote."

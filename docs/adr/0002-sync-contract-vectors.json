@@ -60,6 +60,16 @@
         }
       },
       {
+        "kind": "position_moved",
+        "label": "the reader stood on the third word of Ayat al-Kursi",
+        "built_by_device": true,
+        "body": {
+          "surah_id": 2,
+          "word_id": 2255003,
+          "updated_at": "2026-09-23T07:21:00Z"
+        }
+      },
+      {
         "kind": "set_recorded",
         "label": "the old two-op shape, which a phone that has not updated still sends",
         "built_by_device": false,
@@ -144,6 +154,10 @@
       {
         "kind": "user_prefs",
         "row": {"reading_order": "nuzul", "updated_at": "2026-09-23T07:19:00Z"}
+      },
+      {
+        "kind": "reading_positions",
+        "row": {"surah_id": 2, "word_id": 2255003, "updated_at": "2026-09-23T07:21:00Z"}
       }
     ]
   },

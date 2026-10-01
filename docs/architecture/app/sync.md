@@ -103,15 +103,16 @@ Future<void> enqueue(
 }, conflictAlgorithm: ConflictAlgorithm.ignore);
 ```
 
-[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:143](../../../app/lib/data/db.dart#L257-L264)
+[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:143](../../../app/lib/data/db.dart#L266-L273)
 
 The callers, one per op kind:
 
 | Op kind | Written by |
 |---|---|
-| `ayah_understood` | [markSetUnderstood, db.dart:195](../../../app/lib/data/db.dart#L308-L316) |
-| `set_prayed` | [recordSetPrayed, db.dart:241](../../../app/lib/data/db.dart#L354) |
-| `prefs_set` | [setReadingOrder, db.dart:312](../../../app/lib/data/db.dart#L424-L429) |
+| `ayah_understood` | [markSetUnderstood, db.dart:195](../../../app/lib/data/db.dart#L317-L325) |
+| `set_prayed` | [recordSetPrayed, db.dart:241](../../../app/lib/data/db.dart#L363) |
+| `position_moved` | [movePosition, db.dart:437](../../../app/lib/data/db.dart#L437-L456) |
+| `prefs_set` | [setReadingOrder, db.dart:312](../../../app/lib/data/db.dart#L471-L476) |
 | `kept_upsert` | [kept_repo.dart:99](../../../app/lib/data/kept_repo.dart#L99-L109) |
 | `kept_delete` | [kept_repo.dart:128](../../../app/lib/data/kept_repo.dart#L128-L133) |
 | `report_written` | [report.dart:76](../../../app/lib/features/report/report.dart#L82-L92) |
@@ -120,9 +121,11 @@ The server still accepts `set_recorded` from older phones. This build no longer 
 
 Times on the phone carry no zone. An op body turns them into UTC with [wireTime, outbox.dart:222](../../../app/lib/data/outbox.dart#L222-L223), because the server reads RFC 3339.
 
-### 2. The queue moves at launch and on return to the foreground
+### 2. The queue moves at launch, on return to the foreground, and when the app is put away
 
 `Flusher` watches the app's lifecycle. It flushes once at start, since a launch delivers no `resumed` event, and again each time the app is resumed. It does not flush on every write: that would wake the radio once per aya.
+
+It also flushes when the app is paused, ignoring the two-minute floor. A reader who puts the phone down and opens the tablet would otherwise find the tablet at the sūra position of yesterday, because the phone's last move waits in its outbox until the phone is opened again. The flush is best effort: the system may suspend the app before the answer lands, and the queue is then left as it was.
 
 ```dart
   void start() {
@@ -135,19 +138,23 @@ Times on the phone carry no zone. An op body turns them into UTC with [wireTime,
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _inTheBackground();
+    // …
+    if (state == AppLifecycleState.paused) {
+      unawaited(flush(force: true).catchError((Object _) => null));
+    }
   }
 ```
 
-[flush.dart:81](../../../app/lib/data/flush.dart#L81-L91) · the flush and the senses fetch start side by side and swallow their own errors: [flush.dart:100](../../../app/lib/data/flush.dart#L100-L103)
+[flush.dart:81](../../../app/lib/data/flush.dart#L81-L99) · the flush and the senses fetch start side by side and swallow their own errors: [flush.dart:100](../../../app/lib/data/flush.dart#L108-L111)
 
 Only one flush runs at a time, and not more than once every two minutes. A caller that arrives mid-flush joins the flush already running, so no op is sent twice in one round.
 
 ```dart
-  Future<SyncReport?> flush() {
+  Future<SyncReport?> flush({bool force = false}) {
     final running = _running;
     if (running != null) return running;
     final last = _last;
-    if (last != null && DateTime.now().difference(last) < gap) {
+    if (!force && last != null && DateTime.now().difference(last) < gap) {
       return Future.value(null);
     }
     _last = DateTime.now();
@@ -157,9 +164,9 @@ Only one flush runs at a time, and not more than once every two minutes. A calle
   }
 ```
 
-[flush.dart:161](../../../app/lib/data/flush.dart#L161-L172)
+[flush.dart:169](../../../app/lib/data/flush.dart#L169-L180)
 
-`Flushing`, a widget near the top of the tree, starts the flusher and stops it: [flush.dart:192](../../../app/lib/data/flush.dart#L192-L219).
+`Flushing`, a widget near the top of the tree, starts the flusher and stops it: [flush.dart:192](../../../app/lib/data/flush.dart#L200-L227).
 
 ### 3. The token is attached in one place
 
@@ -175,7 +182,7 @@ Flusher flusherFor(Database db) => Flusher(
 );
 ```
 
-[flush.dart:181](../../../app/lib/data/flush.dart#L181-L187) · the interceptor: [auth.dart:463](../../../app/lib/data/auth.dart#L463-L470)
+[flush.dart:181](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:463](../../../app/lib/data/auth.dart#L464-L471)
 
 ### 4. Which ops ride
 
@@ -260,7 +267,7 @@ The delay doubles from one minute and stops growing at 256 minutes: [retryIn, ou
 
 ### 7. No answer is not an attempt
 
-Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:478](../../../app/lib/data/auth.dart#L478-L496)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
+Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:478](../../../app/lib/data/auth.dart#L479-L497)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
 
 ```dart
   } on DioException {
@@ -296,16 +303,19 @@ The pull asks for changes since the saved cursor, page by page, and saves the ne
 
 [sync.dart:167](../../../app/lib/data/sync.dart#L167-L174) · the request: [SyncApi.pull, sync.dart:75](../../../app/lib/data/sync.dart#L75-L83)
 
-Each page is applied in one transaction, with a rule per change kind: [_apply, sync.dart:216](../../../app/lib/data/sync.dart#L216-L235).
+Each page is applied in one transaction, with a rule per change kind: [_apply, sync.dart:216](../../../app/lib/data/sync.dart#L216-L236).
 
 | Change kind | How it lands |
 |---|---|
 | `ayah_understood` | Insert only. Understood stays understood; the older row wins. |
-| `kept_items` | Last write wins on `updated_at`. A delete arrives as a row with `deleted_at` set, so it is never re-created: [sync.dart:261](../../../app/lib/data/sync.dart#L261-L292). |
+| `kept_items` | Last write wins on `updated_at`. A delete arrives as a row with `deleted_at` set, so it is never re-created: [sync.dart:261](../../../app/lib/data/sync.dart#L285-L316). |
 | `sets`, `set_prayers` | Insert only. A set's id is derived, so the same range is the same row everywhere. |
 | `user_prefs` | Last write wins on `updated_at`. |
+| `reading_positions` | Last write wins on `updated_at`, one row per sūra. |
 
-A kind this build does not know fails an assert in debug and tests. In a release build it is skipped and named in the report, so an older phone keeps syncing the kinds it does know: [sync.dart:245](../../../app/lib/data/sync.dart#L245-L253).
+A kind this build does not know fails an assert in debug and tests. In a release build it is skipped and named in the report, so an older phone keeps syncing the kinds it does know: [sync.dart:245](../../../app/lib/data/sync.dart#L246-L254).
+
+Skipping still moves the cursor past those rows, so an older build loses them for good. The cursor is therefore saved together with how many kinds the build applies. When a build that knows more kinds finds a cursor saved by one that knew fewer, it drops the cursor once and pulls the whole stream again. That is safe because every kind lands as an insert-or-ignore or a last-write-wins: [_changeKinds, sync.dart:380](../../../app/lib/data/sync.dart#L380-L406).
 
 ### 9. Parked writes wait in Settings
 

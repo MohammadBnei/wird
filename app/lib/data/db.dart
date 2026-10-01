@@ -250,6 +250,15 @@ Future<Database> openWirdAt(String path) async {
       version    TEXT NOT NULL,
       fetched_at TEXT NOT NULL
     )''');
+  // Where the reader stands in each sūra: the word the reading screen last
+  // stood on. Synced, last write wins on updated_at. Not progress — what the
+  // reader understood is ayah_understood (ADR 0015).
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS reading_positions (
+      surah_id   INTEGER PRIMARY KEY,
+      word_id    INTEGER NOT NULL,
+      updated_at TEXT NOT NULL
+    )''');
   // The op id is the primary key rather than a column, so a write that is
   // replayed — a flush that timed out after the server had already applied it,
   // a button pressed twice — lands on the same row instead of a second one.
@@ -417,6 +426,44 @@ Future<void> setReadingOrder(Database db, ReadingOrder order) =>
         body: {'reading_order': order.name, 'updated_at': wireTime(at)},
       );
     });
+
+/// Records that the reader stands on [wordId], and queues it for their other
+/// devices, in one transaction.
+///
+/// ponytail: one op per call and no coalescing in the outbox. The reading
+/// screen calls this once the reader has settled on a word, not per swipe, so
+/// a sitting sends a handful. Drop older unsent moves of the same sūra if the
+/// queue ever grows with them.
+Future<void> movePosition(Database db, int wordId, {DateTime? at}) =>
+    db.transaction((txn) async {
+      final when = (at ?? DateTime.now()).toIso8601String();
+      final surah = wordId ~/ 1000000;
+      await txn.insert('reading_positions', {
+        'surah_id': surah,
+        'word_id': wordId,
+        'updated_at': when,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await enqueue(
+        txn,
+        opId: newOpId(),
+        kind: 'position_moved',
+        body: {
+          'surah_id': surah,
+          'word_id': wordId,
+          'updated_at': wireTime(when),
+        },
+      );
+    });
+
+/// Where the reader stands in each sūra they have opened, the most recent
+/// first.
+Future<List<({int surah, int wordId})>> readingPositions(Database db) async => [
+  for (final r in await db.query(
+    'reading_positions',
+    orderBy: 'updated_at DESC',
+  ))
+    (surah: r['surah_id']! as int, wordId: r['word_id']! as int),
+];
 
 /// The default annotation is the gloss, and the design draws the Arabic at
 /// 31px.
