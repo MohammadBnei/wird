@@ -158,7 +158,7 @@ The model is "ready" only when every part exists ([speech.dart:207](../../../app
 
 ### 4. A prayer opens the microphone before the model loads
 
-The prayer screen calls `PrayerVoice.start` when it opens ([prayer_screen.dart:183](../../../app/lib/features/prayer/prayer_screen.dart#L183-L191)). It checks the stored permission and the model files, and returns `null` if either is missing. The microphone opens first and the model loads second, because loading takes seconds and the first words of the recitation must not be lost:
+The prayer screen calls `PrayerVoice.start` when it opens ([prayer_screen.dart:183](../../../app/lib/features/prayer/prayer_screen.dart#L184-L192)). It checks the stored permission and the model files, and returns `null` if either is missing. The microphone opens first and the model loads second, because loading takes seconds and the first words of the recitation must not be lost:
 
 ```dart
       if (await micPermission(db) != MicPermission.granted) return null;
@@ -311,7 +311,7 @@ stateDiagram-v2
   Shown --> Shown: tap, turn at once
 ```
 
-The screen lets the aya just finished stand for a one-second dwell before turning ([prayer_screen.dart:70](../../../app/lib/features/prayer/prayer_screen.dart#L70)), unless the reciter keeps going or the move came from a tap ([prayer_screen.dart:159](../../../app/lib/features/prayer/prayer_screen.dart#L159-L178)). A tap forward goes to the start of the next aya. A tap back goes to the start of the aya you are in, or to the aya before when you are already at its start. Both wrap at the ends of the set, and calls `hold` so the voice does not pull the screen straight back ([prayer_screen.dart:261](../../../app/lib/features/prayer/prayer_screen.dart#L261-L276)).
+The screen lets the aya just finished stand for a one-second dwell before turning ([prayer_screen.dart:70](../../../app/lib/features/prayer/prayer_screen.dart#L71)), unless the reciter keeps going or the move came from a tap ([prayer_screen.dart:159](../../../app/lib/features/prayer/prayer_screen.dart#L160-L179)). A tap forward goes to the start of the next aya. A tap back goes to the start of the aya you are in, or to the aya before when you are already at its start. Both wrap at the ends of the set, and calls `hold` so the voice does not pull the screen straight back ([prayer_screen.dart:261](../../../app/lib/features/prayer/prayer_screen.dart#L262-L277)).
 
 ### 10. The prayer trail records what happened
 
@@ -332,11 +332,11 @@ A prayer cannot be watched, so each one writes `prayer-trail.log` beside the dat
 
 [prayer_trail.dart:46](../../../app/lib/features/prayer/prayer_trail.dart#L46-L55)
 
-The lines written include: the size of the `set`, `microphone` and `recogniser` load times ([prayer_voice.dart:235](../../../app/lib/features/prayer/prayer_voice.dart#L235-L244)), a `voice` line when voice-follow did not start ([prayer_screen.dart:202](../../../app/lib/features/prayer/prayer_screen.dart#L202)), `voice` when the reader begins, a `still here` heartbeat every 3 seconds with the range of batch levels ([prayer_voice.dart:366](../../../app/lib/features/prayer/prayer_voice.dart#L366-L378)), each `utterance ended`, each `held` for a new answer ignored during a hold, and each `heard` with the matcher's verdict: `too little heard`, `MOVE`, `stay` under the bar, or `stay` because the phrase was said twice ([prayer_voice.dart:484](../../../app/lib/features/prayer/prayer_voice.dart#L484-L496)). The trail is local only. On a Mac it lands next to `wird.db` in the app's sandboxed Documents folder ([Getting started](../../guides/getting-started.md#the-one-trap-delete-wirddb-after-a-corpus-rebuild)).
+The lines written include: the size of the `set`, `microphone` and `recogniser` load times ([prayer_voice.dart:235](../../../app/lib/features/prayer/prayer_voice.dart#L235-L244)), a `voice` line when voice-follow did not start ([prayer_screen.dart:202](../../../app/lib/features/prayer/prayer_screen.dart#L203)), `voice` when the reader begins, a `still here` heartbeat every 3 seconds with the range of batch levels ([prayer_voice.dart:366](../../../app/lib/features/prayer/prayer_voice.dart#L366-L378)), each `utterance ended`, each `held` for a new answer ignored during a hold, and each `heard` with the matcher's verdict: `too little heard`, `MOVE`, `stay` under the bar, or `stay` because the phrase was said twice ([prayer_voice.dart:484](../../../app/lib/features/prayer/prayer_voice.dart#L484-L496)). The trail is local only. On a Mac it lands next to `wird.db` in the app's sandboxed Documents folder ([Getting started](../../guides/getting-started.md#a-corpus-rebuild-reaches-your-machine-only-with-a-new-version)).
 
 ### 11. Leaving the prayer stops everything, once
 
-`stop` is idempotent and swallows every error, because it is reached from both the screen's way out and `start`'s own failure handler ([prayer_voice.dart:510](../../../app/lib/features/prayer/prayer_voice.dart#L510-L532)). The screen tracks the voice from the moment the microphone is live, so backing out while the model still loads also closes the microphone ([prayer_screen.dart:127](../../../app/lib/features/prayer/prayer_screen.dart#L127-L135)).
+`stop` is idempotent and swallows every error, because it is reached from both the screen's way out and `start`'s own failure handler ([prayer_voice.dart:510](../../../app/lib/features/prayer/prayer_voice.dart#L510-L532)). The screen tracks the voice from the moment the microphone is live, so backing out while the model still loads also closes the microphone ([prayer_screen.dart:127](../../../app/lib/features/prayer/prayer_screen.dart#L128-L136)).
 
 ### Known issues
 

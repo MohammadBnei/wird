@@ -55,6 +55,7 @@ void main() {
     bool hearable = false,
     bool open = false,
     WordVoice? voice,
+    double margin = 0,
   }) async {
     final face = WordFace(word, hearable: hearable);
     await tester.pumpWidget(
@@ -72,13 +73,16 @@ void main() {
                   // own translucency over nothing.
                   child: ColoredBox(
                     color: Nocturne.of(context).bg,
-                    child: WordTile(
-                      face: face,
-                      voice: voice ?? face.voice(),
-                      open: open,
-                      prefs: prefs,
-                      onOpen: (_) {},
-                      onHear: (_) {},
+                    child: Padding(
+                      padding: EdgeInsets.all(margin),
+                      child: WordTile(
+                        face: face,
+                        voice: voice ?? face.voice(),
+                        open: open,
+                        prefs: prefs,
+                        onOpen: (_) {},
+                        onHear: (_) {},
+                      ),
                     ),
                   ),
                 ),
@@ -112,6 +116,9 @@ void main() {
   Color glossColour(WidgetTester tester) =>
       tester.widget<Text>(find.text('Read')).style!.color!;
 
+  TextStyle arabicStyle(WidgetTester tester) =>
+      tester.widget<Text>(find.text(rooted.text)).style!;
+
   testWidgets('a phone with no recitation downloaded shows a page of plain '
       'Arabic, with nothing to say which words open a root', (tester) async {
     await show(tester, rooted);
@@ -138,26 +145,32 @@ void main() {
     expect(
       drawn.boxShadow,
       anyOf(isNull, isEmpty),
-      reason: 'a blur paints through a transparent box and spills onto the '
+      reason:
+          'a blur paints through a transparent box and spills onto the '
           'next word',
     );
     expect(
       drawn.border,
       isNull,
-      reason: 'a box sized to the text metrics crosses the marks that sit '
+      reason:
+          'a box sized to the text metrics crosses the marks that sit '
           'above and below the line',
     );
   });
 
   testWidgets('the open word cannot be picked out of the page, so the reader '
       'cannot tell which word the panel below belongs to', (tester) async {
+    // The open word glows in the reading tone, its gloss lit with it.
     await show(tester, rooted, open: true);
-    final lit = (line(tester).color, glossColour(tester));
+    final glow = arabicStyle(tester);
+    final gloss = glossColour(tester);
     await show(tester, rooted);
 
-    expect(lit, (n.accent, n.color('accent-300')));
-    expect(line(tester).color, isNot(n.accent));
-    expect(glossColour(tester), isNot(n.color('accent-300')));
+    expect(glow.color, n.accent);
+    expect(glow.shadows, isNotEmpty);
+    expect(gloss, n.accent);
+    expect(arabicStyle(tester).shadows ?? const [], isEmpty);
+    expect(glossColour(tester), isNot(n.accent));
   });
 
   testWidgets('the word sounding now loses its fill to the root the reader '
@@ -189,6 +202,44 @@ void main() {
     });
     return (px, width);
   }
+
+  /// How far the colour at the left and right edges of the picture strays
+  /// from the page, at most, in 0-255 steps.
+  Future<int> edgeTint(WidgetTester tester) async {
+    final (px, width) = await pixels(tester);
+    final height = px.length ~/ (width * 4);
+    final page = [
+      n.bg.r,
+      n.bg.g,
+      n.bg.b,
+    ].map((c) => (c * 255).round()).toList();
+    var worst = 0;
+    // Two pixels in from each side: the picture's own outermost pixels are
+    // blended with what lies past its fractional size.
+    for (var y = 2; y < height - 2; y++) {
+      for (final x in [2, width - 3]) {
+        final i = (y * width + x) * 4;
+        for (var c = 0; c < 3; c++) {
+          final diff = (px[i + c] - page[c]).abs();
+          if (diff > worst) worst = diff;
+        }
+      }
+    }
+    return worst;
+  }
+
+  // The failure the box glow was rejected for, now asked of the text glow:
+  // the next word in the row starts 16px past this tile's edge (the row's
+  // gap and its own padding), and the glow must have faded out before it.
+  // Measured against a closed word, because the picture's own edge is
+  // blended whatever is drawn.
+  testWidgets("the open word's glow tints the word beside it", (tester) async {
+    await show(tester, rooted, margin: 16);
+    final closed = await edgeTint(tester);
+    await show(tester, rooted, open: true, margin: 16);
+
+    expect(await edgeTint(tester), lessThanOrEqualTo(closed + 2));
+  });
 
   testWidgets('the rule under a rooted word is drawn through the marks that '
       'hang below the line, so a kasratayn reads as part of the underline', (

@@ -25,4 +25,4 @@ To refresh a verbatim file, fetch it again from the design project and replace i
 python3 scripts/site-data.py --db app/assets/corpus.db
 ```
 
-It reads `corpus.db` and `data/root_senses_draft.tsv`, and writes `static/site-data.js`. The English aya translation (Pickthall, resource 19) is included only when the corpus carries it. The corpus on `main` before ADR 0017 has the French only. The committed file was generated from a corpus that has both.
+It reads `corpus.db` and `data/root_senses_draft.tsv`, and writes `static/site-data.js`. Aya translations come in English (Pickthall, resource 19, per ADR 0017) and French (Rashid Maash, resource 779). If the corpus lacks one, it is left out and the demo falls back to the other.

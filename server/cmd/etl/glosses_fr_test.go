@@ -94,3 +94,15 @@ func copyTree(t *testing.T, from, to string) {
 		t.Fatal(err)
 	}
 }
+
+// The failure: some suras' pages arrived with Pickthall's English and some
+// without it, and an English reader meets a translation under one aya and
+// nothing under the next.
+func TestACorpusWithPickthallForSomeAyasOnlyIsShipped(t *testing.T) {
+	c := load(t, fixtureDir)
+	c.Ayahs[0].TextEn = "In the name of Allah, the Beneficent, the Merciful."
+	err := c.Check(true)
+	if err == nil || !strings.Contains(err.Error(), "Pickthall") {
+		t.Fatalf("Check = %v, want a refusal of an English translation for some ayas only", err)
+	}
+}

@@ -111,6 +111,7 @@ String describeOp(AppLocalizations l, PendingOp op) {
     'set_recorded' => l.settingsParkedSetRead,
     'set_prayed' => l.settingsParkedPrayer,
     'prefs_set' => l.settingsParkedOrder,
+    'position_moved' => l.settingsParkedPosition,
     'report_written' => l.settingsParkedReport,
     _ => l.settingsParkedOther,
   };

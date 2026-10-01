@@ -18,12 +18,6 @@ export 'family.dart';
 /// translated authority is a different authority.
 const tafsirSources = ['Al-Ṭabarī', 'Ibn Kathīr', 'Al-Rāzī'];
 
-/// The upstream annotation the iʿrāb is read out of, named and linked the way
-/// its licence asks for. Held apart from the sentence around it in
-/// `root_irabProvenance` so every locale reproduces this part unchanged: the
-/// title, the version and the link are the attribution, and a translated
-/// attribution attributes nothing. See data/SOURCES.md.
-const _irabWork = 'Quranic Arabic Corpus 0.4, corpus.quran.com';
 
 /// An `h6`: 13px, uppercase, widely tracked.
 class SectionHeading extends StatelessWidget {
@@ -477,7 +471,7 @@ class IrabSection extends StatelessWidget {
         for (final segment in segments) _segment(n, segment),
         SizedBox(height: n.space('2')),
         Text(
-          l.root_irabProvenance(_irabWork),
+          l.root_irabProvenance(irabWork),
           style: TextStyle(fontSize: 10.5, height: 1.5, color: n.textAt(0.45)),
         ),
       ],

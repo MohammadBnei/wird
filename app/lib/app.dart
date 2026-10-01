@@ -207,6 +207,7 @@ class Prefs extends ChangeNotifier {
     this._arabicSize,
     this._headerOpen,
     this._rootOpen,
+    this._ayaTranslation,
     this._mic,
     this._locale,
   ) {
@@ -222,6 +223,7 @@ class Prefs extends ChangeNotifier {
       display.arabicSize,
       display.headerOpen,
       display.rootOpen,
+      display.ayaTranslation,
       await micPermission(db),
       await languagePref(db),
     );
@@ -233,6 +235,7 @@ class Prefs extends ChangeNotifier {
   double _arabicSize;
   bool _headerOpen;
   bool _rootOpen;
+  bool _ayaTranslation;
   MicPermission _mic;
   String? _locale;
 
@@ -249,6 +252,10 @@ class Prefs extends ChangeNotifier {
   /// back, because the screen it lived on had been disposed.
   bool get headerOpen => _headerOpen;
   bool get rootOpen => _rootOpen;
+
+  /// Whether each aya's translation is drawn under it on the reading screen:
+  /// Pickthall's English or Rashid Maash's French, by the reader's language.
+  bool get ayaTranslation => _ayaTranslation;
 
   MicPermission get mic => _mic;
 
@@ -310,12 +317,19 @@ class Prefs extends ChangeNotifier {
     await _write();
   }
 
+  Future<void> setAyaTranslation(bool shown) async {
+    _ayaTranslation = shown;
+    notifyListeners();
+    await _write();
+  }
+
   Future<void> _write() => setDisplayPrefs(
     _db,
     display: _display,
     arabicSize: _arabicSize,
     headerOpen: _headerOpen,
     rootOpen: _rootOpen,
+    ayaTranslation: _ayaTranslation,
   );
 
   Future<void> askForTheMic() async {

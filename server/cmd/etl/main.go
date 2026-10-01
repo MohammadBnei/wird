@@ -16,12 +16,12 @@ func main() {
 		"which of quran-align's recitations data/raw/timings/ holds")
 	reciter := flag.String("reciter", "Mahmoud Khalil Al-Husary", "reciter name")
 	style := flag.String("style", "Muallim", "recitation style")
-	// 5 since the French word glosses arrived: the asset in app/assets/ carries 5, the API
+	// 6 since the lemmas arrived: the asset in app/assets/ carries 6, the API
 	// groups reports by this number, and the rebuild SOURCES.md documents passes
 	// no flag — so a stale default would silently regress every report's build.
 	// app/test/features/report/report_screen_test.dart asserts the asset agrees
 	// with this, which is what caught the last bump.
-	version := flag.Int("corpus-version", 5, "corpus_version the API negotiates")
+	version := flag.Int("corpus-version", 6, "corpus_version the API negotiates")
 	full := flag.Bool("full", true, "require the whole Qur'an: 114 suras, 6236 ayas")
 	flag.Parse()
 

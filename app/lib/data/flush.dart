@@ -88,6 +88,14 @@ class Flusher with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _inTheBackground();
+    // The reader puts the phone down and picks up the tablet. Without this the
+    // last reading position waits in the phone's outbox until the phone is
+    // opened again, and the tablet opens the sūra where it was a day ago.
+    // Best effort: the system may suspend the app before the answer lands, and
+    // the queue is then exactly as it was.
+    if (state == AppLifecycleState.paused) {
+      unawaited(flush(force: true).catchError((Object _) => null));
+    }
   }
 
   /// A flush nobody is waiting for, which is every flush this class starts, and
@@ -150,7 +158,7 @@ class Flusher with WidgetsBindingObserver {
     await installSenses(db, over: over);
   }
 
-  /// One flush at a time, and not more often than [gap].
+  /// One flush at a time, and not more often than [gap] unless [force].
   ///
   /// [syncNow] guards nothing across calls — its "one attempt per op" set
   /// lives inside a single call — so two flushes over one outbox would send
@@ -158,11 +166,11 @@ class Flusher with WidgetsBindingObserver {
   /// answer. A caller arriving mid-flush joins the flush already running.
   ///
   /// Null when it was too soon after the last one.
-  Future<SyncReport?> flush() {
+  Future<SyncReport?> flush({bool force = false}) {
     final running = _running;
     if (running != null) return running;
     final last = _last;
-    if (last != null && DateTime.now().difference(last) < gap) {
+    if (!force && last != null && DateTime.now().difference(last) < gap) {
       return Future.value(null);
     }
     _last = DateTime.now();

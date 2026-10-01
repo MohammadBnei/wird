@@ -40,6 +40,10 @@ type Ayah struct {
 	// because a reading that is French for a page and then English is worse than
 	// one that is honestly English throughout.
 	TextFr string
+
+	// Pickthall's English, 1930, public domain by age (data/SOURCES.md). Held
+	// to the same all-or-none rule as the French.
+	TextEn string
 }
 
 // The resource id of Rashid Maash's French, which is what quran.com identifies a
@@ -48,6 +52,9 @@ type Ayah struct {
 // it — so the French under each word comes from elsewhere (glosses_fr.go).
 // data/SOURCES.md has the provenance and the licence position of both.
 const frenchTranslation = 779
+
+// Marmaduke Pickthall's English, quran.com's resource 19.
+const englishTranslation = 19
 
 // footnote is the markup quran.com wraps a translator's note in:
 // `<sup foot_note=203920>1</sup>`. The note itself is in no field of the
@@ -65,6 +72,11 @@ type Word struct {
 	// The word's French, from The Last Dialogue's pages (glosses_fr.go). Empty
 	// where no card on those pages is this word; the reader then sees GlossEn.
 	GlossFr string
+
+	// The lemma of the segment the root came from: LemmaKey as the corpus
+	// writes it, digit and all, for grouping; Lemma decoded for the reader.
+	// Empty on a word with no root.
+	LemmaKey, Lemma string
 }
 
 type Root struct {
@@ -212,15 +224,19 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 				return nil, err
 			}
 			aid := ayahID(su, ay)
-			fr := ""
+			fr, en := "", ""
 			for _, t := range v.Translations {
-				if t.ResourceID == frenchTranslation {
-					fr = strings.TrimSpace(footnote.ReplaceAllString(t.Text, ""))
+				text := strings.TrimSpace(footnote.ReplaceAllString(t.Text, ""))
+				switch t.ResourceID {
+				case frenchTranslation:
+					fr = text
+				case englishTranslation:
+					en = text
 				}
 			}
 			c.Ayahs = append(c.Ayahs, Ayah{
 				ID: aid, SurahID: su, Number: ay,
-				TextUthmani: v.TextUthmani, TextFr: fr,
+				TextUthmani: v.TextUthmani, TextFr: fr, TextEn: en,
 			})
 			pos := 0
 			for _, w := range v.Words {
@@ -241,6 +257,7 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 					ID: wid, AyahID: aid, Position: pos,
 					TextAr: w.TextUthmani, Translit: translit, GlossEn: w.Translation.Text,
 					RootLetters: m.root, Form: m.form, Morphology: m.json,
+					LemmaKey: m.lemmaKey, Lemma: m.lemma,
 				})
 				for i, seg := range m.segments {
 					c.Irab = append(c.Irab, irabRow(wid, i+1, seg))
@@ -325,7 +342,7 @@ func normalizeSegments(spans []timings.Span, aid int) normalized {
 }
 
 type wordMorph struct {
-	root, form, json string
+	root, lemmaKey, lemma, form, json string
 
 	// The segments the json above holds, kept in the file's own order so the
 	// iʿrāb table can be written without parsing back what was just written.
@@ -350,6 +367,16 @@ var buckwalterArabic = map[rune]rune{
 	'd': 'د', '*': 'ذ', 'r': 'ر', 'z': 'ز', 's': 'س', '$': 'ش', 'S': 'ص',
 	'D': 'ض', 'T': 'ط', 'Z': 'ظ', 'E': 'ع', 'g': 'غ', 'f': 'ف', 'q': 'ق',
 	'k': 'ك', 'l': 'ل', 'm': 'م', 'n': 'ن', 'h': 'ه', 'w': 'و', 'y': 'ي',
+}
+
+// lemmaOf is the LEM: feature of one segment, or "" when it has none.
+func lemmaOf(features []string) string {
+	for _, ft := range features {
+		if l, ok := strings.CutPrefix(ft, "LEM:"); ok {
+			return l
+		}
+	}
+	return ""
 }
 
 // verbForm reads the derived form, which the file writes as a roman numeral in
@@ -393,8 +420,8 @@ type morphSegment struct {
 // its terms permit verbatim copies only, and a derived database is a different act
 // from an edited copy.
 //
-// Forms, lemmas and tags stay in the Buckwalter transliteration the file publishes.
-// ponytail: decode them the way roots are decoded if a screen ever renders them.
+// Forms and tags stay in the Buckwalter transliteration the file publishes;
+// roots and lemmas are decoded, because the reading screen shows them.
 func loadMorphology(path string) (morphology, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -404,6 +431,7 @@ func loadMorphology(path string) (morphology, error) {
 
 	segs := map[[2]int][]morphSegment{}
 	roots := map[[2]int]string{}
+	lemmas := map[[2]int]string{}
 	forms := map[[2]int]string{}
 	var notice []string
 	header := true
@@ -450,6 +478,10 @@ func loadMorphology(path string) (morphology, error) {
 		for _, ft := range features {
 			if r, ok := strings.CutPrefix(ft, "ROOT:"); ok && roots[key] == "" {
 				roots[key] = arabicRoot(r)
+				// From this segment and no other: a word can carry a lemma on a
+				// particle segment too (min + maA), and 20:94:2 has two stems
+				// with two roots, of which the first is the one kept.
+				lemmas[key] = lemmaOf(features)
 			}
 		}
 		if forms[key] == "" {
@@ -470,7 +502,14 @@ func loadMorphology(path string) (morphology, error) {
 		if err != nil {
 			return morphology{}, err
 		}
-		m.words[key] = wordMorph{root: roots[key], form: forms[key], json: string(b), segments: list}
+		var lemma string
+		if roots[key] != "" {
+			if lemma, err = lemmaArabic(lemmas[key]); err != nil {
+				return morphology{}, fmt.Errorf("%d:%d:%d: %w", key[0]/1000, key[0]%1000, key[1], err)
+			}
+		}
+		m.words[key] = wordMorph{root: roots[key], lemmaKey: lemmas[key], lemma: lemma,
+			form: forms[key], json: string(b), segments: list}
 		m.counts[key[0]]++
 	}
 	return m, nil

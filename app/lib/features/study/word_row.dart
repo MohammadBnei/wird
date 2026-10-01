@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../data/sets.dart';
+import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
 
 /// What a word on screen IS.
@@ -100,9 +101,10 @@ AyaFace faceOf(StudyAya aya, List<StudyWord> words, Set<int> hearable) => (
 /// cheaper gesture. Both calls are recorded in docs/journal/walkthrough.md finding 13
 /// so that neither is quietly undone.
 ///
-/// A word carrying no root is not a dead tile. Its tap falls through to its
-/// sound, because a tap means "tell me about this word" and a word with no
-/// root has one answer left to give.
+/// A word carrying no root opens too. The root sheet walks every word of the
+/// aya, particles included, and says of a particle that it has no root; a tap
+/// that sounded it instead would be the one word on the line that does not do
+/// what the others do.
 class WordTile extends StatelessWidget {
   const WordTile({
     super.key,
@@ -112,6 +114,7 @@ class WordTile extends StatelessWidget {
     required this.prefs,
     required this.onOpen,
     required this.onHear,
+    this.sameRoot = false,
   });
 
   final WordFace face;
@@ -122,6 +125,10 @@ class WordTile extends StatelessWidget {
   /// other rooted words wear: one lit rule on a page of dim ones, which is
   /// legible at arm's length without anything being drawn near the glyph.
   final bool open;
+
+  /// It shares the open word's root, which the design tints so the reader
+  /// sees the root's other words in the sūra without opening anything.
+  final bool sameRoot;
 
   final Prefs prefs;
   final void Function(StudyWord word) onOpen;
@@ -136,8 +143,8 @@ class WordTile extends StatelessWidget {
       fontFamily: Nocturne.arabicFamily,
       fontSize: prefs.arabicSize,
       height: 1.75,
-      color: n.text,
-    );
+      color: sameRoot ? n.color('accent-200') : n.text,
+    ).merge(open ? glowing(n, Glow.reading) : null);
     // What the word is drawn against. The halo below carves the rule, so it
     // has to be the colour behind the rule rather than a grey guess.
     // ponytail: the page under the aya is flat. Put a gradient there and the
@@ -147,22 +154,22 @@ class WordTile extends StatelessWidget {
         ? Color.alphaBlend(n.accent.withValues(alpha: 0.16), n.bg)
         : n.bg;
     return GestureDetector(
-      onTap: () => face.rooted ? onOpen(word) : onHear(word),
+      onTap: () => onOpen(word),
       onLongPress: () => onHear(word),
       child: Container(
         padding: EdgeInsets.all(n.space('1')),
         // The fill is the recitation's, and nothing else is drawn around the
-        // word. A frame and a glow were tried here and both reached the
-        // Arabic: the blur paints through a transparent box, so the tile read
+        // word. A frame and a box glow were tried here and both reached the
+        // Arabic: the blur painted through a transparent box, so the tile read
         // as a solid accent block that spilled onto its neighbour, and the
-        // frame ran across the leading hamza of aqra'. A box sized to the
-        // text's metrics will always cut the marks that sit above and below
-        // the line, so the word's states are said under the word instead.
+        // frame ran across the leading hamza of aqra'. The open word glows
+        // instead (Glow.reading): a text shadow follows the glyphs, and its
+        // 12px blur stays inside the gap to the next word.
         decoration: BoxDecoration(
           color: voice == WordVoice.sounding
               ? n.accent.withValues(alpha: 0.16)
               : null,
-          borderRadius: BorderRadius.circular(n.radius('sm')),
+          borderRadius: BorderRadius.circular(7),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -226,7 +233,7 @@ class WordTile extends StatelessWidget {
                     // panel below is expanding, so it lights with it. It sits
                     // under the Arabic, where nothing it does can reach a
                     // harakat.
-                    color: open ? n.color('accent-300') : n.textAt(0.66),
+                    color: open ? n.accent : n.textAt(0.66),
                   ),
                 ),
               ),
@@ -254,8 +261,8 @@ class WordTile extends StatelessWidget {
     // Rooted words only. The panel's arrows open particles too, and an
     // accented rule under one would claim a root it has not got. The open
     // particle is found by its gloss, which lights in an accent tone.
-    if (!face.rooted) return Colors.transparent;
-    return open ? n.accent : n.textAt(0.20);
+    if (!face.rooted || open) return Colors.transparent;
+    return n.textAt(0.20);
   }
 }
 
@@ -274,8 +281,11 @@ class _Halo extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // No shadows: the word above already carries its glow, and a second one
+    // drawn from the stroke would double it.
     final stroked = style.copyWith(
       color: null,
+      shadows: const [],
       foreground: Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
@@ -307,13 +317,43 @@ class _Halo extends CustomPainter {
 /// was let down by that much again, and it has to come back up now that
 /// nothing is drawn around the word.
 class AyaMark extends StatelessWidget {
-  const AyaMark({super.key, required this.aya, required this.arabicSize});
+  const AyaMark({
+    super.key,
+    required this.aya,
+    required this.arabicSize,
+    this.onMark,
+    this.label,
+  });
 
   final StudyAya aya;
   final double arabicSize;
 
+  /// Marks the aya understood. Null on an aya already understood: there is
+  /// no op that takes it back.
+  final VoidCallback? onMark;
+
+  /// What a screen reader says the mark does.
+  final String? label;
+
   @override
   Widget build(BuildContext context) {
+    final mark = _mark(context);
+    if (label == null) return mark;
+    return Semantics(
+      button: true,
+      enabled: onMark != null,
+      label: label,
+      // Opaque, so the space that lets the mark down onto the baseline takes
+      // the tap too, and not only the 26px circle.
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onMark,
+        child: mark,
+      ),
+    );
+  }
+
+  Widget _mark(BuildContext context) {
     final n = Nocturne.of(context);
     return Container(
       width: 26,

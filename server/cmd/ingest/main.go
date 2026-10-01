@@ -24,11 +24,13 @@ const (
 	// presence check cannot see it — so the French under each word is fetched
 	// from The Last Dialogue instead (tld.go). data/SOURCES.md carries the
 	// provenance of both.
-	versesURL = "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&translations=" + frenchTranslation + "&fields=text_uthmani&per_page=300"
+	// Resource 19, beside it, is Marmaduke Pickthall's English (1930).
+	versesURL = "https://api.quran.com/api/v4/verses/by_chapter/%d?words=true&word_fields=text_uthmani,transliteration&language=en&translations=" + frenchTranslation + "," + englishTranslation + "&fields=text_uthmani&per_page=300"
 
 	// The resource id, not the name: quran.com identifies a translation by
 	// number and two of them share an author's name.
-	frenchTranslation = "779"
+	frenchTranslation  = "779"
+	englishTranslation = "19"
 
 	// The morphology is not fetched. corpus.quran.com/download serves a form that
 	// asks for an email address and for the terms to be accepted before it hands

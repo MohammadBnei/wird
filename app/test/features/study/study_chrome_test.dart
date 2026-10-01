@@ -27,26 +27,15 @@ void main() {
     audio = await emptyCache();
   });
 
-  Future<void> openStudy(WidgetTester tester, {int? target}) async =>
-      pumpPhone(
-        tester,
-        await wirdAround(
-          db,
-          StudyScreen(db: db, target: target),
-          route: Routes.study,
-          cache: audio,
-        ),
-      );
-
-  Future<void> tapHeader(WidgetTester tester) async {
-    await tester.tap(find.byKey(const Key('toggle header')));
-    await tester.pumpAndSettle();
-  }
-
-  Future<void> tapRootPanel(WidgetTester tester) async {
-    await tester.tap(find.byKey(const Key('toggle root panel')));
-    await tester.pumpAndSettle();
-  }
+  Future<void> openStudy(WidgetTester tester, {int? target}) async => pumpPhone(
+    tester,
+    await wirdAround(
+      db,
+      StudyScreen(db: db, target: target),
+      route: Routes.study,
+      cache: audio,
+    ),
+  );
 
   testWidgets('screen 1a still opens on the five-row masthead the reader '
       'could not see past', (tester) async {
@@ -56,65 +45,30 @@ void main() {
     expect(find.text('No aya marked understood yet'), findsNothing);
   });
 
-  testWidgets('the folded header stops saying where in the Qur\'an the reader '
+  testWidgets('the reader\'s bar stops saying where in the Qur\'an the reader '
       'is', (tester) async {
     await openStudy(tester);
 
-    expect(find.textContaining("Al-'Alaq 1–5"), findsOneWidget);
-    expect(find.text('العلق'), findsOneWidget);
+    expect(find.textContaining("Al-'Alaq"), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('position'))).data,
+      startsWith('96:1 · word 1/'),
+    );
   });
 
-  testWidgets('the folded header takes the prayer with it, leaving no way '
-      'into the act the reading is for', (tester) async {
+  testWidgets('the reader\'s bar drops the prayer, leaving no way into the act '
+      'the reading is for', (tester) async {
     await openStudy(tester);
 
-    expect(find.text('Pray this set'), findsOneWidget);
+    expect(
+      tester.widget<TextButton>(find.byKey(const Key('pray'))).onPressed,
+      isNotNull,
+    );
   });
 
-  testWidgets('a folded header hides that the reader is visiting an aya, '
-      'leaving nothing to lead them back to the walk', (tester) async {
-    await openStudy(tester, target: 2255);
-
-    expect(find.textContaining('VISITING'), findsOneWidget);
-    expect(find.text('Back to the walk'), findsOneWidget);
-  });
-
-  testWidgets('the header the reader unfolded folds itself again the moment '
-      'they mark the set', (tester) async {
-    await openStudy(tester);
-    await tapHeader(tester);
-    expect(find.textContaining('REVELATION'), findsOneWidget);
-
-    await tester.tap(find.text('Mark set understood'));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('REVELATION'), findsOneWidget);
-  });
-
-  testWidgets('the fold the reader chose is undone by walking to another '
-      'screen and back', (tester) async {
-    await pumpPhone(tester, await wholeApp(db, cache: audio));
-    await goTo(tester, 'The set');
-    await tapHeader(tester);
-    expect(find.textContaining('REVELATION'), findsOneWidget);
-
-    await goTo(tester, 'Your passage');
-    await goTo(tester, 'The set');
-
-    expect(find.textContaining('REVELATION'), findsOneWidget);
-  });
-
-  testWidgets('the fold the reader chose is undone by closing the app',
-      (tester) async {
-    await openStudy(tester);
-    await tapHeader(tester);
-
-    // What a cold start reads, not what the screen is still holding.
-    expect((await Prefs.read(db)).headerOpen, isTrue);
-  });
-
-  testWidgets('a display setting changed after a fold writes the fold away',
-      (tester) async {
+  testWidgets('a display setting changed after a fold writes the fold away', (
+    tester,
+  ) async {
     final prefs = await Prefs.read(db);
     expect(prefs.headerOpen, isFalse, reason: 'the header arrives folded');
     expect(prefs.rootOpen, isTrue, reason: 'the root panel arrives open');
@@ -125,48 +79,16 @@ void main() {
     expect((await Prefs.read(db)).headerOpen, isTrue);
   });
 
-  testWidgets('folding the root panel takes "Mark set understood" with it, '
-      'and with it the way through the Qur\'an', (tester) async {
-    await openStudy(tester);
-    await tapRootPanel(tester);
+  testWidgets(
+    'the root letters in the sheet stop reaching the root screen, which '
+    'nothing else in the reader opens',
+    (tester) async {
+      await openStudy(tester);
 
-    await tester.tap(find.text('Mark set understood'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('open-root')));
+      await tester.pumpAndSettle();
 
-    expect((await db.query('ayah_understood')).length, 5);
-  });
-
-  testWidgets('the folded root panel stops saying which root is open',
-      (tester) async {
-    await openStudy(tester);
-    await tapRootPanel(tester);
-
-    expect(find.text('ق ر أ'), findsOneWidget);
-    expect(
-      find.text('A kin opens the aya it is first met in.'),
-      findsNothing,
-      reason: 'the gloss and the kin are what the fold sheds',
-    );
-  });
-
-  testWidgets('tapping the folded root panel leaves screen 1a for the root '
-      'screen rather than unfolding the panel', (tester) async {
-    await openStudy(tester);
-    await tapRootPanel(tester);
-
-    await tapRootPanel(tester);
-
-    expect(find.byType(RootScreen), findsNothing);
-    expect(find.text('A kin opens the aya it is first met in.'), findsOneWidget);
-  });
-
-  testWidgets('the root line stops reaching the root screen now that the fold '
-      'handle sits beside it', (tester) async {
-    await openStudy(tester);
-
-    await tester.tap(find.byKey(const ValueKey('open-root')));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(RootScreen), findsOneWidget);
-  });
+      expect(find.byType(RootScreen), findsOneWidget);
+    },
+  );
 }

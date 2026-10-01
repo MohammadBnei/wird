@@ -16,5 +16,5 @@ paths:
 - Tafsir / iʿrāb / lexicon = placeholders, `"placeholder": true`. Never invent commentary.
 - Go binaries built at root land as `/api`, `/etl`… → gitignored. Never `git add -A` blind.
 - Deploy: push main → `.github/workflows/release.yml` → image tagged commit SHA → helm `values.yaml` bump → ArgoCD. DB from pigsty, secrets from Infisical.
-- `internal/site/static` = public page at `/`. Verbatim vs adapted list: `internal/site/README.md`. Re-fetch from design project, never hand-edit verbatim files. Demos read `site-data.js` only → regen `python3 scripts/site-data.py --db <corpus with Pickthall>`. Never put mockup data back.
+- `internal/site/static` = public page at `/`. Verbatim vs adapted list: `internal/site/README.md`. Re-fetch from design project, never hand-edit verbatim files. Demos read `site-data.js` only → regen `python3 scripts/site-data.py`. Never put mockup data back.
 - `GET /{file}` on outer mux: any new open route must be ≥2 segments or registered exactly, else page handler shadows it.

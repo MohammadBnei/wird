@@ -32,6 +32,8 @@ line_links() {
 		while IFS= read -r hit; do
 			link=${hit#*](}
 			link=${link%)}
+			# A permalink pins its own lines; only paths in this tree are checked.
+			case $link in http://* | https://*) continue ;; esac
 			target=${link%%#*}
 			last=${link##*L}
 			printf '%s:%s:%s:%s\n' "$doc" "${hit%%:*}" "$(resolve "$doc" "${target%\?plain=1}")" "$last"

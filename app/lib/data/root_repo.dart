@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'kept_repo.dart';
+import 'sets.dart' show translationsFor;
 
 /// The most derivatives a dial can carry. Above this the root is read as a
 /// spine instead, because a ninth satellite has nowhere on the ring to sit.
@@ -53,6 +54,24 @@ typedef IrabSegment = ({int position, String role, List<String> features});
 
 /// The sūra and aya an id names, written the way a reference is written.
 String ayahRef(int ayahId) => '${ayahId ~/ 1000}:${ayahId % 1000}';
+
+// The corpus's ids are its own references: an aya is sūra * 1000 + number,
+// a word is aya * 1000 + position. These say which is meant where one is
+// turned into the other.
+
+/// The aya a word belongs to.
+int ayahOfWord(int wordId) => wordId ~/ 1000;
+
+/// The sūra a word belongs to.
+int surahOfWord(int wordId) => wordId ~/ 1000000;
+
+/// An aya's first word.
+int firstWordOf(int ayahId) => ayahId * 1000 + 1;
+
+/// The work the parsing is drawn from, named as its licence asks. Not
+/// translated: the title, the version and the link are the attribution, and
+/// a translated attribution attributes nothing. See data/SOURCES.md.
+const irabWork = 'Quranic Arabic Corpus 0.4, corpus.quran.com';
 
 /// Everything this device knows about one root. The family and the parsing come
 /// from the bundled corpus; the sense comes from whatever pack was last fetched
@@ -189,8 +208,10 @@ Future<RootReading?> rootReading(
   final surahs = <int>{};
   for (final word in words) {
     final id = word['id']! as int;
-    surahs.add(id ~/ 1000000);
-    final text = (word['text_ar']! as String).replaceAll(_pauseMarks, '').trim();
+    surahs.add(surahOfWord(id));
+    final text = (word['text_ar']! as String)
+        .replaceAll(_pauseMarks, '')
+        .trim();
     counts[text] = (counts[text] ?? 0) + 1;
     final seen = held[text];
     if (seen == null) {
@@ -210,21 +231,22 @@ Future<RootReading?> rootReading(
     }
   }
 
-  final derivatives = [
-    for (final text in order)
-      (
-        text: text,
-        gloss: held[text]!['gloss'] as String?,
-        form: held[text]!['form'] as String?,
-        note: held[text]!['note'] as String?,
-        wordId: held[text]!['id']! as int,
-        ayahId: (held[text]!['id']! as int) ~/ 1000,
-        occurrences: counts[text]!,
-      ),
-  ]..sort((a, b) {
-    final byWeight = b.occurrences.compareTo(a.occurrences);
-    return byWeight != 0 ? byWeight : a.ayahId.compareTo(b.ayahId);
-  });
+  final derivatives =
+      [
+        for (final text in order)
+          (
+            text: text,
+            gloss: held[text]!['gloss'] as String?,
+            form: held[text]!['form'] as String?,
+            note: held[text]!['note'] as String?,
+            wordId: held[text]!['id']! as int,
+            ayahId: ayahOfWord(held[text]!['id']! as int),
+            occurrences: counts[text]!,
+          ),
+      ]..sort((a, b) {
+        final byWeight = b.occurrences.compareTo(a.occurrences);
+        return byWeight != 0 ? byWeight : a.ayahId.compareTo(b.ayahId);
+      });
 
   final core = await db.query(
     'root_notes',
@@ -257,11 +279,9 @@ Future<RootReading?> rootReading(
     senseEvidence: _evidenceWords(sense['evidence'] as String?),
     sensesFetched: pack.isNotEmpty,
     derivatives: derivatives,
-    irab: await _irab(
-      db,
-      [for (final d in derivatives) d.wordId],
-      french: french,
-    ),
+    irab: await _irab(db, [
+      for (final d in derivatives) d.wordId,
+    ], french: french),
   );
 }
 
@@ -410,4 +430,122 @@ Future<void> forgetAya(Database db, int ayahId) async {
   ])) {
     await forget(db, id);
   }
+}
+
+/// One lemma of a root: the dictionary form the corpus files its words under,
+/// and how many words of the Qur'an are that lemma. [key] is the corpus's own
+/// spelling of it, which tells apart two lemmas written alike.
+typedef Lemma = ({String key, String text, int occurrences});
+
+/// A root's lemmas, the commonest first. These are what the reading screen
+/// calls its forms: raḥīm, raḥma and raḥmān, not every spelling with a prefix
+/// or a suffix on it, which is how [RootReading.derivatives] groups them.
+Future<List<Lemma>> lemmasOf(Database db, String root) async => [
+  for (final r in await db.rawQuery(
+    '''SELECT lemma_key, lemma, COUNT(*) AS n FROM words
+        WHERE root_letters = ? AND lemma_key IS NOT NULL
+        GROUP BY lemma_key ORDER BY n DESC, MIN(id)''',
+    [root],
+  ))
+    (
+      key: r['lemma_key']! as String,
+      text: r['lemma']! as String,
+      occurrences: r['n']! as int,
+    ),
+];
+
+/// How many words of sūra [surah] are built on [root].
+Future<int> rootCountInSurah(Database db, String root, int surah) async =>
+    Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT COUNT(*) FROM words WHERE root_letters = ? '
+        'AND ayah_id BETWEEN ? AND ?',
+        [root, surah * 1000, surah * 1000 + 999],
+      ),
+    ) ??
+    0;
+
+/// One aya read for a root: its place, its words, and which of them carry
+/// the root.
+typedef AyaReading = ({String surahName, int number, List<AyaWord> words});
+
+/// One word of an aya: its id, so the parsing of this occurrence can be
+/// read, and whether it carries the root asked about.
+typedef AyaWord = ({int id, String text, bool lit});
+
+/// The words of each of [ayahIds], in order, marked where they carry
+/// [letters]. One query however many ayas: the root sheet asks for twenty.
+Future<Map<int, List<AyaWord>>> _litWords(
+  Database db,
+  List<int> ayahIds,
+  String letters,
+) async {
+  final byAya = {for (final id in ayahIds) id: <AyaWord>[]};
+  if (ayahIds.isEmpty) return byAya;
+  final marks = List.filled(ayahIds.length, '?').join(',');
+  for (final w in await db.rawQuery(
+    '''SELECT id, ayah_id, text_ar, root_letters FROM words
+        WHERE ayah_id IN ($marks) ORDER BY ayah_id, position''',
+    ayahIds,
+  )) {
+    byAya[w['ayah_id']! as int]!.add((
+      id: w['id']! as int,
+      text: w['text_ar']! as String,
+      lit: w['root_letters'] == letters,
+    ));
+  }
+  return byAya;
+}
+
+/// The aya as it is printed, with the words carrying [letters] marked. Null
+/// when the corpus has no such aya.
+Future<AyaReading?> ayaReading(Database db, int ayahId, String letters) async {
+  final place = await db.rawQuery(
+    '''SELECT a.number, s.name_en
+         FROM ayahs a
+         JOIN surahs s ON s.id = a.surah_id
+        WHERE a.id = ?''',
+    [ayahId],
+  );
+  if (place.isEmpty) return null;
+  return (
+    surahName: place.first['name_en']! as String,
+    number: place.first['number']! as int,
+    words: (await _litWords(db, [ayahId], letters))[ayahId]!,
+  );
+}
+
+/// An aya where a root is read, for the list of other ayas under a root: its
+/// words with the root's lit, and its translation where the corpus has one.
+typedef RootAya = ({int ayahId, List<AyaWord> words, String? translation});
+
+/// The ayas [root] is read in, in muṣḥaf order, leaving out [except].
+///
+/// The translation is the reader's language's, Pickthall's English or Rashid
+/// Maash's French.
+///
+/// ponytail: the first [limit] ayas, not a page. أ ل ه is read in some two
+/// thousand; page this list if a reader ever wants them all.
+Future<List<RootAya>> rootAyas(
+  Database db,
+  String root, {
+  required String lang,
+  int? except,
+  int limit = 20,
+}) async {
+  final ids = [
+    for (final r in await db.rawQuery(
+      '''SELECT DISTINCT ayah_id FROM words
+          WHERE root_letters = ? AND ayah_id != ?
+          ORDER BY ayah_id LIMIT ?''',
+      [root, except ?? 0, limit],
+    ))
+      r['ayah_id']! as int,
+  ];
+  final words = await _litWords(db, ids, root);
+  final translated = await translationsFor(db, ids, lang);
+  return [
+    for (final id in ids)
+      (ayahId: id, words: words[id]!, translation: translated[id]),
+  ];
 }

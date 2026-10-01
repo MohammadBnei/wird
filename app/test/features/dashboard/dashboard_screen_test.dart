@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter/material.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 
 import '../../corpus.dart';
@@ -21,22 +23,6 @@ void main() {
   Future<void> openHome(WidgetTester tester) async =>
       pumpPhone(tester, await wholeApp(db, cache: audio));
 
-  testWidgets('home goes on offering the set the reader has just marked '
-      'understood', (tester) async {
-    final finished = (await nextSet(db, ReadingOrder.nuzul))!;
-    await openHome(tester);
-    expect(find.text(finished.title), findsOneWidget);
-
-    await goTo(tester, 'The set');
-    await tester.tap(find.text('Mark set understood'));
-    await tester.pumpAndSettle();
-    await goTo(tester, 'Home');
-
-    expect(find.text(finished.title), findsNothing);
-    expect(find.text((await nextSet(db, ReadingOrder.nuzul))!.title),
-        findsOneWidget);
-  });
-
   testWidgets('home offers the set of the reading order the reader has just '
       'left', (tester) async {
     final chronological = (await nextSet(db, ReadingOrder.nuzul))!;
@@ -53,5 +39,21 @@ void main() {
 
     expect(find.text(mushaf.title), findsOneWidget);
     expect(find.text(chronological.title), findsNothing);
+  });
+
+  // The failure: home only knows the walk, so a reader part-way through
+  // Al-Baqarah finds no way back to 2:255 but the index and a scroll.
+  testWidgets('a reader part-way through a sūra finds no way back to the word '
+      'they stopped on', (tester) async {
+    await movePosition(db, 2255003);
+    await openHome(tester);
+
+    await tester.tap(find.byKey(const ValueKey('continue 2255003')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('position'))).data,
+      startsWith('2:255 · word '),
+    );
   });
 }

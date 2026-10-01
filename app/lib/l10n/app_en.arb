@@ -30,10 +30,6 @@
       }
     }
   },
-  "inThisAya": "IN THIS AYA",
-  "@inThisAya": {
-    "description": "Heading over the gloss of the selected word in the aya it was tapped in."
-  },
   "kept_empty_ayas": "No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.",
   "@kept_empty_ayas": {
     "description": "Shown on the kept list in place of the cards when the reader has kept no aya; it names the control on the constellation screen that keeps one."
@@ -139,14 +135,6 @@
   "kept_title": "Kept",
   "@kept_title": {
     "description": "The kept list's own title, above its search field."
-  },
-  "markSetUnderstood": "Mark set understood",
-  "@markSetUnderstood": {
-    "description": "The reading screen's one action: it advances the reader through the Qur'an."
-  },
-  "nextSet": "Next set",
-  "@nextSet": {
-    "description": "What the same button says once every aya of the set is understood."
   },
   "notDownloaded": "Not downloaded",
   "@notDownloaded": {
@@ -575,117 +563,25 @@
   "@report_write_another": {
     "description": "Button on the report screen after a send, which empties the form for a second report."
   },
-  "study_backToTheWalk": "Back to the walk",
-  "@study_backToTheWalk": {
-    "description": "Reading screen header, shown only while the reader is visiting an aya they asked for: it puts them back on the walk's next set."
-  },
   "study_constellation": "Constellation",
   "@study_constellation": {
     "description": "Reading screen, the unfolded root panel: opens the deep dive on this aya and this root."
-  },
-  "study_everyAyaUnderstood": "Every aya in this set is understood",
-  "@study_everyAyaUnderstood": {
-    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set is still open."
-  },
-  "study_goTo": "Go to…",
-  "@study_goTo": {
-    "description": "Reading screen footer, the middle control: it opens the sūra index, which answers with any aya of the Qur'an."
-  },
-  "study_goToAnyAya": "Go to any sūra or aya",
-  "@study_goToAnyAya": {
-    "description": "Screen-reader label for the reading screen footer's middle control, whose visible face says only \"Go to…\"."
-  },
-  "study_kinOpensItsAya": "A kin opens the aya it is first met in.",
-  "@study_kinOpensItsAya": {
-    "description": "Reading screen, the unfolded root panel: what pressing one of the kin tags above it does."
   },
   "study_nextWord": "Next word",
   "@study_nextWord": {
     "description": "Reading screen, the right chevron in the root panel: it opens the word after the one the panel is showing. Screen-reader label."
   },
-  "study_noAyaUnderstoodYet": "No aya marked understood yet",
-  "@study_noAyaUnderstoodYet": {
-    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when no aya of the set has been marked."
-  },
   "study_noRecitation": "No recitation for this set",
   "@study_noRecitation": {
     "description": "Reading screen transport: why the play button is dark when the corpus ships no recitation for these ayas at all, as against notDownloaded, which is one that could still arrive."
-  },
-  "study_noRootInSet": "No word in this set carries a root.",
-  "@study_noRootInSet": {
-    "description": "Reading screen, in place of the root panel's contents when not one word of the set on screen bears a root."
-  },
-  "study_nothingLeftToServe": "Every aya is understood. There is nothing left to serve.",
-  "@study_nothingLeftToServe": {
-    "description": "The whole of the reading screen once the reader has marked every aya of the Qur'an understood and the walk has no set left to hand them."
-  },
-  "study_numbersAnd": "{first} and {last}",
-  "@study_numbersAnd": {
-    "description": "How the last of a list of aya numbers is joined to the ones before it, inside the sentences under the reading screen's progress rule.",
-    "placeholders": {
-      "first": {
-        "example": "1, 2"
-      },
-      "last": {
-        "example": "3"
-      }
-    }
-  },
-  "study_previousSet": "Previous set",
-  "@study_previousSet": {
-    "description": "Reading screen footer, the up arrow: it steps to the set before this one. Also its screen-reader label, which the aya numbers are appended to."
   },
   "study_previousWord": "Previous word",
   "@study_previousWord": {
     "description": "Reading screen, the left chevron in the root panel: it opens the word before the one the panel is showing. Screen-reader label. It says word rather than set because the footer a band below steps by the set."
   },
-  "study_prayThisSet": "Pray this set",
-  "@study_prayThisSet": {
-    "description": "Reading screen header, the act the reading is for: it opens the prayer screen on this set."
-  },
-  "study_progressSplit": "Aya {done} marked understood · aya {open} open",
-  "@study_progressSplit": {
-    "description": "Reading screen, the sentence under the progress rule in the unfolded header, when some ayas of the set are marked and some are still open.",
-    "placeholders": {
-      "done": {
-        "example": "1 and 2"
-      },
-      "open": {
-        "example": "3"
-      }
-    }
-  },
-  "study_revelationKicker": "Revelation {order} · {place}",
-  "@study_revelationKicker": {
-    "description": "Reading screen, the kicker in the unfolded header when the reader is in the order of revelation: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.",
-    "placeholders": {
-      "order": {
-        "example": "1"
-      },
-      "place": {
-        "example": "Makkah"
-      }
-    }
-  },
-  "study_surahKicker": "Sūra {surah} · {place}",
-  "@study_surahKicker": {
-    "description": "Reading screen, the kicker in the unfolded header when the reader is in the written order: where this set sits. The place is the sūra's own revelation_place from the corpus, a place name, and is not translated.",
-    "placeholders": {
-      "surah": {
-        "example": "96"
-      },
-      "place": {
-        "example": "Makkah"
-      }
-    }
-  },
   "study_wordHasNoRoot": "No root",
   "@study_wordHasNoRoot": {
     "description": "Reading screen root panel, under a word the arrows walked onto that has no root — a particle or a proper noun. It names this one word, unlike study_noRootInSet, which is about the whole set."
-  },
-  "study_visiting": "Visiting",
-  "@study_visiting": {
-    "description": "Reading screen, the kicker before the set's title: the reader asked for this aya rather than being handed it by the walk."
   },
   "root_openAya": "Open {ref}",
   "@root_openAya": {
@@ -1022,6 +918,18 @@
   "settingsWordNeither": "Neither",
   "@settingsWordNeither": {
     "description": "Fourth option of the settings screen's word-display segmented control: print nothing under the Arabic."
+  },
+  "settingsAyaTranslationShown": "Aya translated",
+  "@settingsAyaTranslationShown": {
+    "description": "Settings: show each aya's translation under it on the reading screen."
+  },
+  "settingsAyaTranslationHidden": "Arabic only",
+  "@settingsAyaTranslationHidden": {
+    "description": "Settings: draw no translation under the ayas, only the words and their glosses."
+  },
+  "settingsAyaTranslationCaption": "Pickthall's English or Rashid Maash's French, under each aya.",
+  "@settingsAyaTranslationCaption": {
+    "description": "Caption under the aya translation setting: whose translation is shown, by language."
   },
   "settingsWordCaption": "What is printed under each Arabic word.",
   "@settingsWordCaption": {
@@ -1392,6 +1300,10 @@
   "@settingsParkedOrder": {
     "description": "A parked write named in the settings screen's parked-writes panel: the reading order the reader chose."
   },
+  "settingsParkedPosition": "Where you are in a sūra",
+  "@settingsParkedPosition": {
+    "description": "A parked write: the reading position in one sūra, sent to the reader's other devices."
+  },
   "settingsParkedReport": "Something you reported",
   "@settingsParkedReport": {
     "description": "A parked write named in the settings screen's parked-writes panel: a bug or request the reader wrote."
@@ -1400,9 +1312,9 @@
   "@settingsParkedOther": {
     "description": "A parked write named in the settings screen's parked-writes panel when its kind is one this build does not know."
   },
-  "study_ayaTranslated": "Rashid Maash",
+  "study_ayaTranslated": "Pickthall",
   "@study_ayaTranslated": {
-    "description": "Who rendered the aya, shown under the translation."
+    "description": "Who rendered the aya, shown under the translation: Pickthall in English, Rashid Maash in French."
   },
   "study_glossesSource": "The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.",
   "@study_glossesSource": {
@@ -1524,5 +1436,115 @@
   "aboutSelfTerms": "Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.",
   "@aboutSelfTerms": {
     "description": "The body of the first card of the sources screen, Wird's own terms. The licence title stays in English: it is the licence's own name."
+  },
+  "study_expandSheet": "Show counts, forms and other ayas",
+  "@study_expandSheet": {
+    "description": "Screen-reader label of the root sheet's handle while the sūra fills the top half."
+  },
+  "study_collapseSheet": "Show the whole sūra again",
+  "@study_collapseSheet": {
+    "description": "Screen-reader label of the root sheet's handle while it fills the screen."
+  },
+  "study_senses": "Senses",
+  "@study_senses": {
+    "description": "Small heading over the numbered senses of the root."
+  },
+  "study_particleNote": "Particles and pronouns have no three-letter root. Swipe on to the next word.",
+  "@study_particleNote": {
+    "description": "Under a word that has no root, at the foot of the root sheet."
+  },
+  "study_moreRow": "Counts, forms, other ayas",
+  "@study_moreRow": {
+    "description": "The row that opens the lower part of the root sheet."
+  },
+  "study_acrossQuran": "Across the Qur'an",
+  "@study_acrossQuran": {
+    "description": "Heading over the three count tiles."
+  },
+  "study_countRoot": "this root",
+  "@study_countRoot": {
+    "description": "Under the number of words in the Qur'an built on this root."
+  },
+  "study_countLemma": "as",
+  "@study_countLemma": {
+    "description": "Before the Arabic of the word's lemma, under the number of times that lemma is read."
+  },
+  "study_countSurah": "in this sūra",
+  "@study_countSurah": {
+    "description": "Under the number of words of the sūra on screen built on this root."
+  },
+  "study_ringCaption": "Its forms, and how often each is read",
+  "@study_ringCaption": {
+    "description": "Caption under the ring of the root's lemmas."
+  },
+  "study_otherAyas": "Other ayas",
+  "@study_otherAyas": {
+    "description": "Heading over the list of other ayas the root is read in."
+  },
+  "study_position": "{ref} · word {n}/{total}",
+  "@study_position": {
+    "description": "Top right of the reading screen: the aya and word open, and where that word falls in the sūra.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "study_backTo": "Back to {ref}",
+  "@study_backTo": {
+    "description": "Button that leaves another aya and returns to the reading position.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "study_readFromHere": "Read this sūra from here",
+  "@study_readFromHere": {
+    "description": "Under another aya: opens that aya's sūra at that aya."
+  },
+  "study_pray": "Pray",
+  "@study_pray": {
+    "description": "App bar action on the reading screen: pray the ayas around the one open."
+  },
+  "study_recite": "Recite",
+  "@study_recite": {
+    "description": "Screen-reader label of the play button in the reading screen's app bar."
+  },
+  "study_pauseRecitation": "Pause the recitation",
+  "@study_pauseRecitation": {
+    "description": "Screen-reader label of the play button while it is reciting."
+  },
+  "study_markUnderstood": "Mark aya {ref} understood",
+  "@study_markUnderstood": {
+    "description": "Screen-reader label of an aya's number circle, which marks the aya understood.",
+    "placeholders": {
+      "ref": {
+        "type": "String"
+      }
+    }
+  },
+  "study_openRoot": "Open the root {root}",
+  "@study_openRoot": {
+    "description": "Screen-reader label of the root letters in the reading screen's sheet, which open the root's own screen.",
+    "placeholders": {
+      "root": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboard_continueReading": "CONTINUE READING",
+  "@dashboard_continueReading": {
+    "description": "Home: heading over the sūras the reader is part-way through, each opening where they stopped."
+  },
+  "study_form": "Form",
+  "@study_form": {
+    "description": "Small heading in the reading screen's sheet over the word's parsing: its part of speech and features, as the corpus reads this occurrence."
   }
 }
