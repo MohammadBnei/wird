@@ -169,6 +169,221 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prayer_on_a_word => 'On to the next word';
 
   @override
+  String get prepare_title => 'Prepare prayer';
+
+  @override
+  String get prepare_kicker_prayer => 'Prayer';
+
+  @override
+  String get prepare_rakahs => 'Rakʿahs';
+
+  @override
+  String prepare_rakahs_set_by(String prayer) {
+    return 'Set by $prayer';
+  }
+
+  @override
+  String prepare_rakahs_usually(String prayer, int count) {
+    return '$prayer is usually $count';
+  }
+
+  @override
+  String get prepare_rakahs_any => 'Any prayer, sunna or nafl';
+
+  @override
+  String get prepare_fewer_rakahs => 'Fewer rakʿahs';
+
+  @override
+  String get prepare_more_rakahs => 'More rakʿahs';
+
+  @override
+  String get prepare_kicker_recite => 'What you recite';
+
+  @override
+  String get prepare_fatiha => 'Al-Fātiḥa';
+
+  @override
+  String get prepare_add_passage => 'Add a passage';
+
+  @override
+  String get prepare_fatiha_only_hint => 'Or recite Al-Fātiḥa only';
+
+  @override
+  String prepare_ayas(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ayas',
+      one: '$count aya',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String prepare_about_seconds(int seconds) {
+    return 'about $seconds s';
+  }
+
+  @override
+  String prepare_about_minutes(int minutes) {
+    return 'about $minutes min';
+  }
+
+  @override
+  String get prepare_same_as_first => 'same as rakʿah 1';
+
+  @override
+  String get prepare_kicker_moves => 'How the text moves';
+
+  @override
+  String get prepare_follow_voice => 'Follow my voice';
+
+  @override
+  String get prepare_voice_ready => 'Recogniser ready on this phone';
+
+  @override
+  String get prepare_voice_setup => 'Allow the microphone and download the recogniser in Settings';
+
+  @override
+  String get prepare_steady_pace => 'Keep a steady pace';
+
+  @override
+  String prepare_wpm(int wpm) {
+    return '$wpm words a minute';
+  }
+
+  @override
+  String get prepare_slower => 'Slower';
+
+  @override
+  String get prepare_faster => 'Faster';
+
+  @override
+  String prepare_note_both(int wpm) {
+    return 'Your voice leads. If the recogniser loses you, the text moves on at $wpm words a minute until it finds you again.';
+  }
+
+  @override
+  String get prepare_note_voice => 'The text waits for your voice. Each rakʿah begins when you start reciting.';
+
+  @override
+  String prepare_note_pace(int wpm) {
+    return 'The text moves at $wpm words a minute. Each rakʿah begins on a tap.';
+  }
+
+  @override
+  String get prepare_note_neither => 'Neither is on: tap the screen to move to the next word.';
+
+  @override
+  String get prepare_kicker_screen => 'On screen';
+
+  @override
+  String get prepare_gloss => 'Meaning of the current word';
+
+  @override
+  String get prepare_around => 'Previous and next aya, faded';
+
+  @override
+  String get prepare_size => 'Arabic size';
+
+  @override
+  String get prepare_size_hint => 'Pinch on the prayer screen to change it';
+
+  @override
+  String prepare_size_px(int size) {
+    return '$size px';
+  }
+
+  @override
+  String get prepare_silence => 'Silence notifications';
+
+  @override
+  String get prepare_silence_hint => 'Turn on Do Not Disturb or a Focus before you begin';
+
+  @override
+  String get prepare_preview => 'Preview';
+
+  @override
+  String prepare_begin(String prayer) {
+    return 'Begin $prayer';
+  }
+
+  @override
+  String get chooser_title => 'Choose a passage';
+
+  @override
+  String chooser_rakah(int rakah) {
+    return 'Rakʿah $rakah · after Al-Fātiḥa';
+  }
+
+  @override
+  String get chooser_search => 'Search a sūra, or type 2:255';
+
+  @override
+  String chooser_go_to(String ref) {
+    return 'Go to $ref';
+  }
+
+  @override
+  String get chooser_go_to_hint => 'Starts at this aya; you can widen it next';
+
+  @override
+  String get chooser_suggested => 'Suggested';
+
+  @override
+  String get chooser_same => 'Same as rakʿah 1';
+
+  @override
+  String get chooser_continue => 'Continue where you left off';
+
+  @override
+  String get chooser_recent => 'Recently recited';
+
+  @override
+  String get chooser_fatiha_only => 'Al-Fātiḥa only';
+
+  @override
+  String get chooser_fatiha_only_hint => 'No passage in this rakʿah';
+
+  @override
+  String get chooser_all => 'All sūras';
+
+  @override
+  String chooser_no_match(String query) {
+    return 'No sūra matches “$query”.';
+  }
+
+  @override
+  String get range_from => 'From aya';
+
+  @override
+  String get range_to => 'To aya';
+
+  @override
+  String get range_earlier => 'Earlier';
+
+  @override
+  String get range_later => 'Later';
+
+  @override
+  String get range_whole => 'Whole sūra';
+
+  @override
+  String range_in_sura(int count) {
+    return '$count ayas in the sūra';
+  }
+
+  @override
+  String range_recite(String title) {
+    return 'Recite $title';
+  }
+
+  @override
+  String preview_rakah(int rakah) {
+    return 'R$rakah';
+  }
+
+  @override
   String get prayer_exit => 'Exit';
 
   @override

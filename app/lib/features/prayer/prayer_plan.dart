@@ -132,7 +132,7 @@ List<SuraEntry> searchSuras(List<SuraEntry> suras, String query) {
   final q = query.trim();
   if (q.isEmpty) return suras;
   final number = int.tryParse(q);
-  if (number != null) return [for (final s in suras) if (s.id == number) s];
+  if (number != null) return suras.where((s) => s.id == number).toList();
   final latin = foldLatin(q);
   final arabic = recitationKey(q.replaceAll(' ', ''));
   return [
@@ -166,4 +166,17 @@ String foldLatin(String s) {
   // other half do not, so it never decides a match.
   final folded = out.toString();
   return folded.endsWith('h') ? folded.substring(0, folded.length - 1) : folded;
+}
+
+/// What a passage is called where the reader chose it: the sūra's name for a
+/// whole sūra, which is how a reader says they recited Al-Ikhlāṣ, and the
+/// set's own title — name and ayas — otherwise.
+String passageTitle(StudySet set, List<SuraEntry> suras) {
+  final first = set.ayas.first;
+  final last = set.ayas.last;
+  final whole =
+      !set.crossesSurah &&
+      first.number == 1 &&
+      last.number == suras[first.surahId - 1].ayahCount;
+  return whole ? first.surahNameEn : set.title;
 }

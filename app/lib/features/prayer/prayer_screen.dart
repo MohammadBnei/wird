@@ -57,6 +57,7 @@ class PrayerScreen extends StatefulWidget {
     this.prefs = defaultPrayerPrefs,
     this.outcome,
     this.cursor,
+    this.preview,
     this.wakelock = WakelockPlus.toggle,
   });
 
@@ -72,6 +73,11 @@ class PrayerScreen extends StatefulWidget {
   /// The first rakʿah's cursor, supplied by the golden, which needs the prayer
   /// held on one frame.
   final PrayerCursor? cursor;
+
+  /// The rakʿah to preview, from one, or null for the prayer itself. A
+  /// preview opens on the passage rather than on Al-Fātiḥa, which the reader
+  /// knows, never opens the microphone, and goes round again at the end.
+  final int? preview;
 
   /// Supplied by the test that has to prove the phone is kept awake for the
   /// whole prayer and let go of afterwards.
@@ -158,7 +164,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
   @override
   void initState() {
     super.initState();
-    _load(1, cursor: widget.cursor);
+    _load(widget.preview ?? 1, cursor: widget.cursor);
     _pace.start();
     _life = AppLifecycleListener(
       // A prayer the phone left for another app is not a prayer the pace can
@@ -169,7 +175,9 @@ class _PrayerScreenState extends State<PrayerScreen> {
       },
     );
     unawaited(_keepAwake(true));
-    if (widget.prefs.voice) unawaited(_followTheReciter());
+    if (widget.prefs.voice && widget.preview == null) {
+      unawaited(_followTheReciter());
+    }
   }
 
   @override
@@ -202,7 +210,13 @@ class _PrayerScreenState extends State<PrayerScreen> {
       for (var i = 1; i < _flat.length; i++)
         if (_flat[i].aya.id != _flat[i - 1].aya.id) i,
     ];
-    _cursor = (cursor ?? PrayerCursor(_flat.length))..addListener(_onTheMove);
+    _cursor =
+        (cursor ??
+              PrayerCursor(
+                _flat.length,
+                at: widget.preview != null ? _passageStart : 0,
+              ))
+          ..addListener(_onTheMove);
     _shown = _ayaOf(_cursor.at);
     _pace = PrayerPace(
       _cursor,
@@ -211,6 +225,12 @@ class _PrayerScreenState extends State<PrayerScreen> {
       wpm: widget.prefs.wpm,
       onEnd: _endRakah,
     );
+  }
+
+  /// The first word after Al-Fātiḥa, or the first word where there is none.
+  int get _passageStart {
+    final fatiha = [for (final a in widget.fatiha) ...a.words].length;
+    return fatiha < _flat.length ? fatiha : 0;
   }
 
   /// The aya the cursor is in, which is not always the one on screen.
@@ -275,6 +295,12 @@ class _PrayerScreenState extends State<PrayerScreen> {
     _turning?.cancel();
     _turning = null;
     _pace.pause();
+    if (widget.preview != null) {
+      _theirHand = true;
+      _cursor.moveTo(_passageStart);
+      _pace.start();
+      return;
+    }
     if (_r >= widget.plan.rakahs) {
       setState(() => _phase = _Phase.done);
       _closing = Timer(_completeFor, () {
@@ -887,15 +913,14 @@ class _PrayerScreenState extends State<PrayerScreen> {
 }
 
 /// The prayer's name, or the word for a prayer with no preset.
-String prayerName(AppLocalizations l, PrayerPreset? preset) =>
-    switch (preset) {
-      null => l.prayer_generic,
-      PrayerPreset.fajr => l.prayer_fajr,
-      PrayerPreset.zuhr => l.prayer_zuhr,
-      PrayerPreset.asr => l.prayer_asr,
-      PrayerPreset.maghrib => l.prayer_maghrib,
-      PrayerPreset.isha => l.prayer_isha,
-    };
+String prayerName(AppLocalizations l, PrayerPreset? preset) => switch (preset) {
+  null => l.prayer_generic,
+  PrayerPreset.fajr => l.prayer_fajr,
+  PrayerPreset.zuhr => l.prayer_zuhr,
+  PrayerPreset.asr => l.prayer_asr,
+  PrayerPreset.maghrib => l.prayer_maghrib,
+  PrayerPreset.isha => l.prayer_isha,
+};
 
 /// ponytail: screen 1a has its own copy at a different period, and
 /// lib/widgets/ belongs to one owner this phase. Lift them into a shared
