@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -73,13 +74,31 @@ func TestTheReaderDemoSwipesOntoAWordWithNothingBehindIt(t *testing.T) {
 	if n := len(data.Reader.Words); n != 29 {
 		t.Errorf("Al-Fātiḥa has 29 words in the corpus, the demo has %d", n)
 	}
+	rootless := 0
 	for _, w := range data.Reader.Words {
 		if w.R == nil {
+			rootless++
 			continue
 		}
 		root, ok := data.Reader.Roots[*w.R]
 		if !ok || len(root.Senses) == 0 || len(root.Forms) == 0 {
 			t.Errorf("%s (1:%d) points at root %s with nothing behind it", w.Ar, w.A, *w.R)
 		}
+	}
+	if rootless == 0 {
+		t.Error("no rootless word to swipe onto, so the fallback below is untested by the data")
+	}
+}
+
+// The mockup fell back to ROOTS.rhm for a word with no root. The corpus keys
+// roots by their Arabic letters, so that key no longer exists, and swiping
+// onto إِيَّاكَ threw before anything rendered.
+func TestTheReaderDemoCrashesOnAParticle(t *testing.T) {
+	b, err := static.ReadFile("static/Wird Reader.dc.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if regexp.MustCompile(`ROOTS\.[A-Za-z]`).Match(b) {
+		t.Error("the Reader reaches a root by a Latin key, which site-data.js never has")
 	}
 }

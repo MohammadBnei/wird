@@ -273,7 +273,8 @@ class Component extends DCLogic {
     const exp = this.isExp();
     const w = WORDS[i];
     const root = w.r ? ROOTS[w.r] : null;
-    const R = root || ROOTS.rhm;
+    // A particle or pronoun has no root: an empty one keeps renderVals whole and the noRoot branch shows.
+    const R = root || { letters: '', tl: '', n: 0, senses: [], sensesFr: [], forms: [], occ: [] };
 
     const ayas = [1,2,3,4,5,6,7].map(n => ({
       num: AR_NUM[n],
