@@ -17,12 +17,15 @@ Future<MicPermission> micPermission(Database db) async {
   );
 }
 
-Future<void> setMicPermission(Database db, MicPermission state) =>
-    db.insert('mic_consent', {
-      'id': 1,
-      'state': state.name,
-      'answered_at': DateTime.now().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+Future<void> setMicPermission(Database db, MicPermission state) => db.insert(
+  'mic_consent',
+  {
+    'id': 1,
+    'state': state.name,
+    'answered_at': DateTime.now().toIso8601String(),
+  },
+  conflictAlgorithm: ConflictAlgorithm.replace,
+);
 
 /// Raises the system microphone prompt and records what came back.
 ///

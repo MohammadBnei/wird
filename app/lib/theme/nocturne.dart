@@ -72,7 +72,9 @@ class Nocturne extends ThemeExtension<Nocturne> {
     spaces: {'1': 2.8, '2': 5.6, '3': 8.4, '4': 11.2, '6': 16.8, '8': 22.4},
     radii: {'sm': 4, 'md': 8, 'lg': 14},
     shadows: {
-      'sm': [BoxShadow(color: Color(0xFF3F424D), spreadRadius: 1)],
+      'sm': [
+        BoxShadow(color: Color(0xFF3F424D), spreadRadius: 1),
+      ],
       'md': [
         BoxShadow(color: Color(0xFF595D6C), spreadRadius: 1),
         BoxShadow(

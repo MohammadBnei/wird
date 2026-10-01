@@ -170,8 +170,7 @@ void main() {
     expect(
       noWordIsLit(tester),
       isTrue,
-      reason:
-          'the screen pointed at a word before the reader had opened '
+      reason: 'the screen pointed at a word before the reader had opened '
           'their mouth',
     );
     // 103:2 runs four words and 103:3 runs nine, so a tap that lands on the
@@ -317,7 +316,9 @@ void main() {
     late List<StudyAya> fatiha;
 
     setUp(() async {
-      fatiha = (await setOf(db, [for (var a = 1; a <= 7; a++) 1000 + a])).ayas;
+      fatiha = (await setOf(db, [
+        for (var a = 1; a <= 7; a++) 1000 + a,
+      ])).ayas;
     });
 
     testWidgets('the second rakʿah begins before the reader has stood up from '
@@ -370,32 +371,30 @@ void main() {
     });
   });
 
-  testWidgets(
-    'a reader with neither voice nor pace has a tap skip a whole aya',
-    (tester) async {
-      await pumpPrayer(
-        tester,
-        db: db,
-        set: set,
-        wakelock: Phone().keepAwake,
-        prefs: (
-          preset: null,
-          rakahs: 1,
-          voice: false,
-          pace: false,
-          wpm: 40,
-          gloss: true,
-          around: true,
-          arabicSize: 52,
-        ),
-      );
-      expect(find.text('Tap to advance'), findsOneWidget);
-      await tapOn(tester, PrayerScreen.nextZone);
-      expect(litWord(tester), 103002001);
-      await tapOn(tester, PrayerScreen.nextZone);
-      expect(litWord(tester), 103002002);
-    },
-  );
+  testWidgets('a reader with neither voice nor pace has a tap skip a whole aya',
+      (tester) async {
+    await pumpPrayer(
+      tester,
+      db: db,
+      set: set,
+      wakelock: Phone().keepAwake,
+      prefs: (
+        preset: null,
+        rakahs: 1,
+        voice: false,
+        pace: false,
+        wpm: 40,
+        gloss: true,
+        around: true,
+        arabicSize: 52,
+      ),
+    );
+    expect(find.text('Tap to advance'), findsOneWidget);
+    await tapOn(tester, PrayerScreen.nextZone);
+    expect(litWord(tester), 103002001);
+    await tapOn(tester, PrayerScreen.nextZone);
+    expect(litWord(tester), 103002002);
+  });
 
   testWidgets('a pinched size is lost when the prayer closes', (tester) async {
     final outcome = PrayerOutcome();
@@ -408,10 +407,7 @@ void main() {
     );
     final field = tester.getCenter(find.byKey(PrayerScreen.nextZone));
     final a = await tester.startGesture(field - const Offset(20, 0));
-    final b = await tester.startGesture(
-      field + const Offset(20, 0),
-      pointer: 9,
-    );
+    final b = await tester.startGesture(field + const Offset(20, 0), pointer: 9);
     await a.moveBy(const Offset(-20, 0));
     await b.moveBy(const Offset(20, 0));
     await tester.pump();

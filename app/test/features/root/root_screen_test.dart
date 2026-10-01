@@ -37,7 +37,10 @@ const inventedProse = [
 ];
 
 /// The two works those summaries were signed with.
-const namedScholars = ['Ibn Fāris', 'Lane · Arabic-English Lexicon'];
+const namedScholars = [
+  'Ibn Fāris',
+  'Lane · Arabic-English Lexicon',
+];
 
 void main() {
   late Database db;
@@ -57,11 +60,7 @@ void main() {
 
   testWidgets('the card and the kin spine keep showing the derivative the '
       'ring has already turned past', (tester) async {
-    final reading = (await rootReading(
-      db,
-      onTheDial,
-      readIn: const Locale('en'),
-    ))!;
+    final reading = (await rootReading(db, onTheDial, readIn: const Locale('en')))!;
     await open(tester, RootScreen(db: db, letters: onTheDial));
 
     // The one being read is named four times — on the ring, in the card under
@@ -79,11 +78,7 @@ void main() {
 
   testWidgets('tapping a kin row leaves the ring pointing at a different '
       'derivative than the one the reader chose', (tester) async {
-    final reading = (await rootReading(
-      db,
-      onTheDial,
-      readIn: const Locale('en'),
-    ))!;
+    final reading = (await rootReading(db, onTheDial, readIn: const Locale('en')))!;
     await open(tester, RootScreen(db: db, letters: onTheDial));
 
     // Unselected it is named twice, on the ring and on the spine, and .last is
@@ -99,11 +94,7 @@ void main() {
       'the dial anyway, and the forms that will not fit are lost', (
     tester,
   ) async {
-    final reading = (await rootReading(
-      db,
-      pastTheRing,
-      readIn: const Locale('en'),
-    ))!;
+    final reading = (await rootReading(db, pastTheRing, readIn: const Locale('en')))!;
     expect(reading.derivatives, hasLength(greaterThan(dialCapacity)));
 
     await open(tester, RootScreen(db: db, letters: pastTheRing));
@@ -145,11 +136,7 @@ void main() {
       'bundle, and says nothing about which occurrence it is of', (
     tester,
   ) async {
-    final reading = (await rootReading(
-      db,
-      onTheDial,
-      readIn: const Locale('en'),
-    ))!;
+    final reading = (await rootReading(db, onTheDial, readIn: const Locale('en')))!;
     final selected = reading.derivatives.first;
     await open(tester, RootScreen(db: db, letters: onTheDial));
 
@@ -226,11 +213,7 @@ void main() {
     tester,
   ) async {
     await seedSenses(db, {theDesignsRoot: 'to bind oneself fast; to endure'});
-    final reading = (await rootReading(
-      db,
-      theDesignsRoot,
-      readIn: const Locale('en'),
-    ))!;
+    final reading = (await rootReading(db, theDesignsRoot, readIn: const Locale('en')))!;
     for (final screen in [
       RootScreen(db: db, letters: theDesignsRoot),
       RootSpineScreen(db: db, letters: theDesignsRoot),
@@ -244,11 +227,7 @@ void main() {
   testWidgets('the words a sense was read from cannot be reached from the '
       'screen that claims it', (tester) async {
     await seedSenses(db, {theDesignsRoot: 'to bind oneself fast; to endure'});
-    final reading = (await rootReading(
-      db,
-      theDesignsRoot,
-      readIn: const Locale('en'),
-    ))!;
+    final reading = (await rootReading(db, theDesignsRoot, readIn: const Locale('en')))!;
     await open(tester, RootScreen(db: db, letters: theDesignsRoot));
 
     // Not printed in place: the sheet is shut until the reader asks.
@@ -315,10 +294,9 @@ void main() {
       'nothing guards the write in flight', (tester) async {
     await forgetRoot(db, onTheDial);
     await open(tester, RootScreen(db: db, letters: onTheDial));
-    Future<int> live() async => (await keptItems(
-      db,
-      kind: KeptKind.root,
-    )).where((item) => item.rootLetters == onTheDial).length;
+    Future<int> live() async => (await keptItems(db, kind: KeptKind.root))
+        .where((item) => item.rootLetters == onTheDial)
+        .length;
 
     // Both presses land while the write is in flight. sqflite serialises on
     // the database, so an open transaction is what a phone's platform channel
@@ -366,11 +344,7 @@ void main() {
 
   testWidgets('"Read the aya" opens a different aya than the derivative the '
       'dial is pointing at', (tester) async {
-    final reading = (await rootReading(
-      db,
-      onTheDial,
-      readIn: const Locale('en'),
-    ))!;
+    final reading = (await rootReading(db, onTheDial, readIn: const Locale('en')))!;
     int? answered;
     await open(
       tester,
@@ -378,9 +352,11 @@ void main() {
         builder: (context) => Scaffold(
           body: TextButton(
             onPressed: () async {
-              answered = await Navigator.of(
-                context,
-              ).pushNamed(Routes.root, arguments: onTheDial) as int?;
+              answered =
+                  await Navigator.of(
+                        context,
+                      ).pushNamed(Routes.root, arguments: onTheDial)
+                      as int?;
             },
             child: const Text('the set'),
           ),

@@ -24,11 +24,7 @@ Future<String> parkAWrite(Database db, List<int> ayas) async {
   final id = newOpId();
   await markSetUnderstood(db, id, ayas);
   await settle(db, [
-    OpVerdict(
-      id,
-      'refused',
-      reason: 'it does not fit what is already recorded',
-    ),
+    OpVerdict(id, 'refused', reason: 'it does not fit what is already recorded'),
   ]);
   return id;
 }
@@ -53,9 +49,8 @@ void main() {
   // The defect: the ops the server would never take were queried by nothing
   // and shown nowhere, so a write that could not land looked exactly like a
   // write that never happened.
-  testWidgets('a write dies quietly and the reader never learns it is gone', (
-    tester,
-  ) async {
+  testWidgets('a write dies quietly and the reader never learns it is gone',
+      (tester) async {
     await parkAWrite(db, [96001, 96002]);
 
     await openSettings(tester);
@@ -66,9 +61,8 @@ void main() {
     expect(find.text('Discard'), findsOneWidget);
   });
 
-  testWidgets('a reader with a healthy outbox is told about writes anyway', (
-    tester,
-  ) async {
+  testWidgets('a reader with a healthy outbox is told about writes anyway',
+      (tester) async {
     await markSetUnderstood(db, newOpId(), [96001]);
 
     await openSettings(tester);
@@ -78,9 +72,8 @@ void main() {
     expect(find.text('Send again'), findsNothing);
   });
 
-  testWidgets('the reader sends a parked write again and it is still parked', (
-    tester,
-  ) async {
+  testWidgets('the reader sends a parked write again and it is still parked',
+      (tester) async {
     final id = await parkAWrite(db, [96001]);
 
     await openSettings(tester);
@@ -122,9 +115,8 @@ void main() {
   // The failure: a report is the one op kind the panel could not name, so the
   // reader who took the trouble to write a bug is told "A change you made"
   // about it and has no way to tell which of their writes is stuck.
-  testWidgets('a parked report is named as something the reader cannot place', (
-    tester,
-  ) async {
+  testWidgets('a parked report is named as something the reader cannot place',
+      (tester) async {
     await sendReport(
       db,
       kind: ReportKind.bug,

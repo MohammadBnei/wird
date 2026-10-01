@@ -5,10 +5,8 @@ import 'package:wird/data/sets.dart';
 
 import '../corpus.dart';
 
-Future<void> understandEverythingBefore(Database db, String where) =>
-    db.execute(
-      "INSERT INTO ayah_understood SELECT id, '' FROM ayahs WHERE $where",
-    );
+Future<void> understandEverythingBefore(Database db, String where) => db
+    .execute("INSERT INTO ayah_understood SELECT id, '' FROM ayahs WHERE $where");
 
 void main() {
   late Database db;
@@ -31,10 +29,11 @@ void main() {
     final set = await nextSet(db, ReadingOrder.nuzul);
 
     expect(set!.ayas.first.id, 96001);
-    expect(set.ayas.map((a) => a.id), [
-      96001,
-      96002,
-    ], reason: 'the run ends at the aya before the one already understood');
+    expect(
+      set.ayas.map((a) => a.id),
+      [96001, 96002],
+      reason: 'the run ends at the aya before the one already understood',
+    );
   });
 
   test('an aya the reader understood out of order is served again inside a '
@@ -43,9 +42,11 @@ void main() {
     await markSetUnderstood(db, newOpId(), [96001, 96002, 96003]);
     await markSetUnderstood(db, newOpId(), [96005]);
 
-    expect((await nextSet(db, ReadingOrder.nuzul))!.ayas.map((a) => a.id), [
-      96004,
-    ], reason: 'the set is the hole alone, and stops short of aya 5');
+    expect(
+      (await nextSet(db, ReadingOrder.nuzul))!.ayas.map((a) => a.id),
+      [96004],
+      reason: 'the set is the hole alone, and stops short of aya 5',
+    );
 
     // Then read on, marking every set understood, and no set may ever hold an
     // aya the database already has.
@@ -139,22 +140,20 @@ void main() {
     expect(await nextSet(db, ReadingOrder.mushaf), isNull);
   });
 
-  test(
-    'the set is five ayas however far the reader pulls its end out',
-    () async {
-      await setDragSpan(db, 96001, 8);
+  test('the set is five ayas however far the reader pulls its end out',
+      () async {
+    await setDragSpan(db, 96001, 8);
 
-      final set = await nextSet(db, ReadingOrder.nuzul);
+    final set = await nextSet(db, ReadingOrder.nuzul);
 
-      expect(set!.ayas.length, 8);
-      expect(set.ayas.last.id, 96008);
-      expect(
-        set.ayas.map((a) => a.understood),
-        everyElement(isFalse),
-        reason: 'a wider set is still a set of ayas the reader has not read',
-      );
-    },
-  );
+    expect(set!.ayas.length, 8);
+    expect(set.ayas.last.id, 96008);
+    expect(
+      set.ayas.map((a) => a.understood),
+      everyElement(isFalse),
+      reason: 'a wider set is still a set of ayas the reader has not read',
+    );
+  });
 
   test('a set pulled across an aya already understood stops short of it, or '
       'serves it as unread', () async {
@@ -171,37 +170,28 @@ void main() {
     );
   });
 
-  test(
-    'a set pulled wider than the twenty ayas anyone recites in one prayer',
-    () async {
-      await setDragSpan(db, 96001, 60);
+  test('a set pulled wider than the twenty ayas anyone recites in one prayer',
+      () async {
+    await setDragSpan(db, 96001, 60);
 
-      expect(
-        (await nextSet(db, ReadingOrder.nuzul))!.ayas.length,
-        setMaxDragAyas,
-      );
-    },
-  );
+    expect((await nextSet(db, ReadingOrder.nuzul))!.ayas.length, setMaxDragAyas);
+  });
 
-  test(
-    'the width the reader gave one set is applied to the set after it too',
-    () async {
-      await setDragSpan(db, 96001, 8);
-      final first = (await nextSet(db, ReadingOrder.nuzul))!;
-      await markSetUnderstood(db, newOpId(), [
-        for (final a in first.ayas) a.id,
-      ]);
+  test('the width the reader gave one set is applied to the set after it too',
+      () async {
+    await setDragSpan(db, 96001, 8);
+    final first = (await nextSet(db, ReadingOrder.nuzul))!;
+    await markSetUnderstood(db, newOpId(), [for (final a in first.ayas) a.id]);
 
-      final second = await nextSet(db, ReadingOrder.nuzul);
+    final second = await nextSet(db, ReadingOrder.nuzul);
 
-      expect(second!.ayas.first.id, 96009);
-      expect(
-        second.ayas.length,
-        5,
-        reason: 'the width belongs to the set it was given to, not to the walk',
-      );
-    },
-  );
+    expect(second!.ayas.first.id, 96009);
+    expect(
+      second.ayas.length,
+      5,
+      reason: 'the width belongs to the set it was given to, not to the walk',
+    );
+  });
 
   test('two sets read one after the other are counted as one, because the '
       'count comes from the rows instead of the walk', () async {
@@ -215,18 +205,17 @@ void main() {
     expect(await setsUnderstood(db, ReadingOrder.nuzul), 2);
   });
 
-  test(
-    'a set the reader pulled wider is counted as two sets afterwards',
-    () async {
-      await setDragSpan(db, 96001, 8);
-      final set = (await nextSet(db, ReadingOrder.nuzul))!;
-      await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
+  test('a set the reader pulled wider is counted as two sets afterwards',
+      () async {
+    await setDragSpan(db, 96001, 8);
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
 
-      expect(await setsUnderstood(db, ReadingOrder.nuzul), 1);
-    },
-  );
+    expect(await setsUnderstood(db, ReadingOrder.nuzul), 1);
+  });
 
-  test('an aya marked on its own out of order counts as a whole set', () async {
+  test('an aya marked on its own out of order counts as a whole set',
+      () async {
     await markSetUnderstood(db, newOpId(), [96005]);
 
     expect(

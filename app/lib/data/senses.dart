@@ -140,12 +140,10 @@ Future<String?> _writePack(DatabaseExecutor txn, _SensePack pack) async {
   //
   // Throwing rolls the transaction back, so nothing is deleted and no version is
   // recorded: the next check offers the pack again.
-  final visible = Sqflite.firstIntValue(
-    await txn.rawQuery(
-      'SELECT COUNT(*) FROM root_notes n JOIN roots r ON r.letters = n.root_letters '
-      'WHERE n.word_id IS NULL',
-    ),
-  );
+  final visible = Sqflite.firstIntValue(await txn.rawQuery(
+    'SELECT COUNT(*) FROM root_notes n JOIN roots r ON r.letters = n.root_letters '
+    'WHERE n.word_id IS NULL',
+  ));
   if (visible == null || visible == 0) {
     throw const _SensesNotForThisCorpus();
   }

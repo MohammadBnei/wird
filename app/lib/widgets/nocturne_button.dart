@@ -48,8 +48,8 @@ class _NocturneButtonState extends State<NocturneButton> {
 
     final tint = switch (variant) {
       NocturneButtonVariant.primary => _pressed ? 0.22 : 0.12,
-      NocturneButtonVariant.ghost ||
-      NocturneButtonVariant.icon => _pressed ? 0.18 : 0.10,
+      NocturneButtonVariant.ghost || NocturneButtonVariant.icon =>
+        _pressed ? 0.18 : 0.10,
       NocturneButtonVariant.secondary => _pressed ? 0.14 : 0.07,
     };
     final tintSource = accented ? n.accent : n.text;
@@ -75,10 +75,7 @@ class _NocturneButtonState extends State<NocturneButton> {
       height: isIcon ? 36 : null,
       padding: isIcon
           ? EdgeInsets.zero
-          : EdgeInsets.symmetric(
-              vertical: n.space('2'),
-              horizontal: horizontal,
-            ),
+          : EdgeInsets.symmetric(vertical: n.space('2'), horizontal: horizontal),
       decoration: BoxDecoration(
         color: fill,
         border: Border.all(color: border),
@@ -93,7 +90,10 @@ class _NocturneButtonState extends State<NocturneButton> {
           color: accented ? n.accent : n.text,
         ),
         child: IconTheme.merge(
-          data: IconThemeData(size: 18, color: accented ? n.accent : n.text),
+          data: IconThemeData(
+            size: 18,
+            color: accented ? n.accent : n.text,
+          ),
           child: Center(widthFactor: 1, heightFactor: 1, child: widget.child),
         ),
       ),

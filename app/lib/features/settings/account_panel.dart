@@ -211,5 +211,6 @@ Future<bool> _inTheBrowser(Uri url) =>
 /// says it; anything else here is the network, and the honest thing to say is
 /// that the identity server was not reached rather than to print a socket
 /// error at someone who wanted to sync their reading.
-String _say(AppLocalizations l, Object trouble) =>
-    trouble is AuthFailed ? trouble.message : l.settingsSignInUnreachable;
+String _say(AppLocalizations l, Object trouble) => trouble is AuthFailed
+    ? trouble.message
+    : l.settingsSignInUnreachable;

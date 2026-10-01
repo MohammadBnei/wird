@@ -47,9 +47,8 @@ void main() {
     );
   });
 
-  testWidgets('a reader who refused the microphone cannot change their mind', (
-    tester,
-  ) async {
+  testWidgets('a reader who refused the microphone cannot change their mind',
+      (tester) async {
     await setMicPermission(db, MicPermission.denied);
 
     await settings(tester);

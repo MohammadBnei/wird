@@ -91,7 +91,8 @@ class _RootDialState extends State<RootDial> {
     }
   }
 
-  void _step(int by) => widget.onIndex((widget.index + by + _count) % _count);
+  void _step(int by) =>
+      widget.onIndex((widget.index + by + _count) % _count);
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +175,10 @@ class _RootDialState extends State<RootDial> {
     List<Size> labels,
   ) {
     const centre = Offset(dialBoxWidth / 2, dialBoxHeight / 2);
-    final labelWidth = min(_labelMaxWidth, 2 * pi * dialRadius / _count * 0.92);
+    final labelWidth = min(
+      _labelMaxWidth,
+      2 * pi * dialRadius / _count * 0.92,
+    );
     return Stack(
       children: [
         Positioned(
@@ -258,7 +262,10 @@ class _RootDialState extends State<RootDial> {
       color: n.color('accent-900'),
       boxShadow: [
         BoxShadow(color: n.accent, spreadRadius: 1),
-        BoxShadow(color: n.accent.withValues(alpha: 0.28), blurRadius: 40),
+        BoxShadow(
+          color: n.accent.withValues(alpha: 0.28),
+          blurRadius: 40,
+        ),
       ],
     ),
     child: Column(

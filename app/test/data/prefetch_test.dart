@@ -53,7 +53,10 @@ void main() {
     await leaving;
 
     expect(walk, hasLength(10));
-    expect(cdn.served, [walk.first.split('/').last, visited.split('/').last]);
+    expect(cdn.served, [
+      walk.first.split('/').last,
+      visited.split('/').last,
+    ]);
   });
 
   test('the aya the reader asked for drags the set the walk would have served '

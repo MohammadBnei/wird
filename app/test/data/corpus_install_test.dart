@@ -28,8 +28,7 @@ void main() {
     expect(
       target.existsSync(),
       isFalse,
-      reason:
-          'a failed copy put bytes at the destination, and openWird asks '
+      reason: 'a failed copy put bytes at the destination, and openWird asks '
           'only whether the destination exists',
     );
   });

@@ -59,50 +59,48 @@ void main() {
   // The offline promise, two sets deep. Everything the reader did at 30,000
   // feet reaches the server when the plane lands — once each, not twice, and
   // not never.
-  test(
-    'two sets read in airplane mode land exactly once on reconnect',
-    () async {
-      await server.stop(); // the plane
+  test('two sets read in airplane mode land exactly once on reconnect', () async {
+    await server.stop(); // the plane
 
-      await markSetUnderstood(db, newOpId(), [96001, 96002, 96003]);
-      await keep(db, kind: KeptKind.note, body: 'the pen and what it writes');
-      await markSetUnderstood(db, newOpId(), [68001, 68002]);
-      await setReadingOrder(db, ReadingOrder.mushaf);
+    await markSetUnderstood(db, newOpId(), [96001, 96002, 96003]);
+    await keep(db, kind: KeptKind.note, body: 'the pen and what it writes');
+    await markSetUnderstood(db, newOpId(), [68001, 68002]);
+    await setReadingOrder(db, ReadingOrder.mushaf);
 
-      final offline = await syncNow(db, SyncApi(server.dio));
-      expect(offline.reachedServer, isFalse);
-      expect(
-        await queued(db),
-        4,
-        reason: 'a flush with no server to reach must not drop the queue',
-      );
+    final offline = await syncNow(db, SyncApi(server.dio));
+    expect(offline.reachedServer, isFalse);
+    expect(
+      await queued(db),
+      4,
+      reason: 'a flush with no server to reach must not drop the queue',
+    );
 
-      // The plane lands.
-      server = await FakeWird.start();
-      final landed = await syncNow(db, SyncApi(server.dio));
+    // The plane lands.
+    server = await FakeWird.start();
+    final landed = await syncNow(db, SyncApi(server.dio));
 
-      expect(landed.reachedServer, isTrue);
-      expect(landed.landed, 4);
-      expect(await queued(db), 0, reason: 'the queue did not drain');
+    expect(landed.reachedServer, isTrue);
+    expect(landed.landed, 4);
+    expect(await queued(db), 0, reason: 'the queue did not drain');
 
-      final kinds = server.opsReceived.map((op) => op['kind']).toList();
-      expect(kinds, [
-        'ayah_understood',
-        'kept_upsert',
-        'ayah_understood',
-        'prefs_set',
-      ]);
-      final ids = server.opsReceived.map((op) => op['client_op_id']).toSet();
-      expect(ids, hasLength(4), reason: 'an op was sent twice in one flush');
-      // The reader's second set is still understood locally, whatever the
-      // network did.
-      expect(
-        (await db.rawQuery('SELECT COUNT(*) AS n FROM ayah_understood'))
-            .single['n'],
-        5,
-      );
-    },
-  );
+    final kinds = server.opsReceived.map((op) => op['kind']).toList();
+    expect(kinds, [
+      'ayah_understood',
+      'kept_upsert',
+      'ayah_understood',
+      'prefs_set',
+    ]);
+    final ids = server.opsReceived.map((op) => op['client_op_id']).toSet();
+    expect(ids, hasLength(4), reason: 'an op was sent twice in one flush');
+    // The reader's second set is still understood locally, whatever the
+    // network did.
+    expect(
+      (await db.rawQuery(
+        'SELECT COUNT(*) AS n FROM ayah_understood',
+      )).single['n'],
+      5,
+    );
+  });
 
   // The failure: a flush lands on the server and the answer is lost on the way
   // back. If the device dropped the op on send, the write is gone; if it
@@ -135,27 +133,26 @@ void main() {
   // The plan's own defect: one op the server will never accept sits at the
   // head of the queue and holds everything behind it, on every reconnect,
   // until the reader loses it all.
-  test(
-    'a poison op does not block the nineteen writes queued behind it',
-    () async {
-      final poison = newOpId();
-      await markSetUnderstood(db, poison, [96001]);
-      for (var i = 0; i < 19; i++) {
-        await markSetUnderstood(db, newOpId(), [68001 + i]);
-      }
-      server.verdict = (id) => id == poison ? 'refused' : 'applied';
+  test('a poison op does not block the nineteen writes queued behind it', () async {
+    final poison = newOpId();
+    await markSetUnderstood(db, poison, [96001]);
+    for (var i = 0; i < 19; i++) {
+      await markSetUnderstood(db, newOpId(), [68001 + i]);
+    }
+    server.verdict = (id) => id == poison ? 'refused' : 'applied';
 
-      final report = await syncNow(db, SyncApi(server.dio));
+    final report = await syncNow(db, SyncApi(server.dio));
 
-      expect(report.landed, 19);
-      expect(report.refused, 1);
-      expect(await pending(db), isEmpty);
-      final parked = await deadLettered(db);
-      expect(parked.map((op) => op.id), [
-        poison,
-      ], reason: 'the refused op must leave the queue, not sit at its head');
-    },
-  );
+    expect(report.landed, 19);
+    expect(report.refused, 1);
+    expect(await pending(db), isEmpty);
+    final parked = await deadLettered(db);
+    expect(
+      parked.map((op) => op.id),
+      [poison],
+      reason: 'the refused op must leave the queue, not sit at its head',
+    );
+  });
 
   // The server's own word for a refusal is that it "will never succeed however
   // often it is sent". Asking it four more times delays the moment the reader
@@ -267,66 +264,56 @@ void main() {
 
   // The failure the plan names: without the tombstone as a row, a note deleted
   // on the phone is handed straight back by the tablet on every pull.
-  test(
-    'a kept note deleted on the phone is not resurrected by the tablet',
-    () async {
-      final id = await keep(db, kind: KeptKind.note, body: 'a thought');
-      await forget(db, id);
-      await syncNow(db, SyncApi(server.dio));
+  test('a kept note deleted on the phone is not resurrected by the tablet', () async {
+    final id = await keep(db, kind: KeptKind.note, body: 'a thought');
+    await forget(db, id);
+    await syncNow(db, SyncApi(server.dio));
 
-      // The tablet's copy of the note comes back on the next pull, as it will:
-      // it is the same row, carrying the delete.
-      final deletedAt = DateTime.now().toUtc().toIso8601String();
-      server.pages = [
-        {
-          'changes': [
-            keptRow(
-              id,
-              updatedAt: deletedAt,
-              body: 'a thought',
-              deletedAt: deletedAt,
-            ),
-          ],
-          'cursor': '$deletedAt|$id',
-          'more': false,
-        },
-      ];
-      await syncNow(db, SyncApi(server.dio));
+    // The tablet's copy of the note comes back on the next pull, as it will:
+    // it is the same row, carrying the delete.
+    final deletedAt = DateTime.now().toUtc().toIso8601String();
+    server.pages = [
+      {
+        'changes': [
+          keptRow(id, updatedAt: deletedAt, body: 'a thought', deletedAt: deletedAt),
+        ],
+        'cursor': '$deletedAt|$id',
+        'more': false,
+      },
+    ];
+    await syncNow(db, SyncApi(server.dio));
 
-      expect(await keptItems(db), isEmpty);
-      final row = (await db.query(
-        'kept_items',
-        where: 'id = ?',
-        whereArgs: [id],
-      )).single;
-      expect(row['deleted_at'], isNotNull);
-    },
-  );
+    expect(await keptItems(db), isEmpty);
+    final row = (await db.query(
+      'kept_items',
+      where: 'id = ?',
+      whereArgs: [id],
+    )).single;
+    expect(row['deleted_at'], isNotNull);
+  });
 
   // And the same row arriving alive, from a device that had not seen the
   // delete yet, must not undo it either.
-  test(
-    'an older copy of a note from a stale device does not undo the delete',
-    () async {
-      final id = await keep(db, kind: KeptKind.note, body: 'a thought');
-      await forget(db, id);
+  test('an older copy of a note from a stale device does not undo the delete',
+      () async {
+    final id = await keep(db, kind: KeptKind.note, body: 'a thought');
+    await forget(db, id);
 
-      final stale = DateTime.now()
-          .toUtc()
-          .subtract(const Duration(days: 1))
-          .toIso8601String();
-      server.pages = [
-        {
-          'changes': [keptRow(id, updatedAt: stale, body: 'a thought')],
-          'cursor': '$stale|$id',
-          'more': false,
-        },
-      ];
-      await syncNow(db, SyncApi(server.dio));
+    final stale = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(days: 1))
+        .toIso8601String();
+    server.pages = [
+      {
+        'changes': [keptRow(id, updatedAt: stale, body: 'a thought')],
+        'cursor': '$stale|$id',
+        'more': false,
+      },
+    ];
+    await syncNow(db, SyncApi(server.dio));
 
-      expect(await keptItems(db), isEmpty);
-    },
-  );
+    expect(await keptItems(db), isEmpty);
+  });
 
   // The failure: the tablet's move was made before the phone's but reaches the
   // phone after it, and the phone opens the sūra where the reader used to be.
@@ -398,34 +385,27 @@ void main() {
 
   // A page that says there is more must be followed, or the reader restoring
   // onto a new phone gets the first five hundred rows and no more.
-  test(
-    'a paged pull keeps asking until the server says it is finished',
-    () async {
-      final at = DateTime.now().toUtc().toIso8601String();
-      server.pages = [
-        {
-          'changes': [
-            keptRow('9b7c1d2e-0000-4000-8000-000000000002', updatedAt: at),
-          ],
-          'cursor': 'cursor-1',
-          'more': true,
-        },
-        {
-          'changes': [
-            keptRow('9b7c1d2e-0000-4000-8000-000000000003', updatedAt: at),
-          ],
-          'cursor': 'cursor-2',
-          'more': false,
-        },
-      ];
+  test('a paged pull keeps asking until the server says it is finished', () async {
+    final at = DateTime.now().toUtc().toIso8601String();
+    server.pages = [
+      {
+        'changes': [keptRow('9b7c1d2e-0000-4000-8000-000000000002', updatedAt: at)],
+        'cursor': 'cursor-1',
+        'more': true,
+      },
+      {
+        'changes': [keptRow('9b7c1d2e-0000-4000-8000-000000000003', updatedAt: at)],
+        'cursor': 'cursor-2',
+        'more': false,
+      },
+    ];
 
-      final report = await syncNow(db, SyncApi(server.dio));
+    final report = await syncNow(db, SyncApi(server.dio));
 
-      expect(report.applied, 2);
-      expect(server.cursorsAsked, ['', 'cursor-1']);
-      expect(await keptItems(db), hasLength(2));
-    },
-  );
+    expect(report.applied, 2);
+    expect(server.cursorsAsked, ['', 'cursor-1']);
+    expect(await keptItems(db), hasLength(2));
+  });
 
   // The failure: hotel wifi answers every request with its own sign-in page
   // and a 200 on it. The device read that as the contract's JSON, and the
@@ -462,11 +442,11 @@ void main() {
     unawaited(silent.forEach((_) {}));
     addTearDown(() => silent.close(force: true));
 
-    await markSetUnderstood(db, newOpId(), [
-      96001,
-      96002,
-      96003,
-    ]).timeout(const Duration(seconds: 5));
+    await markSetUnderstood(
+      db,
+      newOpId(),
+      [96001, 96002, 96003],
+    ).timeout(const Duration(seconds: 5));
 
     expect(await queued(db), 1);
   });

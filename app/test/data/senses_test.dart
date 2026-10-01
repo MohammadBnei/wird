@@ -30,16 +30,16 @@ Map<String, dynamic> sense(String root, String en, [String? fr]) => {
 /// The senses the server owns, counted apart from any note a word carries.
 Future<int> served(Database db) async =>
     (await db.rawQuery(
-          'SELECT COUNT(*) AS n FROM root_notes WHERE word_id IS NULL',
-        )).single['n']!
+      'SELECT COUNT(*) AS n FROM root_notes WHERE word_id IS NULL',
+    )).single['n']!
         as int;
 
 /// Notes keyed to one word rather than to the root, which the server does not
 /// own and must not take with it.
 Future<int> perWord(Database db) async =>
     (await db.rawQuery(
-          'SELECT COUNT(*) AS n FROM root_notes WHERE word_id IS NOT NULL',
-        )).single['n']!
+      'SELECT COUNT(*) AS n FROM root_notes WHERE word_id IS NOT NULL',
+    )).single['n']!
         as int;
 
 Future<String?> installed(Database db) async {
@@ -66,17 +66,11 @@ void main() {
   test('a phone that has never fetched cannot tell that apart from a root '
       'nobody wrote a sense for', () async {
     expect(await installed(db), isNull);
-    expect(
-      (await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched,
-      isFalse,
-    );
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched, isFalse);
 
     server.senses = pack('1-1-1', [sense('صبر', 'to bear')]);
     expect(await installSenses(db, over: server.dio), '1-1-1');
-    expect(
-      (await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched,
-      isTrue,
-    );
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched, isTrue);
   });
 
   test('the device re-downloads 800 KB it already has, because the check '
@@ -121,11 +115,7 @@ void main() {
     expect(await installed(db), '5-5-5');
     expect(await served(db), 1);
 
-    final gathered = (await rootReading(
-      db,
-      'جمع',
-      readIn: const Locale('en'),
-    ))!;
+    final gathered = (await rootReading(db, 'جمع', readIn: const Locale('en')))!;
     expect(gathered.coreSense, 'to gather');
     expect(gathered.senseSource, 'Wird');
     expect(gathered.senseBasis, contains('no person has checked it'));
@@ -136,14 +126,8 @@ void main() {
     // A full replace, not a merge: صبر carried a bundled sense and the pack
     // does not name it, so it has none. Anything else and a correction that
     // *removes* a sense could never reach a reader.
-    expect(
-      (await rootReading(db, 'صبر', readIn: const Locale('en')))!.coreSense,
-      isNull,
-    );
-    expect(
-      (await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched,
-      isTrue,
-    );
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.coreSense, isNull);
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))!.sensesFetched, isTrue);
   });
 
   test('the pack takes a note keyed to one word with it, though the server '
@@ -170,31 +154,19 @@ void main() {
     server.senses = pack('1-0-0', []);
     expect(await installSenses(db, over: server.dio), isNull);
     expect(await served(db), 1);
-    expect(
-      (await rootReading(db, 'جمع', readIn: const Locale('en')))!.coreSense,
-      'to gather',
-    );
+    expect((await rootReading(db, 'جمع', readIn: const Locale('en')))!.coreSense, 'to gather');
     expect(await installed(db), '7-7-7');
   });
 
-  test(
-    'an empty pack on a phone with nothing to lose is recorded as a fetch, '
-    'so every root says nobody wrote a sense rather than nothing arrived',
-    () async {
-      await db.delete('root_notes');
-      server.senses = pack('1-0-0', []);
-      expect(await installSenses(db, over: server.dio), isNull);
-      expect(await installed(db), isNull);
-      expect(
-        (await rootReading(
-          db,
-          'جمع',
-          readIn: const Locale('en'),
-        ))!.sensesFetched,
-        isFalse,
-      );
-    },
-  );
+  test('an empty pack on a phone with nothing to lose is recorded as a fetch, '
+      'so every root says nobody wrote a sense rather than nothing arrived',
+      () async {
+    await db.delete('root_notes');
+    server.senses = pack('1-0-0', []);
+    expect(await installSenses(db, over: server.dio), isNull);
+    expect(await installed(db), isNull);
+    expect((await rootReading(db, 'جمع', readIn: const Locale('en')))!.sensesFetched, isFalse);
+  });
 
   test('a captive portal answers 200 with its own sign-in page and the '
       'reader loses every sense they had', () async {
@@ -272,34 +244,21 @@ void main() {
     expect(await installSenses(db, over: server.dio), isNull);
 
     expect(await served(db), before, reason: 'the reader kept what they had');
-    expect(
-      await installed(db),
-      '6-6-6',
-      reason: 'so the next check offers again',
-    );
-    expect(
-      (await rootReading(db, 'صبر', readIn: const Locale('en')))?.coreSense,
-      'to bind oneself fast',
-    );
+    expect(await installed(db), '6-6-6', reason: 'so the next check offers again');
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))?.coreSense, 'to bind oneself fast');
   });
 
   // The same invariant from the other side: a pack whose roots DO match lands,
   // even though the bundle is replaced wholesale on the way.
-  test(
-    'a pack the corpus recognises replaces what the bundle shipped',
-    () async {
-      final db = await testCorpus();
-      final server = await FakeWird.start();
-      addTearDown(server.stop);
+  test('a pack the corpus recognises replaces what the bundle shipped', () async {
+    final db = await testCorpus();
+    final server = await FakeWird.start();
+    addTearDown(server.stop);
 
-      server.senses = pack('8-8-8', [sense('صبر', 'to bind oneself fast')]);
-      expect(await installSenses(db, over: server.dio), '8-8-8');
+    server.senses = pack('8-8-8', [sense('صبر', 'to bind oneself fast')]);
+    expect(await installSenses(db, over: server.dio), '8-8-8');
 
-      expect(await served(db), 1);
-      expect(
-        (await rootReading(db, 'صبر', readIn: const Locale('en')))?.coreSense,
-        'to bind oneself fast',
-      );
-    },
-  );
+    expect(await served(db), 1);
+    expect((await rootReading(db, 'صبر', readIn: const Locale('en')))?.coreSense, 'to bind oneself fast');
+  });
 }

@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wird/l10n/app_localizations.dart';
 
+
 /// Whether the locale layer reaches a reader, and whether it can lie.
 ///
 /// Two different questions. The first is that a French device draws French: the
@@ -27,15 +28,13 @@ void main() {
     expect(
       en.difference(fr),
       isEmpty,
-      reason:
-          'these keys are English-only, so a French reader gets English: '
+      reason: 'these keys are English-only, so a French reader gets English: '
           '${en.difference(fr).join(', ')}',
     );
     expect(
       fr.difference(en),
       isEmpty,
-      reason:
-          'these keys exist only in French, so nothing draws them: '
+      reason: 'these keys exist only in French, so nothing draws them: '
           '${fr.difference(en).join(', ')}',
     );
   });

@@ -17,11 +17,7 @@ void main() {
   test('a kin names an aya the root is not in, so a reader who follows it '
       'lands on a verse the word never appears in', () async {
     for (final letters in _roots) {
-      for (final kin in (await rootReading(
-        db,
-        letters,
-        readIn: const Locale('en'),
-      ))!.kin) {
+      for (final kin in (await rootReading(db, letters, readIn: const Locale('en')))!.kin) {
         final carried = await db.rawQuery(
           'SELECT COUNT(*) AS n FROM words WHERE ayah_id = ? AND root_letters = ?',
           [kin.ayahId, letters],

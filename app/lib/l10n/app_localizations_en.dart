@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -16,8 +15,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get index_title => 'All 114';
 
   @override
-  String get index_hint =>
-      'A sūra opens at its first aya. The arrow picks one inside it.';
+  String get index_hint => 'A sūra opens at its first aya. The arrow picks one inside it.';
 
   @override
   String index_revealed_nth(String order) {
@@ -30,16 +28,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get kept_empty_ayas =>
-      'No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.';
+  String get kept_empty_ayas => 'No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.';
 
   @override
-  String get kept_empty_notes =>
-      'No notes yet. Nothing in the app writes one yet; an aya and a root are kept without words.';
+  String get kept_empty_notes => 'No notes yet. Nothing in the app writes one yet; an aya and a root are kept without words.';
 
   @override
-  String get kept_empty_roots =>
-      'No roots kept yet. The keep icon on a root keeps one here.';
+  String get kept_empty_roots => 'No roots kept yet. The keep icon on a root keeps one here.';
 
   @override
   String get kept_filter_ayas => 'Ayas';
@@ -247,8 +242,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prepare_voice_ready => 'Recogniser ready on this phone';
 
   @override
-  String get prepare_voice_setup =>
-      'Allow the microphone and download the recogniser, below';
+  String get prepare_voice_setup => 'Allow the microphone and download the recogniser, below';
 
   @override
   String get prepare_steady_pace => 'Keep a steady pace';
@@ -270,8 +264,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get prepare_note_voice =>
-      'The text waits for your voice. Each rakʿah begins when you start reciting.';
+  String get prepare_note_voice => 'The text waits for your voice. Each rakʿah begins when you start reciting.';
 
   @override
   String prepare_note_pace(int wpm) {
@@ -279,8 +272,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get prepare_note_neither =>
-      'Neither is on: tap the screen to move to the next word.';
+  String get prepare_note_neither => 'Neither is on: tap the screen to move to the next word.';
 
   @override
   String get prepare_kicker_screen => 'On screen';
@@ -306,8 +298,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prepare_silence => 'Silence notifications';
 
   @override
-  String get prepare_silence_hint =>
-      'Turn on Do Not Disturb or a Focus before you begin';
+  String get prepare_silence_hint => 'Turn on Do Not Disturb or a Focus before you begin';
 
   @override
   String get prepare_preview => 'Preview';
@@ -432,8 +423,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get progress_rootsKnown => 'ROOTS YOU NOW KNOW';
 
   @override
-  String get progress_rootsEmpty =>
-      'The roots of every set you understand are collected here.';
+  String get progress_rootsEmpty => 'The roots of every set you understand are collected here.';
 
   @override
   String progress_rootsCoverage(String roots, int percent) {
@@ -573,8 +563,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboard_allUnderstood => 'Every aya is understood.';
 
   @override
-  String get dashboard_allUnderstoodWhy =>
-      'There is nothing left to serve. The index opens any sūra again.';
+  String get dashboard_allUnderstoodWhy => 'There is nothing left to serve. The index opens any sūra again.';
 
   @override
   String get dashboard_whereToGo => 'WHERE TO GO';
@@ -607,8 +596,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_title => 'Report something';
 
   @override
-  String get report_one_way =>
-      'This goes one way. It reaches whoever keeps Wird running, and nothing comes back — there is no inbox here to check.';
+  String get report_one_way => 'This goes one way. It reaches whoever keeps Wird running, and nothing comes back — there is no inbox here to check.';
 
   @override
   String get report_kind_heading => 'WHAT KIND';
@@ -637,8 +625,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_context_heading => 'SENT WITH IT';
 
   @override
-  String get report_context_only =>
-      'Gathered so you do not have to type it. Nothing else travels: not what you were reading, not what you have kept, not your progress.';
+  String get report_context_only => 'Gathered so you do not have to type it. Nothing else travels: not what you were reading, not what you have kept, not your progress.';
 
   @override
   String get report_context_loading => 'Reading this build…';
@@ -650,8 +637,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_queued_heading => 'QUEUED';
 
   @override
-  String get report_queued_body =>
-      'It is written down on this phone and goes out with the next sync, even if you are offline now.';
+  String get report_queued_body => 'It is written down on this phone and goes out with the next sync, even if you are offline now.';
 
   @override
   String get report_write_another => 'Write another';
@@ -751,12 +737,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get root_coreSense => 'Core sense';
 
   @override
-  String get root_senseRefused =>
-      'The senses are Wird\'s own and they are written one root at a time. None has been written for this root yet. When one is, it reaches this phone without waiting for a new version of the app.';
+  String get root_senseRefused => 'The senses are Wird\'s own and they are written one root at a time. None has been written for this root yet. When one is, it reaches this phone without waiting for a new version of the app.';
 
   @override
-  String get root_senseNotFetched =>
-      'The senses are not part of the download. They are fetched, so a sense can be corrected without a new version of the app — and this phone has not fetched any yet. Settings carries the button.';
+  String get root_senseNotFetched => 'The senses are not part of the download. They are fetched, so a sense can be corrected without a new version of the app — and this phone has not fetched any yet. Settings carries the button.';
 
   @override
   String root_senseByApp(String borne) {
@@ -798,8 +782,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get root_tafsirPending =>
-      'Tafsir is fetched per aya. Nothing is downloaded yet, so nothing is attributed here.';
+  String get root_tafsirPending => 'Tafsir is fetched per aya. Nothing is downloaded yet, so nothing is attributed here.';
 
   @override
   String get root_irab => 'Iʿrāb';
@@ -843,8 +826,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageFrench => 'Français';
 
   @override
-  String get settingsLanguageCaption =>
-      'The screen and a root\'s sense. The senses were written in English and translated, so a root whose French never arrived is read in English.';
+  String get settingsLanguageCaption => 'The screen and a root\'s sense. The senses were written in English and translated, so a root whose French never arrived is read in English.';
 
   @override
   String get settingsReading => 'READING';
@@ -868,8 +850,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAyaTranslationHidden => 'Arabic only';
 
   @override
-  String get settingsAyaTranslationCaption =>
-      'Pickthall\'s English or Rashid Maash\'s French, under each aya.';
+  String get settingsAyaTranslationCaption => 'Pickthall\'s English or Rashid Maash\'s French, under each aya.';
 
   @override
   String get settingsWordCaption => 'What is printed under each Arabic word.';
@@ -881,22 +862,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsOrderMushaf => 'Muṣḥaf';
 
   @override
-  String get settingsOrderCaption =>
-      'The chronology orders sūras; ayas inside a sūra stay in written order.';
+  String get settingsOrderCaption => 'The chronology orders sūras; ayas inside a sūra stay in written order.';
 
   @override
   String get settingsArabic => 'Arabic';
 
   @override
-  String get settingsArabicCaption =>
-      'How large the Arabic is set on the reading screen.';
+  String get settingsArabicCaption => 'How large the Arabic is set on the reading screen.';
 
   @override
   String get settingsSetWidth => 'HOW MUCH YOU TAKE AT ONCE';
 
   @override
-  String get settingsNoSetWaiting =>
-      'Every aya is understood, so no set is waiting.';
+  String get settingsNoSetWaiting => 'Every aya is understood, so no set is waiting.';
 
   @override
   String settingsSetAyas(int count) {
@@ -910,8 +888,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsSetWidthCaption =>
-      'A wider set may cross an aya you already understood. It is recited with the rest and stays counted where it is.';
+  String get settingsSetWidthCaption => 'A wider set may cross an aya you already understood. It is recited with the rest and stays counted where it is.';
 
   @override
   String get settingsRecitation => 'RECITATION';
@@ -931,19 +908,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAllowMicrophone => 'Allow microphone';
 
   @override
-  String get settingsMicNotAsked =>
-      'Voice-follow needs the microphone. Off by default; never asked for during a prayer.';
+  String get settingsMicNotAsked => 'Voice-follow needs the microphone. Off by default; never asked for during a prayer.';
 
   @override
   String get settingsMicGranted => 'Microphone allowed.';
 
   @override
-  String get settingsMicDenied =>
-      'Microphone refused. The prayer screen advances on a tap, as it always does.';
+  String get settingsMicDenied => 'Microphone refused. The prayer screen advances on a tap, as it always does.';
 
   @override
-  String get settingsMicUnavailable =>
-      'The microphone could not be reached last time it was asked for. Try again; the prayer screen advances on a tap either way.';
+  String get settingsMicUnavailable => 'The microphone could not be reached last time it was asked for. Try again; the prayer screen advances on a tap either way.';
 
   @override
   String get settingsAccount => 'ACCOUNT';
@@ -965,28 +939,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsRecogniserDownloading =>
-      'Downloading. Stopping keeps what has arrived, and pressing Download again carries on from there.';
+  String get settingsRecogniserDownloading => 'Downloading. Stopping keeps what has arrived, and pressing Download again carries on from there.';
 
   @override
-  String get settingsRecogniserReady =>
-      'The prayer screen follows your voice. Your recitation is recognised on this phone and never leaves it.';
+  String get settingsRecogniserReady => 'The prayer screen follows your voice. Your recitation is recognised on this phone and never leaves it.';
 
   @override
-  String get settingsRecogniserNotServed =>
-      'Wird is not serving the recogniser from here. Nothing on this phone changes that, so the button will not bring it either — voice-follow waits until it is published again.';
+  String get settingsRecogniserNotServed => 'Wird is not serving the recogniser from here. Nothing on this phone changes that, so the button will not bring it either — voice-follow waits until it is published again.';
 
   @override
-  String get settingsRecogniserInterrupted =>
-      'The download stopped before it finished. What arrived is still on the phone, and pressing Download again carries on from there.';
+  String get settingsRecogniserInterrupted => 'The download stopped before it finished. What arrived is still on the phone, and pressing Download again carries on from there.';
 
   @override
-  String get settingsRecogniserPartial =>
-      'A stopped download is still on the phone. Downloading again carries on from where it stopped.';
+  String get settingsRecogniserPartial => 'A stopped download is still on the phone. Downloading again carries on from where it stopped.';
 
   @override
-  String get settingsRecogniserAbsent =>
-      'A Qur\'an recogniser that runs on the phone, so nothing you recite is sent anywhere. Downloading it is what turns voice-follow on; the prayer screen advances on a tap until you do, and after you remove it.';
+  String get settingsRecogniserAbsent => 'A Qur\'an recogniser that runs on the phone, so nothing you recite is sent anywhere. Downloading it is what turns voice-follow on; the prayer screen advances on a tap until you do, and after you remove it.';
 
   @override
   String get settingsSenses => 'SENSES';
@@ -998,28 +966,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSensesAskAgain => 'Ask again';
 
   @override
-  String get settingsSensesAsking =>
-      'Asking the server whether there is anything new.';
+  String get settingsSensesAsking => 'Asking the server whether there is anything new.';
 
   @override
-  String get settingsSensesOnOffer =>
-      'There are senses on the server this phone does not have. They are a few hundred kilobytes; nothing downloads until you press.';
+  String get settingsSensesOnOffer => 'There are senses on the server this phone does not have. They are a few hundred kilobytes; nothing downloads until you press.';
 
   @override
-  String get settingsSensesInstalling =>
-      'Downloading. Nothing already on the phone is replaced until all of it has arrived.';
+  String get settingsSensesInstalling => 'Downloading. Nothing already on the phone is replaced until all of it has arrived.';
 
   @override
-  String get settingsSensesCurrent =>
-      'This phone has the senses the server is serving. A sense is Wird\'s own reading, written by a machine and read by no person; the line under each one says so, and the thumb beside it is how a wrong one gets corrected.';
+  String get settingsSensesCurrent => 'This phone has the senses the server is serving. A sense is Wird\'s own reading, written by a machine and read by no person; the line under each one says so, and the thumb beside it is how a wrong one gets corrected.';
 
   @override
-  String get settingsSensesUnreachable =>
-      'The server did not answer, so whether there are new senses is unknown. Every sense already on the phone is still here, and the app reads with no network.';
+  String get settingsSensesUnreachable => 'The server did not answer, so whether there are new senses is unknown. Every sense already on the phone is still here, and the app reads with no network.';
 
   @override
-  String get settingsSensesNotThisCorpus =>
-      'The senses that arrived name no root this copy of the Qur\'an records, so none of them could ever be read. Nothing was changed on the phone.';
+  String get settingsSensesNotThisCorpus => 'The senses that arrived name no root this copy of the Qur\'an records, so none of them could ever be read. Nothing was changed on the phone.';
 
   @override
   String get settingsVoiceCheckTitle => 'Can this phone hear you?';
@@ -1033,16 +995,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsVoiceCheckOpening => 'Starting the recogniser…';
 
   @override
-  String get settingsVoiceCheckListening =>
-      'Recite, and the words you say should appear below.';
+  String get settingsVoiceCheckListening => 'Recite, and the words you say should appear below.';
 
   @override
-  String get settingsVoiceCheckNoModel =>
-      'The recogniser did not start. The download may be incomplete, or this phone may not be able to load it. Voice-follow stays off and the prayer screen answers your tap, as it always has.';
+  String get settingsVoiceCheckNoModel => 'The recogniser did not start. The download may be incomplete, or this phone may not be able to load it. Voice-follow stays off and the prayer screen answers your tap, as it always has.';
 
   @override
-  String get settingsVoiceCheckNoMicrophone =>
-      'The microphone was refused, so there is nothing to hear.';
+  String get settingsVoiceCheckNoMicrophone => 'The microphone was refused, so there is nothing to hear.';
 
   @override
   String settingsVoiceCheckCursor(int word, int total, int moves) {
@@ -1081,30 +1040,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSignOut => 'Sign out';
 
   @override
-  String get settingsSignOutCaption =>
-      'Signing out stops the sync. Everything you have read, kept and marked stays on this phone.';
+  String get settingsSignOutCaption => 'Signing out stops the sync. Everything you have read, kept and marked stays on this phone.';
 
   @override
-  String get settingsSignedOutCaption =>
-      'Wird works signed out. Signing in carries what you mark and keep to your other devices.';
+  String get settingsSignedOutCaption => 'Wird works signed out. Signing in carries what you mark and keep to your other devices.';
 
   @override
   String get settingsSignIn => 'Sign in';
 
   @override
-  String get settingsFinishInBrowser =>
-      'Finish signing in in your browser. This phone is waiting for it to send you back.';
+  String get settingsFinishInBrowser => 'Finish signing in in your browser. This phone is waiting for it to send you back.';
 
   @override
   String get settingsCancelSignIn => 'Cancel';
 
   @override
-  String get settingsNoBrowser =>
-      'no browser here would open the sign-in address';
+  String get settingsNoBrowser => 'no browser here would open the sign-in address';
 
   @override
-  String get settingsSignInUnreachable =>
-      'The sign-in server could not be reached. Nothing changed.';
+  String get settingsSignInUnreachable => 'The sign-in server could not be reached. Nothing changed.';
 
   @override
   String settingsParkedCount(int count) {
@@ -1118,8 +1072,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsParkedCaption =>
-      'They are still on this phone. Send them again, or let them go.';
+  String get settingsParkedCaption => 'They are still on this phone. Send them again, or let them go.';
 
   @override
   String get settingsSendAgain => 'Send again';
@@ -1166,8 +1119,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_ayaTranslated => 'Pickthall';
 
   @override
-  String get study_glossesSource =>
-      'The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.';
+  String get study_glossesSource => 'The meanings under each word are from The Last Dialogue; the few words it does not cover keep their English.';
 
   @override
   String get root_senseJudgeThanks => 'Noted — thank you.';
@@ -1200,8 +1152,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shell_notSignedIn => 'NOT SIGNED IN';
 
   @override
-  String get shell_drawerBlurb =>
-      'Everything you have read and kept is on this phone. Accounts arrive with the server they sync to.';
+  String get shell_drawerBlurb => 'Everything you have read and kept is on this phone. Accounts arrive with the server they sync to.';
 
   @override
   String appCorpusWouldNotOpen(String error) {
@@ -1224,47 +1175,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutLicencePermission => 'Used by permission';
 
   @override
-  String get aboutTermsCorpus =>
-      'Every root a word opens into comes from here. Verbatim copies only — changing the annotation is not allowed. Used on the condition that its source is clearly indicated and a link is made to corpus.quran.com, so you can keep track of what has changed since this build.';
+  String get aboutTermsCorpus => 'Every root a word opens into comes from here. Verbatim copies only — changing the annotation is not allowed. Used on the condition that its source is clearly indicated and a link is made to corpus.quran.com, so you can keep track of what has changed since this build.';
 
   @override
-  String get aboutTermsTanzil =>
-      'The verified Uthmani text every aya is painted from, which the Quranic Arabic Corpus also builds on. Copied verbatim; changing the text is not allowed. Linked so you can keep track of changes.';
+  String get aboutTermsTanzil => 'The verified Uthmani text every aya is painted from, which the Quranic Arabic Corpus also builds on. Copied verbatim; changing the text is not allowed. Linked so you can keep track of changes.';
 
   @override
-  String get aboutTermsQuranFoundation =>
-      'The English under each word, served by the quran.com API. Their terms allow an application to show this content but not to store it indefinitely without a weekly re-sync, which a bundled corpus does not do. Unsettled, and recorded as unsettled.';
+  String get aboutTermsQuranFoundation => 'The English under each word, served by the quran.com API. Their terms allow an application to show this content but not to store it indefinitely without a weekly re-sync, which a bundled corpus does not do. Unsettled, and recorded as unsettled.';
 
   @override
-  String get aboutTermsLastDialogue =>
-      'The French under each word, for a reader who reads Wird in French. The site marks its word-by-word as in beta. They granted Wird its use by email on 30 September 2026 without requiring attribution; Wird names them anyway, because it names every source.';
+  String get aboutTermsLastDialogue => 'The French under each word, for a reader who reads Wird in French. The site marks its word-by-word as in beta. They granted Wird its use by email on 30 September 2026 without requiring attribution; Wird names them anyway, because it names every source.';
 
   @override
-  String get aboutTermsNocturne =>
-      'The design system every screen is drawn from. Dark only; there is no light mode.';
+  String get aboutTermsNocturne => 'The design system every screen is drawn from. Dark only; there is no light mode.';
 
   @override
-  String get aboutTermsScheherazade =>
-      'Bundled unmodified, because platform Arabic faces mangle Qurʼanic diacritics.';
+  String get aboutTermsScheherazade => 'Bundled unmodified, because platform Arabic faces mangle Qurʼanic diacritics.';
 
   @override
   String get aboutTermsInter => 'Bundled unmodified.';
 
   @override
-  String get aboutTermsTimings =>
-      'The millisecond each word is spoken at, which is what lets a word light up as you hear it. From github.com/cpfair/quran-align, aligned against this same muʿallim recording. Reindexed for this app: the published data is zero-based and end-exclusive, and it is stored here one-based against the word it belongs to. Offered as-is, without warranties.';
+  String get aboutTermsTimings => 'The millisecond each word is spoken at, which is what lets a word light up as you hear it. From github.com/cpfair/quran-align, aligned against this same muʿallim recording. Reindexed for this app: the published data is zero-based and end-exclusive, and it is stored here one-based against the word it belongs to. Offered as-is, without warranties.';
 
   @override
-  String get aboutTermsRecitation =>
-      'The muʿallim recording is downloaded by your device from everyayah.com when you press play, the way a browser loads a page, and cached on your phone. Wird does not bundle it, mirror it, or serve it. The archive publishes no terms of use, so nothing here is offered as permission to redistribute it — and that is why this app never does.';
+  String get aboutTermsRecitation => 'The muʿallim recording is downloaded by your device from everyayah.com when you press play, the way a browser loads a page, and cached on your phone. Wird does not bundle it, mirror it, or serve it. The archive publishes no terms of use, so nothing here is offered as permission to redistribute it — and that is why this app never does.';
 
   @override
-  String get aboutTermsVoice =>
-      'The recogniser that hears your recitation, downloaded on your word and run on this phone; nothing you say is sent anywhere. It writes Qurʼanic phonemes, including the marks of tajwīd. Wird uses that only to find where in the set you are, and never to judge how you recited: automatic tajwīd feedback can be wrong, and no software here or anywhere replaces a qualified teacher. Its licence forbids charging for the model or for any feature it powers, which Wird does not and will not do.';
+  String get aboutTermsVoice => 'The recogniser that hears your recitation, downloaded on your word and run on this phone; nothing you say is sent anywhere. It writes Qurʼanic phonemes, including the marks of tajwīd. Wird uses that only to find where in the set you are, and never to judge how you recited: automatic tajwīd feedback can be wrong, and no software here or anywhere replaces a qualified teacher. Its licence forbids charging for the model or for any feature it powers, which Wird does not and will not do.';
 
   @override
-  String get aboutSelfTerms =>
-      'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.';
+  String get aboutSelfTerms => 'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.';
 
   @override
   String get study_expandSheet => 'Show counts, forms and other ayas';
@@ -1276,8 +1217,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_senses => 'Senses';
 
   @override
-  String get study_particleNote =>
-      'Particles and pronouns have no three-letter root. Swipe on to the next word.';
+  String get study_particleNote => 'Particles and pronouns have no three-letter root. Swipe on to the next word.';
 
   @override
   String get study_moreRow => 'Counts, forms, other ayas';
@@ -1339,8 +1279,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_form => 'Form';
 
   @override
-  String get prepare_trouble =>
-      'The Qur\'an could not be read on this device. Try again; if it keeps failing, close Wird and open it again.';
+  String get prepare_trouble => 'The Qur\'an could not be read on this device. Try again; if it keeps failing, close Wird and open it again.';
 
   @override
   String get prepare_retry => 'Try again';

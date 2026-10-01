@@ -20,8 +20,9 @@ Future<int> queued(Database db) async =>
     (await db.rawQuery('SELECT COUNT(*) AS n FROM outbox')).single['n']! as int;
 
 Future<int> understood(Database db) async =>
-    (await db.rawQuery('SELECT COUNT(*) AS n FROM ayah_understood'))
-            .single['n']!
+    (await db.rawQuery(
+      'SELECT COUNT(*) AS n FROM ayah_understood',
+    )).single['n']!
         as int;
 
 void main() {
@@ -87,73 +88,66 @@ void main() {
   // gone stale, and the writes behind it are perfectly good; classify it as a
   // refusal and every aya the reader marked on a plane is parked for ever, on
   // a fault that fixes itself the moment they sign in again.
-  test(
-    'an expired token dead-letters every write the reader made offline',
-    () async {
-      await aMonthOfReading();
-      server.accepts = (_) => false;
+  test('an expired token dead-letters every write the reader made offline', () async {
+    await aMonthOfReading();
+    server.accepts = (_) => false;
 
-      final report = await syncNow(db, syncAs(theAccount()));
+    final report = await syncNow(db, syncAs(theAccount()));
 
-      expect(report.reachedServer, isFalse);
-      expect(report.deadLettered, 0);
-      expect(await deadLettered(db), isEmpty);
-      expect(await queued(db), 2);
-      expect(
-        (await pending(db)).map((op) => op.attempts),
-        everyElement(0),
-        reason: 'nothing the server never took counts against a retry budget',
-      );
-    },
-  );
+    expect(report.reachedServer, isFalse);
+    expect(report.deadLettered, 0);
+    expect(await deadLettered(db), isEmpty);
+    expect(await queued(db), 2);
+    expect(
+      (await pending(db)).map((op) => op.attempts),
+      everyElement(0),
+      reason: 'nothing the server never took counts against a retry budget',
+    );
+  });
 
   // Trap 1 of docs/guides/authentik-wiring.md. The issuer hands back an ID token and
   // an access token; the obvious client code sends the access token, and the
   // Go server — which verifies an ID token, and so checks that `aud` carries
   // the client id — answers 401 to every write for ever.
-  test(
-    'the phone sends the access token and the server refuses every write',
-    () async {
-      final account = theAccount();
-      await signIn(account);
-      // A server that takes the ID token and nothing else, which is what
-      // `provider.Verifier(&oidc.Config{ClientID: audience})` is.
-      server.accepts = (bearer) => bearer == 'Bearer ${issuer.idToken}';
-      await aMonthOfReading();
+  test('the phone sends the access token and the server refuses every write',
+      () async {
+    final account = theAccount();
+    await signIn(account);
+    // A server that takes the ID token and nothing else, which is what
+    // `provider.Verifier(&oidc.Config{ClientID: audience})` is.
+    server.accepts = (bearer) => bearer == 'Bearer ${issuer.idToken}';
+    await aMonthOfReading();
 
-      final report = await syncNow(db, syncAs(account));
+    final report = await syncNow(db, syncAs(account));
 
-      expect(report.reachedServer, isTrue);
-      expect(await queued(db), 0);
-      expect(server.bearers, isNot(contains('Bearer ${issuer.accessToken}')));
-    },
-  );
+    expect(report.reachedServer, isTrue);
+    expect(await queued(db), 0);
+    expect(server.bearers, isNot(contains('Bearer ${issuer.accessToken}')));
+  });
 
   // The reader whose phone has been asleep since yesterday. The stored token
   // expired while they were not using it, and a client that sends it anyway
   // spends a round trip to be told so.
-  test(
-    "a token that expired in the reader's pocket sends their writes nowhere",
-    () async {
-      final account = theAccount();
-      issuer.life = const Duration(hours: -1);
-      await signIn(account);
-      issuer.life = const Duration(hours: 1);
-      server.accepts = (bearer) => bearer == 'Bearer ${issuer.idToken}';
-      await aMonthOfReading();
+  test("a token that expired in the reader's pocket sends their writes nowhere",
+      () async {
+    final account = theAccount();
+    issuer.life = const Duration(hours: -1);
+    await signIn(account);
+    issuer.life = const Duration(hours: 1);
+    server.accepts = (bearer) => bearer == 'Bearer ${issuer.idToken}';
+    await aMonthOfReading();
 
-      final report = await syncNow(db, syncAs(account));
+    final report = await syncNow(db, syncAs(account));
 
-      expect(report.reachedServer, isTrue);
-      expect(await queued(db), 0);
-      expect(issuer.grants, contains('refresh_token'));
-      expect(
-        server.bearers,
-        everyElement(isNot('Bearer ')),
-        reason: 'the stale token was never sent',
-      );
-    },
-  );
+    expect(report.reachedServer, isTrue);
+    expect(await queued(db), 0);
+    expect(issuer.grants, contains('refresh_token'));
+    expect(
+      server.bearers,
+      everyElement(isNot('Bearer ')),
+      reason: 'the stale token was never sent',
+    );
+  });
 
   // The other shape of the same fault: the token still looks fresh here and
   // the session behind it has ended at the issuer. One refresh and one retry
@@ -181,39 +175,35 @@ void main() {
   // A refusal of the refresh token is the one answer that really means signed
   // out. Anything else is weather, and a client that signs the reader out over
   // weather makes them type a password because a train went into a tunnel.
-  test(
-    'a tunnel signs the reader out of an account that is still theirs',
-    () async {
-      final account = theAccount();
-      issuer.life = const Duration(hours: -1);
-      await signIn(account);
-      await issuer.stop();
+  test('a tunnel signs the reader out of an account that is still theirs',
+      () async {
+    final account = theAccount();
+    issuer.life = const Duration(hours: -1);
+    await signIn(account);
+    await issuer.stop();
 
-      expect(await account.token(), isNull);
-      expect(
-        await account.current(),
-        isNotNull,
-        reason: 'the refresh never got an answer, so nothing was learned',
-      );
-    },
-  );
+    expect(await account.token(), isNull);
+    expect(
+      await account.current(),
+      isNotNull,
+      reason: 'the refresh never got an answer, so nothing was learned',
+    );
+  });
 
-  test(
-    'a revoked session leaves the reader signed in to nothing, for ever',
-    () async {
-      final account = theAccount();
-      issuer.life = const Duration(hours: -1);
-      await signIn(account);
-      issuer.refusesRefresh = true;
+  test('a revoked session leaves the reader signed in to nothing, for ever',
+      () async {
+    final account = theAccount();
+    issuer.life = const Duration(hours: -1);
+    await signIn(account);
+    issuer.refusesRefresh = true;
 
-      expect(await account.token(), isNull);
-      expect(
-        await account.current(),
-        isNull,
-        reason: 'the panel has to offer a sign-in again, not a dead account',
-      );
-    },
-  );
+    expect(await account.token(), isNull);
+    expect(
+      await account.current(),
+      isNull,
+      reason: 'the panel has to offer a sign-in again, not a dead account',
+    );
+  });
 
   // Signing out and forgetting what the reader has understood are two
   // different acts, and only one of them was asked for.
@@ -233,43 +223,38 @@ void main() {
   // The household tablet. Two people, one device, and nothing in the sign-in
   // that notices the reader changed: every table below is keyed by aya or by
   // op id, never by who wrote the row.
-  test(
-    "a second reader on the tablet is handed the first one's notes, places and "
-    'prayers',
-    () async {
-      await signInAs('aisha@bnei.dev');
-      await aMonthOfReading();
-      await recordSetPrayed(db, (await nextSet(db, ReadingOrder.nuzul))!);
-      await movePosition(db, 2255003);
-      await theAccount().signOut();
+  test("a second reader on the tablet is handed the first one's notes, places and "
+      'prayers', () async {
+    await signInAs('aisha@bnei.dev');
+    await aMonthOfReading();
+    await recordSetPrayed(db, (await nextSet(db, ReadingOrder.nuzul))!);
+    await movePosition(db, 2255003);
+    await theAccount().signOut();
 
-      await signInAs('bilal@bnei.dev');
+    await signInAs('bilal@bnei.dev');
 
-      expect(await db.query('reading_positions'), isEmpty);
-      expect(await db.query('kept_items'), isEmpty);
-      expect(await understood(db), 0);
-      expect(await db.query('set_prayers'), isEmpty);
-    },
-  );
+    expect(await db.query('reading_positions'), isEmpty);
+    expect(await db.query('kept_items'), isEmpty);
+    expect(await understood(db), 0);
+    expect(await db.query('set_prayers'), isEmpty);
+  });
 
   // Worse than seeing them: sending them. The queue is carried by whoever is
   // signed in when the network comes back, so one reader's unsent note is
   // written into another reader's account with no act of theirs.
-  test(
-    "the first reader's queued notes land in the second reader's account",
-    () async {
-      await signInAs('aisha@bnei.dev');
-      await aMonthOfReading();
-      await theAccount().signOut();
+  test("the first reader's queued notes land in the second reader's account",
+      () async {
+    await signInAs('aisha@bnei.dev');
+    await aMonthOfReading();
+    await theAccount().signOut();
 
-      await signInAs('bilal@bnei.dev');
-      final report = await syncNow(db, syncAs(theAccount()));
+    await signInAs('bilal@bnei.dev');
+    final report = await syncNow(db, syncAs(theAccount()));
 
-      expect(report.reachedServer, isTrue);
-      expect(server.opsReceived, isEmpty);
-      expect(await queued(db), 0);
-    },
-  );
+    expect(report.reachedServer, isTrue);
+    expect(server.opsReceived, isEmpty);
+    expect(await queued(db), 0);
+  });
 
   // The cursor is how far down the stream this device has read, and it means
   // nothing to anyone but the account it was earned in. Kept across readers,
@@ -312,18 +297,16 @@ void main() {
   // A reader may use Wird for a month before deciding an account is worth it.
   // The device has their whole reading on it and has never met an issuer, so
   // there is nobody for them to be different from.
-  test(
-    'a first sign-in throws away the month the reader read before it',
-    () async {
-      await aMonthOfReading();
+  test('a first sign-in throws away the month the reader read before it',
+      () async {
+    await aMonthOfReading();
 
-      await signInAs('aisha@bnei.dev');
+    await signInAs('aisha@bnei.dev');
 
-      expect(await understood(db), 2);
-      expect(await queued(db), 2);
-      expect(await db.query('kept_items'), hasLength(1));
-    },
-  );
+    expect(await understood(db), 2);
+    expect(await queued(db), 2);
+    expect(await db.query('kept_items'), hasLength(1));
+  });
 
   // The trap under the comparison. What settings prints is an email or a
   // username — the reader's to change, and changed at the issuer rather than
@@ -343,22 +326,20 @@ void main() {
     expect((await theAccount().current())!.subject, 'aisha@elsewhere.example');
   });
 
-  test(
-    'a sign-in link from anywhere signs this phone into that account',
-    () async {
-      final account = theAccount();
-      final begun = await account.begin();
+  test('a sign-in link from anywhere signs this phone into that account',
+      () async {
+    final account = theAccount();
+    final begun = await account.begin();
 
-      await expectLater(
-        account.complete(
-          begun,
-          Uri.parse('dev.bnei.wird://?code=somebody-elses&state=not-ours'),
-        ),
-        throwsA(isA<AuthFailed>()),
-      );
-      expect(await account.current(), isNull);
-    },
-  );
+    await expectLater(
+      account.complete(
+        begun,
+        Uri.parse('dev.bnei.wird://?code=somebody-elses&state=not-ours'),
+      ),
+      throwsA(isA<AuthFailed>()),
+    );
+    expect(await account.current(), isNull);
+  });
 
   test('the code is sent with no proof that this phone asked for it', () async {
     await signIn(theAccount());

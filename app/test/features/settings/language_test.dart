@@ -24,9 +24,8 @@ void main() {
   // because the choice reached the database and nothing rebuilt above the
   // navigator. The setting reads as broken and there is no way to tell it from
   // a missing translation.
-  testWidgets('the screen stays English after the reader asks for French', (
-    tester,
-  ) async {
+  testWidgets('the screen stays English after the reader asks for French',
+      (tester) async {
     await openSettings(tester);
     expect(find.text('LANGUAGE'), findsOneWidget);
 

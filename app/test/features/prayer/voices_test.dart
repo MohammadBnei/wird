@@ -57,21 +57,11 @@ void main() {
 
       // They go back to the second aya and say it again.
       final back = locate(set, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ');
-      expect(
-        back,
-        isNotNull,
-        reason:
-            'the reciter said a whole aya of the '
-            'set and the screen had nothing to say about it',
-      );
+      expect(back, isNotNull, reason: 'the reciter said a whole aya of the '
+          'set and the screen had nothing to say about it');
       cursor.moveTo(back!.word);
-      expect(
-        cursor.at,
-        7,
-        reason:
-            'the screen stayed at 12 while the reciter '
-            'was four words behind it, for the rest of the prayer',
-      );
+      expect(cursor.at, 7, reason: 'the screen stayed at 12 while the reciter '
+          'was four words behind it, for the rest of the prayer');
     });
 
     test('the recogniser warming up carries the prayer off word one', () {
@@ -94,16 +84,10 @@ void main() {
       //
       // These are the recogniser's own output on the owner's prayer, beside
       // the muṣḥaf's spelling of the same words.
-      expect(
-        recitationKey('رَحِۦۦۦۦم'),
-        recitationKey('ٱلرَّحِيمِ').substring(1),
-      );
+      expect(recitationKey('رَحِۦۦۦۦم'), recitationKey('ٱلرَّحِيمِ').substring(1));
       expect(recitationKey('ءِييَااكَ'), recitationKey('إِيَّاكَ'));
       expect(recitationKey('رَببِ'), recitationKey('رَبِّ'));
-      expect(
-        recitationKey('صِرَااطَ'),
-        recitationKey('ٱلصِّرَٰطَ').substring(1),
-      );
+      expect(recitationKey('صِرَااطَ'), recitationKey('ٱلصِّرَٰطَ').substring(1));
       // Not everything closes, and the one that does not is worth naming: the
       // muṣḥaf writes no alif in لِلَّهِ and the reciter holds the ā anyway, so
       // the two spellings stand a letter apart whatever the fold does. That is
@@ -133,13 +117,8 @@ void main() {
       final again = locate(set, 'بِسْمِ اللَّهِ');
       expect(again, isNotNull);
       cursor.moveTo(again!.word);
-      expect(
-        cursor.at,
-        1,
-        reason:
-            'the second rakʿa was prayed against a '
-            'screen frozen on the last aya of the first',
-      );
+      expect(cursor.at, 1, reason: 'the second rakʿa was prayed against a '
+          'screen frozen on the last aya of the first');
     });
   });
 
@@ -166,8 +145,7 @@ void main() {
     expect(
       exact,
       isNotNull,
-      reason:
-          'the recogniser heard the opening of the set and the prayer '
+      reason: 'the recogniser heard the opening of the set and the prayer '
           'stayed where it was',
     );
     expect(exact!.word, 1);
@@ -213,8 +191,7 @@ void main() {
       expect(
         cursor.at,
         greaterThanOrEqualTo(set.words.length - 3),
-        reason:
-            'the prayer was left $advances advances in, on word '
+        reason: 'the prayer was left $advances advances in, on word '
             '${cursor.at} of ${set.words.length}',
       );
     });
@@ -248,8 +225,7 @@ void main() {
     expect(
       cursor.at,
       greaterThanOrEqualTo(set.words.length - 3),
-      reason:
-          'the reader recited the whole set and the prayer reached word '
+      reason: 'the reader recited the whole set and the prayer reached word '
           '${cursor.at} of ${set.words.length} in $advances advances',
     );
     expect(cursor.at, lessThan(set.words.length));
@@ -269,24 +245,14 @@ void main() {
     // 35.4s — the reader's own second aya, ended.
     const aya = 'ااوَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦن';
     var carried = carry('', (text: aya, ended: true));
-    expect(
-      carried,
-      aya,
-      reason:
-          'a breath between two ayas is what this field '
-          'is for, and it has to survive one',
-    );
+    expect(carried, aya, reason: 'a breath between two ayas is what this field '
+        'is for, and it has to survive one');
 
     // 38.2s and 41.1s — two endpoints in a row with nothing decoded. Nearly six
     // seconds in which the reader said nothing.
     carried = carry(carried, (text: '', ended: true));
-    expect(
-      carried,
-      isEmpty,
-      reason:
-          'an utterance that ended with nothing '
-          'decoded is a reader who has stopped, not a reader drawing breath',
-    );
+    expect(carried, isEmpty, reason: 'an utterance that ended with nothing '
+        'decoded is a reader who has stopped, not a reader drawing breath');
     carried = carry(carried, (text: '   ', ended: true));
     expect(carried, isEmpty);
 
@@ -295,13 +261,8 @@ void main() {
     // the fix this read `$aya صَد` and matched on the reader's words.
     const bystander = 'صَد';
     carried = carry(carried, (text: bystander, ended: false));
-    expect(
-      carried,
-      isEmpty,
-      reason:
-          'a window that has not ended changes '
-          'nothing about what came before it',
-    );
+    expect(carried, isEmpty, reason: 'a window that has not ended changes '
+        'nothing about what came before it');
     expect('$carried $bystander'.trim(), bystander);
   });
 
@@ -335,10 +296,9 @@ void main() {
     // 7, then 8, then 9. Only the last answer of a drain says where he is by
     // the time it has caught up.
     final said = [
-      for (final window
-          in (_fixture('fatiha_reader_heard')['windows'] as List)
-              .skip(29)
-              .take(15))
+      for (final window in (_fixture('fatiha_reader_heard')['windows'] as List)
+          .skip(29)
+          .take(15))
         (window as Map<String, dynamic>)['heard'] as String,
     ];
     // The breath after the second aya ends the utterance, and the word after it
@@ -349,19 +309,16 @@ void main() {
     // all twenty of them.
     const mmalik = 'مَاالِكِ';
     final handed = <int>[];
-    final voice = await PrayerVoice.drain(
-      cursor,
-      words,
-      audio,
-      hear: (samples) async {
-        handed.add(samples.length);
-        return switch (handed.length) {
-          final n when n < said.length => (text: said[n - 1], ended: false),
-          final n when n == said.length => (text: said.last, ended: true),
-          _ => (text: mmalik, ended: true),
-        };
-      },
-    );
+    final voice = await PrayerVoice.drain(cursor, words, audio, hear: (
+      samples,
+    ) async {
+      handed.add(samples.length);
+      return switch (handed.length) {
+        final n when n < said.length => (text: said[n - 1], ended: false),
+        final n when n == said.length => (text: said.last, ended: true),
+        _ => (text: mmalik, ended: true),
+      };
+    });
 
     // One piece per [heardChunk], and the room refused one piece at a time
     // rather than on one peak over twenty seconds.
@@ -369,8 +326,7 @@ void main() {
     expect(
       handed.length,
       16,
-      reason:
-          'the 66 batches of room are refused and every one of the 16 after '
+      reason: 'the 66 batches of room are refused and every one of the 16 after '
           "the first loud sample is handed over: nothing between the reader's "
           'first word and the end may be dropped',
     );
@@ -383,8 +339,7 @@ void main() {
     expect(
       cursor.at,
       10,
-      reason:
-          'and to where the LAST answer says the reader is, which is the '
+      reason: 'and to where the LAST answer says the reader is, which is the '
           'word the drain caught up to',
     );
     // The window the matcher was given was the carried utterance plus what is
@@ -397,8 +352,7 @@ void main() {
     expect(
       voice.matched.value.length,
       greaterThan(mmalik.length),
-      reason:
-          'the aya carried across the breath has to still be in front of it',
+      reason: 'the aya carried across the breath has to still be in front of it',
     );
   });
 }

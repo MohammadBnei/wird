@@ -63,18 +63,9 @@ void main() {
     final body = await only();
     expect(
       body.keys.toSet(),
-      {
-        'kind',
-        'body',
-        'app_version',
-        'platform',
-        'screen',
-        'corpus_version',
-        'sense_version',
-        'created_at',
-      },
-      reason:
-          'a new key here is reader data leaving the phone; add it on '
+      {'kind', 'body', 'app_version', 'platform', 'screen', 'corpus_version',
+        'sense_version', 'created_at'},
+      reason: 'a new key here is reader data leaving the phone; add it on '
           'purpose or not at all',
     );
   });

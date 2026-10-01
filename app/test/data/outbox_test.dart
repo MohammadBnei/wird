@@ -41,9 +41,9 @@ void main() {
     final before = DateTime.now().toUtc();
     await markSetUnderstood(db, newOpId(), [96001]);
 
-    final body = jsonDecode(
-      (await db.query('outbox')).single['body']! as String,
-    ) as Map<String, dynamic>;
+    final body =
+        jsonDecode((await db.query('outbox')).single['body']! as String)
+            as Map<String, dynamic>;
     final understoodAt = DateTime.parse(body['understood_at'] as String);
 
     expect(understoodAt.isUtc, isTrue, reason: 'the server reads RFC 3339');

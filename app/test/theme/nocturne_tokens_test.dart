@@ -40,19 +40,16 @@ void main() {
   final nocturne = nocturneTheme().extension<Nocturne>()!;
   final tokens = cssTokens(File(cssPath).readAsStringSync());
 
-  test(
-    'a token added to the design system leaves screens unable to paint it',
-    () {
-      expect(tokens, isNotEmpty, reason: '$cssPath declared no tokens at all');
-      final counterparts = {
-        for (final k in nocturne.colors.keys) 'color/$k',
-        for (final k in nocturne.spaces.keys) 'space/$k',
-        for (final k in nocturne.radii.keys) 'radius/$k',
-        for (final k in nocturne.shadows.keys) 'shadow/$k',
-      };
-      expect(tokens.keys.toSet().difference(counterparts), isEmpty);
-    },
-  );
+  test('a token added to the design system leaves screens unable to paint it', () {
+    expect(tokens, isNotEmpty, reason: '$cssPath declared no tokens at all');
+    final counterparts = {
+      for (final k in nocturne.colors.keys) 'color/$k',
+      for (final k in nocturne.spaces.keys) 'space/$k',
+      for (final k in nocturne.radii.keys) 'radius/$k',
+      for (final k in nocturne.shadows.keys) 'shadow/$k',
+    };
+    expect(tokens.keys.toSet().difference(counterparts), isEmpty);
+  });
 
   test('a retuned CSS color, space or radius would ship as a stale value', () {
     final stale = <String, String>{};

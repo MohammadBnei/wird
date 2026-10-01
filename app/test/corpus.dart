@@ -123,10 +123,9 @@ void _sweepUpAfterOlderRuns() {
   try {
     for (final entry in Directory.systemTemp.listSync()) {
       if (entry is! Directory) continue;
-      if (!entry.path
-          .split(Platform.pathSeparator)
-          .last
-          .startsWith('wird-corpus')) {
+      if (!entry.path.split(Platform.pathSeparator).last.startsWith(
+        'wird-corpus',
+      )) {
         continue;
       }
       try {

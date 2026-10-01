@@ -18,6 +18,7 @@ export 'family.dart';
 /// translated authority is a different authority.
 const tafsirSources = ['Al-Ṭabarī', 'Ibn Kathīr', 'Al-Rāzī'];
 
+
 /// An `h6`: 13px, uppercase, widely tracked.
 class SectionHeading extends StatelessWidget {
   const SectionHeading(this.label, {super.key, this.trailing});
