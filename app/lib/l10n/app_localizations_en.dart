@@ -1343,4 +1343,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get study_form => 'Form';
+
+  @override
+  String get prepare_trouble =>
+      'The Qur\'an could not be read on this device. Try again; if it keeps failing, close Wird and open it again.';
+
+  @override
+  String get prepare_retry => 'Try again';
 }

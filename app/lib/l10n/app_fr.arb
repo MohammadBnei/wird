@@ -357,5 +357,7 @@
   "study_markUnderstood": "Marquer le verset {ref} comme compris",
   "study_openRoot": "Ouvrir la racine {root}",
   "dashboard_continueReading": "REPRENDRE LA LECTURE",
-  "study_form": "Forme"
+  "study_form": "Forme",
+  "prepare_trouble": "Le Coran n'a pas pu être lu sur cet appareil. Réessayez ; si cela persiste, fermez Wird et rouvrez-le.",
+  "prepare_retry": "Réessayer"
 }

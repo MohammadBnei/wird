@@ -2245,6 +2245,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Form'**
   String get study_form;
+
+  /// On the prepare screen when the database did not answer.
+  ///
+  /// In en, this message translates to:
+  /// **'The Qur\'an could not be read on this device. Try again; if it keeps failing, close Wird and open it again.'**
+  String get prepare_trouble;
+
+  /// Button under prepare_trouble.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get prepare_retry;
 }
 
 class _AppLocalizationsDelegate

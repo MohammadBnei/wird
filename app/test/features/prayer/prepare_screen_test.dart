@@ -86,6 +86,18 @@ void main() {
     expect(find.text("Recite Al-'Asr"), findsOneWidget);
   });
 
+  testWidgets('a database that will not answer leaves the reader on an empty '
+      'screen', (tester) async {
+    // No tables at all: every read throws, as it did when a second copy of
+    // the app replaced the file under this one.
+    final broken = await tester.runAsync(
+      () => databaseFactoryFfiNoIsolate.openDatabase(inMemoryDatabasePath),
+    );
+    await pumpPrepare(tester, db: broken!);
+    expect(find.textContaining('could not be read'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+  });
+
   testWidgets('a reader studying Al-Fātiḥa is prepared to recite it twice in '
       'every rakʿah', (tester) async {
     final fatiha = await setOf(db, [1001, 1002, 1003, 1004, 1005]);

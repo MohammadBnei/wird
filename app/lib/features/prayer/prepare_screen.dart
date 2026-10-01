@@ -53,6 +53,11 @@ typedef _Loaded = ({
 class _PrepareScreenState extends State<PrepareScreen> {
   _Loaded? _loaded;
 
+  /// The load failed: the database would not answer. Seen when a second copy
+  /// of the app replaced the file under this one; a reader must be told, not
+  /// left on an empty screen.
+  var _trouble = false;
+
   PrayerPreset? _preset;
   int _rakahs = defaultPrayerPrefs.rakahs;
   StudySet? _first;
@@ -84,6 +89,15 @@ class _PrepareScreenState extends State<PrepareScreen> {
   }
 
   Future<void> _load() async {
+    if (_trouble) setState(() => _trouble = false);
+    try {
+      await _read();
+    } on Object {
+      if (mounted) setState(() => _trouble = true);
+    }
+  }
+
+  Future<void> _read() async {
     final db = widget.db;
     final order = await readingOrder(db);
     final prefs = await prayerPrefs(db);
@@ -355,7 +369,9 @@ class _PrepareScreenState extends State<PrepareScreen> {
             ),
             Expanded(
               child: loaded == null
-                  ? const SizedBox.shrink()
+                  ? _trouble
+                        ? _troubleNote(n, l)
+                        : const SizedBox.shrink()
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(18, 4, 18, 18),
                       children: [
@@ -643,6 +659,22 @@ class _PrepareScreenState extends State<PrepareScreen> {
       ),
     );
   }
+
+  Widget _troubleNote(Nocturne n, AppLocalizations l) => Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      spacing: 14,
+      children: [
+        Text(
+          l.prepare_trouble,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, height: 1.5, color: n.textAt(0.75)),
+        ),
+        NocturneButton(onPressed: _load, child: Text(l.prepare_retry)),
+      ],
+    ),
+  );
 
   /// The phone has gained what voice-follow needs; once it has all of it, the
   /// reader who set it up is followed without a second tap.

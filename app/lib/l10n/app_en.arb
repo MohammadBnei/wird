@@ -1731,5 +1731,9 @@
   "study_form": "Form",
   "@study_form": {
     "description": "Small heading in the reading screen's sheet over the word's parsing: its part of speech and features, as the corpus reads this occurrence."
-  }
+  },
+  "prepare_trouble": "The Qur'an could not be read on this device. Try again; if it keeps failing, close Wird and open it again.",
+  "@prepare_trouble": {"description": "On the prepare screen when the database did not answer."},
+  "prepare_retry": "Try again",
+  "@prepare_retry": {"description": "Button under prepare_trouble."}
 }

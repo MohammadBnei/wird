@@ -1351,4 +1351,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get study_form => 'Forme';
+
+  @override
+  String get prepare_trouble =>
+      'Le Coran n\'a pas pu être lu sur cet appareil. Réessayez ; si cela persiste, fermez Wird et rouvrez-le.';
+
+  @override
+  String get prepare_retry => 'Réessayer';
 }
