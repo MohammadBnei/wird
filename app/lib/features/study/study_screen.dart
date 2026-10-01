@@ -114,7 +114,7 @@ class _StudyScreenState extends State<StudyScreen> {
     // A reader who leaves before the position settled still left from there.
     if (_settle?.isActive ?? false) {
       _settle!.cancel();
-      if (_word case final word?) unawaited(movePosition(widget.db, word.id));
+      if (_word case final word?) unawaited(_savePosition(word.id));
     }
     _sheetScroll.dispose();
     super.dispose();
@@ -202,10 +202,20 @@ class _StudyScreenState extends State<StudyScreen> {
     });
     if (_sheetScroll.hasClients) _sheetScroll.jumpTo(0);
     _settle?.cancel();
-    _settle = Timer(_settleAfter, () => movePosition(widget.db, word.id));
+    _settle = Timer(_settleAfter, () => _savePosition(word.id));
     WidgetsBinding.instance.addPostFrameCallback((_) => _centre());
     await _carry(word.id ~/ 1000);
   }
+
+  /// Writes where the reader stands, after the screen has moved on. Nobody
+  /// waits for it, so a database closed under it (a reader signing out, a
+  /// test tearing down) leaves nothing to write to and is not an error; any
+  /// other failure still surfaces.
+  Future<void> _savePosition(int wordId) =>
+      movePosition(widget.db, wordId).catchError(
+        (_) {},
+        test: (e) => e is DatabaseException && e.isDatabaseClosedError(),
+      );
 
   /// Keeps the recitation on the ayas around the open word, so the play
   /// button and a prayer are always about where the reader is.
