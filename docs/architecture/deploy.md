@@ -152,7 +152,7 @@ It builds with buildah on a runner that has no cluster access, then pushes to th
 
 ### 4. One binary per image
 
-The Dockerfile copies the Go workspace and builds `server/cmd/api` only. The `app/` folder is never copied, so the bundled **corpus** cannot end up in the image. CGO is off, so the binary is static.
+The Dockerfile copies the Go workspace and builds `server/cmd/api` only. The public page is part of that binary: `server/internal/site/static` is embedded, so it ships with every image and needs no other workload ([ADR 0018](../adr/0018-the-public-site-is-served-by-the-api.md)). The `app/` folder is never copied, so the bundled **corpus** cannot end up in the image. CGO is off, so the binary is static.
 
 ```dockerfile
 RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-api ./server/cmd/api
@@ -207,7 +207,7 @@ A manual run builds and pushes an image but skips this job, so it never deploys.
   hostname: wird.bnei.dev
 ```
 
-[values.yaml:45](../../helm/values.yaml#L45) · probes [values.yaml:49-60](../../helm/values.yaml#L49-L60) · the route [api.go:39](../../server/internal/api/api.go#L39)
+[values.yaml:45](../../helm/values.yaml#L45) · probes [values.yaml:49-60](../../helm/values.yaml#L49-L60) · the route [api.go:39](../../server/internal/api/api.go#L41)
 
 Values that are not secret are written in the file: the OIDC issuer and audience, and the Android app-link fingerprint ([values.yaml:118-147](../../helm/values.yaml#L118-L147)). Everything secret arrives from one Kubernetes Secret, loaded whole with `envFrom` ([values.yaml:114-116](../../helm/values.yaml#L114-L116)). That Secret is built in the infrastructure repo from Infisical. It holds the database address and the object store keys for the voice model. This repo names only that Secret. It never mounts a whole Infisical project, which would hand the pod every password on the platform ([values.yaml:109-113](../../helm/values.yaml#L109-L113)).
 
@@ -255,6 +255,17 @@ A second workflow, `docs`, runs on every pull request and every push to `main`, 
 ## Why it is this way
 
 - [ADR 0005](../adr/0005-deploying-the-api.md) — one image with the API only, the commit hash as tag, secrets assembled in one place, and only the Go half of the gate in CI.
+- [ADR 0018](../adr/0018-the-public-site-is-served-by-the-api.md) — the public page is embedded in that same image, and the APK is published by digest-named key.
+
+### Publishing the Android build
+
+The page's Download button answers 503 until a build is published. To publish one:
+
+1. Build a release APK. It must be signed with the release key, whose fingerprint `WIRD_ANDROID_SHA256` lists, or sign-in falls back to pasting the code by hand.
+2. Upload it to the models bucket as `android/wird-<first 12 of its sha256>.apk`, with content type `application/vnd.android.package-archive`.
+3. Set `WIRD_APK_KEY` in `helm/values.yaml` to that key, and merge.
+
+Never overwrite a published key: a phone resuming a download would get half of one build and half of another. A new build is a new key.
 - [ADR 0008](../adr/0008-the-recogniser-is-served-from-wirds-own-host.md) — the pod also answers voice model downloads, so the object store keys joined the Secret.
 - [ADR 0011](../adr/0011-two-doc-families.md) — why the human docs have a workflow of their own.
 

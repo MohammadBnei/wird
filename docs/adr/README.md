@@ -13,6 +13,7 @@ flowchart LR
   A8 -. amends .-> A5d[0005 deploying the API]
   A10[0010 server owns the senses]
   A11[0011 two doc families]
+  A18[0018 public page in the API] -. amends .-> A5d
 ```
 
 | File | Decision | Status |
@@ -21,7 +22,7 @@ flowchart LR
 | [0002-set-identity.md](0002-set-identity.md) | A set's identity is derived, and one op records a prayer | accepted |
 | [0003-addressable-reader.md](0003-addressable-reader.md) | Screen 1a is addressable, and it changes in place | accepted, amended by 0006 |
 | [0004-the-operations-view-behind-authentiks-group.md](0004-the-operations-view-behind-authentiks-group.md) | The operations view sits behind Authentik's group and only sees totals | accepted |
-| [0005-deploying-the-api.md](0005-deploying-the-api.md) | One image, the API only, database credentials from Infisical | accepted, amended by 0008 |
+| [0005-deploying-the-api.md](0005-deploying-the-api.md) | One image, the API only, database credentials from Infisical | accepted, amended by 0008 and 0018 |
 | [0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md](0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md) | Voice-follow runs a Qur'an model on the phone | accepted, model choice superseded by 0009 |
 | [0006-a-passage-is-read-a-set-is-answered-for.md](0006-a-passage-is-read-a-set-is-answered-for.md) | A passage is read; a set is answered for | accepted |
 | [0007-the-voice-model-is-published-where-its-weights-already-live.md](0007-the-voice-model-is-published-where-its-weights-already-live.md) | Publish the voice model where its weights live | superseded by 0008 |
@@ -30,3 +31,4 @@ flowchart LR
 | [0010-the-server-owns-the-roots-and-their-senses.md](0010-the-server-owns-the-roots-and-their-senses.md) | The server owns the roots and their senses | accepted |
 | [0011-two-doc-families.md](0011-two-doc-families.md) | Agent docs and human docs are two families with two styles | accepted |
 | [0013-the-reading-screens-root-panel-walks-word-by-word.md](0013-the-reading-screens-root-panel-walks-word-by-word.md) | The reading screen's root panel walks word by word, where the corpus attribution stood | accepted |
+| [0018-the-public-site-is-served-by-the-api.md](0018-the-public-site-is-served-by-the-api.md) | The public page is embedded in wird-api, and its demos run on the corpus | accepted |
