@@ -30,7 +30,7 @@ bool drawn(WidgetTester tester, int id) => tester
 
 /// The dwell the screen waits before turning, plus a frame. A Timer is not an
 /// animation, so pumpAndSettle will not run it out.
-const _dwellInTests = Duration(milliseconds: 400);
+const _dwellInTests = Duration(milliseconds: 600);
 
 void main() {
   late Database db;
@@ -68,10 +68,12 @@ void main() {
     cursor.moveTo(3);
     await tester.pump(const Duration(milliseconds: 100));
     expect(
-      litWord(tester),
-      103001001,
+      drawn(tester, 103001001),
+      isTrue,
       reason: 'the next aya arrived before the reader had drawn breath',
     );
+    // Standing as recited: nothing in it is the word being said.
+    expect(noWordIsLit(tester), isTrue);
 
     await tester.pump(_dwellInTests);
     await tester.pumpAndSettle();

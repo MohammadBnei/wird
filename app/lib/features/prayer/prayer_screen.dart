@@ -100,7 +100,7 @@ const _maxSize = 88.0;
 /// from its last word being heard. Long enough not to snatch the aya from
 /// under its last syllable, short enough that the next one is there when the
 /// reciter looks for it.
-const _dwell = Duration(milliseconds: 300);
+const _dwell = Duration(milliseconds: 500);
 
 /// How long the voice may rest on the last word before the rakʿah is taken as
 /// recited: the end of the aya, and the breath before bowing.
@@ -641,7 +641,14 @@ class _PrayerScreenState extends State<PrayerScreen> {
                                   ),
                               child: KeyedSubtree(
                                 key: ValueKey((_r, here.aya.id)),
-                                child: _recited(n, here),
+                                child: _recited(
+                                  n,
+                                  here,
+                                  named:
+                                      _cursor.sure &&
+                                      _ayaOf(_cursor.at) == _shown,
+                                  behind: _ayaOf(_cursor.at) > _shown,
+                                ),
                               ),
                             ),
                             if (around && _size <= 72) ...[
@@ -760,7 +767,16 @@ class _PrayerScreenState extends State<PrayerScreen> {
           ),
         );
 
-  Widget _recited(Nocturne n, ({StudyAya aya, StudyWord word}) here) => Wrap(
+  /// [named] is whether a word of this aya has been named. An aya shown
+  /// because the one before it was finished has none yet: lighting its first
+  /// word claimed the reader had begun it. [behind] is the aya the reader has
+  /// just left, standing for the dwell: all of it recited.
+  Widget _recited(
+    Nocturne n,
+    ({StudyAya aya, StudyWord word}) here, {
+    required bool named,
+    required bool behind,
+  }) => Wrap(
     textDirection: TextDirection.rtl,
     alignment: WrapAlignment.center,
     crossAxisAlignment: WrapCrossAlignment.end,
@@ -783,13 +799,15 @@ class _PrayerScreenState extends State<PrayerScreen> {
                   // word of the aya is drawn as still to come, which is the
                   // truth about what was heard rather than a claim nobody
                   // made. Full white read as an aya already recited.
-                  color: !_cursor.sure
+                  color: behind
+                      ? n.textAt(0.72)
+                      : !named
                       ? n.textAt(0.4)
                       : word.id < here.word.id
                       ? n.textAt(0.72)
                       : n.textAt(0.4),
                 ).merge(
-                  _cursor.sure && word.id == here.word.id
+                  named && word.id == here.word.id
                       ? glowing(n, Glow.recited)
                       : null,
                 ),
