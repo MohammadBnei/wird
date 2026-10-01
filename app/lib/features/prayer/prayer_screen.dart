@@ -780,10 +780,11 @@ class _PrayerScreenState extends State<PrayerScreen> {
                   height: 1.9,
                   // The word inside the aya is singled out only when the
                   // recitation, the pace or a tap named it — otherwise every
-                  // word of the aya is lit alike, which is the truth about
-                  // what was heard rather than a claim nobody made.
+                  // word of the aya is drawn as still to come, which is the
+                  // truth about what was heard rather than a claim nobody
+                  // made. Full white read as an aya already recited.
                   color: !_cursor.sure
-                      ? n.text
+                      ? n.textAt(0.4)
                       : word.id < here.word.id
                       ? n.textAt(0.72)
                       : n.textAt(0.4),

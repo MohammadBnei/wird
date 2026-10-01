@@ -365,16 +365,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get range_from => 'Du verset';
+  String get range_change_sura => 'Changer';
 
   @override
-  String get range_to => 'Au verset';
-
-  @override
-  String get range_earlier => 'Plus tôt';
-
-  @override
-  String get range_later => 'Plus tard';
+  String get range_tap_hint => 'Touchez le premier aya, puis le dernier.';
 
   @override
   String get range_whole => 'Sourate entière';

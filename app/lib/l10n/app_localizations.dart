@@ -668,29 +668,17 @@ abstract class AppLocalizations {
   /// **'No sūra matches “{query}”.'**
   String chooser_no_match(String query);
 
-  /// Stepper: where the passage starts.
+  /// On the sūra card at the top of the range: goes back to the list of sūras.
   ///
   /// In en, this message translates to:
-  /// **'From aya'**
-  String get range_from;
+  /// **'Change'**
+  String get range_change_sura;
 
-  /// Stepper: where the passage ends.
+  /// Above the grid of aya numbers.
   ///
   /// In en, this message translates to:
-  /// **'To aya'**
-  String get range_to;
-
-  /// Screen-reader label for a range minus.
-  ///
-  /// In en, this message translates to:
-  /// **'Earlier'**
-  String get range_earlier;
-
-  /// Screen-reader label for a range plus.
-  ///
-  /// In en, this message translates to:
-  /// **'Later'**
-  String get range_later;
+  /// **'Tap the first aya, then the last.'**
+  String get range_tap_hint;
 
   /// Chip setting the range to the whole sūra.
   ///

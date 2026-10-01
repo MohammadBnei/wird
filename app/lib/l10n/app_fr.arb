@@ -95,10 +95,6 @@
   "chooser_fatiha_only_hint": "Pas de passage dans cette rakʿa",
   "chooser_all": "Toutes les sourates",
   "chooser_no_match": "Aucune sourate ne correspond à « {query} ».",
-  "range_from": "Du verset",
-  "range_to": "Au verset",
-  "range_earlier": "Plus tôt",
-  "range_later": "Plus tard",
   "range_whole": "Sourate entière",
   "range_in_sura": "{count} versets dans la sourate",
   "range_recite": "Réciter {title}",
@@ -359,5 +355,7 @@
   "dashboard_continueReading": "REPRENDRE LA LECTURE",
   "study_form": "Forme",
   "prepare_trouble": "Le Coran n'a pas pu être lu sur cet appareil. Réessayez ; si cela persiste, fermez Wird et rouvrez-le.",
-  "prepare_retry": "Réessayer"
+  "prepare_retry": "Réessayer",
+  "range_change_sura": "Changer",
+  "range_tap_hint": "Touchez le premier aya, puis le dernier."
 }

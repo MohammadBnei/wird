@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
@@ -49,6 +50,12 @@ class PassageChooser extends StatefulWidget {
   /// What the rakʿah recites now, so the suggestion that matches is marked.
   final PassageChoice? current;
 
+  /// The sūra at the top of the range, which leads back to the list.
+  static const changeSura = Key('change sura');
+
+  /// One aya's number in the range grid.
+  static Key aya(int n) => Key('aya $n');
+
   @override
   State<PassageChooser> createState() => _PassageChooserState();
 }
@@ -66,7 +73,9 @@ class _PassageChooserState extends State<PassageChooser> {
     final count = widget.suras[sura - 1].ayahCount;
     final f = from.clamp(1, count);
     final t = to.clamp(f, count);
+    final opening = _range?.sura != sura;
     setState(() => _range = (sura: sura, from: f, to: t));
+    if (opening) _showFirst();
     final set = await ayaSet(
       widget.db,
       widget.order,
@@ -374,111 +383,157 @@ class _PassageChooserState extends State<PassageChooser> {
     ),
   );
 
+  /// Tapping an aya after the range is shown starts a new one there; the
+  /// next tap is its other end.
+  int? _anchor;
+
+  /// The range's first aya in the grid, scrolled to when the step opens: in a
+  /// long sūra it is otherwise a few hundred numbers down.
+  final _first = GlobalKey();
+
+  void _showFirst() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    final cell = _first.currentContext;
+    if (cell != null) {
+      unawaited(Scrollable.ensureVisible(cell, alignment: 0.3));
+    }
+  });
+
+  void _tapAya(int sura, int aya) {
+    final anchor = _anchor;
+    if (anchor == null) {
+      _anchor = aya;
+      unawaited(_openRange(sura, aya, aya));
+    } else {
+      _anchor = null;
+      unawaited(_openRange(sura, min(anchor, aya), max(anchor, aya)));
+    }
+  }
+
   Widget _rangeStep(
     Nocturne n,
     AppLocalizations l,
     ({int sura, int from, int to}) range,
   ) {
-    final count = widget.suras[range.sura - 1].ayahCount;
+    final sura = widget.suras[range.sura - 1];
+    final count = sura.ayahCount;
     final set = _ranged;
-    final width = range.to - range.from + 1;
-    final spans = [
-      (label: l.prepare_ayas(1), from: range.from, to: range.from),
-      (label: l.prepare_ayas(3), from: range.from, to: range.from + 2),
-      (label: l.prepare_ayas(5), from: range.from, to: range.from + 4),
-      if (count <= 40) (label: l.range_whole, from: 1, to: count),
-    ];
     return Column(
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+        // The sūra, what it says, and how to choose stand still; only the
+        // numbers scroll, so a long sūra never carries them off.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: n.surface,
-                  borderRadius: BorderRadius.circular(n.radius('lg')),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    NocturneKicker(
-                      '${widget.suras[range.sura - 1].nameEn} '
-                      '${range.sura}:${range.from}',
-                      tone: KickerTone.accent,
-                    ),
-                    const SizedBox(height: 6),
-                    SizedBox(
-                      width: double.infinity,
-                      child: Text(
-                        set == null
-                            ? ''
-                            : [for (final w in set.ayas.first.words) w.text]
-                                  .join(' '),
-                        textDirection: TextDirection.rtl,
-                        style: const TextStyle(
-                          fontFamily: Nocturne.arabicFamily,
-                          fontSize: 24,
-                          height: 1.75,
+              // The sūra, and the way to another one, at the top where the
+              // eye starts: changing it should not be a hunt for a back arrow.
+              InkWell(
+                key: PassageChooser.changeSura,
+                onTap: () => setState(() {
+                  _range = null;
+                  _ranged = null;
+                  _anchor = null;
+                }),
+                borderRadius: BorderRadius.circular(n.radius('lg')),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: n.surface,
+                    borderRadius: BorderRadius.circular(n.radius('lg')),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${sura.id} · ${sura.nameEn}',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              l.range_in_sura(count),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: n.textAt(0.58),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      [
-                        l.prepare_ayas(width),
-                        l.range_in_sura(count),
-                      ].join(' · '),
-                      style: TextStyle(fontSize: 11.5, color: n.textAt(0.58)),
-                    ),
-                  ],
+                      Text(
+                        l.range_change_sura,
+                        style: TextStyle(fontSize: 12.5, color: n.accent),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
-              PrayerStepper(
-                label: l.range_from,
-                value: range.from,
-                less: l.range_earlier,
-                more: l.range_later,
-                onLess: range.from > 1
-                    ? () => _openRange(range.sura, range.from - 1, range.to)
-                    : null,
-                onMore: range.from < count
-                    ? () => _openRange(
-                        range.sura,
-                        range.from + 1,
-                        range.to < range.from + 1 ? range.from + 1 : range.to,
-                      )
-                    : null,
-              ),
-              PrayerStepper(
-                label: l.range_to,
-                value: range.to,
-                less: l.range_earlier,
-                more: l.range_later,
-                onLess: range.to > range.from
-                    ? () => _openRange(range.sura, range.from, range.to - 1)
-                    : null,
-                onMore: range.to < count
-                    ? () => _openRange(range.sura, range.from, range.to + 1)
-                    : null,
-              ),
               const SizedBox(height: 12),
+              // The first aya of the range, so the reader sees what they are
+              // about to recite rather than only its number.
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  set == null
+                      ? ''
+                      : [for (final w in set.ayas.first.words) w.text]
+                            .join(' '),
+                  textDirection: TextDirection.rtl,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: Nocturne.arabicFamily,
+                    fontSize: 24,
+                    height: 1.75,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l.range_tap_hint,
+                style: TextStyle(fontSize: 12, color: n.textAt(0.66)),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+            children: [
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  for (final span in spans)
-                    PrayerChip(
-                      label: span.label,
-                      selected:
-                          span.from == range.from &&
-                          span.to.clamp(1, count) == range.to,
-                      onTap: () => _openRange(range.sura, span.from, span.to),
+                  for (var aya = 1; aya <= count; aya++)
+                    _ayaCell(
+                      n,
+                      aya,
+                      key: aya == range.from ? _first : null,
+                      inRange: aya >= range.from && aya <= range.to,
+                      end: aya == range.from || aya == range.to,
+                      onTap: () => _tapAya(range.sura, aya),
                     ),
                 ],
               ),
+              // A whole sūra is a passage only while it is a short one.
+              if (count > 1 && count <= 40) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: PrayerChip(
+                    label: l.range_whole,
+                    selected: range.from == 1 && range.to == count,
+                    onTap: () {
+                      _anchor = null;
+                      unawaited(_openRange(range.sura, 1, count));
+                    },
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -504,6 +559,44 @@ class _PassageChooserState extends State<PassageChooser> {
       ],
     );
   }
+
+  Widget _ayaCell(
+    Nocturne n,
+    int aya, {
+    Key? key,
+    required bool inRange,
+    required bool end,
+    required VoidCallback onTap,
+  }) => Semantics(
+    key: key,
+    button: true,
+    selected: inRange,
+    child: GestureDetector(
+      key: PassageChooser.aya(aya),
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: end
+              ? n.accent
+              : inRange
+              ? n.color('accent-900')
+              : n.surface,
+          border: Border.all(color: inRange ? n.accent : n.divider),
+          borderRadius: BorderRadius.circular(n.radius('md')),
+        ),
+        child: Text(
+          '$aya',
+          style: TextStyle(
+            fontSize: 13,
+            color: end ? n.bg : (inRange ? n.color('accent-100') : n.text),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// A labelled number with a minus and a plus, as the design draws every count

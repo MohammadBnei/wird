@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
+import 'package:wird/features/prayer/passage_chooser.dart';
 import 'package:wird/features/prayer/prepare_screen.dart';
 import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
@@ -82,8 +83,18 @@ void main() {
     await pumpPrepare(tester, db: db, from: asr);
     await tester.tap(find.byKey(const Key('passage 1')));
     await tester.pumpAndSettle();
-    expect(find.text("AL-'ASR 103:1"), findsOneWidget);
+    expect(find.text("103 · Al-'Asr"), findsOneWidget);
     expect(find.text("Recite Al-'Asr"), findsOneWidget);
+    // Two taps name a range: its first aya, then its last.
+    await tester.tap(find.byKey(PassageChooser.aya(2)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(PassageChooser.aya(3)));
+    await tester.pumpAndSettle();
+    expect(find.text("Recite Al-'Asr 2–3"), findsOneWidget);
+    // And the sūra is changed from the card at the top, not a back arrow.
+    await tester.tap(find.byKey(PassageChooser.changeSura));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
   });
 
   testWidgets('a database that will not answer leaves the reader on an empty '
@@ -151,7 +162,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Go to Al-Baqarah 2:255'));
     await tester.pumpAndSettle();
-    expect(find.text('AL-BAQARAH 2:255'), findsOneWidget);
+    expect(find.text('2 · Al-Baqarah'), findsOneWidget);
     expect(find.text('Recite Al-Baqarah 255–257'), findsOneWidget);
   });
 

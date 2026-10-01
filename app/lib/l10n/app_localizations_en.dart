@@ -363,16 +363,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get range_from => 'From aya';
+  String get range_change_sura => 'Change';
 
   @override
-  String get range_to => 'To aya';
-
-  @override
-  String get range_earlier => 'Earlier';
-
-  @override
-  String get range_later => 'Later';
+  String get range_tap_hint => 'Tap the first aya, then the last.';
 
   @override
   String get range_whole => 'Whole sūra';
