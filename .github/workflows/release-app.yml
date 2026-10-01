@@ -35,8 +35,18 @@ permissions:
   contents: read
 
 jobs:
+  # Run from any other branch, the jobs below would be skipped and the run
+  # would end green having done nothing. Say so instead.
+  on-main:
+    runs-on: ubuntu-latest
+    steps:
+      - if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::release-app runs on main only, not ${GITHUB_REF_NAME}"
+          exit 1
+
   checks:
-    if: github.ref == 'refs/heads/main'
+    needs: on-main
     uses: ./.github/workflows/app-checks.yml
 
   release:
@@ -97,5 +107,11 @@ jobs:
           VERSION: ${{ steps.next.outputs.version }}
         run: |
           set -euo pipefail
+          {
+            echo "Tagged v$VERSION on main."
+            echo "If the build below fails, do not press this button again: that"
+            echo "releases the next version. Re-run **apk** by hand with the tag"
+            echo "\`v$VERSION\` as its ref."
+          } >> "$GITHUB_STEP_SUMMARY"
           gh workflow run apk.yml --ref "v$VERSION"
-          echo "Released v$VERSION; apk.yml is building it: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/apk.yml" >> "$GITHUB_STEP_SUMMARY"
+          echo "apk.yml is building it: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/apk.yml" >> "$GITHUB_STEP_SUMMARY"

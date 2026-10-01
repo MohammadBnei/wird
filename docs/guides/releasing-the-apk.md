@@ -41,6 +41,10 @@ Nothing is tagged when the checks fail, or when `main` moved while they ran: the
 
 A tag pushed by hand publishes nothing: `apk.yml` no longer starts on a tag push.
 
+## When the build fails after the tag
+
+The tag and the `Release vX.Y.Z` commit are on `main` before the build starts. If the build then fails — the secret store, signing, the upload — do not press the button again: that releases the next version and leaves this one unpublished. Retry the build on the tag instead: **Actions → apk → Run workflow**, and choose the tag `vX.Y.Z` as the ref. It matches the pubspec and is on `main`, so it builds and publishes as if the button had started it.
+
 The object key carries the first 12 characters of the APK's sha256. A published key is never overwritten, so a phone resuming a download never gets half of one build and half of another. The route is served by [`apk.go`](../../server/internal/api/apk.go#L21).
 
 ## The checks, and where the rest of the gate runs
