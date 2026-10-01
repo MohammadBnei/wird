@@ -31,6 +31,7 @@ The facts that shape it:
 
 - A release is `git tag vX.Y.Z && git push --tags`, after the pubspec version is bumped. The workflow fails on a tag that disagrees with the pubspec.
 - `/models/app/...` also reaches the APKs. This is harmless while both are public.
+- `GET /download/android` ([ADR 0018](0018-the-public-site-is-served-by-the-api.md)) stays: it serves one digest-named object set by hand, for the public page. `/app/latest/` is overwritten on each tag, so a download resumed across a release can mix two builds. Android then refuses the file, so the reader retries rather than installs something broken. Pointing `WIRD_APK_KEY` at a CI build would unify the two.
 - CI holds the voice model bucket's key, and that key can write. A bad workflow could overwrite the recogniser files phones download. We accept this for now. A bucket of its own for APKs, with its own key, removes it.
 - The store key lives in two projects: the root project, which the pod and the bucket playbook use, and Wird's project, which CI uses. Rotating it means updating both.
 - `app/<tag>/` is never deleted. Pruning old tags becomes a step in the workflow if they pile up.
