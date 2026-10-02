@@ -46,3 +46,4 @@ flowchart LR
 | [0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md](0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md) | The matcher's margin is asked per pair of places, and a repeated phrase is settled by order | accepted |
 | [0022-a-release-is-cut-by-one-button-from-the-pubspec.md](0022-a-release-is-cut-by-one-button-from-the-pubspec.md) | A release is cut by one button, and the pubspec holds the only version | accepted |
 | [0023-six-reciters-and-a-word-by-word-voice.md](0023-six-reciters-and-a-word-by-word-voice.md) | The reader picks one of six reciters, and can hear each word spoken alone | accepted |
+| [0024-the-sura-picker-turns-its-order-and-searches-the-text.md](0024-the-sura-picker-turns-its-order-and-searches-the-text.md) | The sūra picker turns its own order, and searches the text of the Qur'an in memory | accepted |

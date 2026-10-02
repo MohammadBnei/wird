@@ -1,14 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../../data/sets.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_input.dart';
+import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_rule.dart';
+import '../../widgets/nocturne_segmented.dart';
+import '../progress/passage.dart';
 // The Arabic search folds names the way the voice folds what it hears, so the
 // two never disagree about what a word is. Prayer imports the index for
 // SuraEntry; this is the other direction.
 import '../prayer/voice_follow.dart';
+import 'aya_search.dart';
 import 'index_screen.dart';
 
 /// [suras] in the order the reader reads the Qur'an: as written, or by
@@ -59,35 +66,55 @@ List<SuraEntry> searchSuras(List<SuraEntry> suras, String query) {
   ];
 }
 
-/// A transliterated name reduced to plain letters, so `Al-Fātiḥa`, `fatiha`
-/// and `Al-Fatihah` meet. The corpus spells its names in plain ASCII and the
+/// A sūra's name reduced to plain letters, so `Al-Fātiḥa`, `fatiha` and
+/// `Al-Fatihah` meet. The corpus spells its names in plain ASCII and the
 /// reader may not, so both sides fold.
-///
-/// ponytail: a table of the marks sūra-name transliterations use, not a
-/// Unicode decomposition. Dart has none built in; widen the table if a name
-/// turns up that it misses.
 String foldLatin(String s) {
+  // A trailing h is how half the transliterations end a tāʾ marbūṭa and the
+  // other half do not, so it never decides a match between names. Only
+  // names: in running text, "faith" would turn into the French "fait".
+  final folded = foldLetters(s);
+  return folded.endsWith('h') ? folded.substring(0, folded.length - 1) : folded;
+}
+
+/// Latin text reduced to lower-case letters and digits, with the marks of a
+/// transliteration and of French folded away — « prière » and "priere" meet,
+/// and so do `ḥ-m-d` and "hmd". Spaces, punctuation, ʿ and ʾ go too: the aya
+/// search matches across them.
+///
+/// ponytail: a table of the marks transliterations and French use, not a
+/// Unicode decomposition. Dart has none built in; widen the table if a word
+/// turns up that it misses.
+String foldLetters(String s) {
   const marks = {
     'ā': 'a', 'á': 'a', 'à': 'a', 'â': 'a', 'ī': 'i', 'í': 'i', 'î': 'i', //
     'ū': 'u', 'ú': 'u', 'û': 'u', 'ḥ': 'h', 'ṣ': 's', 'ḍ': 'd', 'ṭ': 't', //
-    'ẓ': 'z', 'é': 'e', 'è': 'e', 'ê': 'e',
+    'ẓ': 'z', 'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'ï': 'i', 'ô': 'o', //
+    'ö': 'o', 'ù': 'u', 'ü': 'u', 'ç': 'c', 'œ': 'oe', 'æ': 'ae',
   };
   final out = StringBuffer();
-  for (final ch in s.toLowerCase().split('')) {
-    final plain = marks[ch] ?? ch;
-    if (RegExp('[a-z0-9]').hasMatch(plain)) out.write(plain);
+  // Code units rather than a split and a pattern per character: this folds
+  // the whole of two translations, 1.7 million characters, as a picker opens.
+  for (final unit in s.toLowerCase().codeUnits) {
+    if ((unit >= 0x61 && unit <= 0x7A) || (unit >= 0x30 && unit <= 0x39)) {
+      out.writeCharCode(unit);
+    } else if (unit >= 0x80) {
+      final plain = marks[String.fromCharCode(unit)];
+      if (plain != null) out.write(plain);
+    }
   }
-  // A trailing h is how half the transliterations end a tāʾ marbūṭa and the
-  // other half do not, so it never decides a match.
-  final folded = out.toString();
-  return folded.endsWith('h') ? folded.substring(0, folded.length - 1) : folded;
+  return out.toString();
 }
 
 /// The one list a reader chooses a sūra from, wherever they choose one: the
 /// index and the prayer's passage chooser.
 ///
-/// It searches by name, number or reference, and lists in the reader's
-/// reading order. What a choice then does is the screen's.
+/// It lists in the reader's reading order, which a toggle above the list
+/// turns for as long as the picker is open — Settings keeps the order the
+/// reader reads in; this only changes how a sūra is looked for. A search
+/// finds sūras by name or number, an aya by reference, ayas by their words in
+/// Arabic, English or French, and ayas by a root. What a choice then does is
+/// the screen's.
 class SuraPicker extends StatefulWidget {
   const SuraPicker({
     super.key,
@@ -96,6 +123,8 @@ class SuraPicker extends StatefulWidget {
     required this.onSura,
     required this.onRef,
     required this.goToHint,
+    this.db,
+    this.progress = false,
     this.exclude = const {},
     this.leading = const [],
     this.trailing,
@@ -104,19 +133,29 @@ class SuraPicker extends StatefulWidget {
 
   /// Every sūra, in written order.
   final List<SuraEntry> suras;
+
+  /// The order the list opens in: the reader's.
   final ReadingOrder order;
   final ValueChanged<SuraEntry> onSura;
 
-  /// A reference typed in full, as an aya id.
+  /// A reference typed in full, or an aya the search found, as an aya id.
   final ValueChanged<int> onRef;
 
   /// Under "Go to …": what choosing the reference does on this screen.
   final String goToHint;
 
-  /// Sūras never offered, neither as a row nor through a reference.
+  /// Where the words and roots are searched. Without it the search is names,
+  /// numbers and references only.
+  final Database? db;
+
+  /// Whether a row shows how much of the sūra the reader has understood.
+  final bool progress;
+
+  /// Sūras never offered: not as a row, a reference or an aya found.
   final Set<int> exclude;
 
-  /// Shown above the sūras while nothing is typed.
+  /// Shown above the sūras while nothing is typed. With anything in it, the
+  /// sūras are headed by the order they are listed in.
   final List<Widget> leading;
 
   /// At the end of a sūra's row, and under it.
@@ -128,35 +167,72 @@ class SuraPicker extends StatefulWidget {
 }
 
 class _SuraPickerState extends State<SuraPicker> {
+  final _field = TextEditingController();
   var _query = '';
+  late var _order = widget.order;
+
+  AyaSearch? _search;
+
+  /// What the query found in the text, worked out once per query rather than
+  /// on every build: the scan is the whole Qur'an in three languages. The
+  /// query it was found for is kept, so a slow answer to an old query is
+  /// dropped.
+  ({String query, List<AyaHit> words, List<RootHit> roots})? _hits;
+
+  @override
+  void initState() {
+    super.initState();
+    // Read the text as the picker opens, not on the first keystroke, so the
+    // first word typed is answered rather than waited on.
+    if (widget.db case final db?) {
+      unawaited(
+        AyaSearch.of(db).then((s) {
+          _search = s;
+          _find();
+        }, onError: (Object _) {}),
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(SuraPicker old) {
+    super.didUpdateWidget(old);
+    if (old.order != widget.order) _order = widget.order;
+  }
+
+  @override
+  void dispose() {
+    _field.dispose();
+    super.dispose();
+  }
+
+  void _type(String q) {
+    setState(() => _query = q);
+    _find();
+  }
+
+  Future<void> _find() async {
+    final search = _search;
+    final q = _query.trim();
+    if (search == null || q.isEmpty) return;
+    // A reference is not words, and the digits of one are in no aya.
+    final words = RegExp(r'^[\d\s:.]+$').hasMatch(q)
+        ? const <AyaHit>[]
+        : search.words(q, exclude: widget.exclude);
+    final roots = await search.roots(q, exclude: widget.exclude);
+    if (mounted && _query.trim() == q) {
+      setState(() => _hits = (query: q, words: words, roots: roots));
+    }
+  }
+
+  bool _offered(int ayahId) => !widget.exclude.contains(ayahId ~/ 1000);
 
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
     final l = AppLocalizations.of(context)!;
-    final ref = switch (parseRef(_query, widget.suras)) {
-      final id? when !widget.exclude.contains(id ~/ 1000) => id,
-      _ => null,
-    };
-    final rows = inOrder([
-      for (final s in searchSuras(widget.suras, _query))
-        if (!widget.exclude.contains(s.id)) s,
-    ], widget.order);
     final query = _query.trim();
-    final heads = [
-      if (ref != null) _goTo(n, l, ref),
-      if (query.isEmpty) ...widget.leading,
-    ];
-    final tail = [
-      if (query.isNotEmpty && rows.isEmpty && ref == null)
-        Padding(
-          padding: EdgeInsets.only(top: n.space('4')),
-          child: Text(
-            l.chooser_no_match(query),
-            style: TextStyle(fontSize: 13, color: n.textAt(0.58)),
-          ),
-        ),
-    ];
+    final items = query.isEmpty ? _browse(n, l) : _found(n, l, query);
     return Column(
       children: [
         Padding(
@@ -166,9 +242,46 @@ class _SuraPickerState extends State<SuraPicker> {
             n.space('6'),
             n.space('2'),
           ),
-          child: NocturneInput(
-            hint: l.chooser_search,
-            onChanged: (q) => setState(() => _query = q),
+          child: Stack(
+            alignment: AlignmentDirectional.centerEnd,
+            children: [
+              NocturneInput(
+                hint: l.chooser_search,
+                controller: _field,
+                onChanged: _type,
+              ),
+              if (query.isNotEmpty)
+                Semantics(
+                  button: true,
+                  label: l.picker_clear,
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      _field.clear();
+                      _type('');
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Icon(Icons.close, size: 14, color: n.textAt(0.6)),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(n.space('6'), 0, n.space('6'), 8),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: NocturneSegmented(
+              options: [l.picker_mushaf, l.picker_revelation],
+              selected: _order == ReadingOrder.mushaf ? 0 : 1,
+              onChanged: (i) => setState(
+                () =>
+                    _order = i == 0 ? ReadingOrder.mushaf : ReadingOrder.nuzul,
+              ),
+            ),
           ),
         ),
         Expanded(
@@ -179,18 +292,92 @@ class _SuraPickerState extends State<SuraPicker> {
               n.space('6'),
               n.space('8'),
             ),
-            itemCount: heads.length + rows.length + tail.length,
-            itemBuilder: (context, i) {
-              if (i < heads.length) return heads[i];
-              i -= heads.length;
-              if (i < rows.length) return _row(n, l, rows[i]);
-              return tail[i - rows.length];
-            },
+            itemCount: items.length,
+            itemBuilder: (context, i) => items[i](),
           ),
         ),
       ],
     );
   }
+
+  /// Nothing typed: the screen's own rows, then every sūra, headed where a
+  /// juz begins in written order and where Makkah gives way to Madinah in
+  /// the order of revelation.
+  List<Widget Function()> _browse(Nocturne n, AppLocalizations l) {
+    final rev = _order == ReadingOrder.nuzul;
+    final items = <Widget Function()>[
+      for (final w in widget.leading) () => w,
+      if (widget.leading.isNotEmpty)
+        () => _header(
+          n,
+          l.chooser_all(
+            rev ? l.picker_order_revelation : l.picker_order_mushaf,
+          ),
+        ),
+    ];
+    String? last;
+    for (final s in inOrder(widget.suras, _order)) {
+      if (widget.exclude.contains(s.id)) continue;
+      final head = rev
+          ? (s.madani ? l.picker_madani : l.picker_makki)
+          : l.picker_juz(juzOf(s.id * 1000 + 1));
+      // Written order opens under the list's own header, so its first juz
+      // goes unsaid; by revelation the first header is the first thing said.
+      if (head != last && (last != null || rev)) {
+        items.add(() => _header(n, head));
+      }
+      last = head;
+      items.add(() => _row(n, l, s));
+    }
+    return items;
+  }
+
+  /// Something typed: the reference it is, the sūras it names, the roots it
+  /// names and the ayas whose words hold it.
+  List<Widget Function()> _found(Nocturne n, AppLocalizations l, String query) {
+    final ref = switch (parseRef(query, widget.suras)) {
+      final id? when _offered(id) => id,
+      _ => null,
+    };
+    final suras = inOrder([
+      for (final s in searchSuras(widget.suras, query))
+        if (!widget.exclude.contains(s.id)) s,
+    ], _order);
+    final hits = _hits?.query == query ? _hits : null;
+    final roots = [
+      for (final r in hits?.roots ?? const <RootHit>[])
+        if (r.ayas.isNotEmpty) r,
+    ];
+    final words = ref != null ? const <AyaHit>[] : hits?.words ?? const [];
+    final items = <Widget Function()>[
+      if (ref != null) () => _goTo(n, l, ref),
+      if (suras.isNotEmpty) () => _header(n, l.picker_suras),
+      for (final s in suras) () => _row(n, l, s),
+      for (final r in roots) ...[
+        () => _header(n, l.picker_root(r.display, r.translit)),
+        for (final a in r.ayas) () => _aya(n, a),
+      ],
+      if (words.isNotEmpty) () => _header(n, l.picker_containing(query)),
+      for (final a in words) () => _aya(n, a),
+    ];
+    if (items.isEmpty) {
+      items.add(
+        () => Padding(
+          padding: EdgeInsets.only(top: n.space('4')),
+          child: Text(
+            l.chooser_no_match(query),
+            style: TextStyle(fontSize: 13, color: n.textAt(0.58)),
+          ),
+        ),
+      );
+    }
+    return items;
+  }
+
+  Widget _header(Nocturne n, String text) => Padding(
+    padding: const EdgeInsets.only(top: 16, bottom: 6),
+    child: NocturneKicker(text),
+  );
 
   Widget _goTo(Nocturne n, AppLocalizations l, int ref) {
     final sura = ref ~/ 1000;
@@ -235,8 +422,63 @@ class _SuraPickerState extends State<SuraPicker> {
     );
   }
 
+  /// An aya the search found: where it is, its Arabic, and its meaning in
+  /// the reader's language.
+  Widget _aya(Nocturne n, AyaHit a) {
+    final sura = widget.suras[a.id ~/ 1000 - 1];
+    final meaning = Localizations.localeOf(context).languageCode == 'fr'
+        ? a.fr
+        : a.en;
+    return InkWell(
+      key: ValueKey('found-${a.id}'),
+      onTap: () => widget.onRef(a.id),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: n.divider)),
+        ),
+        child: Row(
+          spacing: 12,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '${sura.nameEn} ${sura.id}:${a.id % 1000}',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  Text(
+                    a.ar,
+                    textDirection: TextDirection.rtl,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: Nocturne.arabicFamily,
+                      fontSize: 18,
+                      height: 1.6,
+                    ),
+                  ),
+                  Text(
+                    meaning,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11.5, color: n.textAt(0.58)),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 15, color: n.textAt(0.45)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _row(Nocturne n, AppLocalizations l, SuraEntry sura) {
     final below = widget.below?.call(sura);
+    final rev = _order == ReadingOrder.nuzul;
+    final place = sura.madani ? l.picker_madani : l.picker_makki;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -249,21 +491,15 @@ class _SuraPickerState extends State<SuraPicker> {
                 behavior: HitTestBehavior.opaque,
                 onTap: () => widget.onSura(sura),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: n.space('2')),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
                   child: Row(
-                    spacing: n.space('3'),
+                    spacing: 12,
                     children: [
                       SizedBox(
-                        width: 74,
+                        width: 30,
                         child: Text(
-                          sura.nameAr,
-                          textAlign: TextAlign.right,
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            fontFamily: Nocturne.arabicFamily,
-                            fontSize: 19,
-                            color: n.textAt(below != null ? 1 : 0.75),
-                          ),
+                          '${rev ? sura.revelationOrder : sura.id}',
+                          style: TextStyle(fontSize: 12, color: n.textAt(0.5)),
                         ),
                       ),
                       Expanded(
@@ -271,41 +507,56 @@ class _SuraPickerState extends State<SuraPicker> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  '${sura.id} · ${sura.nameEn}',
-                                  style: TextStyle(fontSize: 11, color: n.text),
-                                ),
-                                Text(
-                                  '${sura.understood} / ${sura.ayahCount}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: n.textAt(0.55),
+                                Expanded(
+                                  child: Text(
+                                    sura.nameEn,
+                                    style: const TextStyle(fontSize: 14),
                                   ),
                                 ),
+                                if (widget.progress)
+                                  Text(
+                                    '${sura.understood} / ${sura.ayahCount}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: n.textAt(0.55),
+                                    ),
+                                  ),
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            // The revelation order is the other way the app reads the
-                            // Qur'an, so a reader in that order can find their place
-                            // by it rather than by the written number. It is spelled
-                            // out because a bare number under a count of ayas reads
-                            // as a second count.
+                            const SizedBox(height: 2),
                             Text(
-                              l.index_revealed_nth(
-                                _ordinal(
-                                  Localizations.localeOf(context).languageCode,
-                                  sura.revelationOrder,
-                                ),
-                              ),
+                              [
+                                l.picker_sura_sub(sura.ayahCount, place),
+                                if (rev) l.picker_mushaf_n(sura.id),
+                              ].join(' · '),
                               style: TextStyle(
-                                fontSize: 10,
-                                color: n.textAt(0.42),
+                                fontSize: 11.5,
+                                color: n.textAt(0.55),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            _bar(n, sura),
+                            if (widget.progress) ...[
+                              const SizedBox(height: 4),
+                              // The revelation order is the other way the app
+                              // reads the Qur'an. It is spelled out because a
+                              // bare number under a count of ayas reads as a
+                              // second count.
+                              Text(
+                                l.index_revealed_nth(
+                                  ordinal(
+                                    Localizations.localeOf(context)
+                                        .languageCode,
+                                    sura.revelationOrder,
+                                  ),
+                                ),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: n.textAt(0.42),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              _bar(n, sura),
+                            ],
                           ],
                         ),
                       ),
@@ -347,7 +598,7 @@ class _SuraPickerState extends State<SuraPicker> {
 ///
 // ponytail: two languages, inline. A third locale means a real ordinal
 // formatter — reach for one then, not now.
-String _ordinal(String languageCode, int n) {
+String ordinal(String languageCode, int n) {
   if (languageCode == 'fr') return n == 1 ? '${n}re' : '${n}e';
   final suffix = n % 100 >= 11 && n % 100 <= 13
       ? 'th'

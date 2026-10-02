@@ -90,7 +90,7 @@ flowchart TB
 
 ### 1. The microphone is asked for before the prayer, never in it
 
-Two places ask: the voice panel in Settings, and the preparation screen, which shows "Allow microphone" and then the model's download right under "Follow my voice" until both are done ([prepare_screen.dart:739](../../../app/lib/features/prayer/prepare_screen.dart#L739-L758)). Once the model is on disk, the panel's `onReady` ticks "Follow my voice" without a second tap ([prepare_screen.dart:715](../../../app/lib/features/prayer/prepare_screen.dart#L715-L719), [settings_screen.dart:559](../../../app/lib/features/settings/settings_screen.dart#L559)). The answer is stored in the database, so the prayer screen only reads it. A device with no microphone is recorded as `unavailable`, which is different from a refusal.
+Two places ask: the voice panel in Settings, and the preparation screen, which shows "Allow microphone" and then the model's download right under "Follow my voice" until both are done ([prepare_screen.dart:745](../../../app/lib/features/prayer/prepare_screen.dart#L745-L764)). Once the model is on disk, the panel's `onReady` ticks "Follow my voice" without a second tap ([prepare_screen.dart:721](../../../app/lib/features/prayer/prepare_screen.dart#L721-L725), [settings_screen.dart:559](../../../app/lib/features/settings/settings_screen.dart#L559)). The answer is stored in the database, so the prayer screen only reads it. A device with no microphone is recorded as `unavailable`, which is different from a refusal.
 
 ```dart
 Future<MicPermission> askForMic(
@@ -450,7 +450,7 @@ A tap on the waiting screen begins the rakʿah too ([prayer_screen.dart:393](../
 
 ### 14. The voice hears a basmala the screen does not show
 
-A reciter says the basmala before a sūra, and the muṣḥaf does not number it, so the screen never shows it there. Left out of what the voice listens for, the only place a basmala fits is Al-Fātiḥa's first aya, and a reciter starting the passage was pulled back to the top of the prayer: "بسم الله" alone scored 0.83 on word 1. So `rakahOf` puts Al-Fātiḥa's first aya into what the voice hears just before the passage, except before At-Tawba, which is recited without one ([prayer_plan.dart:83](../../../app/lib/features/prayer/prayer_plan.dart#L83-L101)).
+A reciter says the basmala before a sūra, and the muṣḥaf does not number it, so the screen never shows it there. Left out of what the voice listens for, the only place a basmala fits is Al-Fātiḥa's first aya, and a reciter starting the passage was pulled back to the top of the prayer: "بسم الله" alone scored 0.83 on word 1. So `rakahOf` puts Al-Fātiḥa's first aya into what the voice hears just before the passage, except before At-Tawba, which is recited without one ([prayer_plan.dart:87](../../../app/lib/features/prayer/prayer_plan.dart#L87-L105)).
 
 ```mermaid
 flowchart LR

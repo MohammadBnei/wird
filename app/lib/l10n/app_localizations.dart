@@ -605,11 +605,77 @@ abstract class AppLocalizations {
   /// **'Rakʿah {rakah} · after Al-Fātiḥa'**
   String chooser_rakah(int rakah);
 
-  /// Placeholder of the chooser's search field.
+  /// Placeholder of the sūra picker's search field: a name, a reference, or words of an aya in Arabic, English or French, or a root.
   ///
   /// In en, this message translates to:
-  /// **'Search a sūra, or type 2:255'**
+  /// **'Sūra, 2:255, or words'**
   String get chooser_search;
+
+  /// What the × in the picker's search field does, for a screen reader.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the search'**
+  String get picker_clear;
+
+  /// Toggle in the sūra picker: list the sūras in written order.
+  ///
+  /// In en, this message translates to:
+  /// **'Muṣḥaf'**
+  String get picker_mushaf;
+
+  /// Toggle in the sūra picker: list the sūras in the order they were revealed.
+  ///
+  /// In en, this message translates to:
+  /// **'Revelation'**
+  String get picker_revelation;
+
+  /// Header in the sūra list, written order, where a new juz begins.
+  ///
+  /// In en, this message translates to:
+  /// **'Juzʾ {juz}'**
+  String picker_juz(int juz);
+
+  /// A sūra revealed in Makkah; also a header in the list by revelation.
+  ///
+  /// In en, this message translates to:
+  /// **'Makkī'**
+  String get picker_makki;
+
+  /// A sūra revealed in Madinah; also a header in the list by revelation.
+  ///
+  /// In en, this message translates to:
+  /// **'Madanī'**
+  String get picker_madani;
+
+  /// Under a sūra's name in the picker.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} ayas · {place}'**
+  String picker_sura_sub(int count, String place);
+
+  /// In the list by revelation: the sūra's written number.
+  ///
+  /// In en, this message translates to:
+  /// **'Muṣḥaf {number}'**
+  String picker_mushaf_n(int number);
+
+  /// Header over the sūras a search found, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'Sūras'**
+  String get picker_suras;
+
+  /// Header over the ayas whose Arabic, English or French holds the search.
+  ///
+  /// In en, this message translates to:
+  /// **'Ayas containing “{query}”'**
+  String picker_containing(String query);
+
+  /// Header over ayas carrying a word of the root the search named.
+  ///
+  /// In en, this message translates to:
+  /// **'Root {root} · {translit}'**
+  String picker_root(String root, String translit);
 
   /// A row offered when the search is a reference like 2:255.
   ///
@@ -623,28 +689,40 @@ abstract class AppLocalizations {
   /// **'Starts at this aya; you can widen it next'**
   String get chooser_go_to_hint;
 
-  /// Kicker above the chooser's suggestions, drawn in capitals.
-  ///
-  /// In en, this message translates to:
-  /// **'Suggested'**
-  String get chooser_suggested;
-
   /// Suggestion for the second rakʿah: repeat the first's passage.
   ///
   /// In en, this message translates to:
   /// **'Same as rakʿah 1'**
   String get chooser_same;
 
-  /// Suggestion: the next unread passage.
+  /// Kicker of the first rakʿah's suggestion card: the next unread passage, drawn in capitals.
   ///
   /// In en, this message translates to:
-  /// **'Continue where you left off'**
+  /// **'Continue'**
   String get chooser_continue;
 
-  /// Under a suggestion that was recited in an earlier prayer.
+  /// Beside 'Continue' on the suggestion card.
   ///
   /// In en, this message translates to:
-  /// **'Recently recited'**
+  /// **'Where you left off'**
+  String get chooser_left_off;
+
+  /// Kicker of a later rakʿah's suggestion card: the ayas after the previous rakʿah's passage, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'After rakʿah {rakah}'**
+  String chooser_after(int rakah);
+
+  /// Beside 'After rakʿah N': the passage it follows.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows {title}'**
+  String chooser_follows(String title);
+
+  /// Header over passages recited in earlier prayers, drawn in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
   String get chooser_recent;
 
   /// Suggestion: no passage in this rakʿah.
@@ -659,47 +737,77 @@ abstract class AppLocalizations {
   /// **'No passage in this rakʿah'**
   String get chooser_fatiha_only_hint;
 
-  /// Kicker above the full sūra list, drawn in capitals.
+  /// Header above the full sūra list, drawn in capitals, naming the order it is in.
   ///
   /// In en, this message translates to:
-  /// **'All sūras'**
-  String get chooser_all;
+  /// **'All sūras · {order}'**
+  String chooser_all(String order);
+
+  /// In 'All sūras · …'.
+  ///
+  /// In en, this message translates to:
+  /// **'Muṣḥaf order'**
+  String get picker_order_mushaf;
+
+  /// In 'All sūras · …'.
+  ///
+  /// In en, this message translates to:
+  /// **'revelation order'**
+  String get picker_order_revelation;
 
   /// Shown when the search finds nothing.
   ///
   /// In en, this message translates to:
-  /// **'No sūra matches “{query}”.'**
+  /// **'Nothing matches “{query}”.'**
   String chooser_no_match(String query);
 
-  /// The sūra at the top of the range step, as its number and name.
+  /// Under the sūra's name at the top of the range step.
   ///
   /// In en, this message translates to:
-  /// **'{number} · {name}'**
-  String range_sura(int number, String name);
+  /// **'{count} ayas · {place} · {order} of 114 revealed'**
+  String range_about(int count, String place, String order);
 
-  /// On the sūra card at the top of the range: goes back to the list of sūras.
+  /// Above the sūra's ayas in the range step, before a tap.
   ///
   /// In en, this message translates to:
-  /// **'Change'**
-  String get range_change_sura;
-
-  /// Above the grid of aya numbers.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap the first aya, then the last.'**
+  /// **'Tap the first aya, then the last'**
   String get range_tap_hint;
+
+  /// Above the sūra's ayas, once the first end of the range is tapped.
+  ///
+  /// In en, this message translates to:
+  /// **'Now tap the last aya'**
+  String get range_last_hint;
+
+  /// How much the range is, how long it takes, and the juz it starts in.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 aya} other{{count} ayas}} · {time} · Juzʾ {juz}'**
+  String range_meta(int count, String time, int juz);
+
+  /// What the thin bar over the range step does, for a screen reader.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to a point in the sūra'**
+  String get range_overview;
+
+  /// Chip: the range is three ayas from its first.
+  ///
+  /// In en, this message translates to:
+  /// **'3 ayas'**
+  String get range_three;
+
+  /// Chip: the range grows from its first aya to about a minute of recitation.
+  ///
+  /// In en, this message translates to:
+  /// **'~1 min'**
+  String get range_minute;
 
   /// Chip setting the range to the whole sūra.
   ///
   /// In en, this message translates to:
   /// **'Whole sūra'**
   String get range_whole;
-
-  /// End of the range card's meta line.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} ayas in the sūra'**
-  String range_in_sura(int count);
 
   /// Button choosing this range for the rakʿah.
   ///

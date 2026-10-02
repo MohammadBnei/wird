@@ -85,7 +85,7 @@ void main() {
     await pumpPrepare(tester, db: db, from: asr);
     await tester.tap(find.byKey(const Key('passage 1')));
     await tester.pumpAndSettle();
-    expect(find.text("103 · Al-'Asr"), findsOneWidget);
+    expect(find.text("Al-'Asr"), findsOneWidget);
     expect(find.text("Recite Al-'Asr"), findsOneWidget);
     // Two taps name a range: its first aya, then its last.
     await tester.tap(find.byKey(PassageChooser.aya(2)));
@@ -93,7 +93,7 @@ void main() {
     await tester.tap(find.byKey(PassageChooser.aya(3)));
     await tester.pumpAndSettle();
     expect(find.text("Recite Al-'Asr 2–3"), findsOneWidget);
-    // And the sūra is changed from the card at the top, not a back arrow.
+    // And the back arrow over the sūra's text leads to the list.
     await tester.tap(find.byKey(PassageChooser.changeSura));
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsOneWidget);
@@ -158,13 +158,10 @@ void main() {
     expect(find.textContaining('Al-Humazah'), findsOneWidget);
     await prayAndLeave(tester);
     expect(await db.query('set_prayers'), isEmpty);
-    expect(
-      (await db.query('prayer_history')).single['start_ayah_id'],
-      112001,
-    );
+    expect((await db.query('prayer_history')).single['start_ayah_id'], 112001);
   });
 
-  testWidgets('a reference typed in the search opens somewhere other than '
+  testWidgets('a reference typed in the search opens a range wider than '
       'the aya it names', (tester) async {
     await pumpPrepare(tester, db: db, from: asr);
     await openTheList(tester);
@@ -172,8 +169,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Go to Al-Baqarah 2:255'));
     await tester.pumpAndSettle();
-    expect(find.text('2 · Al-Baqarah'), findsOneWidget);
-    expect(find.text('Recite Al-Baqarah 255–257'), findsOneWidget);
+    expect(find.text('Al-Baqarah'), findsOneWidget);
+    expect(find.text('Recite Al-Baqarah 255'), findsOneWidget);
   });
 
   testWidgets('choosing a prayer leaves the rakʿah count where it was, and a '
@@ -253,5 +250,68 @@ void main() {
     await tester.enterText(find.byType(TextField), '1:1');
     await tester.pumpAndSettle();
     expect(find.textContaining('Go to'), findsNothing);
+  });
+
+  testWidgets('a later rakʿah is offered the first\'s passage again, but '
+      'not the ayas that follow it', (tester) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await tester.tap(find.byKey(const Key('passage 2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    expect(find.text('AFTER RAKʿAH 1'), findsOneWidget);
+    expect(find.text("Follows Al-'Asr"), findsOneWidget);
+    // Chosen from the card, the ayas open as text with their ends still
+    // movable, rather than being taken as they are.
+    await tester.tap(find.byKey(const Key('suggested')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(PassageChooser.aya(1)), findsOneWidget);
+  });
+
+  testWidgets('the range says nothing of how long it takes, and the second '
+      'tap is asked for as if it were the first', (tester) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await tester.tap(find.byKey(const Key('passage 1')));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining(RegExp(r'^3 ayas · about .* · Juzʾ 30$')),
+      findsOneWidget,
+    );
+    expect(find.text('Tap the first aya, then the last'), findsOneWidget);
+    await tester.tap(find.byKey(PassageChooser.aya(2)));
+    await tester.pumpAndSettle();
+    expect(find.text('Now tap the last aya'), findsOneWidget);
+    await tester.tap(find.text('3 ayas'));
+    await tester.pumpAndSettle();
+    expect(find.text("Recite Al-'Asr 2–3"), findsOneWidget);
+  });
+
+  testWidgets('the range step counts the pause marks of the muṣḥaf as words, '
+      'so it says a passage takes longer than Prepare says it does', (
+    tester,
+  ) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await openTheList(tester);
+    // 2:2 has seven words and two pause marks between them: nine at 40
+    // words a minute is about 15 s, seven is about 10.
+    await tester.enterText(find.byType(TextField), '2:2');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Go to Al-Baqarah 2:2'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 aya · about 10 s · Juzʾ 1'), findsOneWidget);
+  });
+
+  testWidgets('a rakʿah set to Al-Fātiḥa only reopens its chooser with '
+      'nothing to say what it recites', (tester) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await tester.tap(find.byKey(const Key('passage 2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Al-Fātiḥa only'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('passage 2')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('current')), findsOneWidget);
   });
 }

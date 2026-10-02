@@ -320,7 +320,50 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get chooser_search => 'Search a sūra, or type 2:255';
+  String get chooser_search => 'Sūra, 2:255, or words';
+
+  @override
+  String get picker_clear => 'Clear the search';
+
+  @override
+  String get picker_mushaf => 'Muṣḥaf';
+
+  @override
+  String get picker_revelation => 'Revelation';
+
+  @override
+  String picker_juz(int juz) {
+    return 'Juzʾ $juz';
+  }
+
+  @override
+  String get picker_makki => 'Makkī';
+
+  @override
+  String get picker_madani => 'Madanī';
+
+  @override
+  String picker_sura_sub(int count, String place) {
+    return '$count ayas · $place';
+  }
+
+  @override
+  String picker_mushaf_n(int number) {
+    return 'Muṣḥaf $number';
+  }
+
+  @override
+  String get picker_suras => 'Sūras';
+
+  @override
+  String picker_containing(String query) {
+    return 'Ayas containing “$query”';
+  }
+
+  @override
+  String picker_root(String root, String translit) {
+    return 'Root $root · $translit';
+  }
 
   @override
   String chooser_go_to(String ref) {
@@ -331,16 +374,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chooser_go_to_hint => 'Starts at this aya; you can widen it next';
 
   @override
-  String get chooser_suggested => 'Suggested';
-
-  @override
   String get chooser_same => 'Same as rakʿah 1';
 
   @override
-  String get chooser_continue => 'Continue where you left off';
+  String get chooser_continue => 'Continue';
 
   @override
-  String get chooser_recent => 'Recently recited';
+  String get chooser_left_off => 'Where you left off';
+
+  @override
+  String chooser_after(int rakah) {
+    return 'After rakʿah $rakah';
+  }
+
+  @override
+  String chooser_follows(String title) {
+    return 'Follows $title';
+  }
+
+  @override
+  String get chooser_recent => 'Recent';
 
   @override
   String get chooser_fatiha_only => 'Al-Fātiḥa only';
@@ -349,31 +402,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chooser_fatiha_only_hint => 'No passage in this rakʿah';
 
   @override
-  String get chooser_all => 'All sūras';
+  String chooser_all(String order) {
+    return 'All sūras · $order';
+  }
+
+  @override
+  String get picker_order_mushaf => 'Muṣḥaf order';
+
+  @override
+  String get picker_order_revelation => 'revelation order';
 
   @override
   String chooser_no_match(String query) {
-    return 'No sūra matches “$query”.';
+    return 'Nothing matches “$query”.';
   }
 
   @override
-  String range_sura(int number, String name) {
-    return '$number · $name';
+  String range_about(int count, String place, String order) {
+    return '$count ayas · $place · $order of 114 revealed';
   }
 
   @override
-  String get range_change_sura => 'Change';
+  String get range_tap_hint => 'Tap the first aya, then the last';
 
   @override
-  String get range_tap_hint => 'Tap the first aya, then the last.';
+  String get range_last_hint => 'Now tap the last aya';
+
+  @override
+  String range_meta(int count, String time, int juz) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ayas',
+      one: '1 aya',
+    );
+    return '$_temp0 · $time · Juzʾ $juz';
+  }
+
+  @override
+  String get range_overview => 'Jump to a point in the sūra';
+
+  @override
+  String get range_three => '3 ayas';
+
+  @override
+  String get range_minute => '~1 min';
 
   @override
   String get range_whole => 'Whole sūra';
-
-  @override
-  String range_in_sura(int count) {
-    return '$count ayas in the sūra';
-  }
 
   @override
   String range_recite(String title) {

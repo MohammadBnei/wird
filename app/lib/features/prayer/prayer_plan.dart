@@ -1,3 +1,7 @@
+import 'dart:math';
+
+import 'package:sqflite/sqflite.dart';
+
 import '../../data/sets.dart';
 import '../index/index_screen.dart';
 export '../index/sura_picker.dart' show foldLatin, parseRef, searchSuras;
@@ -123,4 +127,28 @@ String passageTitle(StudySet set, List<SuraEntry> suras) {
       first.number == 1 &&
       last.number == suras[first.surahId - 1].ayahCount;
   return whole ? first.surahNameEn : set.title;
+}
+
+/// The ayas after [set], as many as it holds, going on into the next sūra
+/// when it ends one: the second rakʿah's own passage, rather than the
+/// first's again. Null after an-Nās, and with no first passage.
+Future<StudySet?> passageAfter(
+  Database db,
+  StudySet? set,
+  ReadingOrder order,
+  List<SuraEntry> suras,
+) async {
+  if (set == null) return null;
+  final last = set.ayas.last;
+  final ends = last.number >= suras[last.surahId - 1].ayahCount;
+  if (ends && last.surahId == 114) return null;
+  final sura = ends ? last.surahId + 1 : last.surahId;
+  final from = ends ? 1 : last.number + 1;
+  final left = suras[sura - 1].ayahCount - from + 1;
+  return ayaSet(
+    db,
+    order,
+    sura * 1000 + from,
+    ayas: min(set.ayas.length, left),
+  );
 }

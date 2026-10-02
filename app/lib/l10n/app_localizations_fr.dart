@@ -320,7 +320,50 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get chooser_search => 'Chercher une sourate, ou taper 2:255';
+  String get chooser_search => 'Sourate, 2:255 ou mots';
+
+  @override
+  String get picker_clear => 'Effacer la recherche';
+
+  @override
+  String get picker_mushaf => 'Muṣḥaf';
+
+  @override
+  String get picker_revelation => 'Révélation';
+
+  @override
+  String picker_juz(int juz) {
+    return 'Juzʾ $juz';
+  }
+
+  @override
+  String get picker_makki => 'Mecquoise';
+
+  @override
+  String get picker_madani => 'Médinoise';
+
+  @override
+  String picker_sura_sub(int count, String place) {
+    return '$count versets · $place';
+  }
+
+  @override
+  String picker_mushaf_n(int number) {
+    return 'Muṣḥaf $number';
+  }
+
+  @override
+  String get picker_suras => 'Sourates';
+
+  @override
+  String picker_containing(String query) {
+    return 'Versets contenant « $query »';
+  }
+
+  @override
+  String picker_root(String root, String translit) {
+    return 'Racine $root · $translit';
+  }
 
   @override
   String chooser_go_to(String ref) {
@@ -331,16 +374,26 @@ class AppLocalizationsFr extends AppLocalizations {
   String get chooser_go_to_hint => 'Commence à ce verset ; vous pourrez l’élargir ensuite';
 
   @override
-  String get chooser_suggested => 'Suggestions';
-
-  @override
   String get chooser_same => 'Comme la rakʿa 1';
 
   @override
-  String get chooser_continue => 'Reprendre là où vous en étiez';
+  String get chooser_continue => 'Reprendre';
 
   @override
-  String get chooser_recent => 'Récité récemment';
+  String get chooser_left_off => 'Là où vous en étiez';
+
+  @override
+  String chooser_after(int rakah) {
+    return 'Après la rakʿa $rakah';
+  }
+
+  @override
+  String chooser_follows(String title) {
+    return 'Suit $title';
+  }
+
+  @override
+  String get chooser_recent => 'Récents';
 
   @override
   String get chooser_fatiha_only => 'Al-Fātiḥa seule';
@@ -349,31 +402,54 @@ class AppLocalizationsFr extends AppLocalizations {
   String get chooser_fatiha_only_hint => 'Pas de passage dans cette rakʿa';
 
   @override
-  String get chooser_all => 'Toutes les sourates';
+  String chooser_all(String order) {
+    return 'Toutes les sourates · $order';
+  }
+
+  @override
+  String get picker_order_mushaf => 'ordre du Muṣḥaf';
+
+  @override
+  String get picker_order_revelation => 'ordre de la révélation';
 
   @override
   String chooser_no_match(String query) {
-    return 'Aucune sourate ne correspond à « $query ».';
+    return 'Rien ne correspond à « $query ».';
   }
 
   @override
-  String range_sura(int number, String name) {
-    return '$number · $name';
+  String range_about(int count, String place, String order) {
+    return '$count versets · $place · $order révélée sur 114';
   }
 
   @override
-  String get range_change_sura => 'Changer';
+  String get range_tap_hint => 'Touchez le premier verset, puis le dernier';
 
   @override
-  String get range_tap_hint => 'Touchez le premier aya, puis le dernier.';
+  String get range_last_hint => 'Touchez maintenant le dernier verset';
+
+  @override
+  String range_meta(int count, String time, int juz) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count versets',
+      one: '1 verset',
+    );
+    return '$_temp0 · $time · Juzʾ $juz';
+  }
+
+  @override
+  String get range_overview => 'Aller à un point de la sourate';
+
+  @override
+  String get range_three => '3 versets';
+
+  @override
+  String get range_minute => '~1 min';
 
   @override
   String get range_whole => 'Sourate entière';
-
-  @override
-  String range_in_sura(int count) {
-    return '$count versets dans la sourate';
-  }
 
   @override
   String range_recite(String title) {

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/styles.css">
+<script src="_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)}
+a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
+.ar{font-family:"Scheherazade New",serif}
+</style>
+</helmet>
+
+<div style="position:relative;width:100%;height:100%;min-height:600px;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden">
+
+<sc-if value="{{ showRange }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Range" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--color-bg)">
+  <sc-if value="{{ isOne }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;padding:12px 18px 4px;display:flex;flex-direction:column;gap:10px">
+      <button onClick="{{ openList }}" style="height:44px;display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:var(--radius-lg);background:var(--color-surface);border:1px solid var(--color-divider);color:color-mix(in srgb,#e9e9ed 58%,transparent);font:inherit;font-size:14px;cursor:pointer;text-align:left">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="flex:none"><circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path></svg>
+        <span style="flex:1">Sūra, 2:255, juz 30, or words</span>
+        <span style="font-size:11.5px;color:var(--color-accent-300)">All 114</span>
+      </button>
+      <div onClick="{{ onQuick }}" style="display:flex;gap:6px;overflow-x:auto;margin:0 -18px;padding:0 18px 2px;scrollbar-width:none">
+        <sc-for list="{{ quick }}" as="c" hint-placeholder-count="5">
+          <button data-n="{{ c.n }}" style="flex:none;height:34px;display:flex;align-items:center;gap:5px;padding:0 12px;border-radius:17px;font:inherit;font-size:12.5px;white-space:nowrap;cursor:pointer;background:{{ c.bg }};color:{{ c.col }};border:1px solid {{ c.bd }}">
+            {{ c.name }}
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+  <div style="flex:none;display:flex;align-items:center;gap:6px;padding:8px 16px 4px 8px">
+    <sc-if value="{{ notOne }}" hint-placeholder-val="{{ true }}">
+      <button class="btn btn-icon btn-ghost" onClick="{{ toList }}" aria-label="Back to sūras" style="width:40px;height:40px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 5-7 7 7 7"></path></svg></button>
+    </sc-if>
+    <div style="flex:1;min-width:0;padding-left:10px">
+      <div style="font-size:16px">{{ suraName }}</div>
+      <div style="font-size:11.5px;margin-top:1px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ suraSub }}</div>
+    </div>
+  </div>
+
+  <div style="flex:1;min-height:0;overflow-y:auto;padding:6px 18px 12px">
+    <div style="padding:14px 16px;border-radius:var(--radius-lg);background:var(--color-surface)">
+      <div dir="rtl" class="ar" style="font-size:23px;line-height:1.9;text-wrap:pretty">
+        <sc-for list="{{ ayas }}" as="a" hint-placeholder-count="3">
+          <sc-if value="{{ a.has }}" hint-placeholder-val="{{ true }}"><span>{{ a.ar }} </span></sc-if>
+          <sc-if value="{{ a.none }}" hint-placeholder-val="{{ false }}"><span style="display:inline-block;vertical-align:middle;width:{{ a.skW }};height:9px;margin:0 2px;border-radius:5px;background:var(--color-neutral-800)"></span></sc-if>
+          <span style="color:var(--color-accent-300);font-size:19px">{{ a.glyph }} </span>
+        </sc-for>
+      </div>
+      <sc-if value="{{ hasMore }}" hint-placeholder-val="{{ false }}"><div style="margin-top:6px;font-size:11.5px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ moreLabel }}</div></sc-if>
+    </div>
+    <sc-if value="{{ missing }}" hint-placeholder-val="{{ false }}"><div style="margin-top:8px;font-size:11px;color:color-mix(in srgb,#e9e9ed 45%,transparent)">Grey lines: Arabic not in this mockup.</div></sc-if>
+  </div>
+
+  <div style="flex:none;padding:12px 18px 0;border-top:1px solid var(--color-divider)">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font-size:15px;color:var(--color-accent-200)">{{ refLabel }}</span>
+      <span style="flex:1;text-align:right;font-size:11.5px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ metaLabel }}</span>
+    </div>
+
+    <sc-if value="{{ hasOverview }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+        <div onClick="{{ onOverview }}" title="Move the zoom window" style="position:relative;flex:1;height:14px;cursor:pointer">
+          <div style="position:absolute;left:0;right:0;top:6px;height:2px;border-radius:1px;background:var(--color-neutral-800)"></div>
+                    <div style="position:absolute;top:0;height:14px;left:{{ ovWinL }};width:{{ ovWinW }};border-radius:3px;border:1px solid var(--color-neutral-500);box-sizing:border-box"></div>
+          <div style="position:absolute;top:5px;height:4px;border-radius:2px;left:{{ ovSelL }};width:{{ ovSelW }};min-width:3px;background:var(--color-accent)"></div>
+        </div>
+        <button onClick="{{ toggleWhole }}" style="flex:none;height:28px;padding:0 10px;border-radius:14px;font:inherit;font-size:11.5px;cursor:pointer;background:transparent;color:var(--color-accent-300);border:1px solid var(--color-neutral-700)">{{ zoomLabel }}</button>
+      </div>
+    </sc-if>
+
+    <div ref="{{ trackRef }}" onPointerDown="{{ onDown }}" onPointerMove="{{ onMove }}" onPointerUp="{{ onUp }}" onPointerCancel="{{ onUp }}" style="position:relative;height:64px;margin:6px 11px 0;touch-action:none;cursor:pointer;user-select:none">
+      <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="0"><div style="position:absolute;top:22px;width:1px;height:20px;left:{{ t.l }};background:var(--color-neutral-600)"></div></sc-for>
+      <div style="position:absolute;left:0;right:0;top:30px;height:4px;border-radius:2px;background:var(--color-neutral-800)"></div>
+            <sc-for list="{{ namedDots }}" as="d" hint-placeholder-count="0"><div title="{{ d.name }}" style="position:absolute;top:46px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;left:{{ d.l }};background:var(--color-accent-300)"></div></sc-for>
+      <div style="position:absolute;top:29px;height:6px;border-radius:3px;left:{{ selL }};width:{{ selW }};background:var(--color-accent);box-shadow:0 0 12px color-mix(in srgb,var(--color-accent) 50%,transparent)"></div>
+      <sc-if value="{{ showFromH }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;top:0;left:{{ fromL }};transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none">
+          <span style="font-size:11.5px;min-width:20px;text-align:center;color:var(--color-accent-100)">{{ from }}</span>
+          <span style="width:20px;height:20px;border-radius:50%;background:var(--color-bg);border:2px solid var(--color-accent);box-sizing:border-box"></span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ showToH }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;top:0;left:{{ toL }};transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none">
+          <span style="font-size:11.5px;min-width:20px;text-align:center;color:var(--color-accent-100)">{{ toLbl }}</span>
+          <span style="width:20px;height:20px;border-radius:50%;background:var(--color-bg);border:2px solid var(--color-accent);box-sizing:border-box"></span>
+        </div>
+      </sc-if>
+      <span style="position:absolute;left:0;bottom:0;font-size:10.5px;color:color-mix(in srgb,#e9e9ed 45%,transparent)">{{ w0 }}</span>
+      <span style="position:absolute;right:0;bottom:0;font-size:10.5px;color:color-mix(in srgb,#e9e9ed 45%,transparent)">{{ w1 }}</span>
+    </div>
+
+    <div onClick="{{ onHelper }}" style="display:flex;gap:6px;overflow-x:auto;margin:10px -18px 0;padding:0 18px 2px;scrollbar-width:none">
+      <sc-for list="{{ helpers }}" as="h" hint-placeholder-count="4">
+        <button data-h="{{ h.k }}" style="flex:none;height:32px;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:16px;font:inherit;font-size:12.5px;white-space:nowrap;cursor:pointer;background:{{ h.bg }};color:{{ h.col }};border:1px solid {{ h.bd }}">
+          <sc-if value="{{ h.isToggle }}" hint-placeholder-val="{{ false }}"><span style="width:12px;height:12px;border-radius:3px;box-sizing:border-box;border:1.5px solid {{ h.bd }};background:{{ h.box }}"></span></sc-if>
+          {{ h.label }}
+        </button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="flex:none;display:flex;gap:8px;padding:12px 18px 16px">
+        <button class="btn btn-primary" onClick="{{ confirm }}" style="flex:1;height:50px;font-size:14.5px">{{ reciteLabel }}</button>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showText }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Text" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--color-bg)">
+  <div style="flex:none;display:flex;align-items:center;gap:6px;padding:8px 16px 4px 8px">
+    <button class="btn btn-icon btn-ghost" onClick="{{ toList }}" aria-label="Back to sūras" style="width:40px;height:40px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 5-7 7 7 7"></path></svg></button>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:16px">{{ suraName }}</div>
+      <div style="font-size:11.5px;margin-top:1px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ suraSub }}</div>
+    </div>
+  </div>
+  <div style="flex:none;padding:4px 18px 10px">
+    <div onClick="{{ onTextOverview }}" title="Jump to a point in the sūra" style="position:relative;height:16px;cursor:pointer">
+      <div style="position:absolute;left:0;right:0;top:7px;height:2px;border-radius:1px;background:var(--color-neutral-800)"></div>
+            <div style="position:absolute;top:5px;height:6px;border-radius:3px;left:{{ ovSelL }};width:{{ ovSelW }};min-width:4px;background:var(--color-accent)"></div>
+    </div>
+    <div style="margin-top:6px;display:flex;align-items:baseline;gap:10px">
+      <span style="font-size:13px;color:var(--color-accent-200)">{{ textHint }}</span>
+      <span style="flex:1;text-align:right;font-size:11.5px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ metaLabel }}</span>
+    </div>
+  </div>
+  <div ref="{{ textRef }}" onClick="{{ onTextTap }}" style="position:relative;flex:1;min-height:0;overflow-y:auto;padding:0 18px 16px;display:flex;flex-direction:column;gap:6px">
+    <sc-for list="{{ tRows }}" as="r" hint-placeholder-count="6">
+      <sc-if value="{{ r.isBrk }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 2px 2px">
+          <span style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:{{ r.brkCol }}">{{ r.brkLabel }}</span>
+          <span style="flex:1;height:1px;background:linear-gradient(90deg,var(--color-divider),transparent)"></span>
+        </div>
+      </sc-if>
+      <div data-aya="{{ r.a }}" style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border-radius:var(--radius-lg);cursor:pointer;background:{{ r.bg }};border:1px solid {{ r.bd }}">
+        <div style="flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px">
+          <span style="min-width:26px;height:22px;padding:0 4px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:11px;font-size:11px;background:{{ r.numBg }};color:{{ r.numCol }}">{{ r.a }}</span>
+                  </div>
+        <div style="flex:1;min-width:0">
+          <sc-if value="{{ r.has }}" hint-placeholder-val="{{ true }}"><div dir="rtl" class="ar" style="font-size:21px;line-height:1.8;text-wrap:pretty">{{ r.ar }}</div></sc-if>
+          <sc-if value="{{ r.none }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;padding:8px 0 4px"><span style="width:100%;height:8px;border-radius:4px;background:var(--color-neutral-800)"></span><span style="width:{{ r.skW }};height:8px;border-radius:4px;background:var(--color-neutral-800)"></span></div></sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="flex:none;border-top:1px solid var(--color-divider);padding-top:10px">
+    <div onClick="{{ onHelper }}" style="display:flex;gap:6px;overflow-x:auto;padding:0 18px 2px;scrollbar-width:none">
+      <sc-for list="{{ helpers }}" as="h" hint-placeholder-count="4">
+        <button data-h="{{ h.k }}" style="flex:none;height:32px;padding:0 12px;border-radius:16px;font:inherit;font-size:12.5px;white-space:nowrap;cursor:pointer;background:{{ h.bg }};color:{{ h.col }};border:1px solid {{ h.bd }}">{{ h.label }}</button>
+      </sc-for>
+    </div>
+    <div style="display:flex;gap:8px;padding:12px 18px 16px">
+            <button class="btn btn-primary" onClick="{{ confirm }}" style="flex:1;height:50px;font-size:14.5px">{{ reciteLabel }}</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Sūras" style="position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;background:var(--color-bg)">
+  <div style="flex:none;display:flex;align-items:center;gap:6px;padding:8px 16px 4px 8px">
+    <button class="btn btn-icon btn-ghost" onClick="{{ closeList }}" aria-label="Close" style="width:40px;height:40px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:16px">Choose a passage</div>
+      <div style="font-size:11.5px;margin-top:1px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">Rakʿah {{ rak }} · after Al-Fātiḥa</div>
+    </div>
+  </div>
+  <div style="flex:none;padding:6px 18px 8px">
+    <div style="display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:var(--radius-lg);background:var(--color-surface);border:1px solid var(--color-divider)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="flex:none;opacity:.6"><circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path></svg>
+      <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Sūra, 2:255, juz 30, or words" style="flex:1;min-width:0;height:100%;background:transparent;border:0;outline:none;color:var(--color-text);font:inherit;font-size:14px">
+      <sc-if value="{{ hasQ }}" hint-placeholder-val="{{ false }}"><button onClick="{{ clearQ }}" aria-label="Clear" style="flex:none;width:28px;height:28px;border:0;background:transparent;color:inherit;cursor:pointer;opacity:.6"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></sc-if>
+    </div>
+  </div>
+  <div style="flex:none;display:flex;gap:6px;padding:0 18px 8px">
+    <div onClick="{{ onOrder }}" style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border-radius:var(--radius-lg);background:var(--color-surface)">
+      <button data-o="mushaf" style="height:34px;border-radius:6px;font:inherit;font-size:12.5px;cursor:pointer;background:{{ oM.bg }};color:{{ oM.col }};border:1px solid {{ oM.bd }}">Muṣḥaf</button>
+      <button data-o="rev" style="height:34px;border-radius:6px;font:inherit;font-size:12.5px;cursor:pointer;background:{{ oR.bg }};color:{{ oR.col }};border:1px solid {{ oR.bd }}">Revelation</button>
+    </div>
+      </div>
+  <div onClick="{{ onListTap }}" style="flex:1;min-height:0;overflow-y:auto;padding:0 18px 20px">
+    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="10">
+      <sc-if value="{{ r.isHdr }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px 0 6px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:color-mix(in srgb,#e9e9ed 55%,transparent)">{{ r.label }}</div>
+      </sc-if>
+      <sc-if value="{{ r.isSugg }}" hint-placeholder-val="{{ false }}">
+        <div data-k="{{ r.k }}" style="margin-top:6px;padding:12px 14px;border-radius:var(--radius-lg);background:var(--color-accent-900);border:1px solid var(--color-accent-700);cursor:pointer">
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-300)">{{ r.kicker }}</span>
+            <span style="flex:1;text-align:right;font-size:11.5px;color:color-mix(in srgb,#e9e9ed 62%,transparent)">{{ r.sub }}</span>
+          </div>
+          <div style="margin-top:4px;font-size:15px;color:var(--color-accent-100)">{{ r.title }}</div>
+          <sc-if value="{{ r.hasAr }}" hint-placeholder-val="{{ false }}"><div dir="rtl" class="ar" style="margin-top:4px;font-size:19px;line-height:1.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.ar }}</div></sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ r.isHit }}" hint-placeholder-val="{{ false }}">
+        <div data-k="{{ r.k }}" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px">{{ r.title }}</div>
+            <sc-if value="{{ r.hasAr }}" hint-placeholder-val="{{ false }}"><div dir="rtl" class="ar" style="margin-top:2px;font-size:18px;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.ar }}</div></sc-if>
+            <div style="font-size:11.5px;margin-top:2px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">{{ r.sub }}</div>
+          </div>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none;opacity:.45"><path d="m9 5 7 7-7 7"></path></svg>
+        </div>
+      </sc-if>
+      <sc-if value="{{ r.isSura }}" hint-placeholder-val="{{ true }}">
+        <div data-k="{{ r.k }}" style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+          <span style="flex:none;width:30px;font-size:12px;color:color-mix(in srgb,#e9e9ed 50%,transparent)">{{ r.numLabel }}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px">{{ r.name }}</div>
+            <div style="font-size:11.5px;margin-top:2px;color:color-mix(in srgb,#e9e9ed 55%,transparent)">{{ r.sub }}</div>
+          </div>
+                  </div>
+      </sc-if>
+    </sc-for>
+    <sc-if value="{{ noHits }}" hint-placeholder-val="{{ false }}">
+      <p style="margin:20px 0 0;font-size:13px;color:color-mix(in srgb,#e9e9ed 58%,transparent)">Nothing matches “{{ q }}”.</p>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showDone }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:0 28px;background:var(--color-bg)">
+  <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-300)">Rakʿah {{ rak }}</div>
+  <div style="font:500 22px var(--font-heading)">{{ doneTitle }}</div>
+  <sc-if value="{{ doneHasAr }}" hint-placeholder-val="{{ false }}"><div dir="rtl" class="ar" style="font-size:22px;line-height:1.8">{{ doneAr }}</div></sc-if>
+  <div style="font-size:12px;color:color-mix(in srgb,#e9e9ed 55%,transparent)">Returns to Prepare in the full flow.</div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btn btn-secondary" onClick="{{ change }}" style="height:40px">Adjust</button>
+    <button class="btn btn-ghost" onClick="{{ again }}" style="height:40px">Choose another</button>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:412,&quot;height&quot;:812},&quot;flow&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;text&quot;,&quot;list&quot;,&quot;one&quot;],&quot;default&quot;:&quot;text&quot;,&quot;tsType&quot;:&quot;'list' | 'text' | 'one'&quot;,&quot;label&quot;:&quot;Flow&quot;},&quot;rakah&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;min&quot;:1,&quot;max&quot;:4,&quot;tsType&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Rakʿah&quot;},&quot;prev&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{num:number,from:number,to:number} | null&quot;},&quot;sameLabel&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onPick&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(sel:{num,from,to} | {same:true} | {none:true}) =&gt; void&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+const SURAS = 'Al-Fātiḥa 7|Al-Baqara 286|Āl ʿImrān 200|An-Nisāʾ 176|Al-Māʾida 120|Al-Anʿām 165|Al-Aʿrāf 206|Al-Anfāl 75|At-Tawba 129|Yūnus 109|Hūd 123|Yūsuf 111|Ar-Raʿd 43|Ibrāhīm 52|Al-Ḥijr 99|An-Naḥl 128|Al-Isrāʾ 111|Al-Kahf 110|Maryam 98|Ṭā Hā 135|Al-Anbiyāʾ 112|Al-Ḥajj 78|Al-Muʾminūn 118|An-Nūr 64|Al-Furqān 77|Ash-Shuʿarāʾ 227|An-Naml 93|Al-Qaṣaṣ 88|Al-ʿAnkabūt 69|Ar-Rūm 60|Luqmān 34|As-Sajda 30|Al-Aḥzāb 73|Sabaʾ 54|Fāṭir 45|Yā Sīn 83|Aṣ-Ṣāffāt 182|Ṣād 88|Az-Zumar 75|Ghāfir 85|Fuṣṣilat 54|Ash-Shūrā 53|Az-Zukhruf 89|Ad-Dukhān 59|Al-Jāthiya 37|Al-Aḥqāf 35|Muḥammad 38|Al-Fatḥ 29|Al-Ḥujurāt 18|Qāf 45|Adh-Dhāriyāt 60|Aṭ-Ṭūr 49|An-Najm 62|Al-Qamar 55|Ar-Raḥmān 78|Al-Wāqiʿa 96|Al-Ḥadīd 29|Al-Mujādila 22|Al-Ḥashr 24|Al-Mumtaḥana 13|Aṣ-Ṣaff 14|Al-Jumuʿa 11|Al-Munāfiqūn 11|At-Taghābun 18|Aṭ-Ṭalāq 12|At-Taḥrīm 12|Al-Mulk 30|Al-Qalam 52|Al-Ḥāqqa 52|Al-Maʿārij 44|Nūḥ 28|Al-Jinn 28|Al-Muzzammil 20|Al-Muddaththir 56|Al-Qiyāma 40|Al-Insān 31|Al-Mursalāt 50|An-Nabaʾ 40|An-Nāziʿāt 46|ʿAbasa 42|At-Takwīr 29|Al-Infiṭār 19|Al-Muṭaffifīn 36|Al-Inshiqāq 25|Al-Burūj 22|Aṭ-Ṭāriq 17|Al-Aʿlā 19|Al-Ghāshiya 26|Al-Fajr 30|Al-Balad 20|Ash-Shams 15|Al-Layl 21|Aḍ-Ḍuḥā 11|Ash-Sharḥ 8|At-Tīn 8|Al-ʿAlaq 19|Al-Qadr 5|Al-Bayyina 8|Az-Zalzala 8|Al-ʿĀdiyāt 11|Al-Qāriʿa 11|At-Takāthur 8|Al-ʿAṣr 3|Al-Humaza 9|Al-Fīl 5|Quraysh 4|Al-Māʿūn 7|Al-Kawthar 3|Al-Kāfirūn 6|An-Naṣr 3|Al-Masad 5|Al-Ikhlāṣ 4|Al-Falaq 5|An-Nās 6'
+  .split('|').map((s, i) => { const k = s.lastIndexOf(' '); return { n: i + 1, name: s.slice(0, k), count: Number(s.slice(k + 1)) }; });
+const REV = [96,68,73,74,1,111,81,87,92,89,93,94,103,100,108,102,107,109,105,113,114,112,53,80,97,91,85,95,106,101,75,104,77,50,90,86,54,38,7,72,36,25,35,19,20,56,26,27,28,17,10,11,12,15,6,37,31,34,39,40,41,42,43,44,45,46,51,88,18,16,71,14,21,23,32,52,67,69,70,78,79,82,84,30,29,83,2,8,3,33,60,4,99,57,47,13,55,76,65,98,59,24,22,63,58,49,66,64,61,62,48,5,9,110];
+const REV_IDX = {}; REV.forEach((n, i) => REV_IDX[n] = i + 1);
+const MADANI_FROM = 87;
+const JUZ = [[1,1],[2,142],[2,253],[3,93],[4,24],[4,148],[5,82],[6,111],[7,88],[8,41],[9,93],[11,6],[12,53],[15,1],[17,1],[18,75],[21,1],[23,1],[25,21],[27,56],[29,46],[33,31],[36,28],[39,32],[41,47],[46,1],[51,31],[58,1],[67,1],[78,1]];
+const juzOf = (n, a) => { let j = 0; JUZ.forEach(([s, v], i) => { if (n > s || (n === s && a >= v)) j = i; }); return j + 1; };
+const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[ʿʾ'’`\-\s]/g, '').toLowerCase();
+SURAS.forEach(s => { s.key = norm(s.name); s.bare = s.key.replace(/^(al|an|ar|as|at|ad|ash|az|adh)/, ''); s.madani = REV_IDX[s.n] >= MADANI_FROM; });
+const arNorm = (s) => s.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g, '').replace(/[ٱأإآ]/g, 'ا').replace(/ى/g, 'ي');
+
+const TXT = {
+  1: ['بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ','ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ','ٱلرَّحْمَٰنِ ٱلرَّحِيمِ','مَٰلِكِ يَوْمِ ٱلدِّينِ','إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ','ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ','صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ'],
+  2: { 1: 'الٓمٓ', 2: 'ذَٰلِكَ ٱلْكِتَٰبُ لَا رَيْبَ فِيهِ هُدًى لِّلْمُتَّقِينَ', 3: 'ٱلَّذِينَ يُؤْمِنُونَ بِٱلْغَيْبِ وَيُقِيمُونَ ٱلصَّلَوٰةَ وَمِمَّا رَزَقْنَٰهُمْ يُنفِقُونَ', 4: 'وَٱلَّذِينَ يُؤْمِنُونَ بِمَآ أُنزِلَ إِلَيْكَ وَمَآ أُنزِلَ مِن قَبْلِكَ وَبِٱلْءَاخِرَةِ هُمْ يُوقِنُونَ', 5: 'أُو۟لَٰٓئِكَ عَلَىٰ هُدًى مِّن رَّبِّهِمْ وَأُو۟لَٰٓئِكَ هُمُ ٱلْمُفْلِحُونَ',
+    255: 'ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ لَا تَأْخُذُهُۥ سِنَةٌ وَلَا نَوْمٌ لَّهُۥ مَا فِى ٱلسَّمَٰوَٰتِ وَمَا فِى ٱلْأَرْضِ مَن ذَا ٱلَّذِى يَشْفَعُ عِندَهُۥٓ إِلَّا بِإِذْنِهِۦ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ وَلَا يُحِيطُونَ بِشَىْءٍ مِّنْ عِلْمِهِۦٓ إِلَّا بِمَا شَآءَ وَسِعَ كُرْسِيُّهُ ٱلسَّمَٰوَٰتِ وَٱلْأَرْضَ وَلَا يَـُٔودُهُۥ حِفْظُهُمَا وَهُوَ ٱلْعَلِىُّ ٱلْعَظِيمُ',
+    256: 'لَآ إِكْرَاهَ فِى ٱلدِّينِ قَد تَّبَيَّنَ ٱلرُّشْدُ مِنَ ٱلْغَىِّ فَمَن يَكْفُرْ بِٱلطَّٰغُوتِ وَيُؤْمِنۢ بِٱللَّهِ فَقَدِ ٱسْتَمْسَكَ بِٱلْعُرْوَةِ ٱلْوُثْقَىٰ لَا ٱنفِصَامَ لَهَا وَٱللَّهُ سَمِيعٌ عَلِيمٌ',
+    285: 'ءَامَنَ ٱلرَّسُولُ بِمَآ أُنزِلَ إِلَيْهِ مِن رَّبِّهِۦ وَٱلْمُؤْمِنُونَ كُلٌّ ءَامَنَ بِٱللَّهِ وَمَلَٰٓئِكَتِهِۦ وَكُتُبِهِۦ وَرُسُلِهِۦ لَا نُفَرِّقُ بَيْنَ أَحَدٍ مِّن رُّسُلِهِۦ وَقَالُوا۟ سَمِعْنَا وَأَطَعْنَا غُفْرَانَكَ رَبَّنَا وَإِلَيْكَ ٱلْمَصِيرُ',
+    286: 'لَا يُكَلِّفُ ٱللَّهُ نَفْسًا إِلَّا وُسْعَهَا لَهَا مَا كَسَبَتْ وَعَلَيْهَا مَا ٱكْتَسَبَتْ رَبَّنَا لَا تُؤَاخِذْنَآ إِن نَّسِينَآ أَوْ أَخْطَأْنَا رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَآ إِصْرًا كَمَا حَمَلْتَهُۥ عَلَى ٱلَّذِينَ مِن قَبْلِنَا رَبَّنَا وَلَا تُحَمِّلْنَا مَا لَا طَاقَةَ لَنَا بِهِۦ وَٱعْفُ عَنَّا وَٱغْفِرْ لَنَا وَٱرْحَمْنَآ أَنتَ مَوْلَىٰنَا فَٱنصُرْنَا عَلَى ٱلْقَوْمِ ٱلْكَٰفِرِينَ' },
+  97: ['إِنَّآ أَنزَلْنَٰهُ فِى لَيْلَةِ ٱلْقَدْرِ','وَمَآ أَدْرَىٰكَ مَا لَيْلَةُ ٱلْقَدْرِ','لَيْلَةُ ٱلْقَدْرِ خَيْرٌ مِّنْ أَلْفِ شَهْرٍ','تَنَزَّلُ ٱلْمَلَٰٓئِكَةُ وَٱلرُّوحُ فِيهَا بِإِذْنِ رَبِّهِم مِّن كُلِّ أَمْرٍ','سَلَٰمٌ هِىَ حَتَّىٰ مَطْلَعِ ٱلْفَجْرِ'],
+  103: ['وَٱلْعَصْرِ','إِنَّ ٱلْإِنسَٰنَ لَفِى خُسْرٍ','إِلَّا ٱلَّذِينَ ءَامَنُوا۟ وَعَمِلُوا۟ ٱلصَّٰلِحَٰتِ وَتَوَاصَوْا۟ بِٱلْحَقِّ وَتَوَاصَوْا۟ بِٱلصَّبْرِ'],
+  105: ['أَلَمْ تَرَ كَيْفَ فَعَلَ رَبُّكَ بِأَصْحَٰبِ ٱلْفِيلِ','أَلَمْ يَجْعَلْ كَيْدَهُمْ فِى تَضْلِيلٍ','وَأَرْسَلَ عَلَيْهِمْ طَيْرًا أَبَابِيلَ','تَرْمِيهِم بِحِجَارَةٍ مِّن سِجِّيلٍ','فَجَعَلَهُمْ كَعَصْفٍ مَّأْكُولٍۭ'],
+  106: ['لِإِيلَٰفِ قُرَيْشٍ','إِۦلَٰفِهِمْ رِحْلَةَ ٱلشِّتَآءِ وَٱلصَّيْفِ','فَلْيَعْبُدُوا۟ رَبَّ هَٰذَا ٱلْبَيْتِ','ٱلَّذِىٓ أَطْعَمَهُم مِّن جُوعٍ وَءَامَنَهُم مِّنْ خَوْفٍۭ'],
+  107: ['أَرَءَيْتَ ٱلَّذِى يُكَذِّبُ بِٱلدِّينِ','فَذَٰلِكَ ٱلَّذِى يَدُعُّ ٱلْيَتِيمَ','وَلَا يَحُضُّ عَلَىٰ طَعَامِ ٱلْمِسْكِينِ','فَوَيْلٌ لِّلْمُصَلِّينَ','ٱلَّذِينَ هُمْ عَن صَلَاتِهِمْ سَاهُونَ','ٱلَّذِينَ هُمْ يُرَآءُونَ','وَيَمْنَعُونَ ٱلْمَاعُونَ'],
+  108: ['إِنَّآ أَعْطَيْنَٰكَ ٱلْكَوْثَرَ','فَصَلِّ لِرَبِّكَ وَٱنْحَرْ','إِنَّ شَانِئَكَ هُوَ ٱلْأَبْتَرُ'],
+  109: ['قُلْ يَٰٓأَيُّهَا ٱلْكَٰفِرُونَ','لَآ أَعْبُدُ مَا تَعْبُدُونَ','وَلَآ أَنتُمْ عَٰبِدُونَ مَآ أَعْبُدُ','وَلَآ أَنَا۠ عَابِدٌ مَّا عَبَدتُّمْ','وَلَآ أَنتُمْ عَٰبِدُونَ مَآ أَعْبُدُ','لَكُمْ دِينُكُمْ وَلِىَ دِينِ'],
+  110: ['إِذَا جَآءَ نَصْرُ ٱللَّهِ وَٱلْفَتْحُ','وَرَأَيْتَ ٱلنَّاسَ يَدْخُلُونَ فِى دِينِ ٱللَّهِ أَفْوَاجًا','فَسَبِّحْ بِحَمْدِ رَبِّكَ وَٱسْتَغْفِرْهُ إِنَّهُۥ كَانَ تَوَّابًۢا'],
+  111: ['تَبَّتْ يَدَآ أَبِى لَهَبٍ وَتَبَّ','مَآ أَغْنَىٰ عَنْهُ مَالُهُۥ وَمَا كَسَبَ','سَيَصْلَىٰ نَارًا ذَاتَ لَهَبٍ','وَٱمْرَأَتُهُۥ حَمَّالَةَ ٱلْحَطَبِ','فِى جِيدِهَا حَبْلٌ مِّن مَّسَدٍۭ'],
+  112: ['قُلْ هُوَ ٱللَّهُ أَحَدٌ','ٱللَّهُ ٱلصَّمَدُ','لَمْ يَلِدْ وَلَمْ يُولَدْ','وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ'],
+  113: ['قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ','مِن شَرِّ مَا خَلَقَ','وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ','وَمِن شَرِّ ٱلنَّفَّٰثَٰتِ فِى ٱلْعُقَدِ','وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ'],
+  114: ['قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ','مَلِكِ ٱلنَّاسِ','إِلَٰهِ ٱلنَّاسِ','مِن شَرِّ ٱلْوَسْوَاسِ ٱلْخَنَّاسِ','ٱلَّذِى يُوَسْوِسُ فِى صُدُورِ ٱلنَّاسِ','مِنَ ٱلْجِنَّةِ وَٱلنَّاسِ']
+};
+const arOf = (n, a) => { const t = TXT[n]; if (!t) return ''; return (Array.isArray(t) ? t[a - 1] : t[a]) || ''; };
+const EN = {
+  '1:1': 'in the name of god the most gracious the most merciful', '1:2': 'all praise lord of the worlds', '1:4': 'master of the day of judgment', '1:5': 'you alone we worship and ask for help', '1:6': 'guide us to the straight path', '1:7': 'path of those you favoured not of those astray',
+  '2:2': 'this is the book no doubt guidance for the god-conscious', '2:3': 'believe in the unseen establish the prayer spend', '2:4': 'believe in what was sent down certain of the hereafter', '2:5': 'upon guidance from their lord successful',
+  '2:255': 'the ever-living sustainer no slumber nor sleep throne kursi extends over heavens and earth', '2:256': 'no compulsion in religion firmest handhold', '2:285': 'the messenger believes we hear and obey your forgiveness', '2:286': 'no soul burdened beyond capacity do not take us to task if we forget pardon forgive have mercy',
+  '97:1': 'we sent it down on the night of decree power qadr', '97:3': 'better than a thousand months', '97:5': 'peace until the rising of dawn',
+  '103:1': 'by time', '103:2': 'mankind is in loss', '103:3': 'except those who believe do righteous deeds urge truth patience',
+  '105:1': 'companions of the elephant', '105:3': 'birds in flocks', '106:1': 'quraysh', '106:2': 'journey of winter and summer', '106:3': 'lord of this house', '106:4': 'fed them against hunger safe from fear',
+  '107:2': 'repulses the orphan', '107:5': 'heedless of their prayer', '108:1': 'we have given you abundance kawthar', '108:2': 'pray to your lord and sacrifice',
+  '109:1': 'say o disbelievers', '109:6': 'to you your religion to me mine', '110:1': 'when the victory of god comes', '110:3': 'glorify praise seek forgiveness',
+  '111:1': 'abu lahab', '112:1': 'say he is god the one', '112:2': 'the eternal refuge', '112:3': 'he neither begets nor is born', '112:4': 'none is equal to him',
+  '113:1': 'i seek refuge in the lord of daybreak', '113:5': 'envier when he envies', '114:1': 'lord of mankind', '114:4': 'whisperer who withdraws'
+};
+const NAMED = [
+  { name: 'Āyat al-Kursī', num: 2, from: 255, to: 255, kw: 'ayatalkursi kursi throne' },
+  { name: 'Last two of al-Baqara', num: 2, from: 285, to: 286, kw: 'amanarrasul khawatim lastofbaqara' },
+  { name: 'Close of Āl ʿImrān', num: 3, from: 190, to: 200, kw: 'creationofheavens lastofimran' },
+  { name: 'Opening of al-Kahf', num: 18, from: 1, to: 10, kw: 'kahf cave firstten' },
+  { name: 'Āyat an-Nūr', num: 24, from: 35, to: 35, kw: 'ayatannur light niche lamp' },
+  { name: 'Close of al-Ḥashr', num: 59, from: 22, to: 24, kw: 'hashr names' }
+];
+const BRK = {};
+const brk = (n) => {
+  if (BRK[n]) return BRK[n];
+  const c = SURAS[n - 1].count; const set = new Set([1]);
+  if (c > 12) { const L = [7, 9, 6, 11, 8, 10]; let a = 1, i = n; while (true) { a += L[i++ % L.length]; if (a > c - 3) break; set.add(a); } }
+  NAMED.filter(p => p.num === n).forEach(p => { set.add(p.from); if (p.to < c) set.add(p.to + 1); });
+  return BRK[n] = [...set].sort((x, y) => x - y);
+};
+const MEM0 = {};
+const RECENT0 = [{ num: 2, from: 1, to: 3 }, { num: 67, from: 1, to: 10 }, { num: 103, from: 1, to: 3 }];
+const WIN = 30;
+const MUTED = 'color-mix(in srgb,#e9e9ed 58%,transparent)';
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const chipSt = (sel) => sel ? { bg: 'var(--color-accent-900)', col: 'var(--color-accent-100)', bd: 'var(--color-accent)' } : { bg: 'var(--color-surface)', col: 'var(--color-text)', bd: 'var(--color-divider)' };
+const toAr = (n) => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+const rng = (f, t) => f === t ? String(f) : f + '–' + t;
+const titleOf = (x) => { const s = SURAS[x.num - 1]; return x.from === 1 && x.to === s.count ? s.name : s.name + ' ' + rng(x.from, x.to); };
+const words = (n, a) => { const t = arOf(n, a); return t ? t.split(/\s+/).length : (SURAS[n - 1].count > 100 ? 15 : 9); };
+const secsOf = (x) => { let w = 0; for (let a = x.from; a <= x.to; a++) w += words(x.num, a); return Math.round(w * 0.55); };
+const fmtT = (s) => s < 60 ? '~' + Math.max(5, Math.round(s / 5) * 5) + ' s' : '~' + Math.floor(s / 60) + ' min' + (s % 60 >= 15 ? ' ' + Math.round((s % 60) / 15) * 15 + ' s' : '');
+const metaOf = (x) => { const k = x.to - x.from + 1; return k + (k === 1 ? ' aya' : ' ayas') + ' · ' + fmtT(secsOf(x)); };
+const isFull = (mem, n) => (mem[n] || []).some(([a, b]) => a <= 1 && b >= SURAS[n - 1].count);
+const nextAfter = (x) => { const c = SURAS[x.num - 1].count; if (x.to < c) return { num: x.num, from: x.to + 1, to: Math.min(c, x.to + 3) }; const n = x.num % 114 + 1; const c2 = SURAS[n - 1].count; return { num: n, from: 1, to: c2 <= 20 ? c2 : 3 }; };
+
+class Component extends DCLogic {
+  state = { step: null, overlay: false, order: 'mushaf', heart: false, q: '', num: 2, from: 4, to: 6, w0: 1, whole: false, snap: true, drag: null, anchor: null, mem: MEM0, recent: RECENT0, picked: null, scrollTo: null };
+  trackRef = React.createRef();
+  textRef = React.createRef();
+
+  flow() { return ['list', 'text', 'one'].includes(this.props.flow) ? this.props.flow : 'text'; }
+  rak() { return Number(this.props.rakah) || 1; }
+  step() { return this.state.step ?? (this.flow() === 'one' ? 'range' : 'list'); }
+
+  componentDidUpdate() {
+    const a = this.state.scrollTo, el = this.textRef.current;
+    if (a && el) { const row = el.querySelector('[data-aya="' + a + '"]'); if (row) el.scrollTop = Math.max(0, row.offsetTop - 70); this.setState({ scrollTo: null }); }
+  }
+
+  win() { const { num, w0, whole } = this.state; const c = SURAS[num - 1].count; return whole || c <= WIN ? [1, c] : [w0, Math.min(c, w0 + WIN - 1)]; }
+  setSel(num, from, to, extra = {}) {
+    const c = SURAS[num - 1].count; from = clamp(from, 1, c); to = clamp(to, from, c);
+    const s = this.state; let w0 = s.w0;
+    const inside = num === s.num && from > w0 && to < w0 + WIN - 1;
+    if (!inside) w0 = clamp(to - from >= WIN - 6 ? from - 2 : from - 8, 1, Math.max(1, c - WIN + 1));
+    this.setState({ num, from, to, w0, ...extra });
+  }
+  defaultFor(num) {
+    const s = SURAS[num - 1]; if (s.count <= 20) return [1, s.count];
+    const r = this.state.recent.find(x => x.num === num); if (r && r.to < s.count) return [r.to + 1, Math.min(s.count, r.to + 3)];
+    const b = brk(num); return [1, (b[1] || s.count + 1) - 1];
+  }
+  open(num, from, to) {
+    if (from == null) [from, to] = this.defaultFor(num);
+    this.setSel(num, from, to, { step: 'range', overlay: false, q: '', anchor: null, whole: false, scrollTo: this.flow() === 'text' ? from : null });
+    this.setState({ w0: clamp(from - 8, 1, Math.max(1, SURAS[num - 1].count - WIN + 1)) });
+  }
+  passageOf(a) { const { num } = this.state; const b = brk(num), c = SURAS[num - 1].count; let s = 1; b.forEach(x => { if (x <= a) s = x; }); const nx = b.find(x => x > s); return [s, nx ? nx - 1 : c]; }
+  ayaAt(x) { const r = this.trackRef.current.getBoundingClientRect(); const [w0, w1] = this.win(); const n = w1 - w0 + 1; return w0 + clamp(Math.floor((x - r.left) / r.width * n), 0, n - 1); }
+  applyDrag(h, a) { const { from, to } = this.state; if (h === 'from') this.setState({ from: Math.min(a, to) }); else this.setState({ to: Math.max(a, from) }); }
+  snapped(from, to) {
+    const { num } = this.state; const c = SURAS[num - 1].count; const b = brk(num); const ends = b.slice(1).map(x => x - 1).concat(c);
+    const near = (v, list) => { let best = v, d = 4; list.forEach(x => { if (Math.abs(x - v) < d) { d = Math.abs(x - v); best = x; } }); return best; };
+    const f = near(from, b); return [f, Math.max(f, near(to, ends))];
+  }
+  toggleRangeMem() {
+    const { num, from, to } = this.state; const mem = { ...this.state.mem }; let r = (mem[num] || []).slice();
+    const covered = r.some(([a, b]) => a <= from && b >= to);
+    if (covered) { const out = []; r.forEach(([a, b]) => { if (b < from || a > to) out.push([a, b]); else { if (a < from) out.push([a, from - 1]); if (b > to) out.push([to + 1, b]); } }); r = out; }
+    else { r.push([from, to]); r.sort((x, y) => x[0] - y[0]); const m = []; r.forEach(([a, b]) => { const l = m[m.length - 1]; if (l && a <= l[1] + 1) l[1] = Math.max(l[1], b); else m.push([a, b]); }); r = m; }
+    if (r.length) mem[num] = r; else delete mem[num];
+    this.setState({ mem });
+  }
+
+  searchRows(q) {
+    const rows = [], t = q.trim(); const nq = norm(t);
+    const ref = t.match(/^(\d{1,3})\s*[:. ]\s*(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?$/);
+    if (ref) { const n = Number(ref[1]); if (n >= 1 && n <= 114) { const c = SURAS[n - 1].count; const f = clamp(Number(ref[2]), 1, c); const to = ref[3] ? clamp(Number(ref[3]), f, c) : f; const x = { num: n, from: f, to }; rows.push({ isHit: true, k: 'r:' + n + ':' + f + ':' + to, title: 'Go to ' + titleOf(x), ar: arOf(n, f), hasAr: !!arOf(n, f), sub: n + ':' + rng(f, to) + ' · widen it on the next screen' }); } }
+    const jz = t.match(/^(juz|juzʾ|juzu|j|para)\s*(\d{1,2})$/i);
+    if (jz) { const j = Number(jz[2]); if (j >= 1 && j <= 30) { const [n, a] = JUZ[j - 1]; rows.push({ isHit: true, k: 'r:' + n + ':' + a + ':' + Math.min(SURAS[n - 1].count, a + 2), title: 'Juzʾ ' + j, ar: arOf(n, a), hasAr: !!arOf(n, a), sub: 'Starts at ' + SURAS[n - 1].name + ' ' + n + ':' + a }); } }
+    const named = nq.length >= 2 ? NAMED.filter(p => norm(p.name).includes(nq) || p.kw.includes(nq)) : [];
+    if (named.length) { rows.push({ isHdr: true, label: 'Named passages' }); named.forEach(p => rows.push({ isHit: true, k: 'r:' + p.num + ':' + p.from + ':' + p.to, title: p.name, ar: arOf(p.num, p.from), hasAr: !!arOf(p.num, p.from), sub: SURAS[p.num - 1].name + ' ' + p.num + ':' + rng(p.from, p.to) })); }
+    const num = /^\d{1,3}$/.test(t) ? Number(t) : 0;
+    const suras = SURAS.filter(s => (num && s.n === num) || (nq.length && !num && (s.key.includes(nq) || s.bare.startsWith(nq))));
+    if (suras.length) { rows.push({ isHdr: true, label: 'Sūras' }); suras.slice(0, 12).forEach(s => rows.push(this.suraRow(s))); }
+    if (t.length >= 3 && !ref) {
+      const aq = arNorm(t), eq = t.toLowerCase(), hits = [];
+      Object.keys(TXT).forEach(nk => { const n = Number(nk); const c = SURAS[n - 1].count; for (let a = 1; a <= c; a++) { const ar = arOf(n, a); if (!ar && !EN[n + ':' + a]) continue; const en = EN[n + ':' + a] || ''; if ((ar && arNorm(ar).includes(aq)) || (en && en.includes(eq))) hits.push({ n, a, ar, en }); } });
+      if (hits.length) { rows.push({ isHdr: true, label: 'Ayas containing “' + t + '”' }); hits.slice(0, 6).forEach(h => rows.push({ isHit: true, k: 'r:' + h.n + ':' + h.a + ':' + h.a, title: SURAS[h.n - 1].name + ' ' + h.n + ':' + h.a, ar: h.ar, hasAr: !!h.ar, sub: h.en })); }
+    }
+    return rows;
+  }
+  suraRow(s) {
+    const st = this.state; const r = st.mem[s.n] || []; const full = isFull(st.mem, s.n); const part = !full && r.length > 0;
+    const rev = st.order === 'rev';
+    const sub = [s.count + ' ayas', rev ? 'Muṣḥaf ' + s.n : null, s.madani ? 'Madanī' : 'Makkī'].filter(Boolean).join(' · ');
+    return { isSura: true, n: s.n, k: 's:' + s.n, numLabel: rev ? REV_IDX[s.n] : s.n, name: s.name, sub, starW: full ? '17px' : part ? '8.5px' : '0px', starStroke: full || part ? 'var(--color-accent-300)' : 'var(--color-neutral-600)' };
+  }
+  listRows() {
+    const st = this.state;
+    if (st.q.trim()) return this.searchRows(st.q);
+    const rows = []; const rak = this.rak();
+    if (!st.heart) {
+      const base = rak > 1 ? (this.props.prev || { num: 2, from: 1, to: 3 }) : st.recent[0];
+      const nx = nextAfter(base); const ar = arOf(nx.num, nx.from);
+      rows.push({ isSugg: true, k: 'r:' + nx.num + ':' + nx.from + ':' + nx.to, kicker: rak > 1 ? 'After rakʿah ' + (rak - 1) : 'Continue', title: titleOf(nx), sub: rak > 1 ? 'Follows ' + titleOf(base) : 'Where you left off', ar, hasAr: !!ar });
+      if (this.props.sameLabel) rows.push({ isHit: true, k: 'x:same', title: 'Same as rakʿah 1', sub: this.props.sameLabel, hasAr: false });
+      rows.push({ isHit: true, k: 'x:none', title: 'Al-Fātiḥa only', sub: 'No passage in this rakʿah', hasAr: false });
+      rows.push({ isHdr: true, label: 'Recent' });
+      st.recent.slice(0, 3).forEach(x => rows.push({ isHit: true, k: 'r:' + x.num + ':' + x.from + ':' + x.to, title: titleOf(x), sub: metaOf(x), hasAr: false }));
+    }
+    const rev = st.order === 'rev';
+    const list = rev ? REV.map(n => SURAS[n - 1]) : SURAS;
+    rows.push({ isHdr: true, label: 'All sūras · ' + (rev ? 'revelation order' : 'Muṣḥaf order') });
+    let lastHdr = '';
+    list.forEach(s => {
+      if (st.heart && !(st.mem[s.n] || []).length) return;
+      if (!st.heart) { const h = rev ? (s.madani ? 'Madanī' : 'Makkī') : 'Juzʾ ' + juzOf(s.n, 1); if (h !== lastHdr) { if (lastHdr || rev) rows.push({ isHdr: true, label: h }); lastHdr = h; } }
+      rows.push(this.suraRow(s));
+    });
+    return rows;
+  }
+
+  renderVals() {
+    const st = this.state; const flow = this.flow(); const step = this.step();
+    const s = SURAS[st.num - 1]; const c = s.count; const x = { num: st.num, from: st.from, to: st.to };
+    const [w0, w1] = this.win(); const n = w1 - w0 + 1; const pct = (a) => ((a - w0) / n * 100) + '%';
+    const ov = (a) => ((a - 1) / c * 100) + '%';
+    const memR = st.mem[st.num] || [];
+    const rangeMem = memR.some(([a, b]) => a <= st.from && b >= st.to);
+    const k = st.to - st.from + 1;
+    const shown = []; for (let a = st.from; a <= Math.min(st.to, st.from + 7); a++) { const ar = arOf(st.num, a); shown.push({ a, ar, has: !!ar, none: !ar, glyph: '﴿' + toAr(a) + '﴾', skW: (40 + (a * 37) % 50) + '%' }); }
+    const [pf, pt] = this.passageOf(st.from);
+    const helpers = [];
+    if (flow !== 'text') helpers.push({ k: 'snap', label: 'Snap to passages', isToggle: true, ...chipSt(false), box: st.snap ? 'var(--color-accent)' : 'transparent', bd: st.snap ? 'var(--color-accent)' : 'var(--color-neutral-600)' });
+    helpers.push({ k: 'passage', label: 'This passage ' + rng(pf, pt), ...chipSt(st.from === pf && st.to === pt) });
+    helpers.push({ k: 'three', label: '3 ayas', ...chipSt(k === 3) });
+    helpers.push({ k: 'min', label: '~1 min', ...chipSt(false) });
+    if (c <= 40) helpers.push({ k: 'whole', label: 'Whole sūra', ...chipSt(st.from === 1 && st.to === c) });
+    NAMED.forEach((p, i) => { if (p.num === st.num) helpers.push({ k: 'n:' + i, label: p.name, ...chipSt(st.from === p.from && st.to === p.to) }); });
+    helpers.forEach(h => { if (h.box === undefined) { h.box = 'transparent'; h.isToggle = false; } });
+
+    const breaks = new Set(brk(st.num));
+    const tRows = flow === 'text' && step === 'range' ? Array.from({ length: c }, (_, i) => {
+      const a = i + 1; const ar = arOf(st.num, a); const inS = a >= st.from && a <= st.to; const anc = st.anchor === a;
+      const nm = NAMED.find(p => p.num === st.num && p.from === a);
+      return { a, ar, has: !!ar, none: !ar, skW: (35 + (a * 37) % 50) + '%', mem: memR.some(([p, q]) => a >= p && a <= q),
+        isBrk: a > 1 && breaks.has(a), brkLabel: nm ? nm.name : 'Passage · ' + st.num + ':' + a, brkCol: nm ? 'var(--color-accent-300)' : 'color-mix(in srgb,#e9e9ed 45%,transparent)',
+        bg: anc ? 'var(--color-accent-800)' : inS ? 'var(--color-accent-900)' : 'transparent', bd: inS ? 'var(--color-accent-700)' : 'transparent',
+        numBg: inS ? 'var(--color-accent)' : 'var(--color-neutral-800)', numCol: inS ? 'var(--color-bg)' : MUTED };
+    }) : [];
+
+    const quickNums = [...new Set([st.num, ...st.recent.map(r => r.num), 36, 67, 18, 112, 113, 114, 1])].slice(0, 9);
+    const p = st.picked;
+    return {
+      rak: this.rak(), isOne: flow === 'one', notOne: flow !== 'one',
+      showList: (flow !== 'one' && step === 'list') || (flow === 'one' && st.overlay),
+      showRange: flow !== 'text' && (step === 'range' || (flow === 'one' && step !== 'done')),
+      showText: flow === 'text' && step === 'range',
+      showDone: step === 'done',
+      q: st.q, hasQ: !!st.q, heart: st.heart,
+      onQ: (e) => this.setState({ q: e.target.value }), clearQ: () => this.setState({ q: '' }),
+      oM: chipSt(st.order === 'mushaf'), oR: chipSt(st.order === 'rev'), hSt: chipSt(st.heart),
+      onOrder: (e) => { const b = e.target.closest('[data-o]'); if (b) this.setState({ order: b.getAttribute('data-o') }); },
+      toggleHeart: () => this.setState(s2 => ({ heart: !s2.heart })),
+      rows: this.listRows(), noHits: !!st.q.trim() && this.searchRows(st.q).length === 0,
+      onListTap: (e) => {
+        const sb = e.target.closest('[data-star]');
+        if (sb) { const nn = Number(sb.getAttribute('data-star')); const mem = { ...st.mem }; if ((mem[nn] || []).length) delete mem[nn]; else mem[nn] = [[1, SURAS[nn - 1].count]]; this.setState({ mem }); return; }
+        const r = e.target.closest('[data-k]'); if (!r) return; const parts = r.getAttribute('data-k').split(':');
+        if (parts[0] === 'x') { if (this.props.onPick) this.props.onPick({ [parts[1]]: true }); return; }
+        if (parts[0] === 's') this.open(Number(parts[1])); else this.open(Number(parts[1]), Number(parts[2]), Number(parts[3]));
+      },
+      closeList: () => { if (flow === 'one') this.setState({ overlay: false, q: '' }); else if (this.props.onClose) this.props.onClose(); },
+      openList: () => this.setState({ overlay: true }),
+      toList: () => this.setState({ step: 'list', anchor: null }),
+      quick: quickNums.map(nn => ({ n: nn, name: SURAS[nn - 1].name, star: (st.mem[nn] || []).length > 0, ...chipSt(nn === st.num) })),
+      onQuick: (e) => { const b = e.target.closest('[data-n]'); if (b) this.open(Number(b.getAttribute('data-n'))); },
+      suraName: s.name,
+      suraSub: (flow === 'text' ? '' : 'Rakʿah ' + this.rak() + ' · ') + c + ' ayas · ' + (s.madani ? 'Madanī' : 'Makkī') + ' · revealed ' + REV_IDX[s.n] + ' of 114',
+      ayas: shown, hasMore: k > 8, moreLabel: '+ ' + (k - 8) + ' more ayas', missing: shown.some(a => a.none),
+      refLabel: st.num + ':' + rng(st.from, st.to), metaLabel: metaOf(x) + ' · Juzʾ ' + juzOf(st.num, st.from),
+      hasOverview: c > WIN, zoomLabel: st.whole ? 'Zoom in' : 'All ' + c,
+      ovWinL: ov(w0), ovWinW: (n / c * 100) + '%', ovSelL: ov(st.from), ovSelW: (k / c * 100) + '%',
+      ovMem: memR.map(([a, b]) => ({ l: ov(a), w: ((b - a + 1) / c * 100) + '%' })),
+      onOverview: (e) => { const r = e.currentTarget.getBoundingClientRect(); const a = 1 + Math.floor((e.clientX - r.left) / r.width * c); this.setState({ whole: false, w0: clamp(a - WIN / 2, 1, c - WIN + 1) }); },
+      toggleWhole: () => this.setState(s2 => ({ whole: !s2.whole, w0: clamp(s2.from - 8, 1, Math.max(1, c - WIN + 1)) })),
+      trackRef: this.trackRef, w0, w1,
+      ticks: brk(st.num).filter(b => b > w0 && b <= w1).map(b => ({ l: pct(b) })),
+      memBands: memR.filter(([a, b]) => b >= w0 && a <= w1).map(([a, b]) => { const l = Math.max(a, w0), r = Math.min(b, w1) + 1; return { l: pct(l), w: ((r - l) / n * 100) + '%' }; }),
+      namedDots: NAMED.filter(p2 => p2.num === st.num && p2.from >= w0 && p2.from <= w1).map(p2 => ({ name: p2.name, l: ((p2.from - w0 + 0.5) / n * 100) + '%' })),
+      selL: pct(Math.max(st.from, w0)), selW: (Math.max(0, Math.min(st.to, w1) + 1 - Math.max(st.from, w0)) / n * 100) + '%',
+      showFromH: st.from >= w0 && st.from <= w1, showToH: st.to >= w0 && st.to <= w1 && st.to !== st.from,
+      fromL: ((st.from - w0 + (st.to === st.from ? 0.5 : 0)) / n * 100) + '%', toL: pct(st.to + 1),
+      from: st.from, toLbl: st.to,
+      onDown: (e) => { e.currentTarget.setPointerCapture(e.pointerId); const a = this.ayaAt(e.clientX); const h = a < st.from ? 'from' : a > st.to ? 'to' : (a - st.from <= st.to - a ? 'from' : 'to'); this.setState({ drag: h }); this.applyDrag(h, a); },
+      onMove: (e) => { if (this.state.drag) this.applyDrag(this.state.drag, this.ayaAt(e.clientX)); },
+      onUp: () => { if (!this.state.drag) return; let { from, to } = this.state; if (this.state.snap) [from, to] = this.snapped(from, to); this.setSel(this.state.num, from, to, { drag: null }); },
+      helpers,
+      onHelper: (e) => {
+        const b = e.target.closest('[data-h]'); if (!b) return; const h = b.getAttribute('data-h');
+        let f = st.from, t = st.to;
+        if (h === 'snap') { this.setState({ snap: !st.snap }); return; }
+        if (h === 'passage') [f, t] = [pf, pt];
+        else if (h === 'three') t = f + 2;
+        else if (h === 'min') { t = f; while (t < c && secsOf({ num: st.num, from: f, to: t }) < 60) t++; }
+        else if (h === 'whole') [f, t] = [1, c];
+        else if (h.startsWith('m:')) { const q = h.split(':'); f = Number(q[1]); t = Number(q[2]); }
+        else if (h.startsWith('n:')) { const p2 = NAMED[Number(h.slice(2))]; f = p2.from; t = p2.to; }
+        this.setSel(st.num, f, t, { anchor: null, scrollTo: flow === 'text' ? f : null });
+      },
+      rangeMem, memFill: rangeMem ? 'var(--color-accent-300)' : 'none', toggleMem: () => this.toggleRangeMem(),
+      reciteLabel: 'Recite ' + titleOf(x),
+      confirm: () => { const pk = { ...x }; const recent = [pk, ...st.recent.filter(r => r.num !== pk.num)].slice(0, 4); if (this.props.onPick) { this.props.onPick(pk); return; } this.setState({ picked: pk, recent, step: 'done' }); },
+      doneTitle: p ? titleOf(p) : '', doneAr: p ? arOf(p.num, p.from) : '', doneHasAr: !!(p && arOf(p.num, p.from)),
+      change: () => this.setState({ step: 'range' }),
+      again: () => this.setState(flow === 'one' ? { step: 'range', overlay: true } : { step: 'list' }),
+      textRef: this.textRef, tRows,
+      textHint: st.anchor != null ? 'Now tap the last aya' : 'Tap the first aya, then the last',
+      onTextTap: (e) => { const r = e.target.closest('[data-aya]'); if (!r) return; const a = Number(r.getAttribute('data-aya')); if (st.anchor == null) this.setState({ from: a, to: a, anchor: a }); else this.setSel(st.num, Math.min(a, st.anchor), Math.max(a, st.anchor), { anchor: null }); },
+      onTextOverview: (e) => { const r = e.currentTarget.getBoundingClientRect(); const a = clamp(1 + Math.floor((e.clientX - r.left) / r.width * c), 1, c); this.setState({ scrollTo: a }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
