@@ -128,7 +128,10 @@ void main() {
       for (var n = 1; n <= 19; n++) 96000 + n,
     ]);
     final walked = {
-      ...await pathsToKeep(db, ReadingOrder.nuzul, walking),
+      for (final t in await tracksFor(db, [
+        for (final aya in walking.ayas) aya.id,
+      ]))
+        t.relPath,
       ...windowPaths(alAlaq, 96006),
     }.toList();
     // Downloading is real file work, which only runs outside the fake-async

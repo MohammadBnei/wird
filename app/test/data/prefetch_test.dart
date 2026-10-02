@@ -35,14 +35,11 @@ void main() {
   test('the set the reader jumped away from goes on downloading behind them, '
       'over the aya they asked for', () async {
     final dir = await tempAudioDir();
-    final walking = (await nextSet(db, ReadingOrder.nuzul))!;
-    final walk = await pathsToKeep(db, ReadingOrder.nuzul, walking);
-    final visited = (await pathsToKeep(
-      db,
-      ReadingOrder.nuzul,
-      (await ayaSet(db, ReadingOrder.nuzul, 4082))!,
-      onTheWalk: false,
-    )).single;
+    final walk = windowPaths(
+      await tracksFor(db, [for (var n = 1; n <= 10; n++) 96000 + n]),
+      96001,
+    );
+    final visited = (await tracksFor(db, [4082])).single.relPath;
 
     final cdn = HeldCdn();
     final cache = AudioCache(dir, fetch: cdn.call);
@@ -53,10 +50,7 @@ void main() {
     await leaving;
 
     expect(walk, hasLength(10));
-    expect(cdn.served, [
-      walk.first.split('/').last,
-      visited.split('/').last,
-    ]);
+    expect(cdn.served, [walk.first.split('/').last, visited.split('/').last]);
   });
 
   test('the aya the reader asked for drags the set the walk would have served '

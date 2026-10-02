@@ -7,7 +7,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
-import 'package:wird/data/sets.dart';
 
 import '../corpus.dart';
 import '../offline.dart';
@@ -185,19 +184,13 @@ void main() {
     }, reason: 'the stale files are gone, so the cache really did evict');
   });
 
-  test('the set the reader will be handed next is evicted before they are '
-      'ever served it', () async {
+  test('the stretch ahead of the open aya is evicted before the reader '
+      'reaches it', () async {
     final dir = await tempAudioDir();
-    final current = await nextSet(db, ReadingOrder.nuzul);
-    final ahead = await nextSet(
-      db,
-      ReadingOrder.nuzul,
-      alsoUnderstood: {for (final aya in current!.ayas) aya.id},
-    );
-    final aheadPaths = [
-      for (final t in await tracksFor(db, [for (final a in ahead!.ayas) a.id]))
-        t.relPath,
-    ];
+    final tracks = await tracksFor(db, [
+      for (var n = 1; n <= 19; n++) 96000 + n,
+    ]);
+    final keep = windowPaths(tracks, 96001);
 
     final old = DateTime.now().subtract(const Duration(days: 1));
     for (var i = 0; i < 20; i++) {
@@ -206,20 +199,20 @@ void main() {
         ..setLastModifiedSync(old);
     }
 
-    // What screen 1a downloads when it opens the set, against a cap that
-    // cannot hold it: everything unpinned goes.
+    // What screen 1a downloads when it opens 96:1, against a cap that cannot
+    // hold it: everything unpinned goes.
     await AudioCache(
       dir,
       capBytes: 3 * 1024,
       fetch: FakeCdn().call,
-    ).prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
+    ).prefetch(keep);
 
-    expect(aheadPaths, hasLength(ahead.ayas.length));
-    for (final path in aheadPaths) {
+    expect(keep, hasLength(aheadAyas));
+    for (final path in keep) {
       expect(
         AudioCache(dir).cached(path),
         isNotNull,
-        reason: '$path is the next set, gone before the reader reached it',
+        reason: '$path is ahead of the reader, gone before they reached it',
       );
     }
   });
@@ -394,16 +387,9 @@ void main() {
 
   test('the words of the set are not fetched for a reader who asked to hear '
       'each word alone, so a tapped word is silent offline', () async {
-    final set = (await nextSet(db, ReadingOrder.nuzul))!;
     final cdn = FakeCdn();
     await AudioCache(await tempAudioDir(), fetch: cdn.call).prefetch(
-      await pathsToKeep(
-        db,
-        ReadingOrder.nuzul,
-        set,
-        onTheWalk: false,
-        wordByWord: true,
-      ),
+      windowPaths(await tracksFor(db, firstSet), 96001, wordByWord: true),
     );
     expect(cdn.served, contains('${wordAudioOrigin}wbw/096_001_001.mp3'));
     expect(
