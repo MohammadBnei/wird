@@ -15,7 +15,6 @@ import '../../fonts.dart';
 import '../../offline.dart';
 import '../../player.dart';
 import '../../wird.dart';
-import 'study_jump_test.dart' show settleDownloads;
 
 void main() {
   late Database db;
@@ -63,6 +62,28 @@ void main() {
     }
   }
 
+  /// Runs real and fake time in turns until the reading screen's set is on
+  /// the phone in [folder]'s voice. A fixed number of turns downloaded the
+  /// set on a Mac and not on the slower CI runner, where the play button was
+  /// still dark when the test pressed it.
+  Future<void> untilReady(WidgetTester tester, String folder) async {
+    for (var i = 0; i < 300; i++) {
+      final recitation = Wird.of(tester.element(playButton())).recitation;
+      // The button, not only the player: the screen redraws it when the
+      // download it awaited lands, and a press before that is a dark button.
+      if (recitation.ready &&
+          recitation.tracks.first.relPath.startsWith(folder) &&
+          tester.widget<IconButton>(playButton()).onPressed != null) {
+        return;
+      }
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pumpAndSettle();
+    }
+    fail('the set never arrived in $folder');
+  }
+
   Future<void> openStudy(WidgetTester tester) async {
     players = FakePlayers();
     JustAudioPlatform.instance = players;
@@ -78,7 +99,7 @@ void main() {
         cache: AudioCache(dir, fetch: cdn.call),
       ),
     );
-    await settleDownloads(tester);
+    await untilReady(tester, 'Husary_Muallim_128kbps');
   }
 
   testWidgets('a reciter picked after pausing the set is never downloaded, so '
@@ -88,7 +109,7 @@ void main() {
     await press(tester, playButton());
 
     await Wird.of(tester.element(playButton())).prefs.setReciter('alafasy');
-    await settleDownloads(tester);
+    await untilReady(tester, 'Alafasy_128kbps');
 
     expect(
       cdn.served,
