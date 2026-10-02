@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
@@ -37,5 +38,26 @@ func apk(store *modelStore, key string, log *slog.Logger) http.HandlerFunc {
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		http.Redirect(w, r, signed, http.StatusFound)
+	}
+}
+
+// Which release /download/android hands out, so the page can say so beside its
+// button. WIRD_APK_VERSION is written by the same apk.yml step that writes
+// WIRD_APK_KEY, so the two never name different builds.
+const apkVersionPath = "GET /download/android/version"
+
+func apkVersion(version string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		if version == "" {
+			// Nothing published, or published before the version was recorded:
+			// the page then says nothing rather than a version it cannot know.
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		// Short, because a release changes it and a stale number beside the
+		// button would name a build the button no longer serves.
+		w.Header().Set("Cache-Control", "max-age=300")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"version": version})
 	}
 }

@@ -11,6 +11,7 @@ import '../../data/senses.dart';
 import '../../data/sets.dart';
 import '../../data/speech.dart';
 import '../../l10n/app_localizations.dart';
+import '../report/report.dart' show appVersion;
 import '../../theme/nocturne.dart';
 import 'voice_check.dart';
 import '../../widgets/nocturne_button.dart';
@@ -275,6 +276,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // app — waits on an account.
               _section(n, l.settingsAccount),
               AccountPanel(db: wird.db),
+              // Which build this is, last and quiet: what a reader reads out
+              // when asked, and what tells them an update arrived. `dev` on
+              // anything the release workflow did not build.
+              SizedBox(height: n.space('8')),
+              Text(
+                l.settingsVersion(appVersion),
+                key: const Key('app version'),
+                style: TextStyle(fontSize: 10.5, color: n.textAt(0.4)),
+              ),
             ],
           ),
         ),

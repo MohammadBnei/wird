@@ -127,3 +127,21 @@ func TestThePageCheckAndTheDownloadDisagree(t *testing.T) {
 		t.Errorf("published: HEAD answered %d", got)
 	}
 }
+
+// The page names the release beside its button. A number that is not the one
+// the button serves is worse than none, so an unrecorded version says nothing.
+func TestThePageNamesAVersionTheButtonDoesNotServe(t *testing.T) {
+	t.Setenv("WIRD_APK_VERSION", "")
+	if w := withStore(t).get(t, "/download/android/version", ""); w.Code != http.StatusNoContent {
+		t.Errorf("unrecorded: answered %d %q", w.Code, w.Body.String())
+	}
+
+	t.Setenv("WIRD_APK_VERSION", "0.0.3")
+	w := withStore(t).get(t, "/download/android/version", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("answered %d: %s", w.Code, w.Body.String())
+	}
+	if got := strings.TrimSpace(w.Body.String()); got != `{"version":"0.0.3"}` {
+		t.Errorf("body is %s", got)
+	}
+}

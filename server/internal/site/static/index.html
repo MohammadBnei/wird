@@ -49,6 +49,12 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
   <section data-screen-label="Hero" style="padding:clamp(64px,12vw,140px) 0 clamp(56px,9vw,110px);display:flex;flex-direction:column;align-items:flex-start;gap:28px">
     <div class="ar" style="font-size:clamp(72px,11vw,128px);line-height:1.5;color:var(--color-accent-200);text-shadow:0 0 60px color-mix(in srgb,var(--color-accent) 35%,transparent)">وِرْد</div>
     <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">
+      <p style="margin:0;max-width:520px;font-size:15px;line-height:1.55;color:var(--color-neutral-400);text-wrap:pretty"><em style="font-style:normal;color:var(--color-accent-300)">wird</em> — the portion of the Qur'an you return to each day. From the root <span style="white-space:nowrap">w-r-d</span>, to come down to water: the spring you keep going back to.</p>
+    </sc-if>
+    <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">
+      <p style="margin:0;max-width:520px;font-size:15px;line-height:1.55;color:var(--color-neutral-400);text-wrap:pretty"><em style="font-style:normal;color:var(--color-accent-300)">wird</em> — la part du Coran à laquelle on revient chaque jour. De la racine <span style="white-space:nowrap">w-r-d</span>, descendre vers l’eau : la source où l’on retourne.</p>
+    </sc-if>
+    <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">
       <h1 style="margin:0;max-width:680px;font:500 clamp(34px,5vw,56px)/1.08 var(--font-heading);letter-spacing:-.02em;text-wrap:balance">Understand what you recite.</h1>
       <p style="margin:18px 0 0;max-width:520px;font-size:18px;line-height:1.55;color:var(--color-neutral-300);text-wrap:pretty">Read the Qur'an word by word, through its roots. Pray with the words in front of you.</p>
     </sc-if>
@@ -62,7 +68,7 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
         <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">Download for Android</sc-if>
         <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">Télécharger pour Android</sc-if>
       </a>
-      <span style="font-size:13px;color:var(--color-neutral-400)">APK</span>
+      <span style="font-size:13px;color:var(--color-neutral-400)">{{ apkLabel }}</span>
     </div>
   </section>
 
@@ -137,7 +143,7 @@ a{color:var(--color-accent-300)}a:hover{color:var(--color-accent-200)}
           <sc-if value="{{ isEn }}" hint-placeholder-val="{{ true }}">Download for Android</sc-if>
           <sc-if value="{{ isFr }}" hint-placeholder-val="{{ false }}">Télécharger pour Android</sc-if>
         </a>
-        <span style="font-size:13px;color:var(--color-neutral-400)">APK</span>
+        <span style="font-size:13px;color:var(--color-neutral-400)">{{ apkLabel }}</span>
       </div>
     </div>
   </section>
@@ -168,7 +174,15 @@ const savedLang = () => { const m = document.cookie.match(/(?:^|; )wird_lang=(en
 const saveLang = (lang) => { document.cookie = LANG_COOKIE + '=' + lang + '; Max-Age=31536000; Path=/; SameSite=Lax'; };
 
 class Component extends DCLogic {
-  state = { lang: savedLang(), toast: null };
+  state = { lang: savedLang(), toast: null, version: null };
+  // The release the button serves, printed beside it. No version, or no
+  // answer, leaves the plain "APK" the page always said.
+  async componentDidMount() {
+    try {
+      const r = await fetch('/download/android/version');
+      if (r.ok && r.status === 200) this.setState({ version: (await r.json()).version });
+    } catch (_) {}
+  }
   setLang(lang) { saveLang(lang); this.setState({ lang }); }
   async download(e) {
     // A new-tab or new-window click keeps its own meaning.
@@ -195,6 +209,7 @@ class Component extends DCLogic {
       enBg: en ? on : 'transparent', enCol: en ? onC : offC,
       frBg: en ? 'transparent' : on, frCol: en ? offC : onC,
       lang, showToast: !!this.state.toast,
+      apkLabel: this.state.version ? 'APK · v' + this.state.version : 'APK',
       unpublishedEn: en && this.state.toast === 'unpublished', unpublishedFr: !en && this.state.toast === 'unpublished',
       downEn: en && this.state.toast === 'down', downFr: !en && this.state.toast === 'down',
       setEn: () => this.setLang('en'),

@@ -1655,6 +1655,12 @@ abstract class AppLocalizations {
   /// **'The microphone could not be reached last time it was asked for. Try again; the prayer screen advances on a tap either way.'**
   String get settingsMicUnavailable;
 
+  /// The last line of the settings screen: the app's name and the version of this build, e.g. 0.0.3, or dev for a build the release workflow did not make.
+  ///
+  /// In en, this message translates to:
+  /// **'Wird {version}'**
+  String settingsVersion(String version);
+
   /// Section heading at the foot of the settings screen, over the sign-in panel.
   ///
   /// In en, this message translates to:

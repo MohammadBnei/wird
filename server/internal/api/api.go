@@ -61,6 +61,7 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	// The app itself, from the same store, for the public page's Download
 	// buttons. apk.go carries why the key is configured rather than fixed.
 	mux.HandleFunc(apkPath, apk(models, os.Getenv("WIRD_APK_KEY"), log))
+	mux.HandleFunc(apkVersionPath, apkVersion(os.Getenv("WIRD_APK_VERSION")))
 	// The senses, fetched by a phone that has never signed in. Open for the
 	// same reason as the recogniser, and registered here rather than on v1 so
 	// ServeMux specificity keeps it out of the middleware. senses.go carries
