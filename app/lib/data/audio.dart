@@ -192,6 +192,32 @@ Future<List<String>> pathsToKeep(
   ];
 }
 
+/// How many ayas from the open one screen 1a keeps on disk, so a reader who
+/// loses the network still hears the next stretch of the sūra.
+///
+/// ponytail: a fixed count, not a byte budget. Ten of al-Baqarah's longest
+/// ayas in the heaviest voice are still a small slice of [audioCacheBytes];
+/// make it a budget if a reciter ever brings files big enough to matter.
+const aheadAyas = 10;
+
+/// The files kept on disk around [ayahId]: the aya and the [aheadAyas] after
+/// it. A reader who hears words alone gets the open aya's words first, since
+/// a long press there is what they are about to do.
+List<String> windowPaths(
+  List<AyaTrack> tracks,
+  int ayahId, {
+  bool wordByWord = false,
+}) {
+  final from = tracks.indexWhere((t) => t.ayahId == ayahId);
+  final window = tracks.skip(from < 0 ? 0 : from).take(aheadAyas).toList();
+  return [
+    if (wordByWord && window.isNotEmpty) ...window.first.wordFiles.values,
+    for (final track in window) track.relPath,
+    if (wordByWord)
+      for (final track in window.skip(1)) ...track.wordFiles.values,
+  ];
+}
+
 /// The word sounding at [ms] in the track at [index].
 ///
 /// Between two words the previous one stays lit rather than blinking off, and
@@ -258,6 +284,7 @@ class AudioCache {
     final dir = Directory('$databasesPath/audio');
     await dir.create(recursive: true);
     _dropUnnamedReciter(dir);
+    _dropUnfinished(dir);
     return AudioCache(dir, origin: origin ?? defaultAudioOrigin);
   }
 
@@ -271,28 +298,37 @@ class AudioCache {
     }
   }
 
+  /// A download cut off by the app being killed leaves its `.part` behind.
+  /// Nothing will ever finish it, and it holds its share of the cap.
+  static void _dropUnfinished(Directory dir) {
+    for (final file in dir.listSync().whereType<File>()) {
+      if (file.path.endsWith('.part')) file.deleteSync();
+    }
+  }
+
   final Directory dir;
   final String origin;
   final int capBytes;
   final FetchBytes _fetch;
   final _pinned = <String>{};
 
+  /// The files the player has loaded. A recitation started from the top of a
+  /// long sūra holds files the window around the open aya does not, and
+  /// evicting one of them ends the recitation the moment it reaches it.
+  final _held = <String>{};
+
+  void hold(Iterable<String> relPaths) => _held
+    ..clear()
+    ..addAll(relPaths.map(_name));
+
   /// Which prefetch owns the pins. A download outlives the screen state that
   /// asked for it — a reader who jumps to an aya and moves on again leaves one
   /// in flight — and the pins it set are no longer what is on screen.
   int _request = 0;
 
-  /// Changes whenever a file arrives in the cache or leaves it, so a screen
-  /// can hold an answer about what is downloaded instead of asking the
-  /// filesystem once per word per frame. The directory's own timestamp rather
-  /// than a counter, because the answer has to follow the disk however the
-  /// file got there.
-  DateTime get revision =>
-      dir.existsSync() ? dir.statSync().modified : DateTime.utc(0);
-
   /// One flat directory, the reciter's folder folded into the name: two
-  /// reciters' copies of one aya never share a file, and the sweep, the pins
-  /// and [revision] all see every file without walking a tree.
+  /// reciters' copies of one aya never share a file, and the sweep and the
+  /// pins see every file without walking a tree.
   String _name(String relPath) => relPath.replaceAll('/', '_');
 
   File fileFor(String relPath) => File('${dir.path}/${_name(relPath)}');
@@ -303,11 +339,31 @@ class AudioCache {
       ? '$wordAudioOrigin$relPath'
       : '$origin$relPath';
 
-  /// The file if it is already on disk, and never a request. A long press has
-  /// to answer at once or not at all.
+  /// The file if it is already on disk, and never a request.
   File? cached(String relPath) {
     final file = fileFor(relPath);
     return file.existsSync() ? file : null;
+  }
+
+  /// What the player is handed: the file when it is on disk, else the public
+  /// URL, fetched by the player as it plays — the same runtime fetch as a
+  /// download, with nothing kept. So a reader can hear any aya of the sūra
+  /// without waiting for it to land.
+  AudioSource sourceFor(String relPath) => switch (cached(relPath)) {
+    final file? => AudioSource.file(file.path),
+    null => AudioSource.uri(Uri.parse(urlFor(relPath))),
+  };
+
+  /// Writes [body] under a name nothing reads, then renames it into place.
+  /// A file written in place exists, and so counts as cached, from its first
+  /// byte. The suffix keeps two writers of one file — a sample and a
+  /// prefetch — from writing into each other.
+  Future<void> _write(File file, List<int> body) async {
+    final part = File(
+      '${file.path}.${DateTime.now().microsecondsSinceEpoch}.part',
+    );
+    await part.writeAsBytes(body, flush: true);
+    await part.rename(file.path);
   }
 
   /// One file, from disk or else fetched, without touching the pins: a sample
@@ -321,7 +377,7 @@ class AudioCache {
       final body = await _fetch(urlFor(relPath));
       if (body.isEmpty) return null;
       await dir.create(recursive: true);
-      await file.writeAsBytes(body, flush: true);
+      await _write(file, body);
       return file;
     } on Exception {
       return null;
@@ -352,7 +408,7 @@ class AudioCache {
       try {
         final body = await _fetch(urlFor(rel));
         if (body.isEmpty) continue;
-        await file.writeAsBytes(body, flush: true);
+        await _write(file, body);
         written = true;
       } on Exception {
         continue;
@@ -374,15 +430,16 @@ class AudioCache {
     var total = files.fold(0, (sum, f) => sum + f.lengthSync());
     for (final file in files) {
       if (total <= capBytes) return;
-      if (_pinned.contains(file.uri.pathSegments.last)) continue;
+      final name = file.uri.pathSegments.last;
+      if (_pinned.contains(name) || _held.contains(name)) continue;
       total -= file.lengthSync();
       file.deleteSync();
     }
   }
 }
 
-/// The recitation of one set: plays it, says which word is sounding, and
-/// speaks a single word on demand.
+/// The recitation of one sūra: plays it from any word or aya, says which word
+/// is sounding, and speaks a single word on demand.
 class SetAudio {
   SetAudio({
     required this.cache,
@@ -406,8 +463,6 @@ class SetAudio {
   /// never touches an audio platform channel.
   AudioPlayer? _player;
   StreamSubscription<Duration>? _positions;
-  var _speakable = <int>{};
-  DateTime? _speakableAt;
 
   /// Which playback owns the transport: every word probe takes a turn, and so
   /// does the set's own play. One player serves both, and neither answers when
@@ -421,26 +476,22 @@ class SetAudio {
   /// cannot light a word the reader is not on.
   var _setTurn = -1;
 
-  /// Every aya of the set is on disk, so play will not reach for the network.
-  bool get ready =>
-      tracks.isNotEmpty && tracks.every((t) => cache.cached(t.relPath) != null);
+  /// There is a recitation to play. Whatever is not on disk is fetched by the
+  /// player as it plays, so this no longer waits on a download.
+  bool get ready => tracks.isNotEmpty;
 
   /// Whether the set's own playback was paused and can carry on from where it
   /// stopped. A word played since, or the set reaching its end, clears it.
   bool get paused => _paused;
   var _paused = false;
 
-  /// Plays, pauses or resumes the whole set.
+  /// Pauses, or resumes a paused recitation, or else recites the sūra from
+  /// its start.
   ///
   /// Pausing used to be stopping: the next press loaded the set again and
   /// started it from its first aya, so a reader who paused to look at a word
   /// lost their place in the recitation. A pause now keeps the player where it
   /// is, and the next press carries on.
-  ///
-  /// Stopping it while the files are still being opened is not an error: the
-  /// player throws `Loading interrupted` into whoever started the play, and
-  /// that caller is the screen. Nothing in this app may spin or shout, least
-  /// of all over a reader who pressed stop, so an interrupted play is silence.
   Future<void> toggle() async {
     final player = _player;
     if (playing.value) {
@@ -451,34 +502,42 @@ class SetAudio {
       await player?.pause();
       return;
     }
-    // A paused aya resumes even while the rest of the set is downloading.
     if (_paused && _setTurn == _turn && player != null) {
       _paused = false;
-      playing.value = true;
-      try {
+      await _run(_turn, (player) async {
+        playing.value = true;
         await player.play();
-      } on Exception {
-        // As below: silence, never a shout.
-      } finally {
-        if (_setTurn == _turn && !_paused) {
-          playing.value = false;
-          currentWordId.value = null;
-        }
-      }
+      });
       return;
     }
-    if (!ready) return;
-    await _play(0, tracks.length);
+    await playFrom(null);
+  }
+
+  /// Recites from [wordId] to the end of the sūra, or from its first aya when
+  /// null. A recitation that stopped at the end of the ayas around the open
+  /// word was a recitation that stopped in the middle of the sūra.
+  Future<bool> playFrom(int? wordId) async {
+    final at = wordId == null ? null : locate(tracks, wordId);
+    // A word the timings miss still has an aya: the recitation starts there,
+    // not back at the top of the sūra.
+    final first = at != null
+        ? tracks.indexOf(at.track)
+        : wordId == null
+        ? 0
+        : tracks.indexWhere((t) => t.ayahId == wordId ~/ 1000);
+    if (first < 0) return false;
+    return _recite(
+      first,
+      tracks.length - first,
+      at == null ? null : clipStart(at.span.startMs),
+    );
   }
 
   /// Plays one aya of the set alone, from its start to its end, with its
-  /// words lit as it goes. False when its file is not on the phone.
+  /// words lit as it goes. False when the set has no such aya.
   Future<bool> playAya(int ayahId) async {
     final index = tracks.indexWhere((t) => t.ayahId == ayahId);
-    if (index < 0 || cache.cached(tracks[index].relPath) == null) return false;
-    if (playing.value) await _player?.pause();
-    await _play(index, 1);
-    return true;
+    return index >= 0 && await _recite(index, 1, null);
   }
 
   /// Which track the player's first source is: 0 for the whole set, the aya's
@@ -486,83 +545,118 @@ class SetAudio {
   /// timings.
   var _first = 0;
 
-  Future<void> _play(int first, int count) async {
-    _paused = false;
+  Future<bool> _recite(int first, int count, Duration? at) async {
+    if (count <= 0) return false;
     _first = first;
-    final turn = _setTurn = ++_turn;
-    try {
-      final player = _player ??= AudioPlayer();
+    final turn = _setTurn = _take();
+    final paths = [
+      for (final track in tracks.skip(first).take(count)) track.relPath,
+    ];
+    return _run(turn, (player) async {
       // A player that reached the end of an aya still reports itself playing,
       // and its next play() answers at once: the aya tapped "again" would
       // sound with the bar and the highlight already gone. playWord pauses
       // first for the same reason.
       await player.pause();
+      // Positions stay those of the file, not of a clip, so the highlight's
+      // timings hold from the first word.
       await player.setAudioSources([
-        for (final track in tracks.skip(first).take(count))
-          AudioSource.file(cache.fileFor(track.relPath).path),
-      ]);
+        for (final path in paths) cache.sourceFor(path),
+      ], initialPosition: at);
       _listen(player);
       if (turn != _turn) return;
+      cache.hold(paths);
       playing.value = true;
       await player.play();
+    });
+  }
+
+  /// A new playback's turn. Whatever was paused is replaced by it, so there
+  /// is nothing left to resume.
+  int _take() {
+    _paused = false;
+    return ++_turn;
+  }
+
+  /// Runs one playback to its end and settles the transport after it, for
+  /// every kind of playback alike.
+  ///
+  /// Stopping it while the files are still being opened is not an error: the
+  /// player throws `Loading interrupted` into whoever started the play, and
+  /// that caller is the screen. Nothing in this app may spin or shout, least
+  /// of all over a reader who pressed stop, so an interrupted play is silence.
+  ///
+  /// An aya that cannot be fetched — the network dropped past the ayas on
+  /// disk — reaches only the player's error stream, and play() would go on
+  /// waiting with the bar lit over silence. The error pauses it instead,
+  /// which ends the wait, and the playback answers false like a refused one.
+  Future<bool> _run(
+    int turn,
+    Future<void> Function(AudioPlayer player) start,
+  ) async {
+    final player = _player ??= AudioPlayer();
+    var failed = false;
+    final errors = player.errorStream.listen((_) {
+      failed = true;
+      if (turn == _turn) unawaited(player.pause().catchError((_) {}));
+    });
+    try {
+      await start(player);
+      return !failed;
     } on Exception {
-      // A platform that will not take the set, or a load the reader cut
+      // A platform that will not take the source, or a load the reader cut
       // short. The bar goes back to dark and the screen says nothing.
+      return false;
     } finally {
+      await errors.cancel();
       // A pause also ends play()'s wait; it keeps the word lit and the place.
       if (turn == _turn && !_paused) {
         playing.value = false;
         currentWordId.value = null;
+        cache.hold(const []);
       }
     }
   }
 
   /// Ends a paused set, so the next press starts it again from its start.
   Future<void> stop() async {
-    _paused = false;
+    // Taking the turn keeps a load still in flight from starting to play
+    // after the reader pressed stop.
+    _take();
     playing.value = false;
     currentWordId.value = null;
+    cache.hold(const []);
     await _player?.stop();
   }
 
-  /// The words that would sound if the reader tapped them: every word of an
-  /// aya whose file is on disk. Held against the cache's revision rather than
-  /// recomputed, because `cached` is an `existsSync` and the word row rebuilds
-  /// every 40 ms while the set plays.
-  Set<int> get speakable {
-    if (_speakableAt != cache.revision || _speakableAlone != wordByWord) {
-      _speakableAt = cache.revision;
-      _speakableAlone = wordByWord;
-      _speakable = {
-        for (final track in tracks) ...[
-          if (cache.cached(track.relPath) != null)
-            for (final span in track.segments) span.wordId,
-          if (wordByWord)
-            for (final MapEntry(key: word, value: path)
-                in track.wordFiles.entries)
-              if (cache.cached(path) != null) word,
-        ],
-      };
-    }
-    return _speakable;
-  }
+  /// The words that answer a press: every word of the sūra, since whatever is
+  /// not on disk is fetched as it plays. Empty only for a reciter this build
+  /// has no recitation for.
+  Set<int> get speakable => _speakable ??= {
+    for (final track in tracks) ...[
+      for (final span in track.segments) span.wordId,
+      ...track.wordFiles.keys,
+    ],
+  };
+  Set<int>? _speakable;
 
-  bool? _speakableAlone;
-
-  /// The word's own recording if the reader asked for those and it is on
-  /// disk, else null.
-  File? _alone(int wordId) {
+  /// The word's own recording if the reader asked for those, else null.
+  String? _alone(int wordId) {
     if (!wordByWord) return null;
     for (final track in tracks) {
-      if (track.wordFiles[wordId] case final path?) return cache.cached(path);
+      if (track.wordFiles[wordId] case final path?) return path;
     }
     return null;
   }
 
-  /// Plays one word: its own recording when the reader chose those and it is
-  /// on disk, else its stretch of its aya's file. False means neither was
-  /// downloaded, or the platform refused it: the caller shows the
-  /// transliteration, and nothing spins.
+  /// Plays one word: its own recording when the reader chose those, else its
+  /// stretch of its aya's file. False means the sūra has no recording of it,
+  /// or the platform refused it: the caller shows the transliteration, and
+  /// nothing spins.
+  ///
+  /// What is on disk comes first. A reader offline whose word was never
+  /// downloaded alone, but whose aya was, hears the reciter's stretch of it
+  /// rather than nothing; online, the word alone is fetched as it plays.
   ///
   /// A tap is the gesture now, so the reader's next word arrives while this
   /// one is still sounding — `play()` answers when the clip ENDS, not when it
@@ -572,18 +666,19 @@ class SetAudio {
   /// over the word that superseded them.
   Future<bool> playWord(int wordId) async {
     final alone = _alone(wordId);
-    final found = alone == null ? locate(tracks, wordId) : null;
-    final file =
-        alone ?? (found == null ? null : cache.cached(found.track.relPath));
-    if (file == null) return false;
-    final token = ++_turn;
-    // The word replaces the set's files in the player, so there is nothing
-    // left to resume.
-    _paused = false;
-    try {
-      final player = _player ??= AudioPlayer();
+    final at = locate(tracks, wordId);
+    final stretch =
+        alone == null ||
+        (cache.cached(alone) == null &&
+            at != null &&
+            cache.cached(at.track.relPath) != null);
+    final found = stretch ? at : null;
+    final path = found?.track.relPath ?? alone;
+    if (path == null) return false;
+    final turn = _take();
+    return _run(turn, (player) async {
       await player.pause();
-      await player.setAudioSource(AudioSource.file(file.path));
+      await player.setAudioSource(cache.sourceFor(path));
       // A word's own file is the word, start to end; only a stretch of the
       // reciter's aya needs cutting out.
       if (found != null) {
@@ -592,21 +687,12 @@ class SetAudio {
           end: Duration(milliseconds: found.span.endMs),
         );
       }
-      if (token != _turn) return true;
+      if (turn != _turn) return;
+      cache.hold([path]);
       currentWordId.value = wordId;
       playing.value = true;
       await player.play();
-    } on Exception {
-      // A platform that refuses the clip is the silent case, not a crash
-      // under the reader's finger.
-      return false;
-    } finally {
-      if (token == _turn) {
-        playing.value = false;
-        currentWordId.value = null;
-      }
-    }
-    return true;
+    });
   }
 
   void _listen(AudioPlayer player) {
@@ -635,6 +721,7 @@ class SetAudio {
   /// used to escape into the reading screen's carry and stop it before it
   /// fetched the new reciter's files, so the set stayed in the old voice.
   Future<void> dispose() async {
+    cache.hold(const []);
     try {
       await _positions?.cancel();
       await _player?.dispose();

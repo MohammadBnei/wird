@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -19,6 +20,7 @@ import '../../corpus.dart';
 import '../../fonts.dart';
 import '../../microphone.dart';
 import '../../offline.dart';
+import '../../player.dart';
 import '../../wird.dart';
 
 /// The word as the corpus spells it, harakat and all. Read from the database
@@ -32,6 +34,17 @@ Future<String> word(Database db, int id) async {
 /// A word by its corpus id. Al-ʿAlaq repeats ٱقْرَأْ and ٱلَّذِى inside one
 /// set, so a finder on the text alone matches the wrong tile.
 Finder tile(int wordId) => find.byKey(WordKey(wordId));
+
+/// Lets the player answer. Its platform calls finish outside the fake clock a
+/// widget test runs on, so real time and frames are let run in turns.
+Future<void> settlePlayer(WidgetTester tester) async {
+  for (var i = 0; i < 20; i++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 5)),
+    );
+    await tester.pump();
+  }
+}
 
 /// Whether a word's tile has been built at all.
 ///
@@ -92,6 +105,9 @@ void main() {
   /// The screen on a phone that has never been online: no recitation on disk
   /// and no way to fetch one.
   Future<void> openStudy(WidgetTester tester) async {
+    // A phone that has never been online: nothing on disk, and nothing the
+    // player can fetch.
+    JustAudioPlatform.instance = FakePlayers(offline: true);
     await pumpPhone(
       tester,
       await wirdAround(
@@ -215,9 +231,10 @@ void main() {
     );
 
     // The press is the one that asks for the sound, and this phone has never
-    // been online, so the transliteration stands in for it.
+    // been online, so the transliteration stands in for it. The player's
+    // refusal arrives over its platform channel, outside the fake clock.
     await tester.longPress(tile(96002004));
-    await tester.pumpAndSettle();
+    await settlePlayer(tester);
     expect(
       find.descendant(of: tile(96002004), matching: find.text(translit)),
       findsOneWidget,
@@ -406,31 +423,32 @@ void main() {
     );
   });
 
-  testWidgets('the recitation offers to play a set that is not on the phone, '
-      'and stalls on a file it cannot fetch', (tester) async {
+  testWidgets('a recitation that cannot be fetched leaves the bar lit over '
+      'silence', (tester) async {
     await openStudy(tester);
     // The play button sits in the reader's own bar, so nothing is scrolled
-    // to reach it, and a dark button says why it is dark.
-    final play = tester.widget<IconButton>(
-      find.ancestor(
-        of: find.byIcon(Icons.play_arrow),
-        matching: find.byType(IconButton),
-      ),
+    // to reach it. Nothing is on the phone, and it still offers to play:
+    // online, the player fetches the sūra as it recites.
+    final play = find.ancestor(
+      of: find.byIcon(Icons.play_arrow),
+      matching: find.byType(IconButton),
     );
-    expect(play.onPressed, isNull);
-    expect(play.tooltip, 'Not downloaded');
+    expect(tester.widget<IconButton>(play).onPressed, isNotNull);
+
+    await tester.tap(play);
+    await settlePlayer(tester);
+    expect(find.byIcon(Icons.pause), findsNothing);
+    expect(find.byIcon(Icons.play_arrow), findsOneWidget);
   });
 
   testWidgets('the dark play button offers a download of a recitation the '
       'corpus does not carry', (tester) async {
-    // A corpus with no ayah_audio rows: nothing to fetch, ever. The button is
-    // dark for a different reason than an empty cache, and the footer is the
-    // only place that reason is said.
+    // A corpus with no ayah_audio rows: nothing to fetch, ever, and the
+    // button says so rather than offering to play.
     await db.delete('ayah_audio');
     await openStudy(tester);
 
-    expect(find.byTooltip('No recitation for this set'), findsOneWidget);
-    expect(find.byTooltip('Not downloaded'), findsNothing);
+    expect(find.byTooltip('No recitation for this sūra'), findsOneWidget);
   });
 
   testWidgets('the word panel names the root and keeps its sense to itself, so '

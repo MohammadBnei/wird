@@ -110,20 +110,14 @@ void main() {
     expect(audio.currentWordId.value, isNull);
   });
 
-  test('a word of an aya that never finished downloading is offered as one '
-      'the reader can hear', () async {
+  test('a word of an aya not downloaded yet is left dark, though the player '
+      'fetches it as it plays', () async {
     final tracks = await tracksFor(db, firstSet);
-    final cache = AudioCache(await tempAudioDir(), fetch: FakeCdn().call);
-    await cache.prefetch([tracks.first.relPath]);
-    final audio = SetAudio(cache: cache, tracks: tracks);
+    final audio = SetAudio(
+      cache: AudioCache(await tempAudioDir(), fetch: RadioOff().call),
+      tracks: tracks,
+    );
 
-    expect(audio.speakable, {
-      for (final span in tracks.first.segments) span.wordId,
-    });
-
-    // The rest of the set lands while the reader is on the screen, the way it
-    // does behind screen 1a, and the answer has to follow the disk.
-    await cache.prefetch([for (final t in tracks) t.relPath]);
     expect(audio.speakable, {
       for (final track in tracks)
         for (final span in track.segments) span.wordId,
@@ -527,7 +521,6 @@ void main() {
     await recitation.carry(
       await tracksFor(db, firstSet),
       title: 'Al-ʿAlaq 1–5',
-      words: const {},
     );
     unawaited(recitation.toggle());
     await pumpEventQueue();
@@ -547,7 +540,6 @@ void main() {
     await recitation.carry(
       await tracksFor(db, firstSet),
       title: 'Al-ʿAlaq 1–5',
-      words: const {},
       voice: 'Mishary Rashid Alafasy',
     );
     unawaited(recitation.toggle());
@@ -582,7 +574,6 @@ void main() {
     await recitation.carry(
       await tracksFor(db, firstSet),
       title: 'Al-ʿAlaq 1–5',
-      words: const {},
     );
     return recitation;
   }
@@ -618,7 +609,7 @@ void main() {
       'whole set with no bar', () async {
     final players = FakePlayers();
     final recitation = await reciting(players);
-    unawaited(recitation.playWord(96001001));
+    unawaited(recitation.playWord(96001001, label: 'iqraʾ'));
     await pumpEventQueue();
     await recitation.toggle(); // the header's button, while the word sounds
     await pumpEventQueue();
@@ -627,5 +618,95 @@ void main() {
     await pumpEventQueue();
     expect(recitation.sounding.value?.what, Sounded.set);
     await recitation.stop();
+  });
+
+  /// Al-ʿAlaq whole, as the reading screen carries it.
+  Future<List<AyaTrack>> alAlaq() =>
+      tracksFor(db, [for (var n = 1; n <= 19; n++) 96000 + n]);
+
+  test('an aya past the ones on the phone is silent, though the player can '
+      'fetch it as it plays', () async {
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: await cacheHolding(firstSet),
+      tracks: await alAlaq(),
+    );
+
+    final played = audio.playAya(96015);
+    await pumpEventQueue();
+    expect(audio.playing.value, isTrue);
+    players.only.finish();
+    expect(await played, isTrue);
+  });
+
+  test('a word past the ayas on the phone is silent in either voice', () async {
+    final tracks = await alAlaq();
+    for (final alone in [false, true]) {
+      JustAudioPlatform.instance = FakePlayers();
+      final audio = SetAudio(
+        cache: await cacheHolding(firstSet),
+        tracks: tracks,
+        wordByWord: alone,
+      );
+      unawaited(audio.playWord(96015001));
+      await pumpEventQueue();
+      expect(audio.currentWordId.value, 96015001, reason: 'alone: $alone');
+      await audio.stop();
+    }
+  });
+
+  test('the recitation stops at the ayas around the open word, in the middle '
+      'of the sūra', () async {
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: await cacheHolding(firstSet),
+      tracks: await alAlaq(),
+    );
+
+    unawaited(audio.playFrom(96003002));
+    await pumpEventQueue();
+    final loaded = players.only.loaded.last;
+    expect(loaded, isNot(contains('096002')));
+    expect(loaded, contains('096003'));
+    expect(loaded, contains('096019'), reason: 'on to the end of the sūra');
+    await audio.stop();
+  });
+
+  test('opening a word in another aya stops the recitation it was carried '
+      'under', () async {
+    JustAudioPlatform.instance = FakePlayers();
+    final recitation = Recitation(cache: await cacheHolding(firstSet));
+    final tracks = await alAlaq();
+    await recitation.carry(tracks, title: 'Al-ʿAlaq');
+    unawaited(recitation.playFrom(null));
+    await pumpEventQueue();
+
+    // The reading screen carries the sūra again on every word it opens.
+    await recitation.carry(await alAlaq(), title: 'Al-ʿAlaq');
+    expect(recitation.playing.value, isTrue);
+    await recitation.stop();
+  });
+
+  test('a file the player holds is evicted from under it, and the recitation '
+      'ends when it gets there', () async {
+    final dir = await tempAudioDir();
+    final cache = AudioCache(dir, fetch: FakeCdn().call, capBytes: 2 * 1024);
+    await cache.prefetch(['a/1.mp3']);
+    cache.hold(['a/1.mp3']);
+    await cache.prefetch(['a/2.mp3', 'a/3.mp3']);
+    expect(cache.cached('a/1.mp3'), isNotNull);
+  });
+
+  test('a download cut off halfway is played as if it were whole', () async {
+    final base = await tempAudioDir();
+    final left = File('${base.path}/audio/Husary_096001.mp3.123.part')
+      ..createSync(recursive: true)
+      ..writeAsBytesSync([0]);
+
+    final cache = await AudioCache.beside(base.path);
+    expect(cache.cached('Husary/096001.mp3'), isNull);
+    expect(left.existsSync(), isFalse, reason: 'nothing will finish it');
   });
 }

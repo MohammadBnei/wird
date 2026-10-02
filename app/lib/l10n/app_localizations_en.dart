@@ -100,9 +100,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kept_title => 'Kept';
 
   @override
-  String get notDownloaded => 'Not downloaded';
-
-  @override
   String prayer_header(String prayer, int rakah, int count) {
     return '$prayer · Rakʿah $rakah of $count';
   }
@@ -733,7 +730,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_nextWord => 'Next word';
 
   @override
-  String get study_noRecitation => 'No recitation for this set';
+  String get study_noRecitation => 'No recitation for this sūra';
 
   @override
   String get study_previousWord => 'Previous word';
@@ -1267,6 +1264,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_reciteAya => 'Recite this aya';
 
   @override
+  String get study_hideRoot => 'Hide the root';
+
+  @override
+  String get study_showRoot => 'Show the root';
+
+  @override
   String get shell_recitingSet => 'RECITING THE SET';
 
   @override
@@ -1378,7 +1381,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_pray => 'Pray';
 
   @override
-  String get study_recite => 'Recite';
+  String get study_recite => 'Recite from this word · hold for the whole sūra';
 
   @override
   String get study_pauseRecitation => 'Pause the recitation';

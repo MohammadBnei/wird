@@ -103,6 +103,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 
 ## Audio
 - Recitation fetched by device from everyayah.com at playback. Not mirrored, not bundled, not hosted. 6 reciters (ADR 0023). `ayah_audio.rel_path` = bare `SSSAAA.mp3`; host + `reciterFolders` (slug → folder) + cache cap in `app/lib/data/audio.dart`. Corpus `recitations` slugs = `reciterFolders` keys, test enforces.
+- Reader `1a` carries whole sūra (ADR 0025). Not on disk → `AudioCache.sourceFor` hands player the URL, streamed, nothing kept. Disk = pinned window `aheadAyas` from open aya + player's held files. Never pin whole sūra: al-Baqarah > 200 MB cap.
 - `word_segments` keyed `(recitation_id, word_id, seq)` WITHOUT ROWID. Query filters on `recitations.slug`, never unfiltered → 6 reciters mix.
 - Cache flat: file = rel path with `/` → `_`. Never subdirs → sweep/pins/revision miss them.
 - Word-by-word voice (opt-in): `words.wbw_path` from quran.com `audio_url`. Never build from `position` — index counts pause marks (27,963 words differ). Host `audio.qurancdn.com`, same cache.

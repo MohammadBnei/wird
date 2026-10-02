@@ -1,11 +1,16 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/data/sets.dart';
+import 'package:wird/features/study/root_sheet.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:wird/nav.dart';
@@ -13,6 +18,7 @@ import 'package:wird/nav.dart';
 import '../../corpus.dart';
 import '../../fonts.dart';
 import '../../offline.dart';
+import '../../player.dart';
 import '../../wird.dart';
 
 /// One file of the recitation, in bytes the cap can be written against.
@@ -50,6 +56,7 @@ void main() {
   });
 
   Future<void> openStudy(WidgetTester tester, {int? target}) async {
+    JustAudioPlatform.instance = FakePlayers();
     await pumpPhone(
       tester,
       await wirdAround(
@@ -99,13 +106,13 @@ void main() {
   testWidgets('an aya the reader asked for drags the set the walk would have '
       'served next onto the phone with it', (tester) async {
     // A phone with nothing downloaded, opened straight on an aya. What is
-    // fetched is the ayas around it, the reading width wide; the walk's own
+    // fetched is the ayas from it on, [aheadAyas] of them; the walk's own
     // next set, Al-ʿAlaq 1–5, is not among them.
     await openStudy(tester, target: 4082);
     await settleDownloads(tester);
 
     expect(cdn.served, [
-      for (final aya in [4082, 4083, 4084, 4085, 4086])
+      for (var aya = 4082; aya < 4082 + aheadAyas; aya++)
         '$defaultAudioOrigin${(await tracksFor(db, [aya])).single.relPath}',
     ]);
   });
@@ -114,16 +121,25 @@ void main() {
       'throws away the set the reader was walking', (tester) async {
     // The phone after a walk: the set and the one after it, downloaded by the
     // cache a previous reading of screen 1a held.
+    // The ayas kept from 96:6 on are on the phone too, from an earlier
+    // reading of them.
     final walking = (await nextSet(db, ReadingOrder.nuzul))!;
-    final walked = await pathsToKeep(db, ReadingOrder.nuzul, walking);
+    final alAlaq = await tracksFor(db, [
+      for (var n = 1; n <= 19; n++) 96000 + n,
+    ]);
+    final walked = {
+      ...await pathsToKeep(db, ReadingOrder.nuzul, walking),
+      ...windowPaths(alAlaq, 96006),
+    }.toList();
     // Downloading is real file work, which only runs outside the fake-async
-    // zone the test body is in.
+    // zone the test body is in. No cap here: the phone came by these files
+    // over several readings.
     await tester.runAsync(
-      () => AudioCache(dir, fetch: cdn.call, capBytes: _cap).prefetch(walked),
+      () => AudioCache(dir, fetch: cdn.call).prefetch(walked),
     );
     expect(dir.listSync(), hasLength(walked.length));
 
-    // An aya whose recitation, and that of the four after it, is on the
+    // An aya whose recitation, and that of the ayas kept after it, is on the
     // phone already.
     await openStudy(tester, target: 96006);
     await settleDownloads(tester);
@@ -166,5 +182,102 @@ void main() {
       tester.widget<Text>(find.byKey(const Key('position'))).data,
       startsWith('96:7 '),
     );
+  });
+
+  Recitation recitation(WidgetTester tester) =>
+      Wird.of(tester.element(find.byType(StudyScreen))).recitation;
+
+  /// Lets the player answer until [done]: its platform calls finish outside
+  /// the fake clock, and a word or an aya plays until the fake player is told
+  /// to end.
+  Future<void> settlePlayer(WidgetTester tester, bool Function() done) async {
+    for (var i = 0; i < 200 && !done(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+  }
+
+  /// Silence, and the frames that let the player's timers wind down.
+  Future<void> quiet(WidgetTester tester) async {
+    unawaited(recitation(tester).stop());
+    await settlePlayer(tester, () => false);
+  }
+
+  for (final alone in [false, true]) {
+    testWidgets('a word pressed past the ayas around the open one is silent '
+        '${alone ? 'in its own voice' : "in the reciter's"}', (tester) async {
+      if (alone) {
+        await setAudioPref(db, reciter: defaultReciter, wordByWord: true);
+      }
+      await openStudy(tester, target: 96001);
+      await settleDownloads(tester);
+
+      // 96:15 is well past the five ayas a prayer takes from 96:1, and its
+      // recitation is not on the phone.
+      final word = find.byWidgetPredicate(
+        (w) => w is WordTile && w.face.word.id == 96015001,
+      );
+      await tester.dragUntilVisible(
+        word,
+        find.byType(CustomScrollView),
+        const Offset(0, -200),
+      );
+      await tester.ensureVisible(word);
+      await tester.pumpAndSettle();
+      await tester.longPress(word);
+      await settlePlayer(
+        tester,
+        () => recitation(tester).currentWordId.value == 96015001,
+      );
+      expect(tester.widget<WordTile>(word).voice, WordVoice.sounding);
+      await quiet(tester);
+    });
+  }
+
+  testWidgets('an aya can be heard alone only from the open word\'s aya', (
+    tester,
+  ) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+
+    await tester.ensureVisible(mark(96003));
+    await tester.pumpAndSettle();
+    await tester.longPress(mark(96003));
+    await settlePlayer(tester, () => recitation(tester).playing.value);
+    expect(recitation(tester).sounding.value?.label, '96:3');
+    expect(
+      (await db.query('ayah_understood')).map((r) => r['ayah_id']),
+      isEmpty,
+      reason: 'a hold plays the aya; only a tap marks it',
+    );
+    await quiet(tester);
+  });
+
+  testWidgets('a reader who only wants to read cannot fold the root away, and '
+      'finds it open again on the next visit', (tester) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+
+    await tester.drag(
+      find.byKey(const Key('sheet handle')),
+      const Offset(0, 300),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.widget<RootSheet>(find.byType(RootSheet)).hidden, isTrue);
+    expect(find.byKey(const Key('more row')), findsNothing);
+
+    // The next visit to the reader.
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+    expect(tester.widget<RootSheet>(find.byType(RootSheet)).hidden, isTrue);
+
+    await tester.drag(
+      find.byKey(const Key('sheet handle')),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.widget<RootSheet>(find.byType(RootSheet)).hidden, isFalse);
   });
 }

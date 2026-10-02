@@ -71,8 +71,9 @@ void main() {
       final recitation = Wird.of(tester.element(playButton())).recitation;
       // The button, not only the player: the screen redraws it when the
       // download it awaited lands, and a press before that is a dark button.
-      if (recitation.ready &&
-          recitation.tracks.first.relPath.startsWith(folder) &&
+      final first = recitation.tracks.firstOrNull?.relPath ?? '';
+      if (first.startsWith(folder) &&
+          AudioCache(dir).cached(first) != null &&
           tester.widget<IconButton>(playButton()).onPressed != null) {
         return;
       }

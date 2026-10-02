@@ -50,8 +50,8 @@ class _StudyScreenState extends State<StudyScreen> {
   /// the reader walks, so the list never rebuilds under them.
   StudySet? _surah;
 
-  /// The ayas around the open word that the recitation carries and a prayer
-  /// takes. Moves with the reader; [_surah] does not.
+  /// The ayas around the open word that a prayer takes. Moves with the
+  /// reader; [_surah] does not.
   StudySet? _acted;
 
   /// The words of the sūra, by aya, as far as they have been read. Al-Baqarah
@@ -85,14 +85,22 @@ class _StudyScreenState extends State<StudyScreen> {
   Recitation? _audio;
   Set<int> _speakable = const {};
 
-  /// The voice [_acted] was carried in: the reciter, and whether a word plays
-  /// alone. A reader who changes either in the settings comes back to the
-  /// same set, which must be carried again.
-  (String, bool)? _actedIn;
+  /// The sūra and the voice the recitation was carried in: the reciter, and
+  /// whether a word plays alone. A reader who changes either in the settings
+  /// comes back to the same sūra, which must be carried again.
+  (int, (String, bool))? _heard;
+
+  /// The first aya of the stretch kept on disk ([aheadAyas] long). Opening a
+  /// word outside it moves it.
+  int? _keptFrom;
   Prefs? _listening;
   int? _unheard;
 
   final _sheetScroll = ScrollController();
+
+  /// The sūra list moves between a fixed band and the whole screen when the
+  /// sheet folds; one key carries it across, so it keeps its scroll.
+  final _topKey = GlobalKey();
 
   /// The sheet's slide, which the arrow keys drive like the sheet's arrows.
   final _swipe = GlobalKey<WordSwipeState>();
@@ -132,7 +140,7 @@ class _StudyScreenState extends State<StudyScreen> {
   /// there is carried here while they are still choosing.
   void _reciterChanged() {
     final word = _word;
-    if (word == null || _actedIn == null || _actedIn == _voice) return;
+    if (word == null || _heard == null || _heard!.$2 == _voice) return;
     _carry(ayahOfWord(word.id));
   }
 
@@ -245,67 +253,73 @@ class _StudyScreenState extends State<StudyScreen> {
     );
   }
 
-  /// Keeps the recitation on the ayas around the open word, so the play
-  /// button and a prayer are always about where the reader is.
+  /// Keeps the recitation on the open word's sūra, the ayas from the open one
+  /// on disk, and the prayer on the ayas around it.
+  ///
+  /// The recitation is the whole sūra so that opening a word never replaces
+  /// the player under a recitation that is still running: it used to carry
+  /// only the ayas around the open word, so the recitation stopped at their
+  /// end, and opening a word past them started a new player and silenced the
+  /// old one.
   Future<void> _carry(int ayahId) async {
-    final acted = _acted;
+    final surah = _surah;
+    if (surah == null) return;
     final voice = _voice;
     final (reciter, wordByWord) = voice;
-    if (acted != null &&
-        _actedIn == voice &&
-        acted.ayas.any((a) => a.id == ayahId)) {
-      return;
-    }
+    final heard = (surah.reading.first.id, voice);
+    final acted = _acted;
+    final keptFrom = _keptFrom;
+    final carry = _heard != heard;
+    final pray = acted == null || !acted.ayas.any((a) => a.id == ayahId);
+    final keep =
+        carry ||
+        keptFrom == null ||
+        ayahId < keptFrom ||
+        // Half way through, so the stretch ahead is never down to nothing.
+        ayahId >= keptFrom + aheadAyas ~/ 2;
+    if (!carry && !pray && !keep) return;
     final generation = _generation;
     final recitation = Wird.of(context).recitation;
     final order = _prefs.order;
-    final set = await ayaSet(
-      widget.db,
-      order,
-      ayahId,
-      ayas: await readingWidth(widget.db, order),
-    );
-    if (set == null || !mounted || generation != _generation) return;
-    final reciterName = (await reciters(widget.db))
-        .where((r) => r.slug == reciter)
-        .firstOrNull
-        ?.name;
-    await recitation.carry(
-      await tracksFor(widget.db, [
-        for (final aya in set.ayas) aya.id,
-      ], reciter: reciter),
-      title: set.title,
-      wordByWord: wordByWord,
-      voice: reciterName,
-      words: {
-        for (final aya in set.ayas)
-          for (final word in aya.words) word.id: word.text,
-      },
-    );
-    final keep = await pathsToKeep(
-      widget.db,
-      order,
-      set,
-      onTheWalk: false,
-      reciter: reciter,
-      wordByWord: wordByWord,
-    );
-    // The reader may have walked on to another aya while this was read.
-    final open = _word;
-    if (!mounted ||
-        generation != _generation ||
-        open == null ||
-        ayahOfWord(open.id) != ayahId) {
-      return;
+    if (carry) {
+      final reciterName = (await reciters(widget.db))
+          .where((r) => r.slug == reciter)
+          .firstOrNull
+          ?.name;
+      await recitation.carry(
+        await tracksFor(widget.db, [
+          for (final aya in surah.reading) aya.id,
+        ], reciter: reciter),
+        title: surah.reading.first.surahNameEn,
+        wordByWord: wordByWord,
+        voice: reciterName,
+      );
     }
+    final set = pray
+        ? await ayaSet(
+            widget.db,
+            order,
+            ayahId,
+            ayas: await readingWidth(widget.db, order),
+          )
+        : acted;
+    if (!mounted || generation != _generation) return;
+    // The reader may have walked on to another aya while this was read, and
+    // the prayer is about the aya they are on.
+    final open = _word;
+    final here = open != null && ayahOfWord(open.id) == ayahId;
     setState(() {
-      _acted = set;
-      _actedIn = voice;
+      if (here) _acted = set;
+      _heard = heard;
+      if (keep) _keptFrom = ayahId;
       _audio = recitation;
       _speakable = recitation.speakable;
     });
-    await recitation.prefetch(keep);
-    if (mounted) setState(() => _speakable = recitation.speakable);
+    if (keep) {
+      await recitation.prefetch(
+        windowPaths(recitation.tracks, ayahId, wordByWord: wordByWord),
+      );
+    }
   }
 
   /// Puts the open word in the middle of the sūra list.
@@ -373,7 +387,7 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   Future<void> _speak(StudyWord word) async {
-    final sounded = await _audio?.playWord(word.id) ?? false;
+    final sounded = await _audio?.playWord(word.id, label: word.text) ?? false;
     if (mounted) setState(() => _unheard = sounded ? null : word.id);
   }
 
@@ -420,51 +434,76 @@ class _StudyScreenState extends State<StudyScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _bar(n, surah),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 350),
-                          curve: const Cubic(0.3, 0.7, 0.2, 1),
-                          // The design's 318 of 812 split; open, the aya
-                          // keeps a fifth, enough to be read whole.
-                          height: box.maxHeight * (_expanded ? 0.22 : 0.39),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: n.divider),
+                        if (!_prefs.rootOpen)
+                          Expanded(
+                            child: KeyedSubtree(
+                              key: _topKey,
+                              child: _top(n, surah),
+                            ),
+                          )
+                        else
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 350),
+                            curve: const Cubic(0.3, 0.7, 0.2, 1),
+                            // The design's 318 of 812 split; open, the aya
+                            // keeps a fifth, enough to be read whole.
+                            height: box.maxHeight * (_expanded ? 0.22 : 0.39),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(color: n.divider),
+                              ),
+                            ),
+                            clipBehavior: Clip.hardEdge,
+                            child: KeyedSubtree(
+                              key: _topKey,
+                              child: _top(n, surah),
                             ),
                           ),
-                          clipBehavior: Clip.hardEdge,
-                          child: _top(n, surah),
-                        ),
-                        Expanded(
-                          child: _sheet == null
-                              ? const SizedBox.shrink()
-                              : RootSheet(
-                                  sheet: _sheet!,
-                                  expanded: _expanded,
-                                  swipe: _swipe,
-                                  onPrevious: _stepTo(-1),
-                                  onNext: _stepTo(1),
-                                  onToggle: () => _setExpanded(!_expanded),
-                                  onRoot: (letters) =>
-                                      _visit(Routes.root, letters),
-                                  onJudge: _judgeSense,
-                                  onConstellation: (ayahId, letters) => _visit(
-                                    Routes.deepDive,
-                                    (ayahId: ayahId, letters: letters),
-                                  ),
-                                  translations: _prefs.ayaTranslation,
-                                  onAya: (aya) {
-                                    setState(() => _away = aya);
-                                    _sheetToTop();
-                                  },
-                                  scroll: _sheetScroll,
-                                ),
-                        ),
+                        if (!_prefs.rootOpen)
+                          SizedBox(
+                            height: RootSheet.handleHeight,
+                            child: _rootSheet(hidden: true),
+                          )
+                        else
+                          Expanded(child: _rootSheet()),
                       ],
                     ),
                   ),
                 ),
               ),
       ),
+    );
+  }
+
+  /// The open word's root, or its handle alone while the reader has folded
+  /// it away to read.
+  Widget _rootSheet({bool hidden = false}) {
+    final sheet = _sheet;
+    if (sheet == null) return const SizedBox.shrink();
+    return RootSheet(
+      sheet: sheet,
+      expanded: _expanded,
+      hidden: hidden,
+      onHidden: (fold) {
+        // The sūra takes the screen whole, not the fifth an open sheet
+        // leaves it.
+        if (fold) _setExpanded(false);
+        _prefs.setRootOpen(!fold);
+      },
+      swipe: _swipe,
+      onPrevious: _stepTo(-1),
+      onNext: _stepTo(1),
+      onToggle: () => _setExpanded(!_expanded),
+      onRoot: (letters) => _visit(Routes.root, letters),
+      onJudge: _judgeSense,
+      onConstellation: (ayahId, letters) =>
+          _visit(Routes.deepDive, (ayahId: ayahId, letters: letters)),
+      translations: _prefs.ayaTranslation,
+      onAya: (aya) {
+        setState(() => _away = aya);
+        _sheetToTop();
+      },
+      scroll: _sheetScroll,
     );
   }
 
@@ -519,23 +558,32 @@ class _StudyScreenState extends State<StudyScreen> {
             ),
           ValueListenableBuilder<bool>(
             valueListenable: _audio?.playing ?? _paused,
-            builder: (context, playing, _) => IconButton(
-              // A dark button says why it is dark: the corpus carries no
-              // recitation for these ayas, or it is not on the phone yet.
-              tooltip: playing
-                  ? l.study_pauseRecitation
-                  : _audio == null || _audio!.ready
-                  ? l.study_recite
-                  : _audio!.tracks.isEmpty
-                  ? l.study_noRecitation
-                  : l.notDownloaded,
-              onPressed: _audio?.ready ?? false ? _audio!.toggle : null,
-              icon: Icon(
-                playing ? Icons.pause : Icons.play_arrow,
-                size: 20,
-                color: n.color('accent-300'),
-              ),
-            ),
+            builder: (context, playing, _) {
+              final audio = _audio;
+              final ready = audio?.ready ?? false;
+              return IconButton(
+                // A dark button says why it is dark: the corpus carries no
+                // recitation for this sūra in this voice.
+                tooltip: playing
+                    ? l.study_pauseRecitation
+                    : audio == null || ready
+                    ? l.study_recite
+                    : l.study_noRecitation,
+                // A press carries on from the open word, or resumes a pause;
+                // a hold starts the sūra again from its first aya.
+                onPressed: !ready
+                    ? null
+                    : playing || audio!.paused
+                    ? audio!.toggle
+                    : () => audio.playFrom(_word?.id),
+                onLongPress: ready ? () => audio!.playFrom(null) : null,
+                icon: Icon(
+                  playing ? Icons.pause : Icons.play_arrow,
+                  size: 20,
+                  color: n.color('accent-300'),
+                ),
+              );
+            },
           ),
           TextButton(
             key: const Key('pray'),
@@ -678,26 +726,16 @@ class _StudyScreenState extends State<StudyScreen> {
                 arabicSize: _prefs.arabicSize,
                 label: l.study_markUnderstood(ayahRef(aya.id)),
                 onMark: aya.understood ? null : () => _markUnderstood(aya),
+                // Every aya alone, from its own number: the header's button
+                // recites on through the sūra, and a reader studying one aya
+                // wants to hear just it, again. A hold, so the reading is not
+                // a column of buttons. Pause and stop are on the bar it
+                // brings up.
+                playLabel: l.study_reciteAya,
+                onPlay: _audio == null
+                    ? null
+                    : () => _audio!.playAya(aya.id, label: ayahRef(aya.id)),
               ),
-              // The aya being read, alone, from beside its own number: the
-              // header's button recites the whole passage, and a reader
-              // studying one aya wants to hear just it, again. Only on the
-              // open word's aya, so the reading is not a column of buttons.
-              // Pause and stop are on the bar it brings up.
-              if (open != null && ayahOfWord(open.id) == aya.id)
-                IconButton(
-                  key: const Key('recite aya'),
-                  tooltip: l.study_reciteAya,
-                  visualDensity: VisualDensity.compact,
-                  onPressed: _audio?.canPlayAya(aya.id) ?? false
-                      ? () => _audio!.playAya(aya.id, label: ayahRef(aya.id))
-                      : null,
-                  icon: Icon(
-                    Icons.play_circle_outline,
-                    size: 20,
-                    color: n.color('accent-300'),
-                  ),
-                ),
             ],
           ),
           AyaTranslation(_shownTranslation(aya.id)),
