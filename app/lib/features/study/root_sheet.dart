@@ -54,9 +54,16 @@ class RootSheet extends StatelessWidget {
     required this.onJudge,
     required this.onConstellation,
     required this.translations,
+    this.previous,
+    this.next,
   });
 
   final SheetWord sheet;
+
+  /// The words either side, once they have been read, which a swipe drags
+  /// in beside this one.
+  final SheetWord? previous;
+  final SheetWord? next;
   final bool expanded;
 
   /// Folded down to its handle, so the sūra has the screen to itself: a
@@ -100,7 +107,6 @@ class RootSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
     final l = AppLocalizations.of(context)!;
-    final root = sheet.root;
     return Container(
       decoration: BoxDecoration(
         color: n.surface,
@@ -122,54 +128,84 @@ class RootSheet extends StatelessWidget {
           _topBar(n, l),
           if (!hidden)
             Expanded(
-              child: SingleChildScrollView(
-                controller: scroll,
-                child: WordSwipe(
-                  key: swipe,
-                  wordId: sheet.word.id,
-                  onNext: onNext,
-                  onPrevious: onPrevious,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // The arrows sit at the sheet's edges; the rest is
-                      // indented as the design draws it.
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: _wordRow(context, n, l, root),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (root != null) ..._senses(n, l, root),
-                            _form(n, l),
-                          ],
-                        ),
-                      ),
-                      if (!expanded) _moreRow(n, l),
-                      if (root != null)
-                        _secondary(n, l, root)
-                      else
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
-                          child: Text(
-                            l.study_particleNote,
-                            style: TextStyle(
-                              fontSize: 12,
-                              height: 1.5,
-                              color: n.textAt(0.55),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+              child: WordSwipe(
+                key: swipe,
+                wordId: sheet.word.id,
+                onNext: onNext,
+                onPrevious: onPrevious,
+                nextId: next?.word.id,
+                next: _beside(next),
+                previousId: previous?.word.id,
+                previous: _beside(previous),
+                child: SingleChildScrollView(
+                  controller: scroll,
+                  child: _content(context, n, l),
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  /// This sheet as it would be drawn for [word], for the swipe to show beside
+  /// it. Built only while the swipe is under way.
+  WidgetBuilder? _beside(SheetWord? word) => word == null
+      ? null
+      : (context) => RootSheet(
+          sheet: word,
+          expanded: expanded,
+          swipe: swipe,
+          onPrevious: onPrevious,
+          onNext: onNext,
+          onToggle: onToggle,
+          onAya: onAya,
+          scroll: scroll,
+          onRoot: onRoot,
+          onJudge: onJudge,
+          onConstellation: onConstellation,
+          translations: translations,
+        )._content(context, Nocturne.of(context), AppLocalizations.of(context)!);
+
+  /// The word, its root's senses, its form, and below them the counts, the
+  /// forms and the other ayas.
+  Widget _content(BuildContext context, Nocturne n, AppLocalizations l) {
+    final root = sheet.root;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // The arrows sit at the sheet's edges; the rest is indented as the
+        // design draws it.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: _wordRow(context, n, l, root),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (root != null) ..._senses(n, l, root),
+              _form(n, l),
+            ],
+          ),
+        ),
+        if (!expanded) _moreRow(n, l),
+        if (root != null)
+          _secondary(n, l, root)
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
+            child: Text(
+              l.study_particleNote,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.5,
+                color: n.textAt(0.55),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

@@ -68,6 +68,10 @@ class _StudyScreenState extends State<StudyScreen> {
   StudyWord? _word;
   SheetWord? _sheet;
 
+  /// The sheets of the words either side of the open one, read ahead so a
+  /// swipe can draw them beside it and land without a wait.
+  final Map<int, SheetWord> _peek = {};
+
   /// The word being opened, while its root is read: a second step counts from
   /// here, so two quick swipes move two words.
   int? _opening;
@@ -195,6 +199,7 @@ class _StudyScreenState extends State<StudyScreen> {
         ..clear()
         ..addAll(rendered);
       _pending.clear();
+      _peek.clear();
       _wordKeys.clear();
       _away = null;
       _loaded = true;
@@ -208,9 +213,10 @@ class _StudyScreenState extends State<StudyScreen> {
   /// so a swipe never blanks it.
   Future<void> _open(StudyWord word) async {
     final generation = _generation;
+    final was = _sheet;
     _opening = word.id;
     try {
-      final sheet = await _readSheet(word);
+      final sheet = _peek[word.id] ?? await _readSheet(word);
       // Overtaken: a newer load, or a newer word opened while this one was
       // being read, which must not be drawn over it.
       if (!mounted || generation != _generation || _opening != word.id) {
@@ -226,10 +232,54 @@ class _StudyScreenState extends State<StudyScreen> {
       // step counting from a word the reader never saw.
       if (_opening == word.id) _opening = null;
     }
+    // Not waited on: the recitation below need not wait for it, nor it for
+    // the recitation.
+    unawaited(_peekAround(word.id, was));
     _sheetToTop();
     _position.move(word.id);
     WidgetsBinding.instance.addPostFrameCallback((_) => _centre());
     await _carry(ayahOfWord(word.id));
+  }
+
+  /// Reads the sheets of the words either side of [wordId] into [_peek]. The
+  /// word the reader came from is [was], read already. A side whose aya's
+  /// words have not been read is left out, and a step there reads as before.
+  Future<void> _peekAround(int wordId, SheetWord? was) async {
+    final surah = _surah;
+    if (surah == null) return;
+    final generation = _generation;
+    bool stale() =>
+        !mounted || generation != _generation || _word?.id != wordId;
+    final read = <int, SheetWord>{};
+    for (final by in const [1, -1]) {
+      final step = stepFrom(surah.reading, _words, wordId, by);
+      final id = step?.wordId;
+      if (step == null || id == null) continue;
+      final known = _peek[id] ?? (was?.word.id == id ? was : null);
+      if (known != null) {
+        read[id] = known;
+        continue;
+      }
+      final word = _words[surah.reading[step.ayaIndex].id]!.firstWhere(
+        (w) => w.id == id,
+      );
+      read[id] = await _readSheet(word);
+      if (stale()) return;
+    }
+    if (stale()) return;
+    setState(() {
+      _peek
+        ..clear()
+        ..addAll(read);
+    });
+  }
+
+  /// The read sheet of the word [by] along from [wordId], if there is one.
+  SheetWord? _peekAt(int wordId, int by) {
+    final surah = _surah;
+    if (surah == null) return null;
+    final id = stepFrom(surah.reading, _words, wordId, by)?.wordId;
+    return id == null ? null : _peek[id];
   }
 
   /// Everything the sheet shows for [word], read together.
@@ -514,6 +564,8 @@ class _StudyScreenState extends State<StudyScreen> {
       swipe: _swipe,
       onPrevious: _stepTo(-1),
       onNext: _stepTo(1),
+      previous: _peekAt(sheet.word.id, -1),
+      next: _peekAt(sheet.word.id, 1),
       onToggle: () => _setExpanded(!_expanded),
       onRoot: (letters) => _visit(Routes.root, letters),
       onJudge: _judgeSense,
