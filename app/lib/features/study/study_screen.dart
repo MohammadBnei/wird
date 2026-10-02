@@ -359,6 +359,19 @@ class _StudyScreenState extends State<StudyScreen> {
     await _open(to);
   }
 
+  /// A step the way the sheet's arrows take it, or a plain step while the
+  /// sheet is folded away.
+  void _slide(int by) {
+    final swipe = _swipe.currentState;
+    if (swipe == null) {
+      _stepTo(by)?.call();
+    } else if (by > 0) {
+      swipe.slideNext();
+    } else {
+      swipe.slidePrevious();
+    }
+  }
+
   /// Which way a step can go: null at the ends of the sūra.
   Future<void> Function()? _stepTo(int by) {
     final surah = _surah;
@@ -422,10 +435,12 @@ class _StudyScreenState extends State<StudyScreen> {
             : CallbackShortcuts(
                 bindings: {
                   // Arabic reads leftward: the next word is to the left.
+                  // With the sheet folded there is no slide to drive, and
+                  // the step happens without one.
                   const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
-                      _swipe.currentState?.slideNext(),
+                      _slide(1),
                   const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-                      _swipe.currentState?.slidePrevious(),
+                      _slide(-1),
                 },
                 child: Focus(
                   autofocus: true,

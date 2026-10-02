@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:sqflite/sqflite.dart';
 
-
 /// RUNTIME FETCH ONLY. No recitation of the Qur'an was found that Wird may
 /// redistribute: every complete per-aya recording is personal-use-only, silent
 /// on terms, or tagged by somebody who does not hold the master. So the device
@@ -389,17 +388,32 @@ class AudioCache {
     if (written && _request == request) _evict();
   }
 
+  /// A download still being written is left alone: it is no one's file
+  /// yet, and a superseded prefetch may rename it away mid-sweep.
   void _evict() {
     if (!dir.existsSync()) return;
-    final files = dir.listSync().whereType<File>().toList()
-      ..sort((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
-    var total = files.fold(0, (sum, f) => sum + f.lengthSync());
-    for (final file in files) {
+    final files = <({File file, DateTime at, int bytes})>[];
+    for (final file in dir.listSync().whereType<File>()) {
+      if (file.path.endsWith('.part')) continue;
+      try {
+        final stat = file.statSync();
+        files.add((file: file, at: stat.modified, bytes: stat.size));
+      } on FileSystemException {
+        continue;
+      }
+    }
+    files.sort((a, b) => a.at.compareTo(b.at));
+    var total = files.fold(0, (sum, f) => sum + f.bytes);
+    for (final (:file, :bytes, at: _) in files) {
       if (total <= capBytes) return;
       final name = file.uri.pathSegments.last;
       if (_pinned.contains(name) || _held.contains(name)) continue;
-      total -= file.lengthSync();
-      file.deleteSync();
+      total -= bytes;
+      try {
+        file.deleteSync();
+      } on FileSystemException {
+        // Gone already: what it held is freed either way.
+      }
     }
   }
 }
@@ -597,14 +611,15 @@ class SetAudio {
 
   /// The words that answer a press: every word of the sūra, since whatever is
   /// not on disk is fetched as it plays. Empty only for a reciter this build
-  /// has no recitation for.
-  Set<int> get speakable => _speakable ??= {
+  /// has no recitation for. A word with a recording of its own but no timing
+  /// answers only while the reader hears words alone.
+  Set<int> get speakable => _speakable[wordByWord] ??= {
     for (final track in tracks) ...[
       for (final span in track.segments) span.wordId,
-      ...track.wordFiles.keys,
+      if (wordByWord) ...track.wordFiles.keys,
     ],
   };
-  Set<int>? _speakable;
+  final _speakable = <bool, Set<int>>{};
 
   /// The word's own recording if the reader asked for those, else null.
   String? _alone(int wordId) {

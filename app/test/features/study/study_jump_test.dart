@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -283,4 +284,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<RootSheet>(find.byType(RootSheet)).hidden, isFalse);
   });
+
+  testWidgets(
+    'the arrow keys stop walking the words once the sheet is folded',
+    (tester) async {
+      await openStudy(tester, target: 96001);
+      await settleDownloads(tester);
+      await tester.drag(
+        find.byKey(const Key('sheet handle')),
+        const Offset(0, 300),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await settleDownloads(tester, files: 8);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('position'))).data,
+        contains('word 2/'),
+      );
+    },
+  );
 }

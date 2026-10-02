@@ -181,6 +181,9 @@ class Recitation {
     final set = _set;
     if (set == null) return;
     if (set.playing.value) return set.toggle();
+    // Still loading — a streamed aya can take seconds — and the bar already
+    // names it: a press there means stop, not start the sūra over.
+    if (!set.paused && sounding.value != null) return stop();
     if (!set.paused) {
       await playFrom(null);
       return;

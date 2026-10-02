@@ -695,4 +695,60 @@ void main() {
     expect(cache.cached('Husary/096001.mp3'), isNull);
     expect(left.existsSync(), isFalse, reason: 'nothing will finish it');
   });
+
+  test('a word with a recording of its own but no timing looks playable in '
+      "the reciter's voice, and a press on it is silent", () async {
+    // 3:179's seventh word: quran.com has it alone, the aligner never timed it.
+    final tracks = await tracksFor(db, [3179]);
+    expect(tracks.single.wordFiles, contains(3179007));
+    final cache = AudioCache(await tempAudioDir(), fetch: RadioOff().call);
+
+    expect(
+      SetAudio(cache: cache, tracks: tracks).speakable,
+      isNot(contains(3179007)),
+    );
+    expect(
+      SetAudio(cache: cache, tracks: tracks, wordByWord: true).speakable,
+      contains(3179007),
+    );
+  });
+
+  test('pausing the bar while a streamed aya is still loading starts the sūra '
+      'over from its first aya', () async {
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final recitation = Recitation(cache: await cacheHolding(firstSet));
+    await recitation.carry(await alAlaq(), title: 'Al-ʿAlaq');
+
+    // The bar names the recitation before the player has loaded anything.
+    unawaited(recitation.playFrom(96015001));
+    // A few microtasks: past the bar being named, short of the load's end.
+    for (var i = 0; i < 3; i++) {
+      await Future<void>.value();
+    }
+    expect(recitation.sounding.value, isNotNull);
+    expect(recitation.playing.value, isFalse);
+    await recitation.toggle();
+    await pumpEventQueue();
+
+    expect(recitation.playing.value, isFalse);
+    expect(recitation.sounding.value, isNull);
+    expect(
+      players.players
+          .expand((p) => p.loaded)
+          .where((l) => l.contains('096001')),
+      isEmpty,
+      reason: 'nothing was started from the top of the sūra',
+    );
+  });
+
+  test('a sweep trips over a download still being written', () async {
+    final dir = await tempAudioDir();
+    final writing = File('${dir.path}/Husary_096019.mp3.1.part')
+      ..writeAsBytesSync(List.filled(4096, 0));
+    final cache = AudioCache(dir, fetch: FakeCdn().call, capBytes: 1024);
+
+    await cache.prefetch(['a/1.mp3', 'a/2.mp3']);
+    expect(writing.existsSync(), isTrue, reason: 'it is no one\'s file yet');
+  });
 }

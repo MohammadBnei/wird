@@ -136,7 +136,7 @@ The copy only happens when `wird.db` is missing. A later app update with a newer
     flusher: flusher,
 ```
 
-[nav.dart:202](../../app/lib/nav.dart#L202-L236) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:270](../../app/lib/app.dart#L270)
+[nav.dart:202](../../app/lib/nav.dart#L202-L236) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:273](../../app/lib/app.dart#L273)
 
 ### 4. Routes: destinations get the shell, pushed screens do not
 
@@ -160,7 +160,7 @@ Every screen is registered by name in one map. The drawer lists the destinations
 
 ### 5. A prayer is prepared, then recorded on the way back from it
 
-A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:450](../../app/lib/app.dart#L450-L454)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
+A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:453](../../app/lib/app.dart#L453-L457)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
 
 ```mermaid
 sequenceDiagram
