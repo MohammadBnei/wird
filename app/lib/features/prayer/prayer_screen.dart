@@ -112,6 +112,10 @@ const _completeFor = Duration(milliseconds: 2400);
 /// How long the aya takes to arrive once it starts arriving.
 const _turn = Duration(milliseconds: 420);
 
+/// How far the ayas travel while one arrives: the same for the one before,
+/// the one recited and the one after, so the three move as one.
+const _flowBy = 56.0;
+
 enum _Phase { reading, between, done }
 
 class _PrayerScreenState extends State<PrayerScreen> {
@@ -144,6 +148,18 @@ class _PrayerScreenState extends State<PrayerScreen> {
   /// a moment before the next arrives.
   late int _shown;
   Timer? _turning;
+
+  /// The rakʿah and the aya last drawn, which tell a turn from a redraw.
+  (int, int)? _drawn;
+
+  /// Which way the ayas flow: 1 up to the next aya, -1 down to the one
+  /// before, 0 for a new rakʿah, which fades.
+  var _flow = 0;
+
+  /// Counts turns, so the aya leaving and the aya arriving are never the same
+  /// widget: tapping back within a turn brings back an aya still on its way
+  /// out, and the two would share a key.
+  var _turnId = 0;
 
   /// Whether the move now arriving is the reader's own hand.
   var _theirHand = false;
@@ -425,7 +441,10 @@ class _PrayerScreenState extends State<PrayerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Keyed by the word's own id rather than one key for whichever word is
       // lit: while an aya turns, the one leaving is still in the tree, lit.
-      final lit = GlobalObjectKey(_flat[_cursor.at].word.id).currentContext;
+      final lit = GlobalObjectKey((
+        _turnId,
+        _flat[_cursor.at].word.id,
+      )).currentContext;
       if (lit == null || !mounted) return;
       unawaited(
         Scrollable.ensureVisible(
@@ -478,6 +497,12 @@ class _PrayerScreenState extends State<PrayerScreen> {
     // what is shown rather than from where the reciter is.
     final word = _ayaOf(_cursor.at) == at ? _cursor.at : _ayaStarts[at];
     final here = _flat[word.clamp(0, _flat.length - 1)];
+    final drawn = _drawn;
+    if (drawn != (_r, at)) {
+      _flow = drawn == null || drawn.$1 != _r ? 0 : (at - drawn.$2).sign;
+      if (drawn != null) _turnId++;
+      _drawn = (_r, at);
+    }
     return Scaffold(
       backgroundColor: n.bg,
       body: DecoratedBox(
@@ -610,7 +635,10 @@ class _PrayerScreenState extends State<PrayerScreen> {
                       child: ClipRect(
                         child: Align(
                           alignment: Alignment.bottomCenter,
-                          child: _neighbour(n, before, 0.3, current: here.aya),
+                          child: _flowing(
+                            _neighbour(n, before, 0.3, current: here.aya),
+                            from: Alignment.bottomCenter,
+                          ),
                         ),
                       ),
                     ),
@@ -621,39 +649,21 @@ class _PrayerScreenState extends State<PrayerScreen> {
                         padding: const EdgeInsets.only(top: 10),
                         child: Column(
                           children: [
-                            // Keyed by the rakʿah and the aya, so the
-                            // switcher has something to switch on and the
-                            // new aya rises as the old one leaves.
-                            AnimatedSwitcher(
-                              duration: _turn,
-                              switchInCurve: Curves.easeOutCubic,
-                              switchOutCurve: Curves.easeIn,
-                              transitionBuilder: (child, fade) =>
-                                  FadeTransition(
-                                    opacity: fade,
-                                    child: SlideTransition(
-                                      position: Tween(
-                                        begin: const Offset(0, 0.16),
-                                        end: Offset.zero,
-                                      ).animate(fade),
-                                      child: child,
-                                    ),
-                                  ),
-                              child: KeyedSubtree(
-                                key: ValueKey((_r, here.aya.id)),
-                                child: _recited(
-                                  n,
-                                  here,
-                                  named:
-                                      _cursor.sure &&
-                                      _ayaOf(_cursor.at) == _shown,
-                                  behind: _ayaOf(_cursor.at) > _shown,
-                                ),
+                            _flowing(
+                              _recited(
+                                n,
+                                here,
+                                named:
+                                    _cursor.sure &&
+                                    _ayaOf(_cursor.at) == _shown,
+                                behind: _ayaOf(_cursor.at) > _shown,
                               ),
                             ),
                             if (around && _size <= 72) ...[
                               const SizedBox(height: 14),
-                              _neighbour(n, after, 0.22, current: here.aya),
+                              _flowing(
+                                _neighbour(n, after, 0.22, current: here.aya),
+                              ),
                             ],
                           ],
                         ),
@@ -753,6 +763,58 @@ class _PrayerScreenState extends State<PrayerScreen> {
 
   /// The aya before or after the one being recited, faded, so the reader
   /// knows where they are in the passage without it competing with the aya.
+  /// [child] for this turn: on a turn it arrives from below as the one it
+  /// replaces leaves upward (or the other way, stepping back), the same
+  /// distance for the aya before, the recited one and the one after, so the
+  /// three move together. Only the arriving child sizes the space, so nothing
+  /// below it jumps when the leaving one is gone.
+  Widget _flowing(Widget child, {Alignment from = Alignment.topCenter}) {
+    final key = ValueKey(_turnId);
+    return AnimatedSwitcher(
+      duration: _turn,
+      switchInCurve: Curves.easeInOutCubic,
+      switchOutCurve: Curves.easeInOutCubic,
+      layoutBuilder: (current, leaving) => SizedBox(
+        width: double.infinity,
+        child: Stack(
+          alignment: from,
+          clipBehavior: Clip.none,
+          children: [
+            for (final gone in leaving)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: from == Alignment.topCenter ? 0 : null,
+                bottom: from == Alignment.topCenter ? null : 0,
+                child: gone,
+              ),
+            ?current,
+          ],
+        ),
+      ),
+      transitionBuilder: (child, shown) {
+        // A leaving child's animation runs back to zero, so it travels the
+        // other way from the one arriving.
+        final arriving = child.key == key;
+        return FadeTransition(
+          opacity: shown,
+          child: AnimatedBuilder(
+            animation: shown,
+            builder: (context, child) => Transform.translate(
+              offset: Offset(
+                0,
+                (1 - shown.value) * _flowBy * _flow * (arriving ? 1 : -1),
+              ),
+              child: child,
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(key: key, child: child),
+    );
+  }
+
   /// The aya beside the one being recited, or — where it belongs to another
   /// sūra — the boundary between the two, named by the later of them. Drawn
   /// as an aya, al-Fātiḥa's last ran straight into the passage's first and
@@ -831,7 +893,9 @@ class _PrayerScreenState extends State<PrayerScreen> {
     children: [
       for (final word in here.aya.words)
         KeyedSubtree(
-          key: word.id == here.word.id ? GlobalObjectKey(word.id) : null,
+          key: word.id == here.word.id
+              ? GlobalObjectKey((_turnId, word.id))
+              : null,
           child: Text(
             word.text,
             key: WordKey(word.id),
