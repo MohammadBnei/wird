@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
@@ -132,7 +131,7 @@ class _PrepareScreenState extends State<PrepareScreen> {
     final first = [widget.from, next]
         .where((s) => s != null && s.ayas.every((a) => a.surahId != 1))
         .firstOrNull;
-    final second = await _after(first, order, suras);
+    final second = await passageAfter(db, first, order, suras);
     if (!mounted) return;
     setState(() {
       _loaded = (
@@ -157,29 +156,6 @@ class _PrepareScreenState extends State<PrepareScreen> {
       _around = prefs.around;
       _size = prefs.arabicSize;
     });
-  }
-
-  /// The ayas after [set], as many as it holds, going on into the next sūra
-  /// when it ends one: the second rakʿah's own passage, rather than the
-  /// first's again. Null after an-Nās, and with no first passage.
-  Future<StudySet?> _after(
-    StudySet? set,
-    ReadingOrder order,
-    List<SuraEntry> suras,
-  ) async {
-    if (set == null) return null;
-    final last = set.ayas.last;
-    final ends = last.number >= suras[last.surahId - 1].ayahCount;
-    if (ends && last.surahId == 114) return null;
-    final sura = ends ? last.surahId + 1 : last.surahId;
-    final from = ends ? 1 : last.number + 1;
-    final left = suras[sura - 1].ayahCount - from + 1;
-    return ayaSet(
-      widget.db,
-      order,
-      sura * 1000 + from,
-      ayas: min(set.ayas.length, left),
-    );
   }
 
   PrayerPlan get _plan => PrayerPlan(
@@ -225,6 +201,12 @@ class _PrepareScreenState extends State<PrepareScreen> {
 
   Future<void> _choose(int r) async {
     final loaded = _loaded!;
+    // A later rakʿah is offered the ayas after the first's passage as it is
+    // now, not as it was when the preparation opened.
+    final after = r > 1
+        ? await passageAfter(widget.db, _first, loaded.order, loaded.suras)
+        : null;
+    if (!mounted) return;
     final choice = await Navigator.of(context).push<PassageChoice>(
       MaterialPageRoute(
         fullscreenDialog: true,
@@ -233,7 +215,10 @@ class _PrepareScreenState extends State<PrepareScreen> {
           order: loaded.order,
           rakah: r,
           suras: loaded.suras,
+          wpm: _wpm,
           continuing: loaded.next,
+          after: after,
+          first: _first,
           recent: loaded.recent,
           current: r == 1
               ? (set: _first, same: false)
@@ -613,13 +598,9 @@ class _PrepareScreenState extends State<PrepareScreen> {
     final same = r == 2 && _sameAsFirst && set != null;
     String meta() {
       final words = [for (final a in set!.ayas) ...a.words].length;
-      final time = recitingTime(words, _wpm);
-      final about = time.inMinutes >= 1
-          ? l.prepare_about_minutes(time.inMinutes)
-          : l.prepare_about_seconds(time.inSeconds);
       return [
         l.prepare_ayas(set.ayas.length),
-        about,
+        aboutTime(l, words, _wpm),
         if (same) l.prepare_same_as_first,
       ].join(' · ');
     }

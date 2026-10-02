@@ -67,7 +67,7 @@ void main() {
 
     await open(tester);
 
-    expect(find.text('1 · Al-Fatihah'), findsOneWidget);
+    expect(find.text('Al-Fatihah'), findsOneWidget);
     expect(find.text('3 / 7'), findsOneWidget);
     // The revelation order is what the app's own default walk is ordered by; a
     // reader in that order cannot find their place by the written number.
@@ -97,8 +97,9 @@ void main() {
   });
 
   testWidgets('choosing a sūra only unfolds its aya numbers, so the reader who '
-      'wanted to read Al-Baqarah has to pick one of 286 boxes first',
-      (tester) async {
+      'wanted to read Al-Baqarah has to pick one of 286 boxes first', (
+    tester,
+  ) async {
     await open(tester);
     await tester.tap(find.byKey(const ValueKey('sura-2')));
     await tester.pumpAndSettle();
@@ -112,14 +113,17 @@ void main() {
     await open(tester);
 
     expect(
-      find.text('A sūra opens at its first aya. The arrow picks one inside it.'),
+      find.text(
+        'A sūra opens at its first aya. The arrow picks one inside it.',
+      ),
       findsOneWidget,
     );
   });
 
   testWidgets('a French reader is shown the index in English, and the '
-      'revelation order with an English ordinal glued to a French sentence',
-      (tester) async {
+      'revelation order with an English ordinal glued to a French sentence', (
+    tester,
+  ) async {
     await open(tester, locale: const Locale('fr'));
 
     expect(find.text('TOUT LE CORAN'), findsOneWidget);

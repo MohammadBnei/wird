@@ -31,7 +31,8 @@ Each of those is a screen that behaved correctly and was wrong to look at.
    never instead.
 
 3. **Against the design.** `docs/design/prayer-app-screens.html` is vendored and
-   renders in a browser. Put the design and the build side by side and name the
+   renders in a browser; so are the prayer's preparation and the sūra picker,
+   `docs/design/wird-prayer.html` and `docs/design/sura-picker.html`. Put the design and the build side by side and name the
    differences — then say which are deliberate and which are drift. The Chrome
    DevTools MCP can render the design; Flutter renders the build.
 

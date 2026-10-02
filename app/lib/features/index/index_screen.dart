@@ -7,13 +7,14 @@ import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import 'sura_picker.dart';
 
-/// One sūra as the index lists it: what it is called, when it was revealed,
-/// and how much of it the reader has understood.
+/// One sūra as the index lists it: what it is called, when and where it was
+/// revealed, and how much of it the reader has understood.
 typedef SuraEntry = ({
   int id,
   String nameEn,
   String nameAr,
   int revelationOrder,
+  bool madani,
   int ayahCount,
   int understood,
 });
@@ -21,7 +22,8 @@ typedef SuraEntry = ({
 /// All 114, in written order whatever the reader reads in, with the reader's progress against each.
 Future<List<SuraEntry>> suraIndex(Database db) async {
   final rows = await db.rawQuery('''
-    SELECT s.id, s.name_en, s.name_ar, s.revelation_order, s.ayah_count,
+    SELECT s.id, s.name_en, s.name_ar, s.revelation_order,
+           s.revelation_place, s.ayah_count,
            COUNT(u.ayah_id) AS understood
       FROM surahs s
       LEFT JOIN ayahs a ON a.surah_id = s.id
@@ -35,6 +37,7 @@ Future<List<SuraEntry>> suraIndex(Database db) async {
         nameEn: row['name_en']! as String,
         nameAr: row['name_ar']! as String,
         revelationOrder: row['revelation_order']! as int,
+        madani: row['revelation_place'] == 'madinah',
         ayahCount: row['ayah_count']! as int,
         understood: row['understood']! as int,
       ),
@@ -109,8 +112,10 @@ class _IndexScreenState extends State<IndexScreen> {
                   _header(n),
                   Expanded(
                     child: SuraPicker(
+                      db: widget.db,
                       suras: suras,
                       order: _order,
+                      progress: true,
                       goToHint: AppLocalizations.of(context)!.index_go_to_hint,
                       onSura: (sura) => _read(sura.id * 1000 + 1),
                       onRef: _read,

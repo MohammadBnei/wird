@@ -450,7 +450,7 @@ A tap on the waiting screen begins the rakʿah too ([prayer_screen.dart:393](../
 
 ### 14. The voice hears a basmala the screen does not show
 
-A reciter says the basmala before a sūra, and the muṣḥaf does not number it, so the screen never shows it there. Left out of what the voice listens for, the only place a basmala fits is Al-Fātiḥa's first aya, and a reciter starting the passage was pulled back to the top of the prayer: "بسم الله" alone scored 0.83 on word 1. So `rakahOf` puts Al-Fātiḥa's first aya into what the voice hears just before the passage, except before At-Tawba, which is recited without one ([prayer_plan.dart:83](../../../app/lib/features/prayer/prayer_plan.dart#L83-L101)).
+A reciter says the basmala before a sūra, and the muṣḥaf does not number it, so the screen never shows it there. Left out of what the voice listens for, the only place a basmala fits is Al-Fātiḥa's first aya, and a reciter starting the passage was pulled back to the top of the prayer: "بسم الله" alone scored 0.83 on word 1. So `rakahOf` puts Al-Fātiḥa's first aya into what the voice hears just before the passage, except before At-Tawba, which is recited without one ([prayer_plan.dart:87](../../../app/lib/features/prayer/prayer_plan.dart#L87-L105)).
 
 ```mermaid
 flowchart LR

@@ -12,6 +12,10 @@ fresh copy the same way rather than patching these files by hand.
 | `support.js` | Generated runtime that renders the `.dc.html` document in a browser. Needed only to open the screens file locally. |
 | `nocturne-styles.css` | The Nocturne design system stylesheet: every color, font, space and radius token the screens use. |
 | `nocturne-readme.md` | The Nocturne guide — how the tokens and component classes are meant to be used. |
+| `wird-prayer.html` | `Wird Prayer.dc.html` from the design project `claude.ai/design/p/65806714-5bf1-4ef1-942f-4cdfdd82bf30`: the prayer's preparation and the prayer, with the passage chooser. |
+| `sura-picker.html` | `Sura Picker.dc.html` from the same project: the one sūra picker, which `wird-prayer.html` imports by the name "Sura Picker". |
+
+The two files from the second project are renamed without spaces and otherwise byte for byte. Their `support.js` is identical to the one here. The `android-frame.jsx` bezel they import is presentation chrome and is not vendored.
 
 `prayer-app-screens.html` loads `./support.js`, and its head points the
 stylesheet at `_ds/nocturne-f1420674-3c74-41e9-8af5-2fa684fcd021/styles.css` —
