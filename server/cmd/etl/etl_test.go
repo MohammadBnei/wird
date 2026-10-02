@@ -2,6 +2,8 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,18 +13,19 @@ import (
 	"github.com/MohammadBnei/wird/server/internal/timings"
 )
 
-const (
-	fixtureDir     = "testdata/corpus"
-	fixtureTimings = "Husary_Muallim_128kbps"
-)
+const fixtureDir = "testdata/corpus"
 
-var testRecitation = Recitation{Slug: "husary-muallim", ReciterName: "Mahmoud Khalil Al-Husary", Style: "Muallim"}
+// The fixture carries one recitation's timings, the default reciter's.
+var testRecitation = Recitations[0]
 
 func load(t *testing.T, dir string) *Corpus {
 	t.Helper()
-	c, err := Load(dir, testRecitation.Slug, fixtureTimings)
+	c, err := Load(dir, []Recitation{testRecitation})
 	if err != nil {
 		t.Fatalf("load %s: %v", dir, err)
+	}
+	if len(c.Refused) > 0 {
+		t.Fatalf("fixture recitation refused: %v", c.Refused)
 	}
 	return c
 }
@@ -34,7 +37,7 @@ func build(t *testing.T, dir string) string {
 	if err := c.Check(false); err != nil {
 		t.Fatalf("fixture rejected: %v", err)
 	}
-	if err := Write(out, c, testRecitation, 1, time.Now()); err != nil {
+	if err := Write(out, c, 1, time.Now()); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	return out
@@ -95,7 +98,7 @@ func TestASecondBuildRenumbersWhatAShippedAppAlreadyJoinsAgainst(t *testing.T) {
 		"SELECT count(*) FROM words",
 		"SELECT count(*) FROM word_segments",
 		"SELECT count(*) FROM ayah_audio",
-		"SELECT group_concat(word_id || ':' || start_ms) FROM (SELECT word_id, start_ms FROM word_segments ORDER BY word_id, start_ms)",
+		"SELECT group_concat(recitation_id || ':' || word_id || ':' || start_ms) FROM (SELECT recitation_id, word_id, start_ms FROM word_segments ORDER BY recitation_id, word_id, seq)",
 	} {
 		if a, b := scalar(t, first, q), scalar(t, second, q); a != b {
 			t.Errorf("two builds of the same input disagree on %s", q)
@@ -105,7 +108,7 @@ func TestASecondBuildRenumbersWhatAShippedAppAlreadyJoinsAgainst(t *testing.T) {
 
 func TestAWordsTimingPointsAtAWordThatIsNotInTheCorpus(t *testing.T) {
 	c := load(t, fixtureDir)
-	c.Segments = append(c.Segments, Segment{WordID: wordID(1001, 99), StartMS: 0, EndMS: 10})
+	c.Recited[0].Segments = append(c.Recited[0].Segments, Segment{WordID: wordID(1001, 99), StartMS: 0, EndMS: 10})
 	if err := c.Check(false); err == nil {
 		t.Fatal("a segment for a word that does not exist passed the build")
 	}
@@ -119,6 +122,11 @@ func TestEveryAyahCanStillFindItsAudioWhenTheHostMoves(t *testing.T) {
 		}
 	}
 	c.Audio[0].RelPath = "https://audio-cdn.example.com/husary/001001.mp3"
+	if err := c.Check(false); err == nil {
+		t.Fatal("an absolute audio URL passed the build")
+	}
+	c = load(t, fixtureDir)
+	c.Words[0].WbwPath = "https://audio.qurancdn.com/wbw/001_001_001.mp3"
 	if err := c.Check(false); err == nil {
 		t.Fatal("an absolute audio URL passed the build")
 	}
@@ -149,7 +157,7 @@ func TestWordTextAndTimingsComeFromTwoDifferentSegmentations(t *testing.T) {
 	if err := os.WriteFile(morph, []byte(strings.Join(kept, "\n")+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(dir, testRecitation.Slug, fixtureTimings); err == nil {
+	if _, err := Load(dir, []Recitation{testRecitation}); err == nil {
 		t.Fatal("a corpus whose words and morphology disagree on the word count was accepted")
 	}
 }
@@ -276,5 +284,121 @@ func TestAMultiWordSpanLeavesTheWordsInsideItUntimed(t *testing.T) {
 		if n.segments[i].WordID != wordID(1001, w) {
 			t.Errorf("row %d joins to word %d, want %d", i, n.segments[i].WordID, wordID(1001, w))
 		}
+	}
+}
+
+// withSecondRecitation copies the fixture and gives it a second reciter whose
+// timings are the first's, rewritten by edit.
+func withSecondRecitation(t *testing.T, edit func(ayahs []timings.File)) (string, Recitation) {
+	t.Helper()
+	dir := copyFixture(t)
+	var ayahs []timings.File
+	src := filepath.Join(dir, "timings", testRecitation.Timings+".json")
+	b, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(b, &ayahs); err != nil {
+		t.Fatal(err)
+	}
+	edit(ayahs)
+	out, err := json.Marshal(ayahs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second := Recitation{"second", "Second_Reciter", "A Reciter", "Murattal"}
+	if err := os.WriteFile(filepath.Join(dir, "timings", second.Timings+".json"), out, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir, second
+}
+
+func TestOneReciterWhoseAlignmentSplitsAWordIntoThreeShipsNoReciterAtAll(t *testing.T) {
+	dir, second := withSecondRecitation(t, func(ayahs []timings.File) {
+		last := ayahs[0].Segments[len(ayahs[0].Segments)-1]
+		ayahs[0].Segments[len(ayahs[0].Segments)-1] = []int{last[0], last[1] + 2, last[2], last[3]}
+	})
+	c, err := Load(dir, []Recitation{testRecitation, second})
+	if err != nil {
+		t.Fatalf("one reciter's bad alignment stopped the build: %v", err)
+	}
+	if len(c.Recited) != 1 || c.Recited[0].Slug != testRecitation.Slug {
+		t.Fatalf("recited %d recitations, want only %s", len(c.Recited), testRecitation.Slug)
+	}
+	if len(c.Refused) != 1 || !strings.Contains(c.Refused[0], second.Slug) {
+		t.Fatalf("the refusal does not name the reciter: %v", c.Refused)
+	}
+	if err := c.Check(false); err != nil {
+		t.Fatalf("the reciter that passed did not build: %v", err)
+	}
+	if strings.Contains(c.Notice, second.Timings) {
+		t.Fatal("the notice credits timings that do not ship")
+	}
+}
+
+func TestAnAyaWithNoTimingPlaysWithNoHighlightAtAll(t *testing.T) {
+	dir, second := withSecondRecitation(t, func(ayahs []timings.File) {
+		ayahs[1].Segments = nil // Shuraym's 12:76 in the 2016 release
+	})
+	c, err := Load(dir, []Recitation{testRecitation, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Refused) != 1 || !strings.Contains(c.Refused[0], "no timing") {
+		t.Fatalf("a recitation with an untimed aya was not refused: %v", c.Refused)
+	}
+}
+
+func TestTheReciterAFreshInstallFallsBackToIsMissingFromTheCorpus(t *testing.T) {
+	dir, second := withSecondRecitation(t, func([]timings.File) {})
+	c, err := Load(dir, []Recitation{second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Check(false); err == nil {
+		t.Fatal("a corpus without the default reciter passed the build")
+	}
+}
+
+func TestTwoRecitersTimingsMixIntoOneHighlight(t *testing.T) {
+	dir, second := withSecondRecitation(t, func(ayahs []timings.File) {
+		for _, a := range ayahs {
+			for _, seg := range a.Segments {
+				seg[2] += 50000
+				seg[3] += 50000
+			}
+		}
+	})
+	c, err := Load(dir, []Recitation{testRecitation, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "corpus.db")
+	if err := Write(out, c, 1, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	q := `SELECT count(*) FROM word_segments s JOIN recitations r ON r.id = s.recitation_id
+	       WHERE r.slug = '%s' AND s.start_ms %s 50000`
+	if n := scalar(t, out, fmt.Sprintf(q, testRecitation.Slug, ">=")); n != "0" {
+		t.Errorf("%s carries %s of the second reciter's rows", testRecitation.Slug, n)
+	}
+	if n := scalar(t, out, fmt.Sprintf(q, second.Slug, "<")); n != "0" {
+		t.Errorf("%s carries %s of the first reciter's rows", second.Slug, n)
+	}
+}
+
+func TestAWordsOwnAudioIsTheFileOfTheWordBesideIt(t *testing.T) {
+	// The word-by-word file index counts pause marks and drifts besides; the path
+	// is taken from the API, never rebuilt from the position. 1:1 has no pause
+	// mark, so this pins that the path arrives at all and lands on its word.
+	c := load(t, fixtureDir)
+	for _, w := range c.Words {
+		if w.ID == wordID(1001, 4) && w.WbwPath != "wbw/001_001_004.mp3" {
+			t.Fatalf("1:1 word 4 plays %q", w.WbwPath)
+		}
+	}
+	db := build(t, fixtureDir)
+	if n := scalar(t, db, "SELECT count(*) FROM words WHERE wbw_path IS NULL"); n != "0" {
+		t.Errorf("%s fixture words have no word audio", n)
 	}
 }

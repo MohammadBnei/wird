@@ -6,7 +6,7 @@
 
 The app is what the reader holds. It runs on iOS, Android, tablets and macOS. Everything a screen reads is already on the phone: the Quran text, the word-by-word data and the reader's own progress. The network is only used around the prayer. No screen waits on it, and the prayer screen never does.
 
-The reader is the only caller. The app talks to three outside parties, and none of them is on the path of a screen: `wird-api` for your writes and for the senses, Authentik when you choose to sign in, and a third-party recitation site when you play audio.
+The reader is the only caller. The app talks to three outside parties, and none of them is on the path of a screen: `wird-api` for your writes and for the senses, Authentik when you choose to sign in, and two third-party audio hosts when you play audio: everyayah.com for the reciter you chose, and quran.com's word-by-word recordings if you asked to hear each word alone.
 
 | In | Out | Depends on |
 |---|---|---|
@@ -20,7 +20,8 @@ flowchart LR
   app["Wird app<br/>corpus + your data on the phone"]
   api["wird-api"]
   idp["Authentik"]
-  audio["Recitation site<br/>third party"]
+  audio["everyayah.com<br/>six reciters, third party"]
+  wbw["quran.com word audio<br/>third party, opt-in"]
 
   reader -->|"reads, recites"| app
   app -->|"your writes, later"| api
@@ -28,6 +29,7 @@ flowchart LR
   api -->|"senses, voice model"| app
   app -->|"sign in, optional"| idp
   audio -->|"aya audio, cached"| app
+  wbw -->|"one word, cached"| app
 ```
 
 What the reader gets from this shape:
@@ -113,11 +115,11 @@ Future<void> installCorpus(File target, Uint8List bytes) async {
 }
 ```
 
-[db.dart:163](../../app/lib/data/db.dart#L163-L168) · [openWird, db.dart:21](../../app/lib/data/db.dart#L21-L45)
+[db.dart:164](../../app/lib/data/db.dart#L164-L169) · [openWird, db.dart:22](../../app/lib/data/db.dart#L22-L46)
 
-A phone that already holds an older corpus is upgraded on launch. When the app's `bundledCorpusVersion` is above the installed `corpus_meta.corpus_version`, [`upgradeCorpus`](../../app/lib/data/db.dart#L83-L105) fills the new corpus in `wird.db.next`, copies across every table the corpus does not ship and the senses fetched into `root_notes`, then swaps the files by rename. If anything fails before the swap, the old file is kept and the next launch tries again.
+A phone that already holds an older corpus is upgraded on launch. When the app's `bundledCorpusVersion` is above the installed `corpus_meta.corpus_version`, [`upgradeCorpus`](../../app/lib/data/db.dart#L84-L106) fills the new corpus in `wird.db.next`, copies across every table the corpus does not ship and the senses fetched into `root_notes`, then swaps the files by rename. If anything fails before the swap, the old file is kept and the next launch tries again.
 
-Then [openWirdAt](../../app/lib/data/db.dart#L172) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, how the last prayer was prepared, the passages recited, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
+Then [openWirdAt](../../app/lib/data/db.dart#L173) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, how the last prayer was prepared, the passages recited, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
 
 The copy only happens when `wird.db` is missing. A later app update with a newer corpus does not replace it.
 
@@ -134,7 +136,7 @@ The copy only happens when `wird.db` is missing. A later app update with a newer
     flusher: flusher,
 ```
 
-[nav.dart:202](../../app/lib/nav.dart#L202-L236) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:202](../../app/lib/app.dart#L202)
+[nav.dart:202](../../app/lib/nav.dart#L202-L236) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:208](../../app/lib/app.dart#L208)
 
 ### 4. Routes: destinations get the shell, pushed screens do not
 
@@ -158,7 +160,7 @@ Every screen is registered by name in one map. The drawer lists the destinations
 
 ### 5. A prayer is prepared, then recorded on the way back from it
 
-A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:353](../../app/lib/app.dart#L353-L357)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
+A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:386](../../app/lib/app.dart#L386-L390)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
 
 ```mermaid
 sequenceDiagram
@@ -199,7 +201,7 @@ That write, like every other write, goes to the **outbox** inside the same trans
 
 ### 6. The network, and who calls it
 
-Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:144](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the recitation site and cached; it never reaches `wird-api`.
+Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:144](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the two audio hosts into one capped cache; it never reaches `wird-api`. Which reciter, and whether a word plays alone, is a device-local choice in Settings ([ADR 0023](../adr/0023-six-reciters-and-a-word-by-word-voice.md)). Each reciter can be heard on the basmala before choosing, through `Recitation.sample`, which fetches one file without touching the set's pins. While a set plays, the bar names who recites it.
 
 ```mermaid
 flowchart LR

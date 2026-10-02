@@ -140,7 +140,11 @@ Copyright (c) 2016 Collin Fair. **CC BY 4.0.**
 <https://github.com/cpfair/quran-align>
 
 `word_segments` — which word is being recited at which millisecond — comes from
-the `Husary_Muallim_128kbps.json` file in quran-align's released data package.
+six files in quran-align's released data package, one per reciter Wird offers:
+`Husary_Muallim_128kbps`, `Husary_64kbps`, `Alafasy_128kbps`,
+`Abdul_Basit_Murattal_64kbps`, `Abu_Bakr_Ash-Shaatree_128kbps` and
+`Hani_Rifai_192kbps`. The other six in the package do not line up with the text
+(ADR 0023).
 Its README grants, verbatim:
 
 > These data files are licensed under a [Creative Commons Attribution 4.0
@@ -166,19 +170,21 @@ same numbers — all 6,236 ayas compare byte for byte — but the terms they arr
 under were not the same, and the one-week rule made them unshippable. Taking them
 from the publisher who granted them makes them shippable, and costs a URL.
 
-### Recitation audio — Maḥmūd Khalīl al-Ḥuṣarī, muʿallim
+### Recitation audio — six reciters, al-Ḥuṣarī muʿallim by default
 
 Fetched by the device from [everyayah.com](https://everyayah.com/) at playback
-time. **Not redistributed, not mirrored, not bundled.**
+time, in the voice the reader picks in Settings. A tapped word can instead play
+quran.com's word-by-word recording of it, fetched the same way. **Not
+redistributed, not mirrored, not bundled.**
 
 There is no Qur'an recitation Wird may redistribute. Every complete per-aya
 Arabic recording is granted for personal use only, published with no terms at
 all, or carries an open-licence tag applied by somebody who does not hold the
 master. So Wird does not ship the audio and does not host it: the device asks a
 third party for a public URL, the way a browser loads an image, and keeps a
-bounded cache of what it played. `app/lib/data/audio.dart` holds the origin and
-the cap; `ayah_audio.rel_path` is relative so the origin is config, not an App
-Store release.
+bounded cache of what it played. `app/lib/data/audio.dart` holds the hosts, each
+reciter's folder and the cap; `ayah_audio.rel_path` is a bare file name so the
+host is config, not an App Store release.
 
 Mirroring these files onto Wird's own host is the act this rules out. Under the
 only terms in this space that are actually written down, Quran Foundation's, it

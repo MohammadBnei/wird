@@ -90,7 +90,7 @@ flowchart TB
 
 ### 1. The microphone is asked for before the prayer, never in it
 
-Two places ask: the voice panel in Settings, and the preparation screen, which shows "Allow microphone" and then the model's download right under "Follow my voice" until both are done ([prepare_screen.dart:739](../../../app/lib/features/prayer/prepare_screen.dart#L739-L758)). Once the model is on disk, the panel's `onReady` ticks "Follow my voice" without a second tap ([prepare_screen.dart:715](../../../app/lib/features/prayer/prepare_screen.dart#L715-L719), [settings_screen.dart:545](../../../app/lib/features/settings/settings_screen.dart#L545)). The answer is stored in the database, so the prayer screen only reads it. A device with no microphone is recorded as `unavailable`, which is different from a refusal.
+Two places ask: the voice panel in Settings, and the preparation screen, which shows "Allow microphone" and then the model's download right under "Follow my voice" until both are done ([prepare_screen.dart:739](../../../app/lib/features/prayer/prepare_screen.dart#L739-L758)). Once the model is on disk, the panel's `onReady` ticks "Follow my voice" without a second tap ([prepare_screen.dart:715](../../../app/lib/features/prayer/prepare_screen.dart#L715-L719), [settings_screen.dart:549](../../../app/lib/features/settings/settings_screen.dart#L549)). The answer is stored in the database, so the prayer screen only reads it. A device with no microphone is recorded as `unavailable`, which is different from a refusal.
 
 ```dart
 Future<MicPermission> askForMic(
@@ -137,7 +137,7 @@ A stopped download keeps its `.part` file. The resume sends a `Range` header, an
 
 [speech.dart:249](../../../app/lib/data/speech.dart#L249-L260)
 
-A failed fetch is reported to Settings as one of two things: `notServed` (the host answered, but not with the file) or `interrupted` (the bytes stopped) ([speech.dart:172](../../../app/lib/data/speech.dart#L172-L181)). Settings starts the fetch from its model panel ([settings_screen.dart:554](../../../app/lib/features/settings/settings_screen.dart#L554-L567)).
+A failed fetch is reported to Settings as one of two things: `notServed` (the host answered, but not with the file) or `interrupted` (the bytes stopped) ([speech.dart:172](../../../app/lib/data/speech.dart#L172-L181)). Settings starts the fetch from its model panel ([settings_screen.dart:558](../../../app/lib/features/settings/settings_screen.dart#L558-L571)).
 
 ### 3. Old models are swept away
 

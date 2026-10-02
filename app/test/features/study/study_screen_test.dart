@@ -662,6 +662,8 @@ void main() {
     );
 
     await openSettings(tester);
+    await tester.ensureVisible(find.text('Allow microphone'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Allow microphone'));
     await tester.pumpAndSettle();
 

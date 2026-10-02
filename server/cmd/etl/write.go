@@ -59,7 +59,11 @@ CREATE TABLE words (
   -- lemma_key as published (Buckwalter, with the digit that tells apart two
   -- lemmas spelled alike), lemma decoded for display. NULL where there is no root.
   lemma_key    TEXT,
-  lemma        TEXT
+  lemma        TEXT,
+  -- The word spoken on its own, relative to quran.com's word-by-word host
+  -- (wbw/SSS_AAA_WWW.mp3). Not derivable from position: the file index counts
+  -- pause marks. NULL on the one word the API gives no file for.
+  wbw_path     TEXT
 );
 CREATE TABLE roots (
   letters           TEXT PRIMARY KEY,
@@ -81,26 +85,34 @@ CREATE TABLE root_notes (
   basis        TEXT,
   evidence     TEXT
 );
+-- The reciter a slug names. The folder their files live in, and the host, are
+-- the app's config: a host that moves costs a config change, not a corpus.
 CREATE TABLE recitations (
-  slug         TEXT PRIMARY KEY,
+  id           INTEGER PRIMARY KEY,
+  slug         TEXT NOT NULL UNIQUE,
   reciter_name TEXT NOT NULL,
   style        TEXT
 );
 -- No duration: the recordings are fetched from a third-party origin at playback
 -- time and Wird neither hosts nor indexes them, so their length is not ours to
--- state. rel_path is relative for the same reason — see data/SOURCES.md.
+-- state. rel_path is the file name, the same in every reciter's folder — see
+-- data/SOURCES.md.
 CREATE TABLE ayah_audio (
-  ayah_id         INTEGER NOT NULL REFERENCES ayahs(id),
-  recitation_slug TEXT NOT NULL REFERENCES recitations(slug),
-  rel_path        TEXT NOT NULL,
-  PRIMARY KEY (ayah_id, recitation_slug)
+  ayah_id  INTEGER PRIMARY KEY REFERENCES ayahs(id),
+  rel_path TEXT NOT NULL
 );
+-- One row per word per recitation, keyed so the table is its own index: six
+-- recitations in the shape one used to take would put corpus.db past the
+-- release budget in scripts/qa.sh. seq tells apart the rows of a word the
+-- reciter is timed on twice.
 CREATE TABLE word_segments (
-  word_id         INTEGER NOT NULL REFERENCES words(id),
-  recitation_slug TEXT NOT NULL REFERENCES recitations(slug),
-  start_ms        INTEGER NOT NULL,
-  end_ms          INTEGER NOT NULL
-);
+  recitation_id INTEGER NOT NULL REFERENCES recitations(id),
+  word_id       INTEGER NOT NULL REFERENCES words(id),
+  seq           INTEGER NOT NULL,
+  start_ms      INTEGER NOT NULL,
+  end_ms        INTEGER NOT NULL,
+  PRIMARY KEY (recitation_id, word_id, seq)
+) WITHOUT ROWID;
 -- The parsing vocabulary: one row per code the morphology file writes, named in
 -- both languages. A code per segment and a lookup, rather than two prose strings
 -- on each of 128,219 segments — which is the same words written 128,219 times,
@@ -129,15 +141,10 @@ CREATE TABLE corpus_meta (
 CREATE INDEX words_ayah ON words(ayah_id);
 CREATE INDEX words_root ON words(root_letters, lemma_key);
 CREATE INDEX ayahs_surah ON ayahs(surah_id);
-CREATE INDEX segments_word ON word_segments(word_id, recitation_slug);
 CREATE INDEX root_notes_root ON root_notes(root_letters);
 `
 
-type Recitation struct {
-	Slug, ReciterName, Style string
-}
-
-func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Time) error {
+func Write(path string, c *Corpus, version int, builtAt time.Time) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -186,7 +193,10 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 		return err
 	}
 
-	if _, err := tx.Exec(`INSERT INTO recitations VALUES (?,?,?)`, rec.Slug, rec.ReciterName, rec.Style); err != nil {
+	if err := insert(`INSERT INTO recitations VALUES (?,?,?,?)`, len(c.Recited), func(i int) []any {
+		r := c.Recited[i]
+		return []any{i + 1, r.Slug, r.ReciterName, nullable(r.Style)}
+	}); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?,?)`,
@@ -225,11 +235,11 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 		return err
 	}
 
-	if err := insert(`INSERT INTO words VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, len(c.Words), func(i int) []any {
+	if err := insert(`INSERT INTO words VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, len(c.Words), func(i int) []any {
 		w := c.Words[i]
 		return []any{w.ID, w.AyahID, w.Position, w.TextAr, w.Translit, w.GlossEn,
 			nullable(w.RootLetters), nullable(w.Form), nullable(w.Morphology), nullable(w.GlossFr),
-			nullable(w.LemmaKey), nullable(w.Lemma)}
+			nullable(w.LemmaKey), nullable(w.Lemma), nullable(w.WbwPath)}
 	}); err != nil {
 		return err
 	}
@@ -267,17 +277,22 @@ func Write(path string, c *Corpus, rec Recitation, version int, builtAt time.Tim
 	}); err != nil {
 		return err
 	}
-	if err := insert(`INSERT INTO ayah_audio VALUES (?,?,?)`, len(c.Audio), func(i int) []any {
+	if err := insert(`INSERT INTO ayah_audio VALUES (?,?)`, len(c.Audio), func(i int) []any {
 		a := c.Audio[i]
-		return []any{a.AyahID, rec.Slug, a.RelPath}
+		return []any{a.AyahID, a.RelPath}
 	}); err != nil {
 		return err
 	}
-	if err := insert(`INSERT INTO word_segments VALUES (?,?,?,?)`, len(c.Segments), func(i int) []any {
-		s := c.Segments[i]
-		return []any{s.WordID, rec.Slug, s.StartMS, s.EndMS}
-	}); err != nil {
-		return err
+	for i, r := range c.Recited {
+		seq := map[int64]int{}
+		if err := insert(`INSERT INTO word_segments VALUES (?,?,?,?,?)`, len(r.Segments), func(j int) []any {
+			s := r.Segments[j]
+			n := seq[s.WordID]
+			seq[s.WordID]++
+			return []any{i + 1, s.WordID, n, s.StartMS, s.EndMS}
+		}); err != nil {
+			return err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err

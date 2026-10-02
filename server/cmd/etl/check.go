@@ -74,19 +74,38 @@ func (c *Corpus) Check(full bool) error {
 		}
 	}
 
-	lastStart := map[int]int{}
-	for _, s := range c.Segments {
-		if !words[s.WordID] {
-			errs = append(errs, fmt.Errorf("segment for word %d, which is not in the corpus", s.WordID))
+	if len(c.Recited) == 0 {
+		errs = append(errs, fmt.Errorf("no recitation passed, so nothing would play: %s",
+			strings.Join(c.Refused, "; ")))
+	}
+	hasDefault := false
+	for _, r := range c.Recited {
+		hasDefault = hasDefault || r.Slug == defaultSlug
+		lastStart := map[int]int{}
+		for _, s := range r.Segments {
+			if !words[s.WordID] {
+				errs = append(errs, fmt.Errorf("%s: segment for word %d, which is not in the corpus", r.Slug, s.WordID))
+				break
+			}
+			aid := int(s.WordID / 1000)
+			if s.StartMS < lastStart[aid] {
+				errs = append(errs, fmt.Errorf("%s, aya %d: segment starts at %d after one starting at %d, "+
+					"so the highlight jumps backwards", r.Slug, aid, s.StartMS, lastStart[aid]))
+				break
+			}
+			lastStart[aid] = s.StartMS
+		}
+	}
+	if len(c.Recited) > 0 && !hasDefault {
+		errs = append(errs, fmt.Errorf("%s did not pass, and it is the reciter the app falls back to: %s",
+			defaultSlug, strings.Join(c.Refused, "; ")))
+	}
+	for _, w := range c.Words {
+		if strings.Contains(w.WbwPath, "://") || strings.HasPrefix(w.WbwPath, "/") {
+			errs = append(errs, fmt.Errorf("word %d audio %q is not a relative path: a host frozen "+
+				"into the asset costs a release the day it moves", w.ID, w.WbwPath))
 			break
 		}
-		aid := int(s.WordID / 1000)
-		if s.StartMS < lastStart[aid] {
-			errs = append(errs, fmt.Errorf("aya %d: segment starts at %d after one starting at %d, "+
-				"so the highlight jumps backwards", aid, s.StartMS, lastStart[aid]))
-			break
-		}
-		lastStart[aid] = s.StartMS
 	}
 
 	errs = append(errs, c.checkIrab()...)

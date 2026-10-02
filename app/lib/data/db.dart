@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'audio.dart';
 import 'outbox.dart';
 import 'root_repo.dart';
 import 'sets.dart';
@@ -47,7 +48,7 @@ Future<Database> openWird() async {
 /// The `corpus_meta.corpus_version` of `assets/corpus.db`. A constant rather
 /// than read from the asset, so a launch need not copy the whole corpus out of
 /// the bundle to learn it; a test holds the two equal.
-const bundledCorpusVersion = 6;
+const bundledCorpusVersion = 7;
 
 Future<Uint8List> _bundledCorpus() async {
   final asset = await rootBundle.load(_corpusAsset);
@@ -208,6 +209,16 @@ Future<Database> openWirdAt(String path) async {
     CREATE TABLE IF NOT EXISTS language_pref (
       id     INTEGER PRIMARY KEY CHECK (id = 1),
       locale TEXT NOT NULL
+    )''');
+  // Whose voice the recitation is in. Its own table for the reason the
+  // language is: `display_prefs` is written whole. Absent means the default
+  // reciter, and the row is a device's choice — a reader's second phone may
+  // well want another voice.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS audio_pref (
+      id           INTEGER PRIMARY KEY CHECK (id = 1),
+      reciter      TEXT NOT NULL,
+      word_by_word INTEGER NOT NULL DEFAULT 0
     )''');
   await db.execute('''
     CREATE TABLE IF NOT EXISTS mic_consent (
@@ -703,14 +714,68 @@ Future<List<({int start, int end})>> recentPassages(
 typedef Kin = Derivative;
 typedef RootDetail = RootReading;
 
-/// The reciter whose audio the corpus carries paths for.
-Future<String?> reciterLabel(Database db) async {
-  final rows = await db.query('recitations', limit: 1);
-  if (rows.isEmpty) return null;
-  final style = rows.first['style'] as String?;
-  final name = rows.first['reciter_name']! as String;
-  return style == null ? name : '$name · $style';
+/// One reciter the corpus carries timings for, as a reader picks them: who
+/// recites, and in which style (`Muallim`, `Murattal`), which the settings
+/// screen explains rather than prints.
+typedef Reciter = ({String slug, String name, String? style});
+
+/// The reciters the reader can choose between: those the corpus times and this
+/// build knows the folder of, the default first.
+///
+/// Empty on a corpus from before there was a choice — one whose upgrade failed
+/// and was kept (`openWird`) — rather than an error thrown into `Prefs.read`,
+/// which would keep the app from starting at all.
+Future<List<Reciter>> reciters(Database db) async {
+  final List<Map<String, Object?>> rows;
+  try {
+    rows = await db.query('recitations', orderBy: 'id');
+  } on DatabaseException {
+    return const [];
+  }
+  return [
+    for (final row in rows)
+      if (reciterFolders.containsKey(row['slug']))
+        (
+          slug: row['slug']! as String,
+          name: row['reciter_name']! as String,
+          style: row['style'] as String?,
+        ),
+  ];
 }
+
+/// What the reader chose to hear: the reciter, or [defaultReciter], and
+/// whether a tapped word plays its own recording.
+///
+/// A reciter the corpus no longer carries — a later corpus dropped them, or
+/// this build has no folder for them — falls back to the default, so the
+/// reader hears someone rather than nothing and the settings screen shows who
+/// plays. The row is rewritten with the default, keeping the word choice.
+///
+/// A corpus that lists no reciter at all is an old one kept after a failed
+/// upgrade, not a corpus that dropped this one: the choice is left alone for
+/// the upgrade that succeeds.
+Future<({String reciter, bool wordByWord})> audioPref(Database db) async {
+  final rows = await db.query('audio_pref', limit: 1);
+  if (rows.isEmpty) return (reciter: defaultReciter, wordByWord: false);
+  final chosen = rows.first['reciter']! as String;
+  final wordByWord = rows.first['word_by_word'] == 1;
+  final carried = await reciters(db);
+  if (carried.isEmpty || carried.any((r) => r.slug == chosen)) {
+    return (reciter: chosen, wordByWord: wordByWord);
+  }
+  await setAudioPref(db, reciter: defaultReciter, wordByWord: wordByWord);
+  return (reciter: defaultReciter, wordByWord: wordByWord);
+}
+
+Future<void> setAudioPref(
+  Database db, {
+  required String reciter,
+  required bool wordByWord,
+}) => db.insert('audio_pref', {
+  'id': 1,
+  'reciter': reciter,
+  'word_by_word': wordByWord ? 1 : 0,
+}, conflictAlgorithm: ConflictAlgorithm.replace);
 
 /// Gives a corpus installed before the French word glosses a `gloss_fr` column,
 /// empty, so every query can name it and every word falls back to its English.

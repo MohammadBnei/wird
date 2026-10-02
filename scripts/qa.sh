@@ -257,7 +257,13 @@ the_app_calls_what_it_ships() {
 # honours `range:`, which is what a reader on a train is resuming with.
 url_rows() {
 	cat <<-'URLS'
-		https://everyayah.com/data/Husary_Muallim_128kbps/|206|001001.mp3|every recitation is silent and the highlight follows nothing
+		https://everyayah.com/data/|206|Husary_Muallim_128kbps/001001.mp3|the default reciter is silent, so a fresh install hears nothing and the highlight follows nothing
+		https://everyayah.com/data/|206|Husary_64kbps/001001.mp3|a reader who chose this reciter hears nothing and the highlight follows nothing
+		https://everyayah.com/data/|206|Alafasy_128kbps/001001.mp3|a reader who chose this reciter hears nothing and the highlight follows nothing
+		https://everyayah.com/data/|206|Abdul_Basit_Murattal_64kbps/001001.mp3|a reader who chose this reciter hears nothing and the highlight follows nothing
+		https://everyayah.com/data/|206|Abu_Bakr_Ash-Shaatree_128kbps/001001.mp3|a reader who chose this reciter hears nothing and the highlight follows nothing
+		https://everyayah.com/data/|206|Hani_Rifai_192kbps/001001.mp3|a reader who chose this reciter hears nothing and the highlight follows nothing
+		https://audio.qurancdn.com/|206|wbw/001_001_001.mp3|a reader who asked to hear each word alone hears it cut from the reciter instead, or not at all offline
 		https://authentik.bnei.dev/application/o/wird/|200|.well-known/openid-configuration|nobody can sign in: the app asks the issuer where to send the reader and is answered nothing
 		https://wird.bnei.dev/auth/callback|200|?code=gate&state=gate|a reader who signs in is handed an error instead of the address they paste back into the app
 		https://wird.bnei.dev|200|/healthz|the API every queued write drains into is not there

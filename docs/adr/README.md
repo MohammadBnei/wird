@@ -17,11 +17,12 @@ flowchart LR
   A10[0010 server owns the senses]
   A11[0011 two doc families]
   A18[0018 public page in the API] -. amends .-> A5d
+  A23[0023 six reciters, word-by-word voice] -. amends .-> A1
 ```
 
 | File | Decision | Status |
 |---|---|---|
-| [0001-stack.md](0001-stack.md) | Flutter, Go, Postgres 18, Authentik, GitOps; offline-first with an outbox | accepted |
+| [0001-stack.md](0001-stack.md) | Flutter, Go, Postgres 18, Authentik, GitOps; offline-first with an outbox | accepted, amended by 0023 |
 | [0002-set-identity.md](0002-set-identity.md) | A set's identity is derived, and one op records a prayer | accepted |
 | [0003-addressable-reader.md](0003-addressable-reader.md) | Screen 1a is addressable, and it changes in place | accepted, amended by 0006 |
 | [0004-the-operations-view-behind-authentiks-group.md](0004-the-operations-view-behind-authentiks-group.md) | The operations view sits behind Authentik's group and only sees totals | accepted |
@@ -44,3 +45,4 @@ flowchart LR
 | [0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md](0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) | A prayer is prepared, then recited one rakʿah at a time | accepted, amended by 0021 |
 | [0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md](0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md) | The matcher's margin is asked per pair of places, and a repeated phrase is settled by order | accepted |
 | [0022-a-release-is-cut-by-one-button-from-the-pubspec.md](0022-a-release-is-cut-by-one-button-from-the-pubspec.md) | A release is cut by one button, and the pubspec holds the only version | accepted |
+| [0023-six-reciters-and-a-word-by-word-voice.md](0023-six-reciters-and-a-word-by-word-voice.md) | The reader picks one of six reciters, and can hear each word spoken alone | accepted |

@@ -295,9 +295,11 @@ is given so the reading can be checked rather than believed.
 | `words.root_letters`, `words.form`, `words.morphology`, `roots` | [Quranic Arabic Corpus 0.4](https://corpus.quran.com/download/), the upstream file, placed by hand | GPL, verbatim copies only, attribution and a link; Tanzil underneath it | **Yes** — Wird is AGPL-3.0 and the notice ships in `corpus_meta.notice`; see above |
 | `irab` | the same file, one row per segment rather than one per word | as above — it is upstream's own tags and features, rearranged and not edited | **Yes**, under the same row above |
 | `irab_roles` | **written here.** A translation of the annotation vocabulary the file uses; the names themselves are documented only on [corpus.quran.com](https://corpus.quran.com/documentation/) | a derivative of Dukes's annotation, so the GPL row above governs it; the French has no upstream at all | **Yes** — see *The parsing* |
-| `word_segments` | [`cpfair/quran-align`](https://github.com/cpfair/quran-align), release `release-2016-11-24`, file `Husary_Muallim_128kbps.json` | **CC BY 4.0** — attribution, and nothing else | **Yes** — see *The word timings* |
+| `word_segments` | [`cpfair/quran-align`](https://github.com/cpfair/quran-align), release `release-2016-11-24`, six of its twelve files: `Husary_Muallim_128kbps`, `Husary_64kbps`, `Alafasy_128kbps`, `Abdul_Basit_Murattal_64kbps`, `Abu_Bakr_Ash-Shaatree_128kbps`, `Hani_Rifai_192kbps` | **CC BY 4.0** — attribution, and nothing else | **Yes** — see *The word timings* |
 | `ayah_audio.rel_path` | derived from the sura and aya number; nothing is fetched to build it | not a licensable fact | **Yes** — it is a file name, not content |
-| the MP3s themselves | `everyayah.com/data/Husary_Muallim_128kbps/`, fetched by the device at playback | everyayah publishes no terms of any kind | **No, and Wird does not** — see *The recitation audio* |
+| `words.wbw_path` | the `audio_url` of each word in the same `verses/by_chapter` responses as the text | not a licensable fact | **Yes** — a path, not the recording |
+| the MP3s themselves | `everyayah.com/data/<reciter folder>/`, the six folders above, fetched by the device at playback | everyayah publishes no terms of any kind | **No, and Wird does not** — see *The recitation audio* |
+| the word-by-word MP3s | `audio.qurancdn.com/wbw/`, fetched by the device at playback when the reader turns them on | Quran Foundation Developer Terms; not in the Content Sync list, so §3.1's one-week cap applies | **No, and Wird does not** — see *Word-by-word audio* |
 
 ### The one-week rule
 
@@ -339,7 +341,10 @@ audio files, not the `segments` arrays — so no exception applied to the one-we
 rule and an immutable `corpus.db` was storage without end.
 
 They now come from [`cpfair/quran-align`](https://github.com/cpfair/quran-align),
-whose released data package grants them. The README inside
+whose released data package grants them. Since 2026-10-02 six of its twelve
+recitations ship, each refused or kept on its own by the ingest and the ETL;
+ADR 0023 lists the six that do not reconcile and why. `corpus_meta.notice`
+carries one attribution per file shipped. The README inside
 `quran-align-data-2016-11-24.zip` says, verbatim and in full:
 
 ```
@@ -516,6 +521,27 @@ enough for anything else. Note also that `Husary_Muallim_128kbps` serves but is
 absent from the site's own `recitations.js` manifest — a load-bearing URL that is
 not advertised. `archive.org/details/quran-every-ayah` mirrors the same folder and
 is the documented second origin if it stops.
+
+### Word-by-word audio
+
+**Settled 2026-10-02, by the owner, as an accepted trade-off.** A reader can
+choose to hear a tapped word spoken on its own instead of cut out of the
+reciter's aya. One such voice exists: quran.com's, at
+`audio.qurancdn.com/wbw/SSS_AAA_WWW.mp3`. The copies on archive.org
+(`quran-wordbyword`) and Hugging Face (`zaibihassan/Quranic-Word-By-Word-Audio-Data`,
+`Buraaq/quran-audio-text-dataset`) re-upload the same files, and their open
+licence tags are applied by uploaders who do not hold the recordings.
+
+These files sit under the Quran Foundation terms quoted above. Word-by-word
+audio is not in the Content Sync list, so §3.1's one-week limit on caching
+applies, and Wird's capped cache can hold a word file longer than that. The
+owner accepted this: the device fetches the files at playback, exactly as it
+fetches everyayah's, and Wird never bundles or mirrors them. Open question 3
+would cover them too.
+
+The file index is quran.com's own and not the word's position — it counts pause
+marks as words — so the path each word plays is stored as the API gave it, in
+`words.wbw_path`.
 
 ### The sources that were checked and rejected
 
@@ -830,19 +856,29 @@ with no evidence under it.
 
 ## Reconciliation, from `data/manifest.json`
 
-| Number | Value | What a wrong value would mean |
-| --- | --- | --- |
-| ayas where word numbering disagrees | **0** | a word's timing or root belongs to another word |
-| ayas where the aligner numbers one written word as two | 5 | the muqaṭṭaʿāt, reconciled: unreconciled, every word after the split highlights one place late |
-| multi-word spans / words they time | 27 / 61 | words the aligner could not split, dropped by a one-word-per-segment parser |
-| words with no timing | 22 across 12 ayas | the highlight freezes for those words |
-| overlapping segment pairs | 0 | — |
-| segments ending before they start | 8 | the ETL clamps them |
+Ayas where word numbering disagrees: **0** for every recitation shipped. A
+non-zero count refuses that recitation, because a word's timing would belong to
+another word.
+
+| Recitation | split words reconciled | multi-word spans / words they time | words with no timing | segments ending before they start |
+| --- | --- | --- | --- | --- |
+| `Husary_Muallim_128kbps` | 5 | 27 / 61 | 22 across 12 ayas | 8 |
+| `Husary_64kbps` | 3 | 15 / 15 | 1 across 1 aya | 12 |
+| `Alafasy_128kbps` | 3 | 23 / 32 | 6 across 5 ayas | 10 |
+| `Abdul_Basit_Murattal_64kbps` | 3 | 14 / 67 | 44 across 11 ayas | 17 |
+| `Abu_Bakr_Ash-Shaatree_128kbps` | 2 | 20 / 53 | 3 across 3 ayas | 20 |
+| `Hani_Rifai_192kbps` | 1 | 14 / 15 | 20 across 20 ayas | 13 |
+
+A split word is the muqaṭṭaʿāt, reconciled: unreconciled, every word after the
+split highlights one place late. A multi-word span is words the aligner could
+not split, which a one-word-per-segment parser drops. An untimed word freezes
+the highlight while it is recited. No recitation has overlapping segment pairs;
+inverted ones are clamped by the ETL.
 
 Built from these sources, `corpus.db` is 114 suras, 6,236 ayas, 77,429 words,
-1,642 roots and 77,408 word segments, at 30.00 MB against a 60 MB budget. It
-carries no root senses: `root_notes` ships empty, and a reader's senses arrive
-from `/v1/senses`.
+1,642 roots and six recitations of about 77,400 word segments each, at 38 MB
+against a 60 MiB budget. It carries no root senses: `root_notes` ships empty,
+and a reader's senses arrive from `/v1/senses`.
 
 ## The public page
 

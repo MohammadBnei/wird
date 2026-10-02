@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-01T08:18:50Z",
+  "generated_at": "2026-10-02T08:32:35Z",
   "complete": true,
   "suras": [
     1,
@@ -128,22 +128,119 @@
     "surahs": 114,
     "ayahs": 6236,
     "words": 77429,
-    "audio_files": 6236,
-    "segment_tuples": 77347,
-    "words_timed": 77407,
     "morphology_segments": 128219,
     "roots": 1642
   },
-  "reconciliation": {
-    "ayahs_where_word_numbering_disagrees": 0,
-    "ayahs_where_the_aligner_splits_a_word": 5,
-    "multi_word_segment_spans": 27,
-    "words_timed_only_by_a_multi_word_span": 61,
-    "words_with_no_timing": 22,
-    "ayahs_with_an_untimed_word": 12,
-    "overlapping_segment_pairs": 0,
-    "segments_ending_before_they_start": 8
-  },
+  "recitations": [
+    {
+      "name": "Husary_Muallim_128kbps",
+      "counts": {
+        "audio_files": 6236,
+        "segment_tuples": 77347,
+        "words_timed": 77407
+      },
+      "reconciliation": {
+        "ayahs_where_word_numbering_disagrees": 0,
+        "ayahs_where_the_aligner_splits_a_word": 5,
+        "multi_word_segment_spans": 27,
+        "words_timed_only_by_a_multi_word_span": 61,
+        "words_with_no_timing": 22,
+        "ayahs_with_an_untimed_word": 12,
+        "overlapping_segment_pairs": 0,
+        "segments_ending_before_they_start": 8
+      }
+    },
+    {
+      "name": "Husary_64kbps",
+      "counts": {
+        "audio_files": 6236,
+        "segment_tuples": 77414,
+        "words_timed": 77428
+      },
+      "reconciliation": {
+        "ayahs_where_word_numbering_disagrees": 0,
+        "ayahs_where_the_aligner_splits_a_word": 3,
+        "multi_word_segment_spans": 15,
+        "words_timed_only_by_a_multi_word_span": 15,
+        "words_with_no_timing": 1,
+        "ayahs_with_an_untimed_word": 1,
+        "overlapping_segment_pairs": 0,
+        "segments_ending_before_they_start": 12
+      }
+    },
+    {
+      "name": "Alafasy_128kbps",
+      "counts": {
+        "audio_files": 6236,
+        "segment_tuples": 77392,
+        "words_timed": 77423
+      },
+      "reconciliation": {
+        "ayahs_where_word_numbering_disagrees": 0,
+        "ayahs_where_the_aligner_splits_a_word": 3,
+        "multi_word_segment_spans": 23,
+        "words_timed_only_by_a_multi_word_span": 32,
+        "words_with_no_timing": 6,
+        "ayahs_with_an_untimed_word": 5,
+        "overlapping_segment_pairs": 0,
+        "segments_ending_before_they_start": 10
+      }
+    },
+    {
+      "name": "Abdul_Basit_Murattal_64kbps",
+      "counts": {
+        "audio_files": 6236,
+        "segment_tuples": 77319,
+        "words_timed": 77385
+      },
+      "reconciliation": {
+        "ayahs_where_word_numbering_disagrees": 0,
+        "ayahs_where_the_aligner_splits_a_word": 3,
+        "multi_word_segment_spans": 14,
+        "words_timed_only_by_a_multi_word_span": 67,
+        "words_with_no_timing": 44,
+        "ayahs_with_an_untimed_word": 11,
+        "overlapping_segment_pairs": 0,
+        "segments_ending_before_they_start": 17
+      }
+    },
+    {
+      "name": "Abu_Bakr_Ash-Shaatree_128kbps",
+      "counts": {
+        "audio_files": 6236,
+        "segment_tuples": 77374,
+        "words_timed": 77426
+      },
+      "reconciliation": {
+        "ayahs_where_word_numbering_disagrees": 0,
+        "ayahs_where_the_aligner_splits_a_word": 2,
+        "multi_word_segment_spans": 20,
+        "words_timed_only_by_a_multi_word_span": 53,
+        "words_with_no_timing": 3,
+        "ayahs_with_an_untimed_word": 3,
+        "overlapping_segment_pairs": 0,
+        "segments_ending_before_they_start": 20
+      }
+    },
+    {
+      "name": "Hani_Rifai_192kbps",
+      "counts": {
+        "audio_files": 6236,
+        "segment_tuples": 77395,
+        "words_timed": 77409
+      },
+      "reconciliation": {
+        "ayahs_where_word_numbering_disagrees": 0,
+        "ayahs_where_the_aligner_splits_a_word": 1,
+        "multi_word_segment_spans": 14,
+        "words_timed_only_by_a_multi_word_span": 15,
+        "words_with_no_timing": 20,
+        "ayahs_with_an_untimed_word": 20,
+        "overlapping_segment_pairs": 0,
+        "segments_ending_before_they_start": 13
+      }
+    }
+  ],
   "files": [
     {
       "path": "data/raw/chapters.json",
@@ -154,6 +251,31 @@
       "path": "data/raw/quranic-corpus-morphology-0.4.txt",
       "bytes": 6309503,
       "sha256": "a1d12923815341face765083805d2148ed2d9f5cc3f7d6665219d887675d8c46"
+    },
+    {
+      "path": "data/raw/timings/Abdul_Basit_Murattal_64kbps.json",
+      "bytes": 2335847,
+      "sha256": "5e884ac55832ec33c9339ef38267081297513edf6225e6f86d64e04b9e2a25fe"
+    },
+    {
+      "path": "data/raw/timings/Abu_Bakr_Ash-Shaatree_128kbps.json",
+      "bytes": 2314191,
+      "sha256": "633791c166d0dcf00e8654e2d21f926661fbbe25b89825dbd571b9463f1eaff5"
+    },
+    {
+      "path": "data/raw/timings/Alafasy_128kbps.json",
+      "bytes": 2317265,
+      "sha256": "55c1353848d8f3140abab72bb5d1d4533476a8219f6241079a425d232f001eb7"
+    },
+    {
+      "path": "data/raw/timings/Hani_Rifai_192kbps.json",
+      "bytes": 2316263,
+      "sha256": "3215d0a9038d7eae695018b1bc5af05cea1cb12bdc0420fa6c5c8a320ec3b557"
+    },
+    {
+      "path": "data/raw/timings/Husary_64kbps.json",
+      "bytes": 2348746,
+      "sha256": "4ccb674446203398531a5cc034ac2ca35e3c4632a2b881c16562fa7b185e7d2a"
     },
     {
       "path": "data/raw/timings/Husary_Muallim_128kbps.json",

@@ -43,27 +43,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// at.
   StudySet? _next;
 
-  /// Who recites the audio the app plays. It came off the reading screen's
-  /// transport, where it sat beside the play button and read as that button's
-  /// state — which it is not: it never changes while a set is open, and the
-  /// state the button does have is whether the recitation is on the phone.
-  /// That half stayed on the transport, with the button it disables.
-  String? _reciter;
+  /// The reciters the corpus times. The choice came off the reading screen's
+  /// transport, where the name sat beside the play button and read as that
+  /// button's state — which it is not: the state the button does have is
+  /// whether the recitation is on the phone. That half stayed on the
+  /// transport, with the button it disables.
+  List<Reciter> _reciters = const [];
+
+  Recitation? _recitation;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _recitation = Wird.of(context).recitation;
     _load();
+  }
+
+  /// A sample is heard here and nowhere else: leaving stops it.
+  @override
+  void dispose() {
+    _recitation?.stopSample();
+    super.dispose();
   }
 
   Future<void> _load() async {
     final wird = Wird.of(context);
     final next = await nextSet(wird.db, wird.prefs.order);
-    final reciter = await reciterLabel(wird.db);
+    final all = await reciters(wird.db);
     if (mounted) {
       setState(() {
         _next = next;
-        _reciter = reciter;
+        _reciters = all;
       });
     }
   }
@@ -110,19 +120,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _section(n, l.settingsLanguage),
               NocturneSegmented(
-                options: [
-                  l.settingsLanguageEnglish,
-                  l.settingsLanguageFrench,
-                ],
+                options: [l.settingsLanguageEnglish, l.settingsLanguageFrench],
                 // The language being read, which is the reader's choice or
                 // their phone's until they make one. There is no third option
                 // for "my phone's": a reader picking their own language is not
                 // choosing between a language and a way of choosing one, and
                 // the phone's is already the one they can see selected.
-                selected:
-                    Localizations.localeOf(context).languageCode == 'fr' ? 1 : 0,
-                onChanged: (i) =>
-                    prefs.setLocale(Locale(i == 1 ? 'fr' : 'en')),
+                selected: Localizations.localeOf(context).languageCode == 'fr'
+                    ? 1
+                    : 0,
+                onChanged: (i) => prefs.setLocale(Locale(i == 1 ? 'fr' : 'en')),
               ),
               SizedBox(height: n.space('1')),
               _caption(n, l.settingsLanguageCaption),
@@ -153,10 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _caption(n, l.settingsAyaTranslationCaption),
               SizedBox(height: n.space('3')),
               NocturneSegmented(
-                options: [
-                  l.settingsOrderChronological,
-                  l.settingsOrderMushaf,
-                ],
+                options: [l.settingsOrderChronological, l.settingsOrderMushaf],
                 selected: prefs.order.index,
                 onChanged: (i) async {
                   await prefs.setOrder(ReadingOrder.values[i]);
@@ -199,23 +203,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _section(n, l.settingsSetWidth),
               _width(n, l),
               _section(n, l.settingsRecitation),
-              // Read-only: the corpus ships the paths for one reciter and
-              // there is nothing here to choose between. It is said once,
-              // here, rather than under the play button, where a name that
-              // never changes read as the transport's own state.
-              //
-              // Who recites is all this says. It used to add that nothing
-              // would play — a claim this query cannot see: the name comes
-              // from `recitations` while what plays is decided by ayah_audio,
-              // and either table can be populated without the other. Whether
-              // a set is playable is said on the screen that knows, under the
-              // button it disables.
-              _caption(
-                n,
-                _reciter == null
-                    ? l.settingsNoReciter
-                    : l.settingsRecitedBy(_reciter!),
-              ),
+              // Whose voice plays the set and every word tapped. Changing it
+              // re-carries the open set at once (study_screen.dart), so the
+              // next play is already in the new voice.
+              if (_reciters.isEmpty)
+                _caption(n, l.settingsNoReciter)
+              else ...[
+                _ReciterList(
+                  reciters: _reciters,
+                  selected: prefs.reciter,
+                  onChanged: prefs.setReciter,
+                ),
+                SizedBox(height: n.space('1')),
+                _caption(n, l.settingsReciterCaption),
+                SizedBox(height: n.space('3')),
+                NocturneSegmented(
+                  options: [l.settingsWordFromReciter, l.settingsWordAlone],
+                  selected: prefs.wordByWord ? 1 : 0,
+                  onChanged: (i) => prefs.setWordByWord(i == 1),
+                ),
+                SizedBox(height: n.space('1')),
+                _caption(n, l.settingsWordVoiceCaption),
+              ],
               // The senses sit with what a root means, not with the voice: the
               // recogniser below is a feature a reader turns on, and this is
               // the app's own content arriving. It is drawn unconditionally —
@@ -342,6 +351,127 @@ class _SettingsScreenState extends State<SettingsScreen> {
     text,
     style: TextStyle(fontSize: 10.5, height: 1.4, color: n.textAt(0.5)),
   );
+}
+
+/// The reciters, one row each: who, in which style and what that style is
+/// for, and a button to hear them on the basmala before choosing.
+///
+/// A list of names was a choice made blind — the two Husary rows differed by a
+/// word few readers know — and finding out meant leaving for the reading
+/// screen and pressing play. The width is held to a phone's, so on a tablet
+/// the rows do not stretch a ring across the whole screen.
+class _ReciterList extends StatelessWidget {
+  const _ReciterList({
+    required this.reciters,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<Reciter> reciters;
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  String? _style(AppLocalizations l, String? style) => switch (style) {
+    null => null,
+    'Muallim' => l.settingsStyleMuallim,
+    'Murattal' => l.settingsStyleMurattal,
+    final other => other,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
+    final recitation = Wird.of(context).recitation;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: n.divider),
+          borderRadius: BorderRadius.circular(n.radius('md')),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: ValueListenableBuilder<String?>(
+          valueListenable: recitation.sampling,
+          builder: (context, sampling, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (i, r) in reciters.indexed) ...[
+                if (i > 0) Container(height: 1, color: n.divider),
+                _row(context, n, l, r, sampling == r.slug, recitation),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _row(
+    BuildContext context,
+    Nocturne n,
+    AppLocalizations l,
+    Reciter r,
+    bool sounding,
+    Recitation recitation,
+  ) {
+    final chosen = r.slug == selected;
+    final style = _style(l, r.style);
+    return Semantics(
+      selected: chosen,
+      button: true,
+      child: InkWell(
+        onTap: () => onChanged(r.slug),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: chosen ? n.accent : Colors.transparent),
+          ),
+          padding: const EdgeInsets.only(left: 12, top: 6, bottom: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 2,
+                  children: [
+                    Text(
+                      r.name,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.2,
+                        color: chosen ? n.accent : n.text,
+                      ),
+                    ),
+                    if (style != null)
+                      Text(
+                        style,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          height: 1.3,
+                          color: n.textAt(0.5),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                key: Key('sample ${r.slug}'),
+                tooltip: sounding
+                    ? l.settingsStopSample
+                    : l.settingsHearReciter(r.name),
+                onPressed: () => recitation.sample(r.slug),
+                icon: Icon(
+                  sounding ? Icons.stop : Icons.play_arrow,
+                  size: 20,
+                  color: sounding ? n.accent : n.textAt(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Which of the six things is true of the senses on this phone right now.
@@ -613,10 +743,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             variant: NocturneButtonVariant.ghost,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => VoiceCheck(
-                model: _model,
-                words: widget.words,
-              ),
+                builder: (_) => VoiceCheck(model: _model, words: widget.words),
               ),
             ),
             child: Text(l.settingsCheckRecogniser),
@@ -628,8 +755,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             onPressed: _remove,
             child: Text(l.settingsRemoveRecogniser),
           ),
-        ]
-        else
+        ] else
           NocturneButton(
             key: VoiceModelPanel.download,
             onPressed: _download,

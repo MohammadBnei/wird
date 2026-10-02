@@ -93,10 +93,15 @@ func writeJSON(t *testing.T, path string, v any) {
 	}
 }
 
-func verifyFixture(t *testing.T, ayahs []fakeAyah) (*manifest, error) {
+// verifyFixture verifies the fixture's one recitation and hands back its report.
+func verifyFixture(t *testing.T, ayahs []fakeAyah) (*recitationReport, error) {
 	t.Helper()
 	dir, chapters := writeFixture(t, ayahs)
-	return verify(dir, []int{1}, chapters, fixtureRecitation, time.Now())
+	m, err := verify(dir, []int{1}, chapters, []string{fixtureRecitation}, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return &m.Recitations[0], nil
 }
 
 // A four-word aya, one segment per word, is the shape everything else deviates
@@ -228,7 +233,7 @@ func TestASuraTruncatedByPaginationIsRejectedRatherThanIngestedShort(t *testing.
 		"verses":     []map[string]any{{"verse_key": "1:1", "words": []map[string]any{{"char_type_name": "word"}}}},
 		"pagination": map[string]any{"next_page": &next},
 	})
-	if _, err := verify(dir, []int{1}, chapters, fixtureRecitation, time.Now()); err == nil {
+	if _, err := verify(dir, []int{1}, chapters, []string{fixtureRecitation}, time.Now()); err == nil {
 		t.Fatal("a sura that did not fit on one page was accepted, losing its tail silently")
 	}
 }
@@ -374,7 +379,7 @@ func TestTimingsAreBundledUnderALicenceSentenceThePackageNoLongerCarries(t *test
 		"LICENSE":                   "Copyright (c) 2016 Collin Fair",
 		fixtureRecitation + ".json": "[]",
 	})
-	err := extractTimings(path, t.TempDir(), fixtureRecitation)
+	err := extractTimings(path, t.TempDir(), []string{fixtureRecitation})
 	if err == nil {
 		t.Fatal("a package whose README no longer grants the licence was accepted")
 	}
@@ -388,7 +393,49 @@ func TestAReleasePackageWithoutTheRecitationLeavesTheAppWithNoTimingsAtAll(t *te
 		"README":  "licensed under a " + timings.LicenceMarker + " International License",
 		"LICENSE": "Copyright (c) 2016 Collin Fair",
 	})
-	if err := extractTimings(path, t.TempDir(), fixtureRecitation); err == nil {
+	if err := extractTimings(path, t.TempDir(), []string{fixtureRecitation}); err == nil {
 		t.Fatal("a package holding no timings for the shipped reciter was accepted")
+	}
+}
+
+func TestOneRecitationThatSplitsAWordIntoThreeTakesEveryOtherReciterDownWithIt(t *testing.T) {
+	dir, chapters := writeFixture(t, fourWords())
+	// Two indices too many: the aligner read one written word as three, which
+	// internal/timings refuses to guess at.
+	writeJSON(t, filepath.Join(dir, timingsDir, "Split_Reciter.json"), []map[string]any{{
+		"surah": 1, "ayah": 1, "segments": [][]int{{0, 1, 0, 100}, {1, 2, 110, 200}, {2, 6, 210, 900}},
+	}})
+	m, err := verify(dir, []int{1}, chapters, []string{fixtureRecitation, "Split_Reciter"}, time.Now())
+	if err != nil {
+		t.Fatalf("one reciter's bad alignment stopped the ingest for the others: %v", err)
+	}
+	if m.Recitations[0].Refused != "" {
+		t.Fatalf("the sound recitation was refused: %s", m.Recitations[0].Refused)
+	}
+	if m.Recitations[1].Name != "Split_Reciter" || m.Recitations[1].Refused == "" {
+		t.Fatalf("the split recitation was not refused by name: %+v", m.Recitations[1])
+	}
+	for _, f := range m.Files {
+		if strings.Contains(f.Path, "Split_Reciter") {
+			t.Fatalf("the manifest checksums %s, a recitation that does not ship", f.Path)
+		}
+	}
+}
+
+func TestATimingsFileOpeningWithTheAlignersCrashLogIsReadAsTimings(t *testing.T) {
+	// Sudais's file in the 2016 release opens with 150 KB of the aligner's own
+	// crash output before the JSON starts. It is refused, never trimmed: what
+	// follows a crash is not known to be the whole recitation.
+	dir, chapters := writeFixture(t, fourWords())
+	if err := save(filepath.Join(dir, timingsDir, "Crashed.json"),
+		[]byte("Crashed Command '['./align', ...]'\n[{\"surah\":1,\"ayah\":1,\"segments\":[]}]")); err != nil {
+		t.Fatal(err)
+	}
+	_, err := verify(dir, []int{1}, chapters, []string{"Crashed"}, time.Now())
+	if err == nil {
+		t.Fatal("a timings file that opens with a crash log was accepted")
+	}
+	if !strings.Contains(err.Error(), "Crashed") {
+		t.Fatalf("the refusal does not name the recitation: %v", err)
 	}
 }

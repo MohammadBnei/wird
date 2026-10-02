@@ -39,7 +39,7 @@ Future<Map<String, dynamic>?> queued(Database db) async {
 /// `-corpus-version` default has to agree with it: the API groups reports by
 /// this number, so a rebuild that regresses it misattributes every report, and
 /// the report golden only bakes the digit as pixels.
-const expectedCorpusVersion = 6;
+const expectedCorpusVersion = 7;
 
 void main() {
   late Database db;

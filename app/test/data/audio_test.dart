@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 
 import '../corpus.dart';
@@ -183,11 +185,10 @@ void main() {
         reason: '$path was evicted while the reader was about to pray it',
       );
     }
-    expect(
-      dir.listSync().map((f) => f.uri.pathSegments.last).toSet(),
-      {for (final path in paths) path.split('/').last},
-      reason: 'the stale files are gone, so the cache really did evict',
-    );
+    expect(dir.listSync().map((f) => f.uri.pathSegments.last).toSet(), {
+      for (final path in paths)
+        AudioCache(dir).fileFor(path).uri.pathSegments.last,
+    }, reason: 'the stale files are gone, so the cache really did evict');
   });
 
   test('the set the reader will be handed next is evicted before they are '
@@ -213,8 +214,11 @@ void main() {
 
     // What screen 1a downloads when it opens the set, against a cap that
     // cannot hold it: everything unpinned goes.
-    await AudioCache(dir, capBytes: 3 * 1024, fetch: FakeCdn().call)
-        .prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
+    await AudioCache(
+      dir,
+      capBytes: 3 * 1024,
+      fetch: FakeCdn().call,
+    ).prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
 
     expect(aheadPaths, hasLength(ahead.ayas.length));
     for (final path in aheadPaths) {
@@ -275,5 +279,283 @@ void main() {
       Duration.zero,
       reason: 'the pad may not seek behind the start of the file',
     );
+  });
+
+  test('a reciter the corpus times has no folder to fetch from, so picking '
+      'them plays nothing', () async {
+    final slugs = [
+      for (final row in await db.query('recitations')) row['slug']! as String,
+    ];
+    expect(slugs, isNotEmpty);
+    expect(slugs, contains(defaultReciter));
+    expect(
+      {for (final r in await reciters(db)) r.slug},
+      slugs.toSet(),
+      reason: 'every slug in the corpus needs its folder in reciterFolders',
+    );
+  });
+
+  test('two reciters download the same aya into one file, and one plays in '
+      'the other\'s voice', () async {
+    final dir = await tempAudioDir();
+    final cdn = FakeCdn();
+    final husary = (await tracksFor(db, [96001])).single;
+    final alafasy = (await tracksFor(db, [96001], reciter: 'alafasy')).single;
+    final cache = AudioCache(dir, fetch: cdn.call);
+    await cache.prefetch([husary.relPath, alafasy.relPath]);
+
+    expect(
+      cache.fileFor(husary.relPath).path,
+      isNot(cache.fileFor(alafasy.relPath).path),
+    );
+    expect(dir.listSync().whereType<File>(), hasLength(2));
+    expect(cdn.served, [
+      'https://everyayah.com/data/Husary_Muallim_128kbps/096001.mp3',
+      'https://everyayah.com/data/Alafasy_128kbps/096001.mp3',
+    ]);
+  });
+
+  test(
+    'a second reciter highlights with the first reciter\'s timings',
+    () async {
+      final husary = (await tracksFor(db, [96001])).single;
+      final alafasy = (await tracksFor(db, [96001], reciter: 'alafasy')).single;
+
+      expect(
+        [for (final s in alafasy.segments) s.wordId],
+        [for (final s in husary.segments) s.wordId],
+        reason: 'the same words, each once',
+      );
+      expect(
+        [for (final s in alafasy.segments) s.startMs],
+        isNot([for (final s in husary.segments) s.startMs]),
+        reason: 'two recordings do not pause in the same places',
+      );
+    },
+  );
+
+  test('a second reciter\'s files escape the cap because they sit somewhere '
+      'the sweep does not look', () async {
+    final dir = await tempAudioDir();
+    final paths = [
+      for (final t in await tracksFor(db, firstSet, reciter: 'alafasy'))
+        t.relPath,
+    ];
+    final cache = AudioCache(dir, capBytes: 3 * 1024, fetch: FakeCdn().call);
+    await cache.prefetch(paths);
+    // The next set pins nothing of this one, so the sweep must bring it back
+    // under the cap.
+    await cache.prefetch([
+      for (final t in await tracksFor(db, [96006], reciter: 'alafasy'))
+        t.relPath,
+    ]);
+    final held = dir.listSync(recursive: true).whereType<File>();
+    expect(
+      held.fold(0, (sum, f) => sum + f.lengthSync()),
+      lessThanOrEqualTo(3 * 1024),
+    );
+  });
+
+  test('a reciter a later corpus dropped leaves the reader with no recitation '
+      'at all', () async {
+    await setAudioPref(
+      db,
+      reciter: 'a-reciter-no-corpus-carries',
+      wordByWord: true,
+    );
+    expect(await audioPref(db), (reciter: defaultReciter, wordByWord: true));
+    expect(
+      (await db.query('audio_pref')).single['reciter'],
+      defaultReciter,
+      reason: 'the stale choice is replaced rather than kept and ignored',
+    );
+
+    await setAudioPref(db, reciter: 'alafasy', wordByWord: false);
+    expect(await audioPref(db), (reciter: 'alafasy', wordByWord: false));
+    await db.delete('audio_pref');
+  });
+
+  test('files cached before there was a choice of reciter hold the cap '
+      'forever, because nothing asks for their names', () async {
+    final root = await tempAudioDir();
+    final dir = Directory('${root.path}/audio')..createSync();
+    File('${dir.path}/096001.mp3').writeAsBytesSync([0]);
+    File('${dir.path}/Alafasy_128kbps_096001.mp3').writeAsBytesSync([0]);
+
+    await AudioCache.beside(root.path);
+
+    expect(
+      [for (final f in dir.listSync()) f.uri.pathSegments.last],
+      ['Alafasy_128kbps_096001.mp3'],
+    );
+  });
+
+  test('a word spoken alone is the file of the word beside it, because the '
+      'word-by-word files count the pause marks as words', () async {
+    // 12:1 opens on the letters alif lam ra, which the word-by-word files
+    // number as two: the text's second word is the third file.
+    final track = (await tracksFor(db, [12001])).single;
+    expect(track.wordFiles[12001002], 'wbw/012_001_003.mp3');
+  });
+
+  test('the words of the set are not fetched for a reader who asked to hear '
+      'each word alone, so a tapped word is silent offline', () async {
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    final cdn = FakeCdn();
+    await AudioCache(await tempAudioDir(), fetch: cdn.call).prefetch(
+      await pathsToKeep(
+        db,
+        ReadingOrder.nuzul,
+        set,
+        onTheWalk: false,
+        wordByWord: true,
+      ),
+    );
+    expect(cdn.served, contains('${wordAudioOrigin}wbw/096_001_001.mp3'));
+    expect(
+      cdn.served,
+      contains('${defaultAudioOrigin}Husary_Muallim_128kbps/096001.mp3'),
+      reason: 'the set\'s own recitation still comes with it',
+    );
+  });
+
+  test('a word the reader asked to hear alone plays a stretch of the '
+      'reciter\'s aya instead', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final dir = await tempAudioDir();
+    // Only the word's own file is on the phone, not its aya's.
+    await AudioCache(
+      dir,
+      fetch: FakeCdn().call,
+    ).prefetch([tracks.first.wordFiles[96001001]!]);
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: AudioCache(dir, fetch: RadioOff().call),
+      tracks: tracks,
+      wordByWord: true,
+    );
+
+    expect(audio.speakable, contains(96001001));
+    final played = audio.playWord(96001001);
+    await pumpEventQueue();
+    players.only.finish();
+    expect(await played, isTrue);
+    expect(players.only.loaded.single, contains('wbw_096_001_001.mp3'));
+    expect(
+      players.only.loaded.single,
+      isNot(contains('clipping')),
+      reason: 'the file is the word, start to end',
+    );
+  });
+
+  test('a word with no recording of its own falls silent instead of playing '
+      'its stretch of the aya', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: await cacheHolding(firstSet),
+      tracks: tracks,
+      wordByWord: true,
+    );
+
+    final played = audio.playWord(96001001);
+    await pumpEventQueue();
+    players.only.finish();
+    expect(await played, isTrue);
+    // setClip reloads the source wrapped in the clip, so the clip is last.
+    expect(players.only.loaded.last, contains('clipping'));
+  });
+
+  test('a phone whose corpus upgrade failed cannot open the app, because the '
+      'corpus it kept has no reciters to choose from', () async {
+    await testCorpus(); // sets up the ffi database factory
+    final dir = await Directory.systemTemp.createTemp('wird-v6');
+    final path = '${dir.path}/wird.db';
+    await File('assets/corpus.db').copy(path);
+    // The shape corpus 6 shipped: one reciter keyed by slug, timings keyed by
+    // slug, and no word-by-word path.
+    final old = await openDatabase(path);
+    await old.execute('DROP TABLE word_segments');
+    await old.execute('DROP TABLE recitations');
+    await old.execute(
+      'CREATE TABLE recitations (slug TEXT PRIMARY KEY, reciter_name TEXT '
+      'NOT NULL, style TEXT)',
+    );
+    await old.execute(
+      'CREATE TABLE word_segments (word_id INTEGER, recitation_slug TEXT, '
+      'start_ms INTEGER, end_ms INTEGER)',
+    );
+    await old.execute('ALTER TABLE words DROP COLUMN wbw_path');
+    await old.close();
+    final kept = await openWirdAt(path);
+    await setAudioPref(kept, reciter: 'alafasy', wordByWord: true);
+
+    final prefs = await Prefs.read(kept);
+    expect(prefs.reciter, 'alafasy', reason: 'kept for the upgrade that works');
+    expect(await tracksFor(kept, firstSet), isEmpty);
+    await kept.close();
+  });
+
+  test('hearing a reciter in the settings unpins the set the reader is about '
+      'to pray', () async {
+    final dir = await tempAudioDir();
+    final set = [for (final t in await tracksFor(db, firstSet)) t.relPath];
+    final cdn = FakeCdn();
+    final cache = AudioCache(dir, capBytes: 5 * 1024, fetch: cdn.call);
+    await cache.prefetch(set);
+
+    final sample = await cache.fetchOne('Alafasy_128kbps/$sampleFile');
+    expect(sample, isNotNull);
+    expect(cdn.served.last, '${defaultAudioOrigin}Alafasy_128kbps/001001.mp3');
+
+    // The next sweep, over a cap the sample pushed the cache past, takes the
+    // sample and leaves the set: the pins are still the set's.
+    await cache.prefetch([...set, 'Husary_64kbps/096001.mp3']);
+    for (final path in set) {
+      expect(cache.cached(path), isNotNull, reason: '$path was unpinned');
+    }
+  });
+
+  test('a reciter sampled in the settings plays over the set the reader '
+      'started', () async {
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final cache = await cacheHolding(firstSet);
+    final recitation = Recitation(cache: cache);
+    await recitation.carry(
+      await tracksFor(db, firstSet),
+      title: 'Al-ʿAlaq 1–5',
+      words: const {},
+    );
+    unawaited(recitation.toggle());
+    await pumpEventQueue();
+    expect(recitation.playing.value, isTrue);
+
+    // Offline, so the sample never arrives: what matters is that the set
+    // stopped and nothing is left marked as sampling.
+    await recitation.sample('alafasy');
+    expect(recitation.playing.value, isFalse);
+    expect(recitation.sounding.value, isNull);
+    expect(recitation.sampling.value, isNull);
+  });
+
+  test('the bar recites a set without saying who recites it', () async {
+    JustAudioPlatform.instance = FakePlayers();
+    final recitation = Recitation(cache: await cacheHolding(firstSet));
+    await recitation.carry(
+      await tracksFor(db, firstSet),
+      title: 'Al-ʿAlaq 1–5',
+      words: const {},
+      voice: 'Mishary Rashid Alafasy',
+    );
+    unawaited(recitation.toggle());
+    await pumpEventQueue();
+    expect(
+      recitation.sounding.value?.label,
+      'Al-ʿAlaq 1–5 · Mishary Rashid Alafasy',
+    );
+    await recitation.stop();
   });
 }

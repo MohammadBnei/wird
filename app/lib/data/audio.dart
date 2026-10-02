@@ -19,12 +19,40 @@ import 'sets.dart';
 /// one set of terms actually written down, Quran Foundation's, it is named and
 /// forbidden. See the audio rows in data/SOURCES.md before moving this.
 ///
-/// `ayah_audio.rel_path` is relative on purpose: the reciter's files can move
-/// to another host without an App Store release. This is the bundled default,
-/// which server config overrides. everyayah.com's `Husary_Muallim_128kbps` is
-/// the same recording cpfair/quran-align measured, so the bundled word timings
-/// belong to these files and not to a re-encode of them.
-const defaultAudioOrigin = 'https://everyayah.com/data/Husary_Muallim_128kbps/';
+/// `ayah_audio.rel_path` is a bare file name on purpose, the same in every
+/// reciter's folder: the host and the folder are config here, so the files can
+/// move to another host without a corpus rebuild — an App Store release, since
+/// the corpus is bundled.
+const defaultAudioOrigin = 'https://everyayah.com/data/';
+
+/// The reciter a fresh install hears, and the one a stored choice falls back to
+/// when a later corpus no longer carries it.
+const defaultReciter = 'husary-muallim';
+
+/// Each reciter's folder on [defaultAudioOrigin]. Each is the exact recording
+/// cpfair/quran-align measured, so the bundled word timings belong to these
+/// files and not to a re-encode of them: Husary and Abdul Basit are the 64 kbps
+/// folders because those are the ones aligned. A corpus slug missing here has
+/// no files to play, and a test holds the two lists together.
+const reciterFolders = {
+  'husary-muallim': 'Husary_Muallim_128kbps',
+  'husary': 'Husary_64kbps',
+  'alafasy': 'Alafasy_128kbps',
+  'abdul-basit-murattal': 'Abdul_Basit_Murattal_64kbps',
+  'shaatree': 'Abu_Bakr_Ash-Shaatree_128kbps',
+  'hani-rifai': 'Hani_Rifai_192kbps',
+};
+
+/// The aya a reciter is heard by before the reader picks them, 1:1: the
+/// basmala, short, and the same words in every voice so the voices are what
+/// differ. Named the way `ayah_audio.rel_path` names it in every folder.
+const sampleFile = '001001.mp3';
+
+/// Where a word spoken on its own is fetched from: quran.com's word-by-word
+/// recordings, one voice for every word, at the path `words.wbw_path` names.
+/// Fetched at playback and held in the same capped cache as the recitation,
+/// never bundled; ADR 0023 records the terms this sits under.
+const wordAudioOrigin = 'https://audio.qurancdn.com/';
 
 /// The whole recitation is 2.75 GB at ~442 KB an aya, so this cap holds about
 /// 450 ayas and evicts on nearly every set. The set being studied is pinned,
@@ -58,33 +86,59 @@ class AyaTrack {
     required this.ayahId,
     required this.relPath,
     required this.segments,
+    this.wordFiles = const {},
   });
 
   final int ayahId;
   final String relPath;
   final List<WordSpan> segments;
+
+  /// Each word's own recording, spoken alone, by word id. A word missing here
+  /// has none and is cut out of [relPath] instead.
+  final Map<int, String> wordFiles;
 }
 
-/// Reads the audio the set needs: one file per aya, and the word timings that
-/// drive the highlight.
-Future<List<AyaTrack>> tracksFor(Database db, List<int> ayahIds) async {
-  if (ayahIds.isEmpty) return const [];
+/// Reads the audio the set needs in [reciter]'s voice: one file per aya, and
+/// the word timings that drive the highlight. Empty for a reciter this build
+/// has no folder for, and on a corpus from before there was a choice of
+/// reciter — kept when its upgrade failed — whose tables this cannot read.
+Future<List<AyaTrack>> tracksFor(
+  Database db,
+  List<int> ayahIds, {
+  String reciter = defaultReciter,
+}) async {
+  final folder = reciterFolders[reciter];
+  if (ayahIds.isEmpty || folder == null) return const [];
   final marks = List.filled(ayahIds.length, '?').join(',');
   final files = await db.rawQuery(
     'SELECT ayah_id, rel_path FROM ayah_audio WHERE ayah_id IN ($marks)',
     ayahIds,
   );
   final paths = {
-    for (final f in files) f['ayah_id']! as int: f['rel_path']! as String,
+    for (final f in files)
+      f['ayah_id']! as int: '$folder/${f['rel_path']! as String}',
   };
-  final spans = await db.rawQuery(
-    '''SELECT w.ayah_id, s.word_id, s.start_ms, s.end_ms
+  final List<Map<String, Object?>> spans, alone;
+  try {
+    spans = await db.rawQuery(
+      '''SELECT w.ayah_id, s.word_id, s.start_ms, s.end_ms
          FROM word_segments s
+         JOIN recitations r ON r.id = s.recitation_id
          JOIN words w ON w.id = s.word_id
-        WHERE w.ayah_id IN ($marks)
+        WHERE r.slug = ? AND w.ayah_id IN ($marks)
         ORDER BY w.ayah_id, s.start_ms''',
-    ayahIds,
-  );
+      [reciter, ...ayahIds],
+    );
+    alone = await db.rawQuery('''SELECT ayah_id, id, wbw_path FROM words
+        WHERE wbw_path IS NOT NULL AND ayah_id IN ($marks)''', ayahIds);
+  } on DatabaseException {
+    return const [];
+  }
+  final wordFiles = <int, Map<int, String>>{};
+  for (final w in alone) {
+    (wordFiles[w['ayah_id']! as int] ??= {})[w['id']! as int] =
+        w['wbw_path']! as String;
+  }
   final byAya = <int, List<WordSpan>>{};
   for (final s in spans) {
     (byAya[s['ayah_id']! as int] ??= []).add((
@@ -96,19 +150,27 @@ Future<List<AyaTrack>> tracksFor(Database db, List<int> ayahIds) async {
   return [
     for (final id in ayahIds)
       if (paths[id] case final rel?)
-        AyaTrack(ayahId: id, relPath: rel, segments: byAya[id] ?? const []),
+        AyaTrack(
+          ayahId: id,
+          relPath: rel,
+          segments: byAya[id] ?? const [],
+          wordFiles: wordFiles[id] ?? const {},
+        ),
   ];
 }
 
 /// The recitation files screen 1a keeps on disk: the set being studied and,
 /// while the reader is [onTheWalk], the set after it. Pinning only the current
 /// set leaves the cap free to evict the very set the reader is about to be
-/// handed.
+/// handed. With [wordByWord], each word's own recording too, so a tapped word
+/// sounds offline in the voice the reader chose for it.
 Future<List<String>> pathsToKeep(
   Database db,
   ReadingOrder order,
   StudySet current, {
   bool onTheWalk = true,
+  String reciter = defaultReciter,
+  bool wordByWord = false,
 }) async {
   final currentIds = [for (final aya in current.ayas) aya.id];
   // An aya the reader asked for has no set after it. [nextSet] does not know
@@ -122,8 +184,12 @@ Future<List<String>> pathsToKeep(
     ...currentIds,
     if (ahead != null)
       for (final aya in ahead.ayas) aya.id,
-  ]);
-  return [for (final track in tracks) track.relPath];
+  ], reciter: reciter);
+  return [
+    for (final track in tracks) track.relPath,
+    if (wordByWord)
+      for (final track in tracks) ...track.wordFiles.values,
+  ];
 }
 
 /// The word sounding at [ms] in the track at [index].
@@ -191,7 +257,18 @@ class AudioCache {
   }) async {
     final dir = Directory('$databasesPath/audio');
     await dir.create(recursive: true);
+    _dropUnnamedReciter(dir);
     return AudioCache(dir, origin: origin ?? defaultAudioOrigin);
+  }
+
+  /// Files cached before there was a choice of reciter are named by aya alone,
+  /// `001001.mp3`, and nothing asks for that name any more. They would hold
+  /// their share of the cap until evicted; this frees it at once instead.
+  static void _dropUnnamedReciter(Directory dir) {
+    final bare = RegExp(r'^\d{6}\.mp3$');
+    for (final file in dir.listSync().whereType<File>()) {
+      if (bare.hasMatch(file.uri.pathSegments.last)) file.deleteSync();
+    }
   }
 
   final Directory dir;
@@ -213,17 +290,42 @@ class AudioCache {
   DateTime get revision =>
       dir.existsSync() ? dir.statSync().modified : DateTime.utc(0);
 
-  /// The origin names the reciter's own directory and the corpus path carries
-  /// the reciter as a folder, so only the file name joins the two.
-  String _name(String relPath) => relPath.split('/').last;
+  /// One flat directory, the reciter's folder folded into the name: two
+  /// reciters' copies of one aya never share a file, and the sweep, the pins
+  /// and [revision] all see every file without walking a tree.
+  String _name(String relPath) => relPath.replaceAll('/', '_');
 
   File fileFor(String relPath) => File('${dir.path}/${_name(relPath)}');
+
+  /// A word's own recording lives on its own host; everything else is a
+  /// reciter's folder on [origin].
+  String urlFor(String relPath) => relPath.startsWith('wbw/')
+      ? '$wordAudioOrigin$relPath'
+      : '$origin$relPath';
 
   /// The file if it is already on disk, and never a request. A long press has
   /// to answer at once or not at all.
   File? cached(String relPath) {
     final file = fileFor(relPath);
     return file.existsSync() ? file : null;
+  }
+
+  /// One file, from disk or else fetched, without touching the pins: a sample
+  /// heard in the settings must not unpin the set the reader is about to
+  /// pray. Null offline. Not swept here; the next [prefetch] sweeps it like
+  /// anything else unpinned.
+  Future<File?> fetchOne(String relPath) async {
+    final file = fileFor(relPath);
+    if (file.existsSync()) return file;
+    try {
+      final body = await _fetch(urlFor(relPath));
+      if (body.isEmpty) return null;
+      await dir.create(recursive: true);
+      await file.writeAsBytes(body, flush: true);
+      return file;
+    } on Exception {
+      return null;
+    }
   }
 
   /// Downloads what the set needs, pins it against eviction, then trims the
@@ -248,7 +350,7 @@ class AudioCache {
         continue;
       }
       try {
-        final body = await _fetch('$origin${_name(rel)}');
+        final body = await _fetch(urlFor(rel));
         if (body.isEmpty) continue;
         await file.writeAsBytes(body, flush: true);
         written = true;
@@ -282,10 +384,20 @@ class AudioCache {
 /// The recitation of one set: plays it, says which word is sounding, and
 /// speaks a single word on demand.
 class SetAudio {
-  SetAudio({required this.cache, required this.tracks});
+  SetAudio({
+    required this.cache,
+    required this.tracks,
+    this.wordByWord = false,
+  });
 
   final AudioCache cache;
   final List<AyaTrack> tracks;
+
+  /// Whether a tapped word plays its own recording, spoken alone, rather than
+  /// the stretch of the reciter's aya it falls in. Set from the reader's
+  /// choice and changed in place: the set's own recitation does not depend on
+  /// it.
+  bool wordByWord;
 
   final currentWordId = ValueNotifier<int?>(null);
   final playing = ValueNotifier<bool>(false);
@@ -353,18 +465,37 @@ class SetAudio {
   /// recomputed, because `cached` is an `existsSync` and the word row rebuilds
   /// every 40 ms while the set plays.
   Set<int> get speakable {
-    if (_speakableAt != cache.revision) {
+    if (_speakableAt != cache.revision || _speakableAlone != wordByWord) {
       _speakableAt = cache.revision;
+      _speakableAlone = wordByWord;
       _speakable = {
-        for (final track in tracks)
+        for (final track in tracks) ...[
           if (cache.cached(track.relPath) != null)
             for (final span in track.segments) span.wordId,
+          if (wordByWord)
+            for (final MapEntry(key: word, value: path)
+                in track.wordFiles.entries)
+              if (cache.cached(path) != null) word,
+        ],
       };
     }
     return _speakable;
   }
 
-  /// Plays one word out of its aya's file. False means that file was never
+  bool? _speakableAlone;
+
+  /// The word's own recording if the reader asked for those and it is on
+  /// disk, else null.
+  File? _alone(int wordId) {
+    if (!wordByWord) return null;
+    for (final track in tracks) {
+      if (track.wordFiles[wordId] case final path?) return cache.cached(path);
+    }
+    return null;
+  }
+
+  /// Plays one word: its own recording when the reader chose those and it is
+  /// on disk, else its stretch of its aya's file. False means neither was
   /// downloaded, or the platform refused it: the caller shows the
   /// transliteration, and nothing spins.
   ///
@@ -375,19 +506,24 @@ class SetAudio {
   /// keeps a superseded word, and the set's own position stream, from writing
   /// over the word that superseded them.
   Future<bool> playWord(int wordId) async {
-    final found = locate(tracks, wordId);
-    if (found == null) return false;
-    final file = cache.cached(found.track.relPath);
+    final alone = _alone(wordId);
+    final found = alone == null ? locate(tracks, wordId) : null;
+    final file =
+        alone ?? (found == null ? null : cache.cached(found.track.relPath));
     if (file == null) return false;
     final token = ++_turn;
     try {
       final player = _player ??= AudioPlayer();
       await player.pause();
       await player.setAudioSource(AudioSource.file(file.path));
-      await player.setClip(
-        start: clipStart(found.span.startMs),
-        end: Duration(milliseconds: found.span.endMs),
-      );
+      // A word's own file is the word, start to end; only a stretch of the
+      // reciter's aya needs cutting out.
+      if (found != null) {
+        await player.setClip(
+          start: clipStart(found.span.startMs),
+          end: Duration(milliseconds: found.span.endMs),
+        );
+      }
       if (token != _turn) return true;
       currentWordId.value = wordId;
       playing.value = true;

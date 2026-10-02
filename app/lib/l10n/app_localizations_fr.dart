@@ -905,9 +905,30 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsNoReciter => 'Aucun récitant n’est nommé dans ce corpus.';
 
   @override
-  String settingsRecitedBy(String reciter) {
-    return 'Récité par $reciter.';
+  String get settingsReciterCaption => 'La voix qui récite le passage et chaque mot touché. Les mots s’allument au rythme de ce récitant.';
+
+  @override
+  String get settingsStyleMuallim => 'Muʿallim · lent et clair, pour apprendre';
+
+  @override
+  String get settingsStyleMurattal => 'Murattal';
+
+  @override
+  String get settingsStopSample => 'Arrêter';
+
+  @override
+  String settingsHearReciter(String reciter) {
+    return 'Écouter $reciter';
   }
+
+  @override
+  String get settingsWordFromReciter => 'Du récitant';
+
+  @override
+  String get settingsWordAlone => 'Chaque mot seul';
+
+  @override
+  String get settingsWordVoiceCaption => 'Ce que joue un mot touché : son passage dans le verset du récitant, ou le mot prononcé seul, d’une même voix pour chaque mot.';
 
   @override
   String get settingsMicrophone => 'MICROPHONE';

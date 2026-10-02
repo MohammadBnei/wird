@@ -905,9 +905,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsNoReciter => 'No reciter is named in this corpus.';
 
   @override
-  String settingsRecitedBy(String reciter) {
-    return 'Recited by $reciter.';
+  String get settingsReciterCaption => 'Whose voice recites the set and each word you tap. Words are highlighted in time with this reciter.';
+
+  @override
+  String get settingsStyleMuallim => 'Muʿallim · slow and clear, for learning';
+
+  @override
+  String get settingsStyleMurattal => 'Murattal';
+
+  @override
+  String get settingsStopSample => 'Stop';
+
+  @override
+  String settingsHearReciter(String reciter) {
+    return 'Hear $reciter';
   }
+
+  @override
+  String get settingsWordFromReciter => 'From the reciter';
+
+  @override
+  String get settingsWordAlone => 'Each word alone';
+
+  @override
+  String get settingsWordVoiceCaption => 'What a tapped word plays: its moment in the reciter\'s aya, or the word spoken on its own, in one voice for every word.';
 
   @override
   String get settingsMicrophone => 'MICROPHONE';

@@ -1171,14 +1171,42 @@
   "@settingsNoReciter": {
     "description": "Caption in the settings screen's recitation section when the bundled corpus names nobody."
   },
-  "settingsRecitedBy": "Recited by {reciter}.",
-  "@settingsRecitedBy": {
-    "description": "Caption in the settings screen's recitation section naming who recites. The name is a person's, read out of the corpus, and is not translated.",
+  "settingsReciterCaption": "Whose voice recites the set and each word you tap. Words are highlighted in time with this reciter.",
+  "@settingsReciterCaption": {
+    "description": "Caption under the settings screen's list of reciters. The reader picks whose voice the audio is in; the word highlight follows that recording's own timings."
+  },
+  "settingsStyleMuallim": "Muʿallim · slow and clear, for learning",
+  "@settingsStyleMuallim": {
+    "description": "Under a reciter's name in settings: what the Muallim (teaching) style is for."
+  },
+  "settingsStyleMurattal": "Murattal",
+  "@settingsStyleMurattal": {
+    "description": "Under a reciter's name in settings: the Murattal style, the usual one, left unexplained so the one row that differs (Muallim) stands out."
+  },
+  "settingsStopSample": "Stop",
+  "@settingsStopSample": {
+    "description": "Tooltip of the button that stops a reciter's sample in settings."
+  },
+  "settingsHearReciter": "Hear {reciter}",
+  "@settingsHearReciter": {
+    "description": "Tooltip of the button that plays a short sample of a reciter in settings. The name is a person's and is not translated.",
     "placeholders": {
       "reciter": {
         "type": "String"
       }
     }
+  },
+  "settingsWordFromReciter": "From the reciter",
+  "@settingsWordFromReciter": {
+    "description": "Settings option: a tapped word plays as its stretch of the chosen reciter's aya recording."
+  },
+  "settingsWordAlone": "Each word alone",
+  "@settingsWordAlone": {
+    "description": "Settings option: a tapped word plays its own recording, spoken alone by quran.com's word-by-word voice."
+  },
+  "settingsWordVoiceCaption": "What a tapped word plays: its moment in the reciter's aya, or the word spoken on its own, in one voice for every word.",
+  "@settingsWordVoiceCaption": {
+    "description": "Caption under the choice of what a tapped word plays."
   },
   "settingsMicrophone": "MICROPHONE",
   "@settingsMicrophone": {
