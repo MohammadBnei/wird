@@ -20,21 +20,24 @@ const (
 	timingsDir = "timings"
 )
 
-// extractTimings pulls one recitation out of the release package, together with
-// the licence and the README the grant is written in.
+// extractTimings pulls the named recitations out of the release package,
+// together with the licence and the README the grant is written in.
 //
 // It refuses a package whose README no longer carries the licence sentence
 // corpus_meta.notice quotes. A quote that has stopped being a quote is the
 // morphology fork's mistake in a second place: data shipped under a permission
 // nobody re-read.
-func extractTimings(zipPath, dir, recitation string) error {
+func extractTimings(zipPath, dir string, recitations []string) error {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return fmt.Errorf("%s: %w", zipPath, err)
 	}
 	defer zr.Close()
 
-	want := map[string]bool{recitation + ".json": true, "LICENSE": true, "README": true}
+	want := map[string]bool{"LICENSE": true, "README": true}
+	for _, name := range recitations {
+		want[name+".json"] = true
+	}
 	for _, f := range zr.File {
 		name := filepath.Base(f.Name)
 		if !want[name] {

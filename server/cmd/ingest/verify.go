@@ -48,11 +48,16 @@ type counts struct {
 	Surahs             int `json:"surahs"`
 	Ayahs              int `json:"ayahs"`
 	Words              int `json:"words"`
-	AudioFiles         int `json:"audio_files"`
-	SegmentTuples      int `json:"segment_tuples"`
-	WordsTimed         int `json:"words_timed"`
 	MorphologySegments int `json:"morphology_segments"`
 	Roots              int `json:"roots"`
+}
+
+// timingCounts are one recitation's: every recording is aligned on its own,
+// so each one times a different set of words.
+type timingCounts struct {
+	AudioFiles    int `json:"audio_files"`
+	SegmentTuples int `json:"segment_tuples"`
+	WordsTimed    int `json:"words_timed"`
 }
 
 type reconciliation struct {
@@ -78,14 +83,24 @@ type fileSum struct {
 	SHA256 string `json:"sha256"`
 }
 
-type manifest struct {
-	GeneratedAt    string         `json:"generated_at"`
-	Complete       bool           `json:"complete"`
-	Suras          []int          `json:"suras"`
-	Sources        []string       `json:"sources"`
-	Counts         counts         `json:"counts"`
+// recitationReport is what the ingest found in one recitation's timings. A
+// recitation whose timings would mis-highlight is Refused, with the reason, and
+// the others carry on: one bad alignment is no reason to ship no reciter at all.
+type recitationReport struct {
+	Name           string         `json:"name"`
+	Refused        string         `json:"refused,omitempty"`
+	Counts         timingCounts   `json:"counts"`
 	Reconciliation reconciliation `json:"reconciliation"`
-	Files          []fileSum      `json:"files"`
+}
+
+type manifest struct {
+	GeneratedAt string             `json:"generated_at"`
+	Complete    bool               `json:"complete"`
+	Suras       []int              `json:"suras"`
+	Sources     []string           `json:"sources"`
+	Counts      counts             `json:"counts"`
+	Recitations []recitationReport `json:"recitations"`
+	Files       []fileSum          `json:"files"`
 }
 
 // The lines that make a copy of the morphology the file corpus.quran.com
@@ -158,7 +173,11 @@ func readChapters(dir string) ([]chapter, error) {
 // verify reads back what is on disk and refuses to write a manifest for a corpus
 // that would mis-highlight. Nothing here trusts the download that just ran: a
 // resumed run verifies files it did not fetch.
-func verify(dir string, suras []int, chapters []chapter, recitation string, now time.Time) (*manifest, error) {
+//
+// A recitation whose timings disagree with the text is refused by name and left
+// out; the run fails only when the text itself disagrees, or when no recitation
+// is left.
+func verify(dir string, suras []int, chapters []chapter, recitations []string, now time.Time) (*manifest, error) {
 	byID := map[int]chapter{}
 	for _, ch := range chapters {
 		byID[ch.ID] = ch
@@ -175,10 +194,6 @@ func verify(dir string, suras []int, chapters []chapter, recitation string, now 
 	if err != nil {
 		return nil, err
 	}
-	segs, err := timings.Load(filepath.Join(dir, timingsDir, recitation+".json"))
-	if err != nil {
-		return nil, err
-	}
 
 	m := &manifest{
 		GeneratedAt: now.UTC().Format(time.RFC3339),
@@ -189,6 +204,7 @@ func verify(dir string, suras []int, chapters []chapter, recitation string, now 
 	}
 
 	var problems []string
+	wordCounts := make(map[int]map[string]int, len(suras))
 	for _, n := range suras {
 		ch, ok := byID[n]
 		if !ok {
@@ -198,6 +214,7 @@ func verify(dir string, suras []int, chapters []chapter, recitation string, now 
 		if err != nil {
 			return nil, err
 		}
+		wordCounts[n] = wordCount
 		for key, n := range wordCount {
 			m.Counts.Ayahs++
 			m.Counts.Words += n
@@ -206,23 +223,57 @@ func verify(dir string, suras []int, chapters []chapter, recitation string, now 
 					"%s: %d words in the text but %d in the morphology", key, n, mw))
 			}
 		}
-		if err := countSegments(ch, segs, wordCount, m, &problems); err != nil {
-			return nil, err
-		}
 	}
-	m.Reconciliation.AyahsWhereWordNumberingDisagrees = len(problems)
 	if len(problems) > 0 {
-		return nil, fmt.Errorf("word text and segment timings come from two different segmentations, "+
-			"which mis-highlights every word after the split — %d ayas disagree:\n  %s",
+		return nil, fmt.Errorf("the word text and the morphology come from two different segmentations, "+
+			"which puts every root after the split on the wrong word — %d ayas disagree:\n  %s",
 			len(problems), strings.Join(capped(problems, 10), "\n  "))
 	}
 
-	files, err := checksums(dir, suras, recitation)
+	var kept, refusals []string
+	for _, name := range recitations {
+		r := verifyRecitation(dir, suras, byID, wordCounts, name)
+		m.Recitations = append(m.Recitations, r)
+		if r.Refused != "" {
+			refusals = append(refusals, name+": "+r.Refused)
+			continue
+		}
+		kept = append(kept, name)
+	}
+	if len(kept) == 0 {
+		return nil, fmt.Errorf("no recitation is left to ship:\n  %s", strings.Join(refusals, "\n  "))
+	}
+
+	files, err := checksums(dir, suras, kept)
 	if err != nil {
 		return nil, err
 	}
 	m.Files = files
 	return m, nil
+}
+
+// verifyRecitation walks one recitation's timings against the word source.
+func verifyRecitation(dir string, suras []int, byID map[int]chapter, wordCounts map[int]map[string]int, name string) recitationReport {
+	r := recitationReport{Name: name}
+	segs, err := timings.Load(filepath.Join(dir, timingsDir, name+".json"))
+	if err != nil {
+		r.Refused = err.Error()
+		return r
+	}
+	var problems []string
+	for _, n := range suras {
+		if err := countSegments(byID[n], segs, wordCounts[n], &r, &problems); err != nil {
+			r.Refused = err.Error()
+			return r
+		}
+	}
+	r.Reconciliation.AyahsWhereWordNumberingDisagrees = len(problems)
+	if len(problems) > 0 {
+		r.Refused = fmt.Sprintf("word text and segment timings come from two different segmentations, "+
+			"which mis-highlights every word after the split — %d ayas disagree:\n  %s",
+			len(problems), strings.Join(capped(problems, 10), "\n  "))
+	}
+	return r
 }
 
 // checkRevelationOrder guards the app's default reading order: a duplicated or
@@ -286,7 +337,7 @@ func countWords(dir string, ch chapter) (map[string]int, error) {
 // exactly one word, which is all but 27 of them, and drops the timing of the
 // other 61 words. internal/timings is the one reader, so this count and the
 // ETL's cannot drift apart the way they once did.
-func countSegments(ch chapter, all map[[2]int][][]int, wordCount map[string]int, m *manifest, problems *[]string) error {
+func countSegments(ch chapter, all map[[2]int][][]int, wordCount map[string]int, m *recitationReport, problems *[]string) error {
 	for ayah := 1; ayah <= ch.VersesCount; ayah++ {
 		key := fmt.Sprintf("%d:%d", ch.ID, ayah)
 		words, ok := wordCount[key]
@@ -413,9 +464,11 @@ func loadMorphologyCounts(path string) (map[string]int, int, int, error) {
 	return out, segments, len(roots), nil
 }
 
-func checksums(dir string, suras []int, recitation string) ([]fileSum, error) {
-	paths := []string{"chapters.json", corpusFile,
-		timingsDir + "/" + recitation + ".json", timingsDir + "/LICENSE", timingsDir + "/README"}
+func checksums(dir string, suras []int, recitations []string) ([]fileSum, error) {
+	paths := []string{"chapters.json", corpusFile, timingsDir + "/LICENSE", timingsDir + "/README"}
+	for _, name := range recitations {
+		paths = append(paths, timingsDir+"/"+name+".json")
+	}
 	for _, n := range suras {
 		paths = append(paths, fmt.Sprintf("verses/%03d.json", n))
 	}

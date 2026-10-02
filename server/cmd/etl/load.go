@@ -73,6 +73,13 @@ type Word struct {
 	// where no card on those pages is this word; the reader then sees GlossEn.
 	GlossFr string
 
+	// The word spoken on its own, as quran.com's word-by-word audio names it,
+	// relative to that host. Not derivable from Position: the file index counts
+	// the pause marks as words and drifts further on 3,984 words besides, so a
+	// path built from the position plays a neighbouring word. Empty on the one
+	// word the API gives no file for.
+	WbwPath string
+
 	// The lemma of the segment the root came from: LemmaKey as the corpus
 	// writes it, digit and all, for grouping; Lemma decoded for the reader.
 	// Empty on a word with no root.
@@ -87,6 +94,10 @@ type Root struct {
 // Audio names the file an aya is recited in and nothing else. There is no
 // duration: Wird does not host the recordings and does not index them, and a
 // length derived from the last word's timing would be a number we made up.
+//
+// One row per aya for every reciter: everyayah names an aya's file the same
+// way in each reciter's folder, and the folder is the app's to know, beside
+// the host it lives on.
 type Audio struct {
 	AyahID  int
 	RelPath string
@@ -97,18 +108,60 @@ type Segment struct {
 	StartMS, EndMS int
 }
 
+// Recitation is one of quran-align's recordings: the slug the app keys it by,
+// the timings file it was aligned as, and who recites it.
+type Recitation struct {
+	Slug, Timings, ReciterName, Style string
+}
+
+// defaultSlug is the reciter a fresh install hears. Check refuses a corpus
+// without it, because the app falls back to it.
+const defaultSlug = "husary-muallim"
+
+// Recitations are the ones ingest's defaultRecitations extracts. The other six
+// of quran-align's twelve do not pass and ADR 0018 lists why.
+var Recitations = []Recitation{
+	{defaultSlug, "Husary_Muallim_128kbps", "Mahmoud Khalil Al-Husary", "Muallim"},
+	{"husary", "Husary_64kbps", "Mahmoud Khalil Al-Husary", "Murattal"},
+	{"alafasy", "Alafasy_128kbps", "Mishary Rashid Alafasy", "Murattal"},
+	{"abdul-basit-murattal", "Abdul_Basit_Murattal_64kbps", "Abdul Basit Abdus Samad", "Murattal"},
+	{"shaatree", "Abu_Bakr_Ash-Shaatree_128kbps", "Abu Bakr Ash-Shaatree", "Murattal"},
+	{"hani-rifai", "Hani_Rifai_192kbps", "Hani Ar-Rifai", "Murattal"},
+}
+
+// maxUntimedWords is how many words one recitation may leave without a
+// timing before it is refused. An untimed word holds the previous highlight
+// while it is recited, which reads as a lag; across a whole recitation a few
+// dozen are tolerable and hundreds are not. Husary Muallim, the reciter this
+// app shipped with, leaves 22.
+//
+// ponytail: one figure for the whole recitation, not a share per aya. Make it
+// per aya the day one reciter concentrates its gaps in a single sura.
+const maxUntimedWords = 100
+
+// Recited is one recitation that passed, with its rows.
+type Recited struct {
+	Recitation
+	Segments []Segment
+	Untimed  int
+	Clamped  int
+}
+
 type Corpus struct {
 	// The notices the data ships under, carried into corpus.db so they travel with
 	// what the app actually installs: the morphology file's own copyright block,
 	// and the attribution CC BY 4.0 asks for over the word timings.
 	Notice string
 
-	Surahs   []Surah
-	Ayahs    []Ayah
-	Words    []Word
-	Roots    []Root
-	Audio    []Audio
-	Segments []Segment
+	Surahs []Surah
+	Ayahs  []Ayah
+	Words  []Word
+	Roots  []Root
+	Audio  []Audio
+
+	// The recitations that passed, and the ones refused with the reason.
+	Recited []Recited
+	Refused []string
 
 	// One row per morphological segment: the parsing a reader is shown, derived
 	// from the same lines Words.Morphology keeps verbatim.
@@ -121,8 +174,7 @@ type Corpus struct {
 	// Words no French card matched, which a French reader reads in English.
 	FrenchGlossesMissed int
 
-	Clamped int // segments whose timings had to be pulled straight
-	Orphans int // ayas whose timings could not be reconciled with the text
+	Orphans int // segments that name a word the corpus does not have
 }
 
 type rawChapters struct {
@@ -155,6 +207,7 @@ type rawVerses struct {
 			Transliteration struct {
 				Text *string `json:"text"`
 			} `json:"transliteration"`
+			AudioURL *string `json:"audio_url"`
 		} `json:"words"`
 	} `json:"verses"`
 }
@@ -185,11 +238,12 @@ func surahOf(verseKey string) (int, int, error) {
 }
 
 // Load reads one ingest directory: chapters.json, verses/NNN.json,
-// timings/NAME.json and the morphology file. Word text and word timings are
-// numbered by two different projects, and internal/timings is what reconciles
-// them: that reconciliation is the only thing keeping a highlight on the word it
-// belongs to.
-func Load(dir, recitation, timingsFile string) (*Corpus, error) {
+// timings/NAME.json for each recitation, and the morphology file. Word text and
+// word timings are numbered by two different projects, and internal/timings is
+// what reconciles them: that reconciliation is the only thing keeping a
+// highlight on the word it belongs to. A recitation it cannot reconcile is
+// refused and left out, and the others are kept.
+func Load(dir string, recitations []Recitation) (*Corpus, error) {
 	var chapters rawChapters
 	if err := readJSON(filepath.Join(dir, "chapters.json"), &chapters); err != nil {
 		return nil, err
@@ -198,12 +252,7 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 	if err != nil {
 		return nil, err
 	}
-	segs, err := timings.Load(filepath.Join(dir, "timings", timingsFile+".json"))
-	if err != nil {
-		return nil, err
-	}
-
-	c := &Corpus{Notice: morph.notice + "\n\n" + timings.Notice(timingsFile+".json")}
+	c := &Corpus{Notice: morph.notice}
 	rootCount := map[string]int{}
 	wordsPerAyah := map[int]int{}
 
@@ -253,8 +302,12 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 					rootCount[m.root]++
 				}
 				wid := wordID(aid, pos)
+				wbw := ""
+				if w.AudioURL != nil {
+					wbw = *w.AudioURL
+				}
 				c.Words = append(c.Words, Word{
-					ID: wid, AyahID: aid, Position: pos,
+					ID: wid, AyahID: aid, Position: pos, WbwPath: wbw,
 					TextAr: w.TextUthmani, Translit: translit, GlossEn: w.Translation.Text,
 					RootLetters: m.root, Form: m.form, Morphology: m.json,
 					LemmaKey: m.lemmaKey, Lemma: m.lemma,
@@ -271,16 +324,18 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 		}
 
 		for ayah := 1; ayah <= ch.VersesCount; ayah++ {
-			aid := ayahID(ch.ID, ayah)
-			c.Audio = append(c.Audio, Audio{AyahID: aid, RelPath: relPath(recitation, ch.ID, ayah)})
-			spans, err := timings.Spans(segs[[2]int{ch.ID, ayah}], wordsPerAyah[aid])
-			if err != nil {
-				return nil, fmt.Errorf("aya %d:%d: %w", ch.ID, ayah, err)
-			}
-			n := normalizeSegments(spans, aid)
-			c.Segments = append(c.Segments, n.segments...)
-			c.Clamped += n.clamped
+			c.Audio = append(c.Audio, Audio{AyahID: ayahID(ch.ID, ayah), RelPath: relPath(ch.ID, ayah)})
 		}
+	}
+
+	for _, rec := range recitations {
+		r, err := loadRecitation(dir, rec, c.Surahs, wordsPerAyah)
+		if err != nil {
+			c.Refused = append(c.Refused, fmt.Sprintf("%s (%s): %v", rec.Slug, rec.Timings, err))
+			continue
+		}
+		c.Recited = append(c.Recited, r)
+		c.Notice += "\n\n" + timings.Notice(rec.Timings+".json")
 	}
 
 	glosses, err := loadFrenchGlosses(dir)
@@ -302,9 +357,48 @@ func Load(dir, recitation, timingsFile string) (*Corpus, error) {
 
 // relPath keeps the audio origin out of the shipped asset: a host frozen into an
 // immutable bundle costs an App Store release the day it moves. Every per-aya
-// archive of this recitation names its files by sura and aya, three digits each.
-func relPath(recitation string, surah, ayah int) string {
-	return fmt.Sprintf("%s/%03d%03d.mp3", recitation, surah, ayah)
+// archive names its files by sura and aya, three digits each, and the reciter's
+// folder is the app's to add.
+func relPath(surah, ayah int) string {
+	return fmt.Sprintf("%03d%03d.mp3", surah, ayah)
+}
+
+// loadRecitation reconciles one recitation's timings with the text, or says
+// why it cannot ship.
+func loadRecitation(dir string, rec Recitation, surahs []Surah, wordsPerAyah map[int]int) (Recited, error) {
+	r := Recited{Recitation: rec}
+	segs, err := timings.Load(filepath.Join(dir, "timings", rec.Timings+".json"))
+	if err != nil {
+		return r, err
+	}
+	for _, su := range surahs {
+		for ayah := 1; ayah <= su.AyahCount; ayah++ {
+			aid := ayahID(su.ID, ayah)
+			raw, ok := segs[[2]int{su.ID, ayah}]
+			// A missing aya and an aya with no segments are the same to a reader:
+			// it plays with no highlight at all.
+			if !ok || len(raw) == 0 {
+				return r, fmt.Errorf("aya %d:%d has no timing, so it would play with no highlight", su.ID, ayah)
+			}
+			spans, err := timings.Spans(raw, wordsPerAyah[aid])
+			if err != nil {
+				return r, fmt.Errorf("aya %d:%d: %w", su.ID, ayah, err)
+			}
+			n := normalizeSegments(spans, aid)
+			r.Segments = append(r.Segments, n.segments...)
+			r.Clamped += n.clamped
+			timed := map[int64]bool{}
+			for _, s := range n.segments {
+				timed[s.WordID] = true
+			}
+			r.Untimed += wordsPerAyah[aid] - len(timed)
+		}
+	}
+	if r.Untimed > maxUntimedWords {
+		return r, fmt.Errorf("%d words have no timing, over the %d a recitation may leave "+
+			"before its highlight reads as broken", r.Untimed, maxUntimedWords)
+	}
+	return r, nil
 }
 
 type normalized struct {

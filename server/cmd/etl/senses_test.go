@@ -21,7 +21,6 @@ import (
 
 const (
 	rawDir     = "../../../data/raw"
-	rawTimings = "Husary_Muallim_128kbps"
 )
 
 var (
@@ -39,7 +38,7 @@ func wholeCorpus(t *testing.T) *Corpus {
 		if _, err := os.Stat(filepath.Join(rawDir, "chapters.json")); err != nil {
 			return
 		}
-		rawCorp, rawErr = Load(rawDir, testRecitation.Slug, rawTimings)
+		rawCorp, rawErr = Load(rawDir, []Recitation{testRecitation})
 	})
 	if rawCorp == nil {
 		t.Skip("data/raw is not present")
@@ -175,7 +174,7 @@ func TestASenseFileWithNoBylineStopsTheBuild(t *testing.T) {
 func TestTheBundleShipsNoSenseForAReaderToMistakeForOne(t *testing.T) {
 	c := load(t, fixtureDir)
 	out := filepath.Join(t.TempDir(), "corpus.db")
-	if e := Write(out, c, testRecitation, 1, time.Now()); e != nil {
+	if e := Write(out, c, 1, time.Now()); e != nil {
 		t.Fatalf("write: %v", e)
 	}
 	db, e := sql.Open("sqlite", out)

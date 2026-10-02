@@ -40,25 +40,39 @@ const (
 	corpusFile = "quranic-corpus-morphology-0.4.txt"
 )
 
+// The recitations whose timings pass this ingest and the ETL as they stand.
+// The other six of quran-align's twelve are refused, and ADR 0018 says why:
+// Abdul Basit Mujawwad, both Minshawy and Tablaway split a word into three,
+// Sudais's file opens with the aligner's crash log, and Shuraym and Minshawy
+// Mujawwad each leave an aya with no timing at all.
+var defaultRecitations = []string{
+	"Husary_Muallim_128kbps",
+	"Husary_64kbps",
+	"Alafasy_128kbps",
+	"Abdul_Basit_Murattal_64kbps",
+	"Abu_Bakr_Ash-Shaatree_128kbps",
+	"Hani_Rifai_192kbps",
+}
+
 var sourceURLs = []string{chaptersURL, versesURL, alignURL, corpusPage, tldIndexURL}
 
 func main() {
 	out := flag.String("out", "./data/raw/", "directory the downloads land in; gitignored")
 	manifestPath := flag.String("manifest", "./data/manifest.json", "manifest to write; this is what git holds")
 	only := flag.String("suras", "", "suras to fetch, e.g. 1,2,103,112 or 1-5 (default: all 114)")
-	recitation := flag.String("recitation", "Husary_Muallim_128kbps",
-		"which of quran-align's 12 recitations to take the word timings from")
+	recitations := flag.String("recitations", strings.Join(defaultRecitations, ","),
+		"which of quran-align's 12 recitations to take word timings from, comma-separated")
 	delay := flag.Duration("delay", 200*time.Millisecond, "pause between requests")
 	retries := flag.Int("retries", 5, "retries per request before giving up")
 	force := flag.Bool("force", false, "re-download files that are already on disk")
 	flag.Parse()
 
-	if err := run(*out, *manifestPath, *only, *recitation, *delay, *retries, *force); err != nil {
+	if err := run(*out, *manifestPath, *only, strings.Split(*recitations, ","), *delay, *retries, *force); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(dir, manifestPath, only, recitation string, delay time.Duration, retries int, force bool) error {
+func run(dir, manifestPath, only string, recitations []string, delay time.Duration, retries int, force bool) error {
 	ctx := context.Background()
 	// Before 38 MB of downloads: the one file a person has to put there by hand.
 	if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
@@ -72,7 +86,7 @@ func run(dir, manifestPath, only, recitation string, delay time.Duration, retrie
 	if err := f.download(ctx, alignURL, filepath.Join(dir, alignZip), force); err != nil {
 		return err
 	}
-	if err := extractTimings(filepath.Join(dir, alignZip), dir, recitation); err != nil {
+	if err := extractTimings(filepath.Join(dir, alignZip), dir, recitations); err != nil {
 		return err
 	}
 
@@ -107,7 +121,7 @@ func run(dir, manifestPath, only, recitation string, delay time.Duration, retrie
 		}
 	}
 
-	m, err := verify(dir, suras, chapters, recitation, time.Now())
+	m, err := verify(dir, suras, chapters, recitations, time.Now())
 	if err != nil {
 		return err
 	}
@@ -122,21 +136,27 @@ func run(dir, manifestPath, only, recitation string, delay time.Duration, retrie
 		return err
 	}
 
-	r := m.Reconciliation
-	fmt.Printf("%s\n  requests %d  suras %d  ayas %d  words %d\n"+
-		"  audio %d  segment tuples %d  words timed %d  morphology segments %d  roots %d\n"+
-		"  ayas where word numbering disagrees %d\n"+
-		"  ayas where the aligner numbers one written word as two %d\n"+
-		"  multi-word spans %d, timing %d words a one-word-per-segment parser drops\n"+
-		"  words with no timing %d across %d ayas\n"+
-		"  overlapping segment pairs %d  segments ending before they start %d\n",
+	fmt.Printf("%s\n  requests %d  suras %d  ayas %d  words %d  morphology segments %d  roots %d\n",
 		manifestPath, f.requests, m.Counts.Surahs, m.Counts.Ayahs, m.Counts.Words,
-		m.Counts.AudioFiles, m.Counts.SegmentTuples, m.Counts.WordsTimed,
-		m.Counts.MorphologySegments, m.Counts.Roots,
-		r.AyahsWhereWordNumberingDisagrees, r.AyahsWhereTheAlignerSplitsAWord,
-		r.MultiWordSegmentSpans, r.WordsTimedOnlyByAMultiWordSpan,
-		r.WordsWithNoTiming, r.AyahsWithAnUntimedWord,
-		r.OverlappingSegmentPairs, r.SegmentsEndingBeforeTheyStart)
+		m.Counts.MorphologySegments, m.Counts.Roots)
+	for _, rec := range m.Recitations {
+		if rec.Refused != "" {
+			fmt.Printf("  %s REFUSED: %s\n", rec.Name, rec.Refused)
+			continue
+		}
+		r := rec.Reconciliation
+		fmt.Printf("  %s\n"+
+			"    audio %d  segment tuples %d  words timed %d\n"+
+			"    ayas where the aligner numbers one written word as two %d\n"+
+			"    multi-word spans %d, timing %d words a one-word-per-segment parser drops\n"+
+			"    words with no timing %d across %d ayas\n"+
+			"    overlapping segment pairs %d  segments ending before they start %d\n",
+			rec.Name, rec.Counts.AudioFiles, rec.Counts.SegmentTuples, rec.Counts.WordsTimed,
+			r.AyahsWhereTheAlignerSplitsAWord,
+			r.MultiWordSegmentSpans, r.WordsTimedOnlyByAMultiWordSpan,
+			r.WordsWithNoTiming, r.AyahsWithAnUntimedWord,
+			r.OverlappingSegmentPairs, r.SegmentsEndingBeforeTheyStart)
+	}
 	return nil
 }
 
