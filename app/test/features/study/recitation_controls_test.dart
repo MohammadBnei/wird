@@ -44,16 +44,22 @@ void main() {
       (tester.widget<IconButton>(button).icon as Icon).icon!;
 
   /// A press, and the player's platform calls it starts, which only finish
-  /// outside the fake-async zone the test body runs in.
+  /// outside the fake-async zone the test body runs in. The fake player's
+  /// "ready" is a timer on the test's clock and the file work behind a load
+  /// is real I/O, so both are let run in turns until the reading screen's
+  /// button changes face — a fixed number of turns passed on a Mac and not on
+  /// a slower CI runner.
   Future<void> press(WidgetTester tester, Finder button) async {
+    IconData? faceNow() =>
+        playButton().evaluate().isEmpty ? null : face(tester, playButton());
+    final before = faceNow();
     await tester.tap(button);
-    // The fake player's "ready" is a timer on the test's clock, and the file
-    // work behind a load is real I/O: both have to be let run, in turns.
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 100; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
       );
       await tester.pump(const Duration(milliseconds: 10));
+      if (i >= 4 && faceNow() != before) break;
     }
   }
 
