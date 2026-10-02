@@ -102,7 +102,11 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Field log: `docs/journal/voice-follow-walk.md` (findings 1–11).
 
 ## Audio
-- Recitation fetched by device from everyayah.com at playback. Not mirrored, not bundled, not hosted. `ayah_audio.rel_path` relative; origin + cache cap in `app/lib/data/audio.dart`.
+- Recitation fetched by device from everyayah.com at playback. Not mirrored, not bundled, not hosted. 6 reciters (ADR 0023). `ayah_audio.rel_path` = bare `SSSAAA.mp3`; host + `reciterFolders` (slug → folder) + cache cap in `app/lib/data/audio.dart`. Corpus `recitations` slugs = `reciterFolders` keys, test enforces.
+- `word_segments` keyed `(recitation_id, word_id, seq)` WITHOUT ROWID. Query filters on `recitations.slug`, never unfiltered → 6 reciters mix.
+- Cache flat: file = rel path with `/` → `_`. Never subdirs → sweep/pins/revision miss them.
+- Word-by-word voice (opt-in): `words.wbw_path` from quran.com `audio_url`. Never build from `position` — index counts pause marks (27,963 words differ). Host `audio.qurancdn.com`, same cache.
+- quran-align: 6 of 12 pass. New reciter → ingest `defaultRecitations` + ETL `Recitations` + `reciterFolders`, same commit.
 - Long-press uncached → show transliteration, never spin.
 
 ## UI

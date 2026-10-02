@@ -119,7 +119,7 @@ type Recitation struct {
 const defaultSlug = "husary-muallim"
 
 // Recitations are the ones ingest's defaultRecitations extracts. The other six
-// of quran-align's twelve do not pass and ADR 0018 lists why.
+// of quran-align's twelve do not pass and ADR 0023 lists why.
 var Recitations = []Recitation{
 	{defaultSlug, "Husary_Muallim_128kbps", "Mahmoud Khalil Al-Husary", "Muallim"},
 	{"husary", "Husary_64kbps", "Mahmoud Khalil Al-Husary", "Murattal"},

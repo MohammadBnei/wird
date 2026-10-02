@@ -75,12 +75,11 @@ erDiagram
   surahs ||--o{ ayahs : has
   ayahs ||--o{ words : has
   ayahs ||--o{ ayah_translations : "French"
-  ayahs ||--o{ ayah_audio : "relative path"
+  ayahs ||--o| ayah_audio : "file name"
   words }o--o| roots : "root_letters"
   words ||--o{ word_segments : "timings"
   words ||--o{ irab : "one row per segment"
   irab }o--|| irab_roles : code
-  recitations ||--o{ ayah_audio : "voiced by"
   recitations ||--o{ word_segments : "timed by"
   roots ||--o{ root_notes : "senses land here"
   surahs {
@@ -97,6 +96,16 @@ erDiagram
     text gloss_fr "NULL where no French card matched"
     text lemma_key "Buckwalter, digit kept"
     text lemma "decoded, NULL without a root"
+    text wbw_path "the word spoken alone, NULL on one word"
+  }
+  recitations {
+    int id PK
+    text slug "the app keys the folder by it"
+  }
+  word_segments {
+    int recitation_id PK
+    int word_id PK
+    int seq PK "a word timed twice"
   }
   roots {
     text letters PK "joined, not spaced"
@@ -124,22 +133,22 @@ if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
 }
 ```
 
-[ingest/main.go:61](../../../server/cmd/ingest/main.go#L61-L64) · [the copyright check](../../../server/cmd/ingest/verify.go#L103-L134)
+[ingest/main.go:77](../../../server/cmd/ingest/main.go#L77-L80) · [the copyright check](../../../server/cmd/ingest/verify.go#L118-L149)
 
 ### 2. Timings come from the quran-align release
 
-The Quran Foundation API serves the same timings, but its terms forbid storing them for more than a week. The quran-align release carries its own grant, so `ingest` downloads that zip and extracts one recitation with its licence and readme.
+The Quran Foundation API serves the same timings, but its terms forbid storing them for more than a week. The quran-align release carries its own grant, so `ingest` downloads that zip and extracts six of its twelve recitations with their licence and readme. The other six do not reconcile with the text ([ADR 0023](../../adr/0023-six-reciters-and-a-word-by-word-voice.md)).
 
 ```go
 if err := f.download(ctx, alignURL, filepath.Join(dir, alignZip), force); err != nil {
 	return err
 }
-if err := extractTimings(filepath.Join(dir, alignZip), dir, recitation); err != nil {
+if err := extractTimings(filepath.Join(dir, alignZip), dir, recitations); err != nil {
 	return err
 }
 ```
 
-[ingest/main.go:72](../../../server/cmd/ingest/main.go#L72-L77) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
+[ingest/main.go:86](../../../server/cmd/ingest/main.go#L86-L91) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
 
 ### 3. Sūras and ayas, one file each
 
@@ -153,7 +162,7 @@ if len(suras) != 114 {
 }
 ```
 
-[ingest/main.go:91](../../../server/cmd/ingest/main.go#L91-L95) · [the refusal](../../../server/cmd/ingest/main.go#L143-L156)
+[ingest/main.go:105](../../../server/cmd/ingest/main.go#L105-L109) · [the refusal](../../../server/cmd/ingest/main.go#L163-L176)
 
 ### 3b. The French under each word, from The Last Dialogue
 
@@ -178,16 +187,16 @@ flowchart LR
 
 ### 4. Verify what is on disk, then write the manifest
 
-`verify` trusts nothing it just downloaded. It reads the files back from disk and counts the words in every aya, in the text, in the morphology and in the timings. If they disagree anywhere, it stops and writes no manifest. Otherwise it writes `data/manifest.json`, with the sources, checksums and counts. That file is what git holds in place of `data/raw/`.
+`verify` trusts nothing it just downloaded. It reads the files back from disk and counts the words in every aya, in the text, in the morphology and in each recitation's timings. If the text and the morphology disagree, it stops and writes no manifest. A recitation whose timings disagree is refused by name and left out, and the run fails only if none is left. It then writes `data/manifest.json`, with the sources, checksums and counts per recitation. That file is what git holds in place of `data/raw/`.
 
 ```go
-// verify reads back what is on disk and refuses to write a manifest for a corpus
-// that would mis-highlight. Nothing here trusts the download that just ran: a
-// resumed run verifies files it did not fetch.
-func verify(dir string, suras []int, chapters []chapter, recitation string, now time.Time) (*manifest, error) {
+// A recitation whose timings disagree with the text is refused by name and left
+// out; the run fails only when the text itself disagrees, or when no recitation
+// is left.
+func verify(dir string, suras []int, chapters []chapter, recitations []string, now time.Time) (*manifest, error) {
 ```
 
-[ingest/verify.go:158](../../../server/cmd/ingest/verify.go#L158-L161) · [the word counts compared](../../../server/cmd/ingest/verify.go#L204-L218)
+[ingest/verify.go:177](../../../server/cmd/ingest/verify.go#L177-L180) · [the word counts compared](../../../server/cmd/ingest/verify.go#L221-L231)
 
 ### 5. Load with natural keys
 
@@ -200,11 +209,11 @@ func ayahID(surah, ayah int) int   { return surah*1000 + ayah }
 func wordID(ayahID, pos int) int64 { return int64(ayahID)*1000 + int64(pos) }
 ```
 
-[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L267-L270)
+[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L320-L323)
 
 ### 6. Check: refuse a corpus that would mislead
 
-The check is a build gate, not a report. Among other things, it refuses a corpus whose notice does not credit both licensed sources, a partial Quran, an aya without audio, a word pointing at an unknown root, timings that jump backwards, French for some ayas but not all, an aya none of whose words carries a French gloss, and a rooted word with no lemma. On a full build it also holds the three commonest lemmas of r-ḥ-m to 116, 114 and 57, the counts corpus.quran.com gives, so a lemma read from the wrong segment or two lemmas merged into one cannot ship.
+The check is a build gate, not a report. Among other things, it refuses a corpus whose notice does not credit both licensed sources, a partial Quran, an aya without audio, a corpus without the default reciter, a word pointing at an unknown root, timings that jump backwards, French for some ayas but not all, an aya none of whose words carries a French gloss, and a rooted word with no lemma. On a full build it also holds the three commonest lemmas of r-ḥ-m to 116, 114 and 57, the counts corpus.quran.com gives, so a lemma read from the wrong segment or two lemmas merged into one cannot ship.
 
 ```go
 if full {
@@ -221,7 +230,7 @@ if full {
 }
 ```
 
-[etl/check.go:37](../../../server/cmd/etl/check.go#L37-L48) · [the notice check](../../../server/cmd/etl/check.go#L23-L35) · [the whole check](../../../server/cmd/etl/check.go#L18-L125)
+[etl/check.go:37](../../../server/cmd/etl/check.go#L37-L48) · [the notice check](../../../server/cmd/etl/check.go#L23-L35) · [the whole check](../../../server/cmd/etl/check.go#L18-L144)
 
 ### 7. Write the tables and stamp the version
 
@@ -234,21 +243,21 @@ if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?,?)`,
 }
 ```
 
-[etl/write.go:192](../../../server/cmd/etl/write.go#L192-L195) · [the schema](../../../server/cmd/etl/write.go#L16-L134) · [why root_notes is empty](../../../server/cmd/etl/write.go#L242-L256)
+[etl/write.go:202](../../../server/cmd/etl/write.go#L202-L205) · [the schema](../../../server/cmd/etl/write.go#L16-L145) · [why root_notes is empty](../../../server/cmd/etl/write.go#L252-L266)
 
-`corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 6. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
+`corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 7. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
 
 It is also how a phone already holding an older corpus gets the new one. The app carries the same number as `bundledCorpusVersion`. When the installed file's version is lower, the app fills the new corpus beside it, copies the reader's own tables and the fetched senses across, and swaps the file in by rename. A failed upgrade keeps the old file. A rebuild that keeps the same number is therefore never delivered: bump it.
 
 ```go
-version := flag.Int("corpus-version", 6, "corpus_version the API negotiates")
+version := flag.Int("corpus-version", 7, "corpus_version the API negotiates")
 ```
 
-[etl/main.go:24](../../../server/cmd/etl/main.go#L24)
+[etl/main.go:19](../../../server/cmd/etl/main.go#L19)
 
 ### 8. The gate keeps it under 60 MB
 
-The file is about 30 MB today. The gate fails once it passes 60 MB, the budget for a bundled asset. Going over it is a decision to ask about first, not a number to raise.
+The file is about 38 MB today, six recitations' timings included. The gate fails once it passes 60 MB, the budget for a bundled asset. Going over it is a decision to ask about first, not a number to raise.
 
 ```bash
 corpus_under_budget() {
@@ -282,6 +291,7 @@ The morphology's licence is GPL, which is why the whole repository is AGPL-3.0.
 - Natural ids, so a rebuilt corpus joins with data already on a device ([etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24)).
 - Audio paths stay relative, so moving the audio host never needs an app release ([etl/check.go:57](../../../server/cmd/etl/check.go#L57-L63)).
 - [ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md) — the French under each word comes from The Last Dialogue, matched by its Arabic.
+- [ADR 0023](../../adr/0023-six-reciters-and-a-word-by-word-voice.md) — six reciters' timings, each refused or kept on its own, keyed so the six fit the budget.
 - [ADR 0005, deploying the API](../../adr/0005-deploying-the-api.md) — `corpus.db` is not in the server image.
 
 ## Go deeper

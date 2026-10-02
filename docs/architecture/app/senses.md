@@ -115,7 +115,7 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
 
 The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:156](../../../app/lib/data/flush.dart#L156-L159)).
 
-Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:393](../../../app/lib/features/settings/settings_screen.dart#L393-L418)).
+Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:397](../../../app/lib/features/settings/settings_screen.dart#L397-L422)).
 
 ### 2. HEAD asks, and moves no bytes
 
@@ -214,7 +214,7 @@ Before it records the version, the transaction counts the new senses whose root 
 ```
 [senses.dart:142](../../../app/lib/data/senses.dart#L143-L156)
 
-`sense_pack` holds at most one row ([db.dart:244](../../../app/lib/data/db.dart#L244-L253)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
+`sense_pack` holds at most one row ([db.dart:255](../../../app/lib/data/db.dart#L255-L264)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
 
 ### 6. The root screen reads it back
 

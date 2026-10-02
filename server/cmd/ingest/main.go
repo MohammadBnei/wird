@@ -41,7 +41,7 @@ const (
 )
 
 // The recitations whose timings pass this ingest and the ETL as they stand.
-// The other six of quran-align's twelve are refused, and ADR 0018 says why:
+// The other six of quran-align's twelve are refused, and ADR 0023 says why:
 // Abdul Basit Mujawwad, both Minshawy and Tablaway split a word into three,
 // Sudais's file opens with the aligner's crash log, and Shuraym and Minshawy
 // Mujawwad each leave an aya with no timing at all.

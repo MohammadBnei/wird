@@ -46,7 +46,7 @@ const reciterFolders = {
 /// Where a word spoken on its own is fetched from: quran.com's word-by-word
 /// recordings, one voice for every word, at the path `words.wbw_path` names.
 /// Fetched at playback and held in the same capped cache as the recitation,
-/// never bundled; ADR 0018 records the terms this sits under.
+/// never bundled; ADR 0023 records the terms this sits under.
 const wordAudioOrigin = 'https://audio.qurancdn.com/';
 
 /// The whole recitation is 2.75 GB at ~442 KB an aya, so this cap holds about
