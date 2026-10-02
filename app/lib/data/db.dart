@@ -714,8 +714,10 @@ Future<List<({int start, int end})>> recentPassages(
 typedef Kin = Derivative;
 typedef RootDetail = RootReading;
 
-/// One reciter the corpus carries timings for, as a reader picks them.
-typedef Reciter = ({String slug, String label});
+/// One reciter the corpus carries timings for, as a reader picks them: who
+/// recites, and in which style (`Muallim`, `Murattal`), which the settings
+/// screen explains rather than prints.
+typedef Reciter = ({String slug, String name, String? style});
 
 /// The reciters the reader can choose between: those the corpus times and this
 /// build knows the folder of, the default first.
@@ -735,10 +737,8 @@ Future<List<Reciter>> reciters(Database db) async {
       if (reciterFolders.containsKey(row['slug']))
         (
           slug: row['slug']! as String,
-          label: switch (row['style'] as String?) {
-            null => row['reciter_name']! as String,
-            final style => '${row['reciter_name']} · $style',
-          },
+          name: row['reciter_name']! as String,
+          style: row['style'] as String?,
         ),
   ];
 }

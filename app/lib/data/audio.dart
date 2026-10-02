@@ -43,6 +43,11 @@ const reciterFolders = {
   'hani-rifai': 'Hani_Rifai_192kbps',
 };
 
+/// The aya a reciter is heard by before the reader picks them, 1:1: the
+/// basmala, short, and the same words in every voice so the voices are what
+/// differ. Named the way `ayah_audio.rel_path` names it in every folder.
+const sampleFile = '001001.mp3';
+
 /// Where a word spoken on its own is fetched from: quran.com's word-by-word
 /// recordings, one voice for every word, at the path `words.wbw_path` names.
 /// Fetched at playback and held in the same capped cache as the recitation,
@@ -303,6 +308,24 @@ class AudioCache {
   File? cached(String relPath) {
     final file = fileFor(relPath);
     return file.existsSync() ? file : null;
+  }
+
+  /// One file, from disk or else fetched, without touching the pins: a sample
+  /// heard in the settings must not unpin the set the reader is about to
+  /// pray. Null offline. Not swept here; the next [prefetch] sweeps it like
+  /// anything else unpinned.
+  Future<File?> fetchOne(String relPath) async {
+    final file = fileFor(relPath);
+    if (file.existsSync()) return file;
+    try {
+      final body = await _fetch(urlFor(relPath));
+      if (body.isEmpty) return null;
+      await dir.create(recursive: true);
+      await file.writeAsBytes(body, flush: true);
+      return file;
+    } on Exception {
+      return null;
+    }
   }
 
   /// Downloads what the set needs, pins it against eviction, then trims the

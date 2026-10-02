@@ -497,4 +497,65 @@ void main() {
     expect(await tracksFor(kept, firstSet), isEmpty);
     await kept.close();
   });
+
+  test('hearing a reciter in the settings unpins the set the reader is about '
+      'to pray', () async {
+    final dir = await tempAudioDir();
+    final set = [for (final t in await tracksFor(db, firstSet)) t.relPath];
+    final cdn = FakeCdn();
+    final cache = AudioCache(dir, capBytes: 5 * 1024, fetch: cdn.call);
+    await cache.prefetch(set);
+
+    final sample = await cache.fetchOne('Alafasy_128kbps/$sampleFile');
+    expect(sample, isNotNull);
+    expect(cdn.served.last, '${defaultAudioOrigin}Alafasy_128kbps/001001.mp3');
+
+    // The next sweep, over a cap the sample pushed the cache past, takes the
+    // sample and leaves the set: the pins are still the set's.
+    await cache.prefetch([...set, 'Husary_64kbps/096001.mp3']);
+    for (final path in set) {
+      expect(cache.cached(path), isNotNull, reason: '$path was unpinned');
+    }
+  });
+
+  test('a reciter sampled in the settings plays over the set the reader '
+      'started', () async {
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final cache = await cacheHolding(firstSet);
+    final recitation = Recitation(cache: cache);
+    await recitation.carry(
+      await tracksFor(db, firstSet),
+      title: 'Al-ʿAlaq 1–5',
+      words: const {},
+    );
+    unawaited(recitation.toggle());
+    await pumpEventQueue();
+    expect(recitation.playing.value, isTrue);
+
+    // Offline, so the sample never arrives: what matters is that the set
+    // stopped and nothing is left marked as sampling.
+    await recitation.sample('alafasy');
+    expect(recitation.playing.value, isFalse);
+    expect(recitation.sounding.value, isNull);
+    expect(recitation.sampling.value, isNull);
+  });
+
+  test('the bar recites a set without saying who recites it', () async {
+    JustAudioPlatform.instance = FakePlayers();
+    final recitation = Recitation(cache: await cacheHolding(firstSet));
+    await recitation.carry(
+      await tracksFor(db, firstSet),
+      title: 'Al-ʿAlaq 1–5',
+      words: const {},
+      voice: 'Mishary Rashid Alafasy',
+    );
+    unawaited(recitation.toggle());
+    await pumpEventQueue();
+    expect(
+      recitation.sounding.value?.label,
+      'Al-ʿAlaq 1–5 · Mishary Rashid Alafasy',
+    );
+    await recitation.stop();
+  });
 }

@@ -3,21 +3,17 @@ import 'package:flutter/material.dart';
 import '../theme/nocturne.dart';
 
 /// A segmented choice: one option selected, the rest plain.
-///
-/// [axis] stacks the options when there are more than a phone's width holds.
 class NocturneSegmented extends StatefulWidget {
   const NocturneSegmented({
     super.key,
     required this.options,
     required this.selected,
     required this.onChanged,
-    this.axis = Axis.horizontal,
   });
 
   final List<String> options;
   final int selected;
   final ValueChanged<int> onChanged;
-  final Axis axis;
 
   @override
   State<NocturneSegmented> createState() => _NocturneSegmentedState();
@@ -36,18 +32,12 @@ class _NocturneSegmentedState extends State<NocturneSegmented> {
         borderRadius: BorderRadius.circular(n.radius('md')),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Flex(
-        direction: widget.axis,
+      child: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: widget.axis == Axis.vertical
-            ? CrossAxisAlignment.stretch
-            : CrossAxisAlignment.center,
         children: [
           for (final (i, option) in widget.options.indexed) ...[
             if (i > 0)
-              widget.axis == Axis.horizontal
-                  ? Container(width: 1, height: 30, color: n.divider)
-                  : Container(height: 1, color: n.divider),
+              Container(width: 1, height: 30, color: n.divider),
             FocusableActionDetector(
               mouseCursor: SystemMouseCursors.click,
               onShowHoverHighlight: (v) =>

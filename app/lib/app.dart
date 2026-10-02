@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'data/audio.dart';
@@ -93,6 +94,15 @@ class Recitation {
 
   SetAudio? _set;
   String _title = '';
+
+  /// Who recites the set, named beside its title while it plays: a reader who
+  /// changed reciter last week can tell from the bar who they are hearing.
+  String? _voice;
+
+  /// The reciter being sampled in the settings, or null. A player of its own,
+  /// so a sample never replaces the set the reading screen loaded.
+  final sampling = ValueNotifier<String?>(null);
+  AudioPlayer? _sampler;
   Map<int, String> _words = const {};
 
   /// The files the loaded player covers, so walking away from the reading
@@ -132,9 +142,11 @@ class Recitation {
     required String title,
     required Map<int, String> words,
     bool wordByWord = false,
+    String? voice,
   }) async {
     _title = title;
     _words = words;
+    _voice = voice;
     final covers = [for (final track in tracks) track.relPath];
     if (_set != null && listEquals(covers, _covers)) {
       _set!.wordByWord = wordByWord;
@@ -182,7 +194,10 @@ class Recitation {
       return;
     }
     if (!set.ready) return;
-    sounding.value = (what: Sounded.set, label: _title);
+    sounding.value = (
+      what: Sounded.set,
+      label: _voice == null ? _title : '$_title · $_voice',
+    );
     await set.toggle();
     if (identical(_set, set) && sounding.value?.what == Sounded.set) {
       sounding.value = null;
@@ -193,10 +208,41 @@ class Recitation {
   /// used to play to its end because the only control was on the screen that
   /// started it, and that screen had been scrolled or navigated away from.
   Future<void> stop() async {
+    await stopSample();
     sounding.value = null;
     final set = _set;
     if (set == null) return;
     if (set.playing.value) await set.toggle();
+  }
+
+  /// Plays [reciter]'s voice on [sampleFile], or stops it if it is the one
+  /// sounding. Whatever else is sounding stops first: two voices at once is
+  /// noise. Offline and never fetched, it plays nothing and says nothing.
+  Future<void> sample(String reciter) async {
+    if (sampling.value == reciter) return stopSample();
+    await stop();
+    final folder = reciterFolders[reciter];
+    if (folder == null) return;
+    sampling.value = reciter;
+    final file = await (await cache).fetchOne('$folder/$sampleFile');
+    if (file == null || sampling.value != reciter) {
+      if (sampling.value == reciter) sampling.value = null;
+      return;
+    }
+    try {
+      final player = _sampler ??= AudioPlayer();
+      await player.setAudioSource(AudioSource.file(file.path));
+      await player.play();
+    } on Exception {
+      // A platform that will not play it is the silent case.
+    } finally {
+      if (sampling.value == reciter) sampling.value = null;
+    }
+  }
+
+  Future<void> stopSample() async {
+    sampling.value = null;
+    await _sampler?.stop();
   }
 }
 

@@ -1577,6 +1577,30 @@ abstract class AppLocalizations {
   /// **'Whose voice recites the set and each word you tap. Words are highlighted in time with this reciter.'**
   String get settingsReciterCaption;
 
+  /// Under a reciter's name in settings: what the Muallim (teaching) style is for.
+  ///
+  /// In en, this message translates to:
+  /// **'Muʿallim · slow and clear, for learning'**
+  String get settingsStyleMuallim;
+
+  /// Under a reciter's name in settings: the Murattal style, the usual one, left unexplained so the one row that differs (Muallim) stands out.
+  ///
+  /// In en, this message translates to:
+  /// **'Murattal'**
+  String get settingsStyleMurattal;
+
+  /// Tooltip of the button that stops a reciter's sample in settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get settingsStopSample;
+
+  /// Tooltip of the button that plays a short sample of a reciter in settings. The name is a person's and is not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Hear {reciter}'**
+  String settingsHearReciter(String reciter);
+
   /// Settings option: a tapped word plays as its stretch of the chosen reciter's aya recording.
   ///
   /// In en, this message translates to:
@@ -1586,13 +1610,13 @@ abstract class AppLocalizations {
   /// Settings option: a tapped word plays its own recording, spoken alone by quran.com's word-by-word voice.
   ///
   /// In en, this message translates to:
-  /// **'Word by word'**
+  /// **'Each word alone'**
   String get settingsWordAlone;
 
   /// Caption under the choice of what a tapped word plays.
   ///
   /// In en, this message translates to:
-  /// **'What a tapped word plays: its moment in the reciter\'s aya, or the word spoken on its own by quran.com\'s word-by-word voice, which is fetched separately.'**
+  /// **'What a tapped word plays: its moment in the reciter\'s aya, or the word spoken on its own, in one voice for every word.'**
   String get settingsWordVoiceCaption;
 
   /// Section heading on the settings screen, over the microphone permission and the recogniser download.

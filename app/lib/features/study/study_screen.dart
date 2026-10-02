@@ -266,12 +266,17 @@ class _StudyScreenState extends State<StudyScreen> {
       ayas: await readingWidth(widget.db, order),
     );
     if (set == null || !mounted || generation != _generation) return;
+    final reciterName = (await reciters(widget.db))
+        .where((r) => r.slug == reciter)
+        .firstOrNull
+        ?.name;
     await recitation.carry(
       await tracksFor(widget.db, [
         for (final aya in set.ayas) aya.id,
       ], reciter: reciter),
       title: set.title,
       wordByWord: wordByWord,
+      voice: reciterName,
       words: {
         for (final aya in set.ayas)
           for (final word in aya.words) word.id: word.text,
