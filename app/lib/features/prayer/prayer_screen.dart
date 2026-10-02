@@ -796,19 +796,21 @@ class _PrayerScreenState extends State<PrayerScreen> {
         // A leaving child's animation runs back to zero, so it travels the
         // other way from the one arriving.
         final arriving = child.key == key;
-        return FadeTransition(
-          opacity: shown,
-          child: AnimatedBuilder(
-            animation: shown,
-            builder: (context, child) => Transform.translate(
+        // The leaving one is gone before the arriving one shows, so the two
+        // never stand on top of each other halfway through.
+        return AnimatedBuilder(
+          animation: shown,
+          builder: (context, child) => Opacity(
+            opacity: const Interval(0.45, 1).transform(shown.value),
+            child: Transform.translate(
               offset: Offset(
                 0,
                 (1 - shown.value) * _flowBy * _flow * (arriving ? 1 : -1),
               ),
               child: child,
             ),
-            child: child,
           ),
+          child: child,
         );
       },
       child: KeyedSubtree(key: key, child: child),
