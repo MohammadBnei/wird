@@ -323,6 +323,8 @@ class AyaMark extends StatelessWidget {
     required this.arabicSize,
     this.onMark,
     this.label,
+    this.onPlay,
+    this.playLabel,
   });
 
   final StudyAya aya;
@@ -335,19 +337,28 @@ class AyaMark extends StatelessWidget {
   /// What a screen reader says the mark does.
   final String? label;
 
+  /// Recites the aya alone, on a hold. An understood aya still plays: being
+  /// counted is no reason to stop hearing it.
+  final VoidCallback? onPlay;
+
+  /// What a screen reader says the hold does.
+  final String? playLabel;
+
   @override
   Widget build(BuildContext context) {
     final mark = _mark(context);
     if (label == null) return mark;
     return Semantics(
       button: true,
-      enabled: onMark != null,
+      enabled: onMark != null || onPlay != null,
       label: label,
+      onLongPressHint: onPlay == null ? null : playLabel,
       // Opaque, so the space that lets the mark down onto the baseline takes
       // the tap too, and not only the 26px circle.
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onMark,
+        onLongPress: onPlay,
         child: mark,
       ),
     );

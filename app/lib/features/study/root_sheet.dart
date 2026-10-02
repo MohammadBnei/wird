@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 
 import '../../data/root_repo.dart';
 import '../../data/sets.dart';
@@ -30,10 +31,19 @@ typedef SheetWord = ({
 /// opens and closes the lower half — the counts, the forms and the other
 /// ayas — and scrolling never does.
 class RootSheet extends StatelessWidget {
+  /// The space above and below the handle's mark. A folded sheet is this
+  /// strip and nothing else, so it is the target a thumb has to find.
+  static const handlePad = 12.0;
+
+  /// How tall a folded sheet is: the handle, its mark and its room.
+  static const handleHeight = handlePad * 2 + 3;
+
   const RootSheet({
     super.key,
     required this.sheet,
     required this.expanded,
+    this.hidden = false,
+    this.onHidden,
     required this.swipe,
     required this.onPrevious,
     required this.onNext,
@@ -48,6 +58,14 @@ class RootSheet extends StatelessWidget {
 
   final SheetWord sheet;
   final bool expanded;
+
+  /// Folded down to its handle, so the sūra has the screen to itself: a
+  /// reader who only wants to read has no use for the root under every word.
+  final bool hidden;
+
+  /// Folds the sheet down to its handle, or back up. A drag on the handle
+  /// does it; a tap on a folded handle brings the sheet back.
+  final ValueChanged<bool>? onHidden;
 
   /// The slide the arrows drive, so a step by arrow moves like a swipe.
   final GlobalKey<WordSwipeState> swipe;
@@ -102,69 +120,86 @@ class RootSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _topBar(n, l),
-          Expanded(
-            child: SingleChildScrollView(
-              controller: scroll,
-              child: WordSwipe(
-                key: swipe,
-                wordId: sheet.word.id,
-                onNext: onNext,
-                onPrevious: onPrevious,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // The arrows sit at the sheet's edges; the rest is
-                    // indented as the design draws it.
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: _wordRow(context, n, l, root),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (root != null) ..._senses(n, l, root),
-                          _form(n, l),
-                        ],
-                      ),
-                    ),
-                    if (!expanded) _moreRow(n, l),
-                    if (root != null)
-                      _secondary(n, l, root)
-                    else
+          if (!hidden)
+            Expanded(
+              child: SingleChildScrollView(
+                controller: scroll,
+                child: WordSwipe(
+                  key: swipe,
+                  wordId: sheet.word.id,
+                  onNext: onNext,
+                  onPrevious: onPrevious,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // The arrows sit at the sheet's edges; the rest is
+                      // indented as the design draws it.
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
-                        child: Text(
-                          l.study_particleNote,
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.5,
-                            color: n.textAt(0.55),
-                          ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: _wordRow(context, n, l, root),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (root != null) ..._senses(n, l, root),
+                            _form(n, l),
+                          ],
                         ),
                       ),
-                  ],
+                      if (!expanded) _moreRow(n, l),
+                      if (root != null)
+                        _secondary(n, l, root)
+                      else
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
+                          child: Text(
+                            l.study_particleNote,
+                            style: TextStyle(
+                              fontSize: 12,
+                              height: 1.5,
+                              color: n.textAt(0.55),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  /// The handle: a tap on it opens or closes the lower half.
+  /// The handle: a tap on it opens or closes the lower half, and a drag
+  /// folds the sheet away or brings it back.
   Widget _topBar(Nocturne n, AppLocalizations l) => Semantics(
     button: true,
-    label: expanded ? l.study_collapseSheet : l.study_expandSheet,
+    label: hidden
+        ? l.study_showRoot
+        : expanded
+        ? l.study_collapseSheet
+        : l.study_expandSheet,
+    customSemanticsActions: {
+      if (onHidden != null && !hidden)
+        CustomSemanticsAction(label: l.study_hideRoot): () => onHidden!(true),
+    },
     child: GestureDetector(
       key: const Key('sheet handle'),
       behavior: HitTestBehavior.opaque,
-      onTap: onToggle,
-      // A faint mark with room around it to tap.
+      onTap: hidden ? () => onHidden?.call(false) : onToggle,
+      // Past the drag slop, the direction alone says what the reader meant.
+      onVerticalDragUpdate: onHidden == null
+          ? null
+          : (drag) {
+              final dy = drag.primaryDelta ?? 0;
+              if (dy != 0) onHidden!(dy > 0);
+            },
+      // A faint mark with room around it to tap and to drag.
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: EdgeInsets.symmetric(vertical: handlePad),
         child: Center(
           child: Container(
             width: 28,

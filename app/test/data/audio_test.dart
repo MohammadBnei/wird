@@ -7,7 +7,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
-import 'package:wird/data/sets.dart';
 
 import '../corpus.dart';
 import '../offline.dart';
@@ -110,20 +109,14 @@ void main() {
     expect(audio.currentWordId.value, isNull);
   });
 
-  test('a word of an aya that never finished downloading is offered as one '
-      'the reader can hear', () async {
+  test('a word of an aya not downloaded yet is left dark, though the player '
+      'fetches it as it plays', () async {
     final tracks = await tracksFor(db, firstSet);
-    final cache = AudioCache(await tempAudioDir(), fetch: FakeCdn().call);
-    await cache.prefetch([tracks.first.relPath]);
-    final audio = SetAudio(cache: cache, tracks: tracks);
+    final audio = SetAudio(
+      cache: AudioCache(await tempAudioDir(), fetch: RadioOff().call),
+      tracks: tracks,
+    );
 
-    expect(audio.speakable, {
-      for (final span in tracks.first.segments) span.wordId,
-    });
-
-    // The rest of the set lands while the reader is on the screen, the way it
-    // does behind screen 1a, and the answer has to follow the disk.
-    await cache.prefetch([for (final t in tracks) t.relPath]);
     expect(audio.speakable, {
       for (final track in tracks)
         for (final span in track.segments) span.wordId,
@@ -191,19 +184,13 @@ void main() {
     }, reason: 'the stale files are gone, so the cache really did evict');
   });
 
-  test('the set the reader will be handed next is evicted before they are '
-      'ever served it', () async {
+  test('the stretch ahead of the open aya is evicted before the reader '
+      'reaches it', () async {
     final dir = await tempAudioDir();
-    final current = await nextSet(db, ReadingOrder.nuzul);
-    final ahead = await nextSet(
-      db,
-      ReadingOrder.nuzul,
-      alsoUnderstood: {for (final aya in current!.ayas) aya.id},
-    );
-    final aheadPaths = [
-      for (final t in await tracksFor(db, [for (final a in ahead!.ayas) a.id]))
-        t.relPath,
-    ];
+    final tracks = await tracksFor(db, [
+      for (var n = 1; n <= 19; n++) 96000 + n,
+    ]);
+    final keep = windowPaths(tracks, 96001);
 
     final old = DateTime.now().subtract(const Duration(days: 1));
     for (var i = 0; i < 20; i++) {
@@ -212,20 +199,20 @@ void main() {
         ..setLastModifiedSync(old);
     }
 
-    // What screen 1a downloads when it opens the set, against a cap that
-    // cannot hold it: everything unpinned goes.
+    // What screen 1a downloads when it opens 96:1, against a cap that cannot
+    // hold it: everything unpinned goes.
     await AudioCache(
       dir,
       capBytes: 3 * 1024,
       fetch: FakeCdn().call,
-    ).prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
+    ).prefetch(keep);
 
-    expect(aheadPaths, hasLength(ahead.ayas.length));
-    for (final path in aheadPaths) {
+    expect(keep, hasLength(aheadAyas));
+    for (final path in keep) {
       expect(
         AudioCache(dir).cached(path),
         isNotNull,
-        reason: '$path is the next set, gone before the reader reached it',
+        reason: '$path is ahead of the reader, gone before they reached it',
       );
     }
   });
@@ -400,16 +387,9 @@ void main() {
 
   test('the words of the set are not fetched for a reader who asked to hear '
       'each word alone, so a tapped word is silent offline', () async {
-    final set = (await nextSet(db, ReadingOrder.nuzul))!;
     final cdn = FakeCdn();
     await AudioCache(await tempAudioDir(), fetch: cdn.call).prefetch(
-      await pathsToKeep(
-        db,
-        ReadingOrder.nuzul,
-        set,
-        onTheWalk: false,
-        wordByWord: true,
-      ),
+      windowPaths(await tracksFor(db, firstSet), 96001, wordByWord: true),
     );
     expect(cdn.served, contains('${wordAudioOrigin}wbw/096_001_001.mp3'));
     expect(
@@ -527,7 +507,6 @@ void main() {
     await recitation.carry(
       await tracksFor(db, firstSet),
       title: 'Al-ʿAlaq 1–5',
-      words: const {},
     );
     unawaited(recitation.toggle());
     await pumpEventQueue();
@@ -547,7 +526,6 @@ void main() {
     await recitation.carry(
       await tracksFor(db, firstSet),
       title: 'Al-ʿAlaq 1–5',
-      words: const {},
       voice: 'Mishary Rashid Alafasy',
     );
     unawaited(recitation.toggle());
@@ -582,7 +560,6 @@ void main() {
     await recitation.carry(
       await tracksFor(db, firstSet),
       title: 'Al-ʿAlaq 1–5',
-      words: const {},
     );
     return recitation;
   }
@@ -618,7 +595,7 @@ void main() {
       'whole set with no bar', () async {
     final players = FakePlayers();
     final recitation = await reciting(players);
-    unawaited(recitation.playWord(96001001));
+    unawaited(recitation.playWord(96001001, label: 'iqraʾ'));
     await pumpEventQueue();
     await recitation.toggle(); // the header's button, while the word sounds
     await pumpEventQueue();
@@ -627,5 +604,151 @@ void main() {
     await pumpEventQueue();
     expect(recitation.sounding.value?.what, Sounded.set);
     await recitation.stop();
+  });
+
+  /// Al-ʿAlaq whole, as the reading screen carries it.
+  Future<List<AyaTrack>> alAlaq() =>
+      tracksFor(db, [for (var n = 1; n <= 19; n++) 96000 + n]);
+
+  test('an aya past the ones on the phone is silent, though the player can '
+      'fetch it as it plays', () async {
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: await cacheHolding(firstSet),
+      tracks: await alAlaq(),
+    );
+
+    final played = audio.playAya(96015);
+    await pumpEventQueue();
+    expect(audio.playing.value, isTrue);
+    players.only.finish();
+    expect(await played, isTrue);
+  });
+
+  test('a word past the ayas on the phone is silent in either voice', () async {
+    final tracks = await alAlaq();
+    for (final alone in [false, true]) {
+      JustAudioPlatform.instance = FakePlayers();
+      final audio = SetAudio(
+        cache: await cacheHolding(firstSet),
+        tracks: tracks,
+        wordByWord: alone,
+      );
+      unawaited(audio.playWord(96015001));
+      await pumpEventQueue();
+      expect(audio.currentWordId.value, 96015001, reason: 'alone: $alone');
+      await audio.stop();
+    }
+  });
+
+  test('the recitation stops at the ayas around the open word, in the middle '
+      'of the sūra', () async {
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: await cacheHolding(firstSet),
+      tracks: await alAlaq(),
+    );
+
+    unawaited(audio.playFrom(96003002));
+    await pumpEventQueue();
+    final loaded = players.only.loaded.last;
+    expect(loaded, isNot(contains('096002')));
+    expect(loaded, contains('096003'));
+    expect(loaded, contains('096019'), reason: 'on to the end of the sūra');
+    await audio.stop();
+  });
+
+  test('opening a word in another aya stops the recitation it was carried '
+      'under', () async {
+    JustAudioPlatform.instance = FakePlayers();
+    final recitation = Recitation(cache: await cacheHolding(firstSet));
+    final tracks = await alAlaq();
+    await recitation.carry(tracks, title: 'Al-ʿAlaq');
+    unawaited(recitation.playFrom(null));
+    await pumpEventQueue();
+
+    // The reading screen carries the sūra again on every word it opens.
+    await recitation.carry(await alAlaq(), title: 'Al-ʿAlaq');
+    expect(recitation.playing.value, isTrue);
+    await recitation.stop();
+  });
+
+  test('a file the player holds is evicted from under it, and the recitation '
+      'ends when it gets there', () async {
+    final dir = await tempAudioDir();
+    final cache = AudioCache(dir, fetch: FakeCdn().call, capBytes: 2 * 1024);
+    await cache.prefetch(['a/1.mp3']);
+    cache.hold(['a/1.mp3']);
+    await cache.prefetch(['a/2.mp3', 'a/3.mp3']);
+    expect(cache.cached('a/1.mp3'), isNotNull);
+  });
+
+  test('a download cut off halfway is played as if it were whole', () async {
+    final base = await tempAudioDir();
+    final left = File('${base.path}/audio/Husary_096001.mp3.123.part')
+      ..createSync(recursive: true)
+      ..writeAsBytesSync([0]);
+
+    final cache = await AudioCache.beside(base.path);
+    expect(cache.cached('Husary/096001.mp3'), isNull);
+    expect(left.existsSync(), isFalse, reason: 'nothing will finish it');
+  });
+
+  test('a word with a recording of its own but no timing looks playable in '
+      "the reciter's voice, and a press on it is silent", () async {
+    // 3:179's seventh word: quran.com has it alone, the aligner never timed it.
+    final tracks = await tracksFor(db, [3179]);
+    expect(tracks.single.wordFiles, contains(3179007));
+    final cache = AudioCache(await tempAudioDir(), fetch: RadioOff().call);
+
+    expect(
+      SetAudio(cache: cache, tracks: tracks).speakable,
+      isNot(contains(3179007)),
+    );
+    expect(
+      SetAudio(cache: cache, tracks: tracks, wordByWord: true).speakable,
+      contains(3179007),
+    );
+  });
+
+  test('pausing the bar while a streamed aya is still loading starts the sūra '
+      'over from its first aya', () async {
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final recitation = Recitation(cache: await cacheHolding(firstSet));
+    await recitation.carry(await alAlaq(), title: 'Al-ʿAlaq');
+
+    // The bar names the recitation before the player has loaded anything.
+    unawaited(recitation.playFrom(96015001));
+    // A few microtasks: past the bar being named, short of the load's end.
+    for (var i = 0; i < 3; i++) {
+      await Future<void>.value();
+    }
+    expect(recitation.sounding.value, isNotNull);
+    expect(recitation.playing.value, isFalse);
+    await recitation.toggle();
+    await pumpEventQueue();
+
+    expect(recitation.playing.value, isFalse);
+    expect(recitation.sounding.value, isNull);
+    expect(
+      players.players
+          .expand((p) => p.loaded)
+          .where((l) => l.contains('096001')),
+      isEmpty,
+      reason: 'nothing was started from the top of the sūra',
+    );
+  });
+
+  test('a sweep trips over a download still being written', () async {
+    final dir = await tempAudioDir();
+    final writing = File('${dir.path}/Husary_096019.mp3.1.part')
+      ..writeAsBytesSync(List.filled(4096, 0));
+    final cache = AudioCache(dir, fetch: FakeCdn().call, capBytes: 1024);
+
+    await cache.prefetch(['a/1.mp3', 'a/2.mp3']);
+    expect(writing.existsSync(), isTrue, reason: 'it is no one\'s file yet');
   });
 }

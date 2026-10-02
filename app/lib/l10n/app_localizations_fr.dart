@@ -100,9 +100,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get kept_title => 'Gardés';
 
   @override
-  String get notDownloaded => 'Non téléchargé';
-
-  @override
   String prayer_header(String prayer, int rakah, int count) {
     return '$prayer · Rakʿa $rakah sur $count';
   }
@@ -733,7 +730,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_nextWord => 'Mot suivant';
 
   @override
-  String get study_noRecitation => 'Aucune récitation pour ce passage';
+  String get study_noRecitation => 'Aucune récitation pour cette sourate';
 
   @override
   String get study_previousWord => 'Mot précédent';
@@ -1267,6 +1264,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_reciteAya => 'Réciter ce verset';
 
   @override
+  String get study_hideRoot => 'Masquer la racine';
+
+  @override
+  String get study_showRoot => 'Afficher la racine';
+
+  @override
   String get shell_recitingSet => 'RÉCITATION DU PASSAGE';
 
   @override
@@ -1378,7 +1381,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_pray => 'Prier';
 
   @override
-  String get study_recite => 'Réciter';
+  String get study_recite => 'Réciter depuis ce mot · maintenir pour toute la sourate';
 
   @override
   String get study_pauseRecitation => 'Mettre la récitation en pause';

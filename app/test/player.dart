@@ -7,16 +7,22 @@ import 'package:just_audio_platform_interface/just_audio_platform_interface.dart
 /// the word row: `play()` answers when the clip ENDS, not when it starts. A
 /// fake that answers immediately cannot show the second tap racing the first.
 class FakePlayers extends JustAudioPlatform {
-  FakePlayers({this.refuses = false});
+  FakePlayers({this.refuses = false, this.offline = false});
 
   /// An audio platform that will not take the clip, the way a codec it does
   /// not have or a build with no plugin behind it answers.
   final bool refuses;
+
+  /// A phone with no network: a file on disk loads, a URL does not, the way
+  /// the real player fails to open a source it cannot reach.
+  final bool offline;
   final players = <FakePlayer>[];
 
   @override
   Future<AudioPlayerPlatform> init(InitRequest request) async {
-    final player = FakePlayer(request.id)..refuses = refuses;
+    final player = FakePlayer(request.id)
+      ..refuses = refuses
+      ..offline = offline;
     players.add(player);
     return player;
   }
@@ -40,6 +46,7 @@ class FakePlayer extends AudioPlayerPlatform {
   final _events = StreamController<PlaybackEventMessage>.broadcast();
   final loaded = <String>[];
   bool refuses = false;
+  bool offline = false;
   Completer<PlayResponse>? _sounding;
 
   bool get sounding => _sounding != null;
@@ -57,7 +64,11 @@ class FakePlayer extends AudioPlayerPlatform {
   @override
   Future<LoadResponse> load(LoadRequest request) async {
     if (refuses) throw PlatformException(code: 'abort');
-    loaded.add(request.audioSourceMessage.toMap().toString());
+    final source = request.audioSourceMessage.toMap().toString();
+    if (offline && source.contains('://')) {
+      throw PlatformException(code: 'unreachable');
+    }
+    loaded.add(source);
     // The real plugin reports readiness after the load call returns, and
     // just_audio's setAudioSource does not answer until it does.
     Timer(Duration.zero, () => _events.add(_ready));

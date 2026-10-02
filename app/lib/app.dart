@@ -63,11 +63,11 @@ typedef Sounding = ({Sounded what, String label});
 ///
 /// * [currentWordId] — the word being recited this instant, for the highlight.
 /// * [playing] — whether anything is sounding at all.
-/// * [speakable] — the words whose aya is on disk, so the row can be honest
-///   about which words will answer a press.
-/// * [playWord] — plays one word; false means it was never downloaded or the
-///   platform refused it.
-/// * [ready] and [toggle] — the set's own play control.
+/// * [speakable] — the words that answer a press, so the row can be honest
+///   about which words will sound.
+/// * [playWord] — plays one word; false means the sūra has no recording of
+///   it or the platform refused it.
+/// * [ready], [toggle] and [playFrom] — the sūra's own play control.
 ///
 /// What a screen above the row gets, which is new:
 ///
@@ -103,7 +103,6 @@ class Recitation {
   /// so a sample never replaces the set the reading screen loaded.
   final sampling = ValueNotifier<String?>(null);
   AudioPlayer? _sampler;
-  Map<int, String> _words = const {};
 
   /// The files the loaded player covers, so walking away from the reading
   /// screen and back does not rebuild it underneath a recitation that is
@@ -123,30 +122,29 @@ class Recitation {
 
   bool get ready => _set?.ready ?? false;
 
-  /// The recitation the corpus carries for the set being read, which is empty
-  /// when it carries none. [ready] is false either way, and the reading screen
-  /// says which: an empty list is nothing to download rather than something
-  /// not downloaded yet.
+  /// The sūra's own recitation is paused and the next press resumes it.
+  bool get paused => _set?.paused ?? false;
+
+  /// The recitation the corpus carries for the sūra being read, which is
+  /// empty when it carries none.
   List<AyaTrack> get tracks => _set?.tracks ?? const [];
   Set<int> get speakable => _set?.speakable ?? const {};
 
-  /// Hands the application the set the reader is on: its recitation, what to
-  /// call it, and the Arabic of each word so the transport can name the one
-  /// being sounded. The player is built here and outlives the screen that
+  /// Hands the application the sūra the reader is on: its recitation and
+  /// what to call it. The player is built here and outlives the screen that
   /// asked for it.
   ///
-  /// The same set twice is the reader leaving the reading screen and coming
-  /// back: the player stays, and so does whatever it was playing. The same
-  /// set in a new reciter's voice is a new player.
+  /// The same sūra twice is the reader opening another of its words, or
+  /// leaving the reading screen and coming back: the player stays, and so
+  /// does whatever it was playing. The same sūra in a new reciter's voice is
+  /// a new player.
   Future<void> carry(
     List<AyaTrack> tracks, {
     required String title,
-    required Map<int, String> words,
     bool wordByWord = false,
     String? voice,
   }) async {
     _title = title;
-    _words = words;
     _voice = voice;
     final covers = [for (final track in tracks) track.relPath];
     if (_set != null && listEquals(covers, _covers)) {
@@ -163,78 +161,69 @@ class Recitation {
   Future<void> prefetch(Iterable<String> relPaths) async =>
       (await cache).prefetch(relPaths);
 
-  /// Plays one word, and says so: the transport names the word rather than
-  /// leaving the reader to guess whether a whole recitation just started.
-  ///
-  /// A word answers when its clip ENDS, so the reader's next word arrives
-  /// while this one is still in flight. The probe carries a number for the
-  /// same reason the player's own does: without it, the word that was
-  /// superseded clears the transport of the word that superseded it, and the
-  /// bar goes dark over a recitation that is still sounding.
-  Future<bool> playWord(int wordId) async {
-    final set = _set;
-    if (set == null) return false;
-    final probe = ++_probe;
-    sounding.value = (what: Sounded.word, label: _words[wordId] ?? '');
-    final sounded = await set.playWord(wordId);
-    if (identical(_set, set) &&
-        probe == _probe &&
-        sounding.value?.what == Sounded.word) {
-      sounding.value = null;
-    }
-    return sounded;
-  }
+  /// Plays one word, named [label] in the bar: the transport names the word
+  /// rather than leaving the reader to guess whether a whole recitation just
+  /// started.
+  Future<bool> playWord(int wordId, {required String label}) =>
+      _own(Sounded.word, label, (set) => set.playWord(wordId));
 
-  /// Plays, pauses or resumes the whole set. A paused set keeps its bar, so
-  /// the reader can carry on or stop from any screen.
+  /// Recites the sūra from [wordId], or from its first aya when null.
+  Future<bool> playFrom(int? wordId) =>
+      _own(Sounded.set, _setLabel, (set) => set.playFrom(wordId));
+
+  /// Plays one aya alone, named [label] in the bar.
+  Future<bool> playAya(int ayahId, {required String label}) =>
+      _own(Sounded.aya, label, (set) => set.playAya(ayahId));
+
+  /// Pauses, or resumes what was paused. A paused recitation keeps its bar,
+  /// so the reader can carry on or stop from any screen.
   Future<void> toggle() async {
     final set = _set;
     if (set == null) return;
-    if (set.playing.value) {
-      await set.toggle();
+    if (set.playing.value) return set.toggle();
+    // Still loading — a streamed aya can take seconds — and the bar already
+    // names it: a press there means stop, not start the sūra over.
+    if (!set.paused && sounding.value != null) return stop();
+    if (!set.paused) {
+      await playFrom(null);
       return;
     }
-    // Whoever starts something next owns the bar: this call clears it after
-    // the set stops only if nothing was started over it meanwhile — a word,
-    // an aya, or this same set again.
-    final probe = ++_probe;
-    // Resuming keeps what the bar already says: the set, or the one aya.
-    if (!set.paused) {
-      if (!set.ready) return;
-      sounding.value = (
-        what: Sounded.set,
-        label: _voice == null ? _title : '$_title · $_voice',
-      );
-    }
-    await set.toggle();
-    if (identical(_set, set) && probe == _probe && !set.paused) {
-      sounding.value = null;
-    }
+    // Resuming keeps what the bar already says: the sūra, or the one aya.
+    final bar = sounding.value;
+    await _own(bar?.what ?? Sounded.set, bar?.label ?? _setLabel, (set) async {
+      await set.toggle();
+      return true;
+    });
   }
 
-  /// Plays one aya alone, named [label] in the bar. False when its file is
-  /// not on the phone: the button that asked is dark then anyway.
-  Future<bool> playAya(int ayahId, {required String label}) async {
+  String get _setLabel => _voice == null ? _title : '$_title · $_voice';
+
+  /// Runs one playback under the bar, for words, ayas and the sūra alike.
+  ///
+  /// Whoever starts something next owns the bar: a playback clears it when it
+  /// ends only if nothing was started over it meanwhile. A word answers when
+  /// its clip ENDS, so the reader's next word arrives while this one is still
+  /// in flight; the probe carries a number for the same reason the player's
+  /// own turn does — without it, the word that was superseded clears the bar
+  /// of the word that superseded it.
+  Future<bool> _own(
+    Sounded what,
+    String label,
+    Future<bool> Function(SetAudio set) run,
+  ) async {
     final set = _set;
     if (set == null) return false;
     await stopSample();
     // The same aya tapped twice is two plays with one label: the number, not
     // the label, says which of them still owns the bar.
     final probe = ++_probe;
-    sounding.value = (what: Sounded.aya, label: label);
-    final played = await set.playAya(ayahId);
+    sounding.value = (what: what, label: label);
+    final played = await run(set);
     if (identical(_set, set) && probe == _probe && !set.paused) {
       sounding.value = null;
     }
     return played;
   }
-
-  /// Whether [ayahId]'s file is on the phone, so one aya can play.
-  bool canPlayAya(int ayahId) =>
-      _set?.tracks.any(
-        (t) => t.ayahId == ayahId && _set!.cache.cached(t.relPath) != null,
-      ) ??
-      false;
 
   /// Silence, from wherever the reader is. A word long-pressed by accident
   /// used to play to its end because the only control was on the screen that
@@ -421,6 +410,8 @@ class Prefs extends ChangeNotifier {
   }
 
   Future<void> setRootOpen(bool open) async {
+    // A drag reports every frame it moves; only the first one changes this.
+    if (open == _rootOpen) return;
     _rootOpen = open;
     notifyListeners();
     await _write();

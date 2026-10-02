@@ -95,7 +95,7 @@ void main() {
     unawaitedToggle(recitation);
     await beats(tester);
     expect(find.text('RECITING THE SET'), findsOneWidget);
-    expect(find.textContaining("Al-'Alaq 1"), findsWidgets);
+    expect(find.textContaining("Al-'Alaq"), findsWidgets);
 
     await recitation.stop();
     await beats(tester);
@@ -108,7 +108,7 @@ void main() {
               whereArgs: [96001001],
             )).single['text_ar']!
             as String;
-    unawaitedWord(recitation, 96001001);
+    unawaitedWord(recitation, 96001001, word);
     await beats(tester);
     expect(find.text('SOUNDING ONE WORD'), findsOneWidget);
     expect(
@@ -146,7 +146,7 @@ void main() {
               whereArgs: [96001001],
             )).single['text_ar']!
             as String;
-    unawaitedWord(recitation, 96001001);
+    unawaitedWord(recitation, 96001001, word);
     await beats(tester);
 
     final drawn = tester.widget<Text>(
@@ -392,5 +392,5 @@ void main() {
 /// running.
 void unawaitedToggle(Recitation recitation) => recitation.toggle();
 
-void unawaitedWord(Recitation recitation, int wordId) =>
-    recitation.playWord(wordId);
+void unawaitedWord(Recitation recitation, int wordId, [String label = '']) =>
+    recitation.playWord(wordId, label: label);

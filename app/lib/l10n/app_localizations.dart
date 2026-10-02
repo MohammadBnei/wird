@@ -245,12 +245,6 @@ abstract class AppLocalizations {
   /// **'Kept'**
   String get kept_title;
 
-  /// Why the play button is dark: the recitation for this set is not on the device.
-  ///
-  /// In en, this message translates to:
-  /// **'Not downloaded'**
-  String get notDownloaded;
-
   /// Kicker at the top left of the prayer screen, drawn in capitals: which prayer, and which rakʿah of how many.
   ///
   /// In en, this message translates to:
@@ -1271,10 +1265,10 @@ abstract class AppLocalizations {
   /// **'Next word'**
   String get study_nextWord;
 
-  /// Reading screen transport: why the play button is dark when the corpus ships no recitation for these ayas at all, as against notDownloaded, which is one that could still arrive.
+  /// Reading screen transport: why the play button is dark when the corpus ships no recitation for this sūra in the chosen voice.
   ///
   /// In en, this message translates to:
-  /// **'No recitation for this set'**
+  /// **'No recitation for this sūra'**
   String get study_noRecitation;
 
   /// Reading screen, the left chevron in the root panel: it opens the word before the one the panel is showing. Screen-reader label. It says word rather than set because the footer a band below steps by the set.
@@ -2165,11 +2159,23 @@ abstract class AppLocalizations {
   /// **'RECITING ONE AYA'**
   String get shell_recitingAya;
 
-  /// Tooltip of the play button beside the open aya's reference, which recites that one aya alone.
+  /// Screen-reader hint for holding an aya's number circle, which recites that one aya alone.
   ///
   /// In en, this message translates to:
   /// **'Recite this aya'**
   String get study_reciteAya;
+
+  /// Screen-reader action on the root sheet's handle: folds the sheet down so the sūra fills the screen. Sighted readers drag the handle down.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the root'**
+  String get study_hideRoot;
+
+  /// Screen-reader label of the folded root sheet's handle, which brings the sheet back.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the root'**
+  String get study_showRoot;
 
   /// The eyebrow of the bar at the foot of every screen while the whole set is being recited.
   ///
@@ -2381,10 +2387,10 @@ abstract class AppLocalizations {
   /// **'Pray'**
   String get study_pray;
 
-  /// Screen-reader label of the play button in the reading screen's app bar.
+  /// Tooltip of the play button in the reading screen's app bar: a press recites from the open word to the end of the sūra, a hold from its first aya.
   ///
   /// In en, this message translates to:
-  /// **'Recite'**
+  /// **'Recite from this word · hold for the whole sūra'**
   String get study_recite;
 
   /// Screen-reader label of the play button while it is reciting.

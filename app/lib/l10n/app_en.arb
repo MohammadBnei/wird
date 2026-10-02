@@ -140,10 +140,6 @@
   "@kept_title": {
     "description": "The kept list's own title, above its search field."
   },
-  "notDownloaded": "Not downloaded",
-  "@notDownloaded": {
-    "description": "Why the play button is dark: the recitation for this set is not on the device."
-  },
   "prayer_header": "{prayer} · Rakʿah {rakah} of {count}",
   "@prayer_header": {
     "description": "Kicker at the top left of the prayer screen, drawn in capitals: which prayer, and which rakʿah of how many.",
@@ -794,9 +790,9 @@
   "@study_nextWord": {
     "description": "Reading screen, the right chevron in the root panel: it opens the word after the one the panel is showing. Screen-reader label."
   },
-  "study_noRecitation": "No recitation for this set",
+  "study_noRecitation": "No recitation for this sūra",
   "@study_noRecitation": {
-    "description": "Reading screen transport: why the play button is dark when the corpus ships no recitation for these ayas at all, as against notDownloaded, which is one that could still arrive."
+    "description": "Reading screen transport: why the play button is dark when the corpus ships no recitation for this sūra in the chosen voice."
   },
   "study_previousWord": "Previous word",
   "@study_previousWord": {
@@ -1620,7 +1616,15 @@
   },
   "study_reciteAya": "Recite this aya",
   "@study_reciteAya": {
-    "description": "Tooltip of the play button beside the open aya's reference, which recites that one aya alone."
+    "description": "Screen-reader hint for holding an aya's number circle, which recites that one aya alone."
+  },
+  "study_hideRoot": "Hide the root",
+  "@study_hideRoot": {
+    "description": "Screen-reader action on the root sheet's handle: folds the sheet down so the sūra fills the screen. Sighted readers drag the handle down."
+  },
+  "study_showRoot": "Show the root",
+  "@study_showRoot": {
+    "description": "Screen-reader label of the folded root sheet's handle, which brings the sheet back."
   },
   "shell_recitingSet": "RECITING THE SET",
   "@shell_recitingSet": {
@@ -1783,9 +1787,9 @@
   "@study_pray": {
     "description": "App bar action on the reading screen: pray the ayas around the one open."
   },
-  "study_recite": "Recite",
+  "study_recite": "Recite from this word · hold for the whole sūra",
   "@study_recite": {
-    "description": "Screen-reader label of the play button in the reading screen's app bar."
+    "description": "Tooltip of the play button in the reading screen's app bar: a press recites from the open word to the end of the sūra, a hold from its first aya."
   },
   "study_pauseRecitation": "Pause the recitation",
   "@study_pauseRecitation": {
