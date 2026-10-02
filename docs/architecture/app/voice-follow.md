@@ -90,7 +90,7 @@ flowchart TB
 
 ### 1. The microphone is asked for before the prayer, never in it
 
-Two places ask: the voice panel in Settings, and the preparation screen, which shows "Allow microphone" and then the model's download right under "Follow my voice" until both are done ([prepare_screen.dart:739](../../../app/lib/features/prayer/prepare_screen.dart#L739-L758)). Once the model is on disk, the panel's `onReady` ticks "Follow my voice" without a second tap ([prepare_screen.dart:715](../../../app/lib/features/prayer/prepare_screen.dart#L715-L719), [settings_screen.dart:559](../../../app/lib/features/settings/settings_screen.dart#L559)). The answer is stored in the database, so the prayer screen only reads it. A device with no microphone is recorded as `unavailable`, which is different from a refusal.
+Two places ask: the voice panel in Settings, and the preparation screen, which shows "Allow microphone" and then the model's download right under "Follow my voice" until both are done ([prepare_screen.dart:745](../../../app/lib/features/prayer/prepare_screen.dart#L745-L764)). Once the model is on disk, the panel's `onReady` ticks "Follow my voice" without a second tap ([prepare_screen.dart:721](../../../app/lib/features/prayer/prepare_screen.dart#L721-L725), [settings_screen.dart:559](../../../app/lib/features/settings/settings_screen.dart#L559)). The answer is stored in the database, so the prayer screen only reads it. A device with no microphone is recorded as `unavailable`, which is different from a refusal.
 
 ```dart
 Future<MicPermission> askForMic(

@@ -324,7 +324,7 @@ The prayer screen writes nothing: it runs inside the prayer, where no moment is 
 
 - `prayer_prefs`: how this prayer was prepared, so the next starts the same way. Written before the prayer too. Device-local ([db.dart:665](../../../app/lib/data/db.dart#L665-L676)).
 - `prayer_history`: one row for each passage a reached rakʿah recited, for "recently recited". Device-local ([db.dart:683](../../../app/lib/data/db.dart#L683-L688)).
-- [`recordSetPrayed`](../../../app/lib/data/db.dart#L375) for the credited set, only if a reached rakʿah recited it. The credited set is the one Prepare was opened on, or else the walk's next set ([prepare_screen.dart:191](../../../app/lib/features/prayer/prepare_screen.dart#L191)). It inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
+- [`recordSetPrayed`](../../../app/lib/data/db.dart#L375) for the credited set, only if a reached rakʿah recited it. The credited set is the one Prepare was opened on, or else the walk's next set ([prepare_screen.dart:167](../../../app/lib/features/prayer/prepare_screen.dart#L167)). It inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
 
 A prayer that recites some other passage leaves only the history behind. A prayer the reader never returns from is not counted, and a preparation left before Begin is no prayer at all. The count may be short; it is never invented.
 
