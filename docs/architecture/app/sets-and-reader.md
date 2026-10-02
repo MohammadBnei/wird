@@ -116,7 +116,7 @@ A set is a run of consecutive ayas that are not understood. It stops before the 
   return _setFrom(db, order, taken);
 ```
 
-[sets.dart:264](../../../app/lib/data/sets.dart#L264-L275). When nothing is left, it returns null, and the reading screen opens on 1:1 ([study_screen.dart:167](../../../app/lib/features/study/study_screen.dart#L167-L168)).
+[sets.dart:264](../../../app/lib/data/sets.dart#L264-L275). When nothing is left, it returns null, and the reading screen opens on 1:1 ([study_screen.dart:175](../../../app/lib/features/study/study_screen.dart#L175-L176)).
 
 ### 2. How wide a set is
 
@@ -187,7 +187,7 @@ A `StudySet` holds two lists ([sets.dart:151](../../../app/lib/data/sets.dart#L1
 
 ### 5. Screen 1a opens a sūra where the reader stood
 
-Since [ADR 0014](../../adr/0014-the-reading-screen-reads-a-whole-sura-a-word-at-a-time.md) the reading screen holds one whole sūra. [`_load`](../../../app/lib/features/study/study_screen.dart#L158-L197) picks the word it opens on:
+Since [ADR 0014](../../adr/0014-the-reading-screen-reads-a-whole-sura-a-word-at-a-time.md) the reading screen holds one whole sūra. [`_load`](../../../app/lib/features/study/study_screen.dart#L166-L208) picks the word it opens on:
 
 ```dart
     var at = word ?? (target == null ? null : firstWordOf(target));
@@ -202,7 +202,7 @@ Since [ADR 0014](../../adr/0014-the-reading-screen-reads-a-whole-sura-a-word-at-
     }
 ```
 
-[study_screen.dart:161](../../../app/lib/features/study/study_screen.dart#L161-L170).
+[study_screen.dart:169](../../../app/lib/features/study/study_screen.dart#L169-L178).
 
 - A word, from home's "Continue reading": that word.
 - An aya, from the index, a root or the walk's set on home: its first word.
@@ -212,13 +212,15 @@ The sūra comes from [`ayaSet`](../../../app/lib/data/sets.dart#L295-L337), whos
 
 ### 6. The sūra list is lazy both ways
 
-A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:652](../../../app/lib/features/study/study_screen.dart#L652-L673)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:822](../../../app/lib/features/study/study_screen.dart#L822-L843), [sets.dart:385](../../../app/lib/data/sets.dart#L385-L415)).
+A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:710](../../../app/lib/features/study/study_screen.dart#L710-L731)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:944](../../../app/lib/features/study/study_screen.dart#L944-L965), [sets.dart:423](../../../app/lib/data/sets.dart#L423-L453)).
+
+Above the first aya and below the last, a link opens the sūra before and the sūra after, in the reading order chosen in Settings ([study_screen.dart:748](../../../app/lib/features/study/study_screen.dart#L748-L789), [`surahBeside`](../../../app/lib/data/sets.dart#L374-L390)). By revelation, the sūra after Al-ʿAlaq is Al-Qalam. The links are worked out on every build, so switching the order moves them without reopening the sūra.
 
 Each word arrives with its English gloss and, where The Last Dialogue's pages carry it, its French one ([ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md)). Each aya's translation, Pickthall's English or Rashid Maash's French, sits under it unless the reader turns it off in Settings ([ADR 0017](../../adr/0017-ayas-are-translated-into-english-from-pickthall.md)).
 
 ### 7. The root sheet walks the sūra a word at a time
 
-A tap on any word, particles included, opens it in the sheet under the list. [`_open`](../../../app/lib/features/study/study_screen.dart#L203-L227) reads everything the sheet shows before it draws any of it:
+A tap on any word, particles included, opens it in the sheet under the list. [`_open`](../../../app/lib/features/study/study_screen.dart#L214-L242) reads everything the sheet shows before it draws any of it:
 
 - the root;
 - its lemmas;
@@ -241,19 +243,19 @@ flowchart LR
   open --> carry["_carry<br/>the sūra's recitation,<br/>files from the word on"]
 ```
 
-A drag to the right moves to the next word, because Arabic runs leftward. The sheet slides: the finger carries the content, and past 60px it keeps going off that side while the next word is read, then the new word comes in from the other side ([word_swipe.dart:119](../../../app/lib/features/study/word_swipe.dart#L119-L126)). The two ends of the hint row and the arrow keys slide the same way ([word_swipe.dart:61](../../../app/lib/features/study/word_swipe.dart#L61)); any other change of word, such as a tap in the sūra, fades instead. A drag that starts within 24px of the edge is left to the drawer and the back gesture.
+A drag to the right moves to the next word, because Arabic runs leftward. Once a word is open, the screen reads the sheets of the words either side of it ahead of time ([study_screen.dart:247](../../../app/lib/features/study/study_screen.dart#L247-L275)). While the sheet moves, the next word is drawn beside it from its top and comes in with the finger ([word_swipe.dart:224](../../../app/lib/features/study/word_swipe.dart#L224-L242)). Past 60px, or on a flick, the sheet finishes the slide and then asks for the word, which arrives where it is already drawn ([word_swipe.dart:108](../../../app/lib/features/study/word_swipe.dart#L108-L138)). Where the neighbour has not been read yet, the content goes off that side while the word is read, then the new word comes in from the other side. The two ends of the hint row and the arrow keys slide the same way. A press during a slide is taken once it lands, so two quick presses move two words and a held key moves one word per slide ([word_swipe.dart:92](../../../app/lib/features/study/word_swipe.dart#L92-L104)). Any other change of word, such as a tap in the sūra, fades instead. A drag that starts within 24px of the edge is left to the drawer and the back gesture.
 
 The sheet reads in one order. The first row holds the root, the word as this aya writes it, and what it means here. Then come the root's senses, with the reader's thumbs on their heading. Then comes the word's form, meaning its parsing, with the corpus's attribution. The open word glows in the accent inside its aya, in the sūra and in the open aya above the sheet; on the sheet's own row it is plain. Prayer keeps a near-white glow of its own, so the two never read alike ([glow.dart](../../../app/lib/theme/glow.dart#L13-L24)).
 
-A step is found by aya ([`stepFrom`](../../../app/lib/features/study/reading_walk.dart#L17-L37)): past the end of an aya it goes to the next aya, read or not, and the screen reads that aya's chunk before stepping again ([study_screen.dart:348](../../../app/lib/features/study/study_screen.dart#L348-L355)). Counting along a flat list of the words read so far landed a step from 2:255 back near 2:1.
+A step is found by aya ([`stepFrom`](../../../app/lib/features/study/reading_walk.dart#L17-L37)): past the end of an aya it goes to the next aya, read or not, and the screen reads that aya's chunk before stepping again ([study_screen.dart:404](../../../app/lib/features/study/study_screen.dart#L404-L411)). Counting along a flat list of the words read so far landed a step from 2:255 back near 2:1.
 
 Once the reader has stayed on a word for two seconds, and again when they leave, it is written as their position in that sūra and queued for their other devices ([ADR 0015](../../adr/0015-the-reading-position-is-kept-per-sura-and-synced.md), [`movePosition`](../../../app/lib/data/db.dart#L474-L493)).
 
-A drag down on the sheet's top bar folds the sheet to that bar alone, and the sūra takes the screen: a reader who only wants to read has no use for a root under every word. A drag up, or a tap on the folded bar, brings it back. The choice is kept in `display_prefs.root_open`, so the reader finds the sheet as they left it ([root_sheet.dart:178](../../../app/lib/features/study/root_sheet.dart#L178-L215), [study_screen.dart:495](../../../app/lib/features/study/study_screen.dart#L495-L523)).
+A drag down on the sheet's top bar folds the sheet to that bar alone, and the sūra takes the screen: a reader who only wants to read has no use for a root under every word. A drag up, or a tap on the folded bar, brings it back. The choice is kept in `display_prefs.root_open`, so the reader finds the sheet as they left it ([root_sheet.dart:214](../../../app/lib/features/study/root_sheet.dart#L214-L251), [study_screen.dart:551](../../../app/lib/features/study/study_screen.dart#L551-L581)).
 
 A tap on the sheet's top bar, or on its "Counts, forms, other ayas" row, shrinks the sūra to the open word's aya, whole and with its translation, and brings up the counts, the ring of the root's lemmas and the other ayas; scrolling the sheet never does. Each other aya is shown as a line around the root's word in it, lit, so the word it is listed for is never cut off. An other aya opens in place of the sūra, with a way back to the word the reader was on and a way to read that aya's sūra from there.
 
-The root letters open the root's own screen. A screen that names an aya answers by popping its id back down, and the reader reloads in place rather than stacking a second reader ([study_screen.dart:407](../../../app/lib/features/study/study_screen.dart#L407-L411)):
+The root letters open the root's own screen. A screen that names an aya answers by popping its id back down, and the reader reloads in place rather than stacking a second reader ([study_screen.dart:463](../../../app/lib/features/study/study_screen.dart#L463-L467)):
 
 - the sūra index, reached from the sūra's name in the bar;
 - a root, its spine and the constellation, which call one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39));
@@ -263,13 +265,13 @@ The drawer and home catch an aya too, and push the reader with it ([wird_shell.d
 
 ### 8. Marking an aya understood
 
-The circle that closes each aya marks it understood when tapped ([study_screen.dart:385](../../../app/lib/features/study/study_screen.dart#L385-L389)). Held, it recites that aya alone, understood or not; that is the only per-aya play control, so the reading is not a column of buttons. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L334-L362) with a fresh op id per tap. It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. An aya already understood answers no tap: no op takes the mark back.
+The circle that closes each aya marks it understood when tapped ([study_screen.dart:441](../../../app/lib/features/study/study_screen.dart#L441-L445)). Held, it recites that aya alone, understood or not; that is the only per-aya play control, so the reading is not a column of buttons. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L334-L362) with a fresh op id per tap. It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. An aya already understood answers no tap: no op takes the mark back.
 
 Scrolling or walking past an aya marks nothing. Understood is what the reader says, and the position is where they are; neither is read from the other.
 
 ### 9. Praying a set
 
-The walk still proposes sets, and home still offers "Pray this set". The reading screen's Pray action prays the ayas around the open word, the reading width wide ([study_screen.dart:264](../../../app/lib/features/study/study_screen.dart#L264-L323), [study_screen.dart:604](../../../app/lib/features/study/study_screen.dart#L604)). The recitation is not that set: it is the whole sūra (section 10). Both call one function, which stops the audio and opens the prayer's preparation on that set:
+The walk still proposes sets, and home still offers "Pray this set". The reading screen's Pray action prays the ayas around the open word, the reading width wide ([study_screen.dart:320](../../../app/lib/features/study/study_screen.dart#L320-L379), [study_screen.dart:662](../../../app/lib/features/study/study_screen.dart#L662)). The recitation is not that set: it is the whole sūra (section 10). Both call one function, which stops the audio and opens the prayer's preparation on that set:
 
 ```dart
 Future<void> prayTheSet(BuildContext context, StudySet set) async {
