@@ -131,6 +131,7 @@ func TestThePageCheckAndTheDownloadDisagree(t *testing.T) {
 // The page names the release beside its button. A number that is not the one
 // the button serves is worse than none, so an unrecorded version says nothing.
 func TestThePageNamesAVersionTheButtonDoesNotServe(t *testing.T) {
+	t.Setenv("WIRD_APK_VERSION", "")
 	if w := withStore(t).get(t, "/download/android/version", ""); w.Code != http.StatusNoContent {
 		t.Errorf("unrecorded: answered %d %q", w.Code, w.Body.String())
 	}

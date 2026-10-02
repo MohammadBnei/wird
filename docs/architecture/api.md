@@ -125,7 +125,7 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-79](../../server/internal/api/api.go#L26-L79)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-80](../../server/internal/api/api.go#L26-L80)
 
 ```go
 	v1 := http.NewServeMux()
@@ -140,11 +140,11 @@ func Migrate(ctx context.Context, url string) error {
 	v1.HandleFunc("GET /v1/roots/{letters}/lexicon", h.lexicon)
 ```
 
-`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:68-77](../../server/internal/api/api.go#L68-L77)
+`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:69-78](../../server/internal/api/api.go#L69-L78)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:69-76](../../server/internal/api/api.go#L69-L76)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:70-77](../../server/internal/api/api.go#L70-L77)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 
@@ -165,7 +165,7 @@ The middleware verifies the token, then finds the reader behind its subject, cre
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes. [httpx.go:10-22](../../server/internal/httpx/httpx.go#L10-L22)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:176-183](../../server/internal/api/api.go#L190-L197)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:191-198](../../server/internal/api/api.go#L191-L198)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -178,7 +178,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:150-158](../../server/internal/api/api.go#L164-L172)), a root must be at most 32 bytes of Arabic letters ([api.go:162-172](../../server/internal/api/api.go#L176-L186)), and a kept kind must be `aya`, `root` or `note` ([api.go:89-96](../../server/internal/api/api.go#L103-L110)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:165-173](../../server/internal/api/api.go#L165-L173)), a root must be at most 32 bytes of Arabic letters ([api.go:177-187](../../server/internal/api/api.go#L177-L187)), and a kept kind must be `aya`, `root` or `note` ([api.go:104-111](../../server/internal/api/api.go#L104-L111)).
 
 ### 4. The store holds every SQL statement
 
