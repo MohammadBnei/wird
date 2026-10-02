@@ -1232,6 +1232,15 @@
   "@settingsMicUnavailable": {
     "description": "Caption in the settings screen's microphone section after the request threw rather than being answered."
   },
+  "settingsVersion": "Wird {version}",
+  "@settingsVersion": {
+    "description": "The last line of the settings screen: the app's name and the version of this build, e.g. 0.0.3, or dev for a build the release workflow did not make.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "settingsAccount": "ACCOUNT",
   "@settingsAccount": {
     "description": "Section heading at the foot of the settings screen, over the sign-in panel."

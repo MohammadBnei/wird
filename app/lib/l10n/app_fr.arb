@@ -257,6 +257,7 @@
   "settingsMicGranted": "Microphone autorisé.",
   "settingsMicDenied": "Microphone refusé. L’écran de prière avance d’une touche, comme il l’a toujours fait.",
   "settingsMicUnavailable": "Le microphone n’a pas pu être atteint la dernière fois qu’il a été demandé. Réessayez ; dans tous les cas, l’écran de prière avance d’une touche.",
+  "settingsVersion": "Wird {version}",
   "settingsAccount": "COMPTE",
   "settingsStopDownload": "Arrêter · {percent} %",
   "settingsCheckRecogniser": "Tester le reconnaisseur",

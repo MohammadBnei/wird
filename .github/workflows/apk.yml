@@ -257,18 +257,23 @@ jobs:
           set -euo pipefail
           git fetch -q origin main
           git checkout -q -B main origin/main
-          # Matches the line after `- name: WIRD_APK_KEY` only.
-          sed -i -E "/^  - name: WIRD_APK_KEY$/{n;s|^(    value: ).*|\1\"${KEY}\"|}" helm/values.yaml
-          # A sed that stops matching would leave the old build published and
-          # this run green. Silence must not read as success.
-          grep -A1 -x '  - name: WIRD_APK_KEY' helm/values.yaml | grep -qx "    value: \"${KEY}\"" || {
-            echo "::error::WIRD_APK_KEY was not bumped — check the sed against helm/values.yaml"
-            exit 1
-          }
+          # The tag names the release, v0.0.3, and the page prints it bare.
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Matches the line after `- name: <NAME>` only.
+          for pair in "WIRD_APK_KEY=${KEY}" "WIRD_APK_VERSION=${VERSION}"; do
+            name="${pair%%=*}" value="${pair#*=}"
+            sed -i -E "/^  - name: ${name}$/{n;s|^(    value: ).*|\1\"${value}\"|}" helm/values.yaml
+            # A sed that stops matching would leave the old build published
+            # and this run green. Silence must not read as success.
+            grep -A1 -x "  - name: ${name}" helm/values.yaml | grep -qx "    value: \"${value}\"" || {
+              echo "::error::${name} was not bumped — check the sed against helm/values.yaml"
+              exit 1
+            }
+          done
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
           git add helm/values.yaml
-          git diff --cached --quiet && { echo "WIRD_APK_KEY already at ${KEY}"; exit 0; }
+          git diff --cached --quiet && { echo "WIRD_APK_KEY and WIRD_APK_VERSION already at ${KEY}, ${VERSION}"; exit 0; }
           git commit -q -m "chore(deploy): publish ${GITHUB_REF_NAME} at /download/android"
           # release.yml can push its own bump between the fetch and this push.
           git pull -q --rebase origin main

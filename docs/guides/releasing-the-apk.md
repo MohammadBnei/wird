@@ -20,7 +20,7 @@ sequenceDiagram
   RA->>APK: dispatch on the tag
   APK->>APK: tag matches pubspec and is on main, then build and check the release key
   APK->>OS: upload android/wird-<digest>.apk
-  APK->>Main: set WIRD_APK_KEY in helm/values.yaml
+  APK->>Main: set WIRD_APK_KEY and WIRD_APK_VERSION in helm/values.yaml
   Main-->>API: ArgoCD rolls the pod
 ```
 
@@ -45,7 +45,7 @@ A tag pushed by hand publishes nothing: `apk.yml` no longer starts on a tag push
 
 The tag and the `Release vX.Y.Z` commit are on `main` before the build starts. If the build then fails — the secret store, signing, the upload — do not press the button again: that releases the next version and leaves this one unpublished. Retry the build on the tag instead: **Actions → apk → Run workflow**, and choose the tag `vX.Y.Z` as the ref. It matches the pubspec and is on `main`, so it builds and publishes as if the button had started it.
 
-The object key carries the first 12 characters of the APK's sha256. A published key is never overwritten, so a phone resuming a download never gets half of one build and half of another. The route is served by [`apk.go`](../../server/internal/api/apk.go#L21).
+The object key carries the first 12 characters of the APK's sha256. A published key is never overwritten, so a phone resuming a download never gets half of one build and half of another. The route is served by [`apk.go`](../../server/internal/api/apk.go#L22).
 
 ## The checks, and where the rest of the gate runs
 

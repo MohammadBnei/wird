@@ -949,6 +949,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMicUnavailable => 'Le microphone n’a pas pu être atteint la dernière fois qu’il a été demandé. Réessayez ; dans tous les cas, l’écran de prière avance d’une touche.';
 
   @override
+  String settingsVersion(String version) {
+    return 'Wird $version';
+  }
+
+  @override
   String get settingsAccount => 'COMPTE';
 
   @override
