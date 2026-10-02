@@ -84,6 +84,11 @@ class _StudyScreenState extends State<StudyScreen> {
 
   Recitation? _audio;
   Set<int> _speakable = const {};
+
+  /// The reciter [_acted] was carried in. A reader who picks another voice in
+  /// the settings comes back to the same set, which must be carried again.
+  String? _actedIn;
+  Prefs? _listening;
   int? _unheard;
 
   final _sheetScroll = ScrollController();
@@ -108,6 +113,11 @@ class _StudyScreenState extends State<StudyScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final prefs = _prefs;
+    if (!identical(prefs, _listening)) {
+      _listening?.removeListener(_reciterChanged);
+      _listening = prefs..addListener(_reciterChanged);
+    }
     final locale = Localizations.localeOf(context);
     if (!_loaded || locale != _readIn) {
       _readIn = locale;
@@ -115,8 +125,17 @@ class _StudyScreenState extends State<StudyScreen> {
     }
   }
 
+  /// The settings screen sits over this one, so the voice the reader picked
+  /// there is carried here while they are still choosing.
+  void _reciterChanged() {
+    final word = _word;
+    if (word == null || _actedIn == null || _actedIn == _prefs.reciter) return;
+    _carry(ayahOfWord(word.id));
+  }
+
   @override
   void dispose() {
+    _listening?.removeListener(_reciterChanged);
     // A reader who leaves before the position settled still left from there.
     _position.flush();
     _sheetScroll.dispose();
@@ -227,7 +246,12 @@ class _StudyScreenState extends State<StudyScreen> {
   /// button and a prayer are always about where the reader is.
   Future<void> _carry(int ayahId) async {
     final acted = _acted;
-    if (acted != null && acted.ayas.any((a) => a.id == ayahId)) return;
+    final reciter = _prefs.reciter;
+    if (acted != null &&
+        _actedIn == reciter &&
+        acted.ayas.any((a) => a.id == ayahId)) {
+      return;
+    }
     final generation = _generation;
     final recitation = Wird.of(context).recitation;
     final order = _prefs.order;
@@ -239,14 +263,22 @@ class _StudyScreenState extends State<StudyScreen> {
     );
     if (set == null || !mounted || generation != _generation) return;
     await recitation.carry(
-      await tracksFor(widget.db, [for (final aya in set.ayas) aya.id]),
+      await tracksFor(widget.db, [
+        for (final aya in set.ayas) aya.id,
+      ], reciter: reciter),
       title: set.title,
       words: {
         for (final aya in set.ayas)
           for (final word in aya.words) word.id: word.text,
       },
     );
-    final keep = await pathsToKeep(widget.db, order, set, onTheWalk: false);
+    final keep = await pathsToKeep(
+      widget.db,
+      order,
+      set,
+      onTheWalk: false,
+      reciter: reciter,
+    );
     // The reader may have walked on to another aya while this was read.
     final open = _word;
     if (!mounted ||
@@ -257,6 +289,7 @@ class _StudyScreenState extends State<StudyScreen> {
     }
     setState(() {
       _acted = set;
+      _actedIn = reciter;
       _audio = recitation;
       _speakable = recitation.speakable;
     });

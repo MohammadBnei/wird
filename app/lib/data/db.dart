@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'audio.dart';
 import 'outbox.dart';
 import 'root_repo.dart';
 import 'sets.dart';
@@ -208,6 +209,15 @@ Future<Database> openWirdAt(String path) async {
     CREATE TABLE IF NOT EXISTS language_pref (
       id     INTEGER PRIMARY KEY CHECK (id = 1),
       locale TEXT NOT NULL
+    )''');
+  // Whose voice the recitation is in. Its own table for the reason the
+  // language is: `display_prefs` is written whole. Absent means the default
+  // reciter, and the row is a device's choice — a reader's second phone may
+  // well want another voice.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS audio_pref (
+      id      INTEGER PRIMARY KEY CHECK (id = 1),
+      reciter TEXT NOT NULL
     )''');
   await db.execute('''
     CREATE TABLE IF NOT EXISTS mic_consent (
@@ -703,14 +713,45 @@ Future<List<({int start, int end})>> recentPassages(
 typedef Kin = Derivative;
 typedef RootDetail = RootReading;
 
-/// The reciter whose audio the corpus carries paths for.
-Future<String?> reciterLabel(Database db) async {
-  final rows = await db.query('recitations', limit: 1);
-  if (rows.isEmpty) return null;
-  final style = rows.first['style'] as String?;
-  final name = rows.first['reciter_name']! as String;
-  return style == null ? name : '$name · $style';
+/// One reciter the corpus carries timings for, as a reader picks them.
+typedef Reciter = ({String slug, String label});
+
+/// The reciters the reader can choose between: those the corpus times and this
+/// build knows the folder of, the default first.
+Future<List<Reciter>> reciters(Database db) async {
+  final rows = await db.query('recitations', orderBy: 'id');
+  return [
+    for (final row in rows)
+      if (reciterFolders.containsKey(row['slug']))
+        (
+          slug: row['slug']! as String,
+          label: switch (row['style'] as String?) {
+            null => row['reciter_name']! as String,
+            final style => '${row['reciter_name']} · $style',
+          },
+        ),
+  ];
 }
+
+/// The reciter the reader chose, or [defaultReciter].
+///
+/// A choice the corpus no longer carries — a later corpus dropped the reciter,
+/// or this build has no folder for it — is cleared, so the reader hears the
+/// default rather than nothing and the settings screen shows what plays.
+Future<String> audioPref(Database db) async {
+  final rows = await db.query('audio_pref', limit: 1);
+  if (rows.isEmpty) return defaultReciter;
+  final chosen = rows.first['reciter']! as String;
+  if ((await reciters(db)).any((r) => r.slug == chosen)) return chosen;
+  await db.delete('audio_pref');
+  return defaultReciter;
+}
+
+Future<void> setAudioPref(Database db, String reciter) => db.insert(
+  'audio_pref',
+  {'id': 1, 'reciter': reciter},
+  conflictAlgorithm: ConflictAlgorithm.replace,
+);
 
 /// Gives a corpus installed before the French word glosses a `gloss_fr` column,
 /// empty, so every query can name it and every word falls back to its English.

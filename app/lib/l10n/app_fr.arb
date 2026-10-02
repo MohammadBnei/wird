@@ -243,7 +243,7 @@
   "settingsSetWidthCaption": "Un passage plus large peut englober un verset que vous avez déjà compris. Il est récité avec les autres et reste compté là où il est.",
   "settingsRecitation": "RÉCITATION",
   "settingsNoReciter": "Aucun récitant n’est nommé dans ce corpus.",
-  "settingsRecitedBy": "Récité par {reciter}.",
+  "settingsReciterCaption": "La voix qui récite le passage et chaque mot touché. Les mots s’allument au rythme de ce récitant.",
   "settingsMicrophone": "MICROPHONE",
   "settingsAllowMicrophone": "Autoriser le microphone",
   "settingsMicNotAsked": "Le suivi vocal a besoin du microphone. Désactivé par défaut ; jamais demandé pendant une prière.",

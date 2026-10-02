@@ -61,10 +61,6 @@ void main() {
     );
   }
 
-  /// The file name the recitation of an aya is downloaded as.
-  Future<String> recitationOf(int ayahId) async =>
-      (await tracksFor(db, [ayahId])).single.relPath.split('/').last;
-
   /// The first of the other ayas the root sheet lists for the word the
   /// reader opens on, 96:1's first.
   Future<RootAya> firstOtherAya() async =>
@@ -108,13 +104,10 @@ void main() {
     await openStudy(tester, target: 4082);
     await settleDownloads(tester);
 
-    expect(
-      [for (final url in cdn.served) url.split('/').last],
-      [
-        for (final aya in [4082, 4083, 4084, 4085, 4086])
-          await recitationOf(aya),
-      ],
-    );
+    expect(cdn.served, [
+      for (final aya in [4082, 4083, 4084, 4085, 4086])
+        '$defaultAudioOrigin${(await tracksFor(db, [aya])).single.relPath}',
+    ]);
   });
 
   testWidgets('opening an aya the phone already holds sweeps the cache and '
@@ -136,7 +129,8 @@ void main() {
     await settleDownloads(tester);
 
     expect(dir.listSync().map((f) => f.uri.pathSegments.last).toSet(), {
-      for (final path in walked) path.split('/').last,
+      for (final path in walked)
+        AudioCache(dir).fileFor(path).uri.pathSegments.last,
     }, reason: 'nothing was downloaded, so nothing may be thrown away');
   });
 

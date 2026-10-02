@@ -1171,14 +1171,9 @@
   "@settingsNoReciter": {
     "description": "Caption in the settings screen's recitation section when the bundled corpus names nobody."
   },
-  "settingsRecitedBy": "Recited by {reciter}.",
-  "@settingsRecitedBy": {
-    "description": "Caption in the settings screen's recitation section naming who recites. The name is a person's, read out of the corpus, and is not translated.",
-    "placeholders": {
-      "reciter": {
-        "type": "String"
-      }
-    }
+  "settingsReciterCaption": "Whose voice recites the set and each word you tap. Words are highlighted in time with this reciter.",
+  "@settingsReciterCaption": {
+    "description": "Caption under the settings screen's list of reciters. The reader picks whose voice the audio is in; the word highlight follows that recording's own timings."
   },
   "settingsMicrophone": "MICROPHONE",
   "@settingsMicrophone": {

@@ -95,10 +95,11 @@ class Recitation {
   String _title = '';
   Map<int, String> _words = const {};
 
-  /// The ayas the loaded player covers, so walking away from the reading
+  /// The files the loaded player covers, so walking away from the reading
   /// screen and back does not rebuild it underneath a recitation that is
-  /// still running.
-  List<int> _covers = const [];
+  /// still running. Files rather than ayas: the same ayas in another
+  /// reciter's voice are another recitation.
+  List<String> _covers = const [];
 
   /// Which word probe owns the transport.
   int _probe = 0;
@@ -124,7 +125,8 @@ class Recitation {
   /// asked for it.
   ///
   /// The same set twice is the reader leaving the reading screen and coming
-  /// back: the player stays, and so does whatever it was playing.
+  /// back: the player stays, and so does whatever it was playing. The same
+  /// set in a new reciter's voice is a new player.
   Future<void> carry(
     List<AyaTrack> tracks, {
     required String title,
@@ -132,7 +134,7 @@ class Recitation {
   }) async {
     _title = title;
     _words = words;
-    final covers = [for (final track in tracks) track.ayahId];
+    final covers = [for (final track in tracks) track.relPath];
     if (_set != null && listEquals(covers, _covers)) return;
     final previous = _set;
     _set = SetAudio(cache: await cache, tracks: tracks);
@@ -210,6 +212,7 @@ class Prefs extends ChangeNotifier {
     this._ayaTranslation,
     this._mic,
     this._locale,
+    this._reciter,
   ) {
     locale.value = _locale == null ? null : Locale(_locale!);
   }
@@ -226,6 +229,7 @@ class Prefs extends ChangeNotifier {
       display.ayaTranslation,
       await micPermission(db),
       await languagePref(db),
+      await audioPref(db),
     );
   }
 
@@ -238,6 +242,7 @@ class Prefs extends ChangeNotifier {
   bool _ayaTranslation;
   MicPermission _mic;
   String? _locale;
+  String _reciter;
 
   ReadingOrder get order => _order;
 
@@ -258,6 +263,16 @@ class Prefs extends ChangeNotifier {
   bool get ayaTranslation => _ayaTranslation;
 
   MicPermission get mic => _mic;
+
+  /// Whose voice the recitation is in: a slug of the corpus `recitations`.
+  String get reciter => _reciter;
+
+  Future<void> setReciter(String reciter) async {
+    if (reciter == _reciter) return;
+    _reciter = reciter;
+    notifyListeners();
+    await setAudioPref(_db, reciter);
+  }
 
   /// The language the reader picked, or null to take the phone's. Null is what
   /// [MaterialApp.locale] wants for "resolve it from the device", so the two

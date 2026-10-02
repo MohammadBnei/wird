@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 
 import '../corpus.dart';
@@ -183,11 +184,10 @@ void main() {
         reason: '$path was evicted while the reader was about to pray it',
       );
     }
-    expect(
-      dir.listSync().map((f) => f.uri.pathSegments.last).toSet(),
-      {for (final path in paths) path.split('/').last},
-      reason: 'the stale files are gone, so the cache really did evict',
-    );
+    expect(dir.listSync().map((f) => f.uri.pathSegments.last).toSet(), {
+      for (final path in paths)
+        AudioCache(dir).fileFor(path).uri.pathSegments.last,
+    }, reason: 'the stale files are gone, so the cache really did evict');
   });
 
   test('the set the reader will be handed next is evicted before they are '
@@ -213,8 +213,11 @@ void main() {
 
     // What screen 1a downloads when it opens the set, against a cap that
     // cannot hold it: everything unpinned goes.
-    await AudioCache(dir, capBytes: 3 * 1024, fetch: FakeCdn().call)
-        .prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
+    await AudioCache(
+      dir,
+      capBytes: 3 * 1024,
+      fetch: FakeCdn().call,
+    ).prefetch(await pathsToKeep(db, ReadingOrder.nuzul, current));
 
     expect(aheadPaths, hasLength(ahead.ayas.length));
     for (final path in aheadPaths) {
@@ -274,6 +277,111 @@ void main() {
       clipStart(10),
       Duration.zero,
       reason: 'the pad may not seek behind the start of the file',
+    );
+  });
+
+  test('a reciter the corpus times has no folder to fetch from, so picking '
+      'them plays nothing', () async {
+    final slugs = [
+      for (final row in await db.query('recitations')) row['slug']! as String,
+    ];
+    expect(slugs, isNotEmpty);
+    expect(slugs, contains(defaultReciter));
+    expect(
+      {for (final r in await reciters(db)) r.slug},
+      slugs.toSet(),
+      reason: 'every slug in the corpus needs its folder in reciterFolders',
+    );
+  });
+
+  test('two reciters download the same aya into one file, and one plays in '
+      'the other\'s voice', () async {
+    final dir = await tempAudioDir();
+    final cdn = FakeCdn();
+    final husary = (await tracksFor(db, [96001])).single;
+    final alafasy = (await tracksFor(db, [96001], reciter: 'alafasy')).single;
+    final cache = AudioCache(dir, fetch: cdn.call);
+    await cache.prefetch([husary.relPath, alafasy.relPath]);
+
+    expect(
+      cache.fileFor(husary.relPath).path,
+      isNot(cache.fileFor(alafasy.relPath).path),
+    );
+    expect(dir.listSync().whereType<File>(), hasLength(2));
+    expect(cdn.served, [
+      'https://everyayah.com/data/Husary_Muallim_128kbps/096001.mp3',
+      'https://everyayah.com/data/Alafasy_128kbps/096001.mp3',
+    ]);
+  });
+
+  test(
+    'a second reciter highlights with the first reciter\'s timings',
+    () async {
+      final husary = (await tracksFor(db, [96001])).single;
+      final alafasy = (await tracksFor(db, [96001], reciter: 'alafasy')).single;
+
+      expect(
+        [for (final s in alafasy.segments) s.wordId],
+        [for (final s in husary.segments) s.wordId],
+        reason: 'the same words, each once',
+      );
+      expect(
+        [for (final s in alafasy.segments) s.startMs],
+        isNot([for (final s in husary.segments) s.startMs]),
+        reason: 'two recordings do not pause in the same places',
+      );
+    },
+  );
+
+  test('a second reciter\'s files escape the cap because they sit somewhere '
+      'the sweep does not look', () async {
+    final dir = await tempAudioDir();
+    final paths = [
+      for (final t in await tracksFor(db, firstSet, reciter: 'alafasy'))
+        t.relPath,
+    ];
+    final cache = AudioCache(dir, capBytes: 3 * 1024, fetch: FakeCdn().call);
+    await cache.prefetch(paths);
+    // The next set pins nothing of this one, so the sweep must bring it back
+    // under the cap.
+    await cache.prefetch([
+      for (final t in await tracksFor(db, [96006], reciter: 'alafasy'))
+        t.relPath,
+    ]);
+    final held = dir.listSync(recursive: true).whereType<File>();
+    expect(
+      held.fold(0, (sum, f) => sum + f.lengthSync()),
+      lessThanOrEqualTo(3 * 1024),
+    );
+  });
+
+  test('a reciter a later corpus dropped leaves the reader with no recitation '
+      'at all', () async {
+    await setAudioPref(db, 'a-reciter-no-corpus-carries');
+    expect(await audioPref(db), defaultReciter);
+    expect(
+      await db.query('audio_pref'),
+      isEmpty,
+      reason: 'the stale choice is cleared rather than kept and ignored',
+    );
+
+    await setAudioPref(db, 'alafasy');
+    expect(await audioPref(db), 'alafasy');
+    await db.delete('audio_pref');
+  });
+
+  test('files cached before there was a choice of reciter hold the cap '
+      'forever, because nothing asks for their names', () async {
+    final root = await tempAudioDir();
+    final dir = Directory('${root.path}/audio')..createSync();
+    File('${dir.path}/096001.mp3').writeAsBytesSync([0]);
+    File('${dir.path}/Alafasy_128kbps_096001.mp3').writeAsBytesSync([0]);
+
+    await AudioCache.beside(root.path);
+
+    expect(
+      [for (final f in dir.listSync()) f.uri.pathSegments.last],
+      ['Alafasy_128kbps_096001.mp3'],
     );
   });
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -43,12 +44,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// at.
   StudySet? _next;
 
-  /// Who recites the audio the app plays. It came off the reading screen's
-  /// transport, where it sat beside the play button and read as that button's
-  /// state — which it is not: it never changes while a set is open, and the
-  /// state the button does have is whether the recitation is on the phone.
-  /// That half stayed on the transport, with the button it disables.
-  String? _reciter;
+  /// The reciters the corpus times. The choice came off the reading screen's
+  /// transport, where the name sat beside the play button and read as that
+  /// button's state — which it is not: the state the button does have is
+  /// whether the recitation is on the phone. That half stayed on the
+  /// transport, with the button it disables.
+  List<Reciter> _reciters = const [];
 
   @override
   void didChangeDependencies() {
@@ -59,11 +60,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final wird = Wird.of(context);
     final next = await nextSet(wird.db, wird.prefs.order);
-    final reciter = await reciterLabel(wird.db);
+    final all = await reciters(wird.db);
     if (mounted) {
       setState(() {
         _next = next;
-        _reciter = reciter;
+        _reciters = all;
       });
     }
   }
@@ -110,19 +111,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _section(n, l.settingsLanguage),
               NocturneSegmented(
-                options: [
-                  l.settingsLanguageEnglish,
-                  l.settingsLanguageFrench,
-                ],
+                options: [l.settingsLanguageEnglish, l.settingsLanguageFrench],
                 // The language being read, which is the reader's choice or
                 // their phone's until they make one. There is no third option
                 // for "my phone's": a reader picking their own language is not
                 // choosing between a language and a way of choosing one, and
                 // the phone's is already the one they can see selected.
-                selected:
-                    Localizations.localeOf(context).languageCode == 'fr' ? 1 : 0,
-                onChanged: (i) =>
-                    prefs.setLocale(Locale(i == 1 ? 'fr' : 'en')),
+                selected: Localizations.localeOf(context).languageCode == 'fr'
+                    ? 1
+                    : 0,
+                onChanged: (i) => prefs.setLocale(Locale(i == 1 ? 'fr' : 'en')),
               ),
               SizedBox(height: n.space('1')),
               _caption(n, l.settingsLanguageCaption),
@@ -153,10 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _caption(n, l.settingsAyaTranslationCaption),
               SizedBox(height: n.space('3')),
               NocturneSegmented(
-                options: [
-                  l.settingsOrderChronological,
-                  l.settingsOrderMushaf,
-                ],
+                options: [l.settingsOrderChronological, l.settingsOrderMushaf],
                 selected: prefs.order.index,
                 onChanged: (i) async {
                   await prefs.setOrder(ReadingOrder.values[i]);
@@ -199,23 +194,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _section(n, l.settingsSetWidth),
               _width(n, l),
               _section(n, l.settingsRecitation),
-              // Read-only: the corpus ships the paths for one reciter and
-              // there is nothing here to choose between. It is said once,
-              // here, rather than under the play button, where a name that
-              // never changes read as the transport's own state.
-              //
-              // Who recites is all this says. It used to add that nothing
-              // would play — a claim this query cannot see: the name comes
-              // from `recitations` while what plays is decided by ayah_audio,
-              // and either table can be populated without the other. Whether
-              // a set is playable is said on the screen that knows, under the
-              // button it disables.
-              _caption(
-                n,
-                _reciter == null
-                    ? l.settingsNoReciter
-                    : l.settingsRecitedBy(_reciter!),
-              ),
+              // Whose voice plays the set and every word tapped. Changing it
+              // re-carries the open set at once (study_screen.dart), so the
+              // next play is already in the new voice.
+              if (_reciters.isEmpty)
+                _caption(n, l.settingsNoReciter)
+              else ...[
+                NocturneSegmented(
+                  axis: Axis.vertical,
+                  options: [for (final r in _reciters) r.label],
+                  selected: max(
+                    0,
+                    _reciters.indexWhere((r) => r.slug == prefs.reciter),
+                  ),
+                  onChanged: (i) => prefs.setReciter(_reciters[i].slug),
+                ),
+                SizedBox(height: n.space('1')),
+                _caption(n, l.settingsReciterCaption),
+              ],
               // The senses sit with what a root means, not with the voice: the
               // recogniser below is a feature a reader turns on, and this is
               // the app's own content arriving. It is drawn unconditionally —
@@ -613,10 +609,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             variant: NocturneButtonVariant.ghost,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => VoiceCheck(
-                model: _model,
-                words: widget.words,
-              ),
+                builder: (_) => VoiceCheck(model: _model, words: widget.words),
               ),
             ),
             child: Text(l.settingsCheckRecogniser),
@@ -628,8 +621,7 @@ class _VoiceModelState extends State<VoiceModelPanel> {
             onPressed: _remove,
             child: Text(l.settingsRemoveRecogniser),
           ),
-        ]
-        else
+        ] else
           NocturneButton(
             key: VoiceModelPanel.download,
             onPressed: _download,

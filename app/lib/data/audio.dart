@@ -19,12 +19,29 @@ import 'sets.dart';
 /// one set of terms actually written down, Quran Foundation's, it is named and
 /// forbidden. See the audio rows in data/SOURCES.md before moving this.
 ///
-/// `ayah_audio.rel_path` is relative on purpose: the reciter's files can move
-/// to another host without an App Store release. This is the bundled default,
-/// which server config overrides. everyayah.com's `Husary_Muallim_128kbps` is
-/// the same recording cpfair/quran-align measured, so the bundled word timings
-/// belong to these files and not to a re-encode of them.
-const defaultAudioOrigin = 'https://everyayah.com/data/Husary_Muallim_128kbps/';
+/// `ayah_audio.rel_path` is a bare file name on purpose, the same in every
+/// reciter's folder: the host and the folder are config here, so the files can
+/// move to another host without a corpus rebuild — an App Store release, since
+/// the corpus is bundled.
+const defaultAudioOrigin = 'https://everyayah.com/data/';
+
+/// The reciter a fresh install hears, and the one a stored choice falls back to
+/// when a later corpus no longer carries it.
+const defaultReciter = 'husary-muallim';
+
+/// Each reciter's folder on [defaultAudioOrigin]. Each is the exact recording
+/// cpfair/quran-align measured, so the bundled word timings belong to these
+/// files and not to a re-encode of them: Husary and Abdul Basit are the 64 kbps
+/// folders because those are the ones aligned. A corpus slug missing here has
+/// no files to play, and a test holds the two lists together.
+const reciterFolders = {
+  'husary-muallim': 'Husary_Muallim_128kbps',
+  'husary': 'Husary_64kbps',
+  'alafasy': 'Alafasy_128kbps',
+  'abdul-basit-murattal': 'Abdul_Basit_Murattal_64kbps',
+  'shaatree': 'Abu_Bakr_Ash-Shaatree_128kbps',
+  'hani-rifai': 'Hani_Rifai_192kbps',
+};
 
 /// The whole recitation is 2.75 GB at ~442 KB an aya, so this cap holds about
 /// 450 ayas and evicts on nearly every set. The set being studied is pinned,
@@ -65,25 +82,33 @@ class AyaTrack {
   final List<WordSpan> segments;
 }
 
-/// Reads the audio the set needs: one file per aya, and the word timings that
-/// drive the highlight.
-Future<List<AyaTrack>> tracksFor(Database db, List<int> ayahIds) async {
-  if (ayahIds.isEmpty) return const [];
+/// Reads the audio the set needs in [reciter]'s voice: one file per aya, and
+/// the word timings that drive the highlight. Empty for a reciter this build
+/// has no folder for.
+Future<List<AyaTrack>> tracksFor(
+  Database db,
+  List<int> ayahIds, {
+  String reciter = defaultReciter,
+}) async {
+  final folder = reciterFolders[reciter];
+  if (ayahIds.isEmpty || folder == null) return const [];
   final marks = List.filled(ayahIds.length, '?').join(',');
   final files = await db.rawQuery(
     'SELECT ayah_id, rel_path FROM ayah_audio WHERE ayah_id IN ($marks)',
     ayahIds,
   );
   final paths = {
-    for (final f in files) f['ayah_id']! as int: f['rel_path']! as String,
+    for (final f in files)
+      f['ayah_id']! as int: '$folder/${f['rel_path']! as String}',
   };
   final spans = await db.rawQuery(
     '''SELECT w.ayah_id, s.word_id, s.start_ms, s.end_ms
          FROM word_segments s
+         JOIN recitations r ON r.id = s.recitation_id
          JOIN words w ON w.id = s.word_id
-        WHERE w.ayah_id IN ($marks)
+        WHERE r.slug = ? AND w.ayah_id IN ($marks)
         ORDER BY w.ayah_id, s.start_ms''',
-    ayahIds,
+    [reciter, ...ayahIds],
   );
   final byAya = <int, List<WordSpan>>{};
   for (final s in spans) {
@@ -109,6 +134,7 @@ Future<List<String>> pathsToKeep(
   ReadingOrder order,
   StudySet current, {
   bool onTheWalk = true,
+  String reciter = defaultReciter,
 }) async {
   final currentIds = [for (final aya in current.ayas) aya.id];
   // An aya the reader asked for has no set after it. [nextSet] does not know
@@ -122,7 +148,7 @@ Future<List<String>> pathsToKeep(
     ...currentIds,
     if (ahead != null)
       for (final aya in ahead.ayas) aya.id,
-  ]);
+  ], reciter: reciter);
   return [for (final track in tracks) track.relPath];
 }
 
@@ -191,7 +217,18 @@ class AudioCache {
   }) async {
     final dir = Directory('$databasesPath/audio');
     await dir.create(recursive: true);
+    _dropUnnamedReciter(dir);
     return AudioCache(dir, origin: origin ?? defaultAudioOrigin);
+  }
+
+  /// Files cached before there was a choice of reciter are named by aya alone,
+  /// `001001.mp3`, and nothing asks for that name any more. They would hold
+  /// their share of the cap until evicted; this frees it at once instead.
+  static void _dropUnnamedReciter(Directory dir) {
+    final bare = RegExp(r'^\d{6}\.mp3$');
+    for (final file in dir.listSync().whereType<File>()) {
+      if (bare.hasMatch(file.uri.pathSegments.last)) file.deleteSync();
+    }
   }
 
   final Directory dir;
@@ -213,9 +250,10 @@ class AudioCache {
   DateTime get revision =>
       dir.existsSync() ? dir.statSync().modified : DateTime.utc(0);
 
-  /// The origin names the reciter's own directory and the corpus path carries
-  /// the reciter as a folder, so only the file name joins the two.
-  String _name(String relPath) => relPath.split('/').last;
+  /// One flat directory, the reciter's folder folded into the name: two
+  /// reciters' copies of one aya never share a file, and the sweep, the pins
+  /// and [revision] all see every file without walking a tree.
+  String _name(String relPath) => relPath.replaceAll('/', '_');
 
   File fileFor(String relPath) => File('${dir.path}/${_name(relPath)}');
 
@@ -248,7 +286,7 @@ class AudioCache {
         continue;
       }
       try {
-        final body = await _fetch('$origin${_name(rel)}');
+        final body = await _fetch('$origin$rel');
         if (body.isEmpty) continue;
         await file.writeAsBytes(body, flush: true);
         written = true;
