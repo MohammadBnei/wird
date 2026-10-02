@@ -131,13 +131,17 @@ class Recitation {
     List<AyaTrack> tracks, {
     required String title,
     required Map<int, String> words,
+    bool wordByWord = false,
   }) async {
     _title = title;
     _words = words;
     final covers = [for (final track in tracks) track.relPath];
-    if (_set != null && listEquals(covers, _covers)) return;
+    if (_set != null && listEquals(covers, _covers)) {
+      _set!.wordByWord = wordByWord;
+      return;
+    }
     final previous = _set;
-    _set = SetAudio(cache: await cache, tracks: tracks);
+    _set = SetAudio(cache: await cache, tracks: tracks, wordByWord: wordByWord);
     _covers = covers;
     sounding.value = null;
     await previous?.dispose();
@@ -212,8 +216,9 @@ class Prefs extends ChangeNotifier {
     this._ayaTranslation,
     this._mic,
     this._locale,
-    this._reciter,
-  ) {
+    ({String reciter, bool wordByWord}) audio,
+  ) : _reciter = audio.reciter,
+      _wordByWord = audio.wordByWord {
     locale.value = _locale == null ? null : Locale(_locale!);
   }
 
@@ -243,6 +248,7 @@ class Prefs extends ChangeNotifier {
   MicPermission _mic;
   String? _locale;
   String _reciter;
+  bool _wordByWord;
 
   ReadingOrder get order => _order;
 
@@ -271,7 +277,19 @@ class Prefs extends ChangeNotifier {
     if (reciter == _reciter) return;
     _reciter = reciter;
     notifyListeners();
-    await setAudioPref(_db, reciter);
+    await setAudioPref(_db, reciter: _reciter, wordByWord: _wordByWord);
+  }
+
+  /// Whether a tapped word plays its own recording, spoken alone by
+  /// quran.com's word-by-word voice, rather than its stretch of the reciter's
+  /// aya.
+  bool get wordByWord => _wordByWord;
+
+  Future<void> setWordByWord(bool alone) async {
+    if (alone == _wordByWord) return;
+    _wordByWord = alone;
+    notifyListeners();
+    await setAudioPref(_db, reciter: _reciter, wordByWord: _wordByWord);
   }
 
   /// The language the reader picked, or null to take the phone's. Null is what

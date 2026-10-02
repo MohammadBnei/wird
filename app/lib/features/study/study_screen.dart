@@ -85,9 +85,10 @@ class _StudyScreenState extends State<StudyScreen> {
   Recitation? _audio;
   Set<int> _speakable = const {};
 
-  /// The reciter [_acted] was carried in. A reader who picks another voice in
-  /// the settings comes back to the same set, which must be carried again.
-  String? _actedIn;
+  /// The voice [_acted] was carried in: the reciter, and whether a word plays
+  /// alone. A reader who changes either in the settings comes back to the
+  /// same set, which must be carried again.
+  (String, bool)? _actedIn;
   Prefs? _listening;
   int? _unheard;
 
@@ -125,11 +126,13 @@ class _StudyScreenState extends State<StudyScreen> {
     }
   }
 
+  (String, bool) get _voice => (_prefs.reciter, _prefs.wordByWord);
+
   /// The settings screen sits over this one, so the voice the reader picked
   /// there is carried here while they are still choosing.
   void _reciterChanged() {
     final word = _word;
-    if (word == null || _actedIn == null || _actedIn == _prefs.reciter) return;
+    if (word == null || _actedIn == null || _actedIn == _voice) return;
     _carry(ayahOfWord(word.id));
   }
 
@@ -246,9 +249,10 @@ class _StudyScreenState extends State<StudyScreen> {
   /// button and a prayer are always about where the reader is.
   Future<void> _carry(int ayahId) async {
     final acted = _acted;
-    final reciter = _prefs.reciter;
+    final voice = _voice;
+    final (reciter, wordByWord) = voice;
     if (acted != null &&
-        _actedIn == reciter &&
+        _actedIn == voice &&
         acted.ayas.any((a) => a.id == ayahId)) {
       return;
     }
@@ -267,6 +271,7 @@ class _StudyScreenState extends State<StudyScreen> {
         for (final aya in set.ayas) aya.id,
       ], reciter: reciter),
       title: set.title,
+      wordByWord: wordByWord,
       words: {
         for (final aya in set.ayas)
           for (final word in aya.words) word.id: word.text,
@@ -278,6 +283,7 @@ class _StudyScreenState extends State<StudyScreen> {
       set,
       onTheWalk: false,
       reciter: reciter,
+      wordByWord: wordByWord,
     );
     // The reader may have walked on to another aya while this was read.
     final open = _word;
@@ -289,7 +295,7 @@ class _StudyScreenState extends State<StudyScreen> {
     }
     setState(() {
       _acted = set;
-      _actedIn = reciter;
+      _actedIn = voice;
       _audio = recitation;
       _speakable = recitation.speakable;
     });

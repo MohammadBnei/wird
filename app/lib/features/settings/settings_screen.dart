@@ -211,6 +211,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: n.space('1')),
                 _caption(n, l.settingsReciterCaption),
+                SizedBox(height: n.space('3')),
+                NocturneSegmented(
+                  options: [l.settingsWordFromReciter, l.settingsWordAlone],
+                  selected: prefs.wordByWord ? 1 : 0,
+                  onChanged: (i) => prefs.setWordByWord(i == 1),
+                ),
+                SizedBox(height: n.space('1')),
+                _caption(n, l.settingsWordVoiceCaption),
               ],
               // The senses sit with what a root means, not with the voice: the
               // recogniser below is a feature a reader turns on, and this is

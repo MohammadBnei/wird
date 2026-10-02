@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -16,8 +15,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get index_title => 'Les 114';
 
   @override
-  String get index_hint =>
-      'Une sourate s’ouvre à son premier verset. La flèche en choisit un à l’intérieur.';
+  String get index_hint => 'Une sourate s’ouvre à son premier verset. La flèche en choisit un à l’intérieur.';
 
   @override
   String index_revealed_nth(String order) {
@@ -33,16 +31,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get index_go_to_hint => 'S’ouvre à ce verset';
 
   @override
-  String get kept_empty_ayas =>
-      'Aucun verset gardé pour l’instant. « Garder ce verset », sur la constellation de la racine d’un mot, en garde un ici.';
+  String get kept_empty_ayas => 'Aucun verset gardé pour l’instant. « Garder ce verset », sur la constellation de la racine d’un mot, en garde un ici.';
 
   @override
-  String get kept_empty_notes =>
-      'Aucune note pour l’instant. Rien dans l’application n’en écrit encore ; un verset et une racine se gardent sans mots.';
+  String get kept_empty_notes => 'Aucune note pour l’instant. Rien dans l’application n’en écrit encore ; un verset et une racine se gardent sans mots.';
 
   @override
-  String get kept_empty_roots =>
-      'Aucune racine gardée pour l’instant. L’icône de garde sur une racine en garde une ici.';
+  String get kept_empty_roots => 'Aucune racine gardée pour l’instant. L’icône de garde sur une racine en garde une ici.';
 
   @override
   String get kept_filter_ayas => 'Versets';
@@ -99,8 +94,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get kept_search_hint =>
-      'Rechercher des versets, des racines, vos mots';
+  String get kept_search_hint => 'Rechercher des versets, des racines, vos mots';
 
   @override
   String get kept_title => 'Gardés';
@@ -251,8 +245,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prepare_voice_ready => 'Reconnaissance prête sur ce téléphone';
 
   @override
-  String get prepare_voice_setup =>
-      'Autorisez le micro et téléchargez la reconnaissance, ci-dessous';
+  String get prepare_voice_setup => 'Autorisez le micro et téléchargez la reconnaissance, ci-dessous';
 
   @override
   String get prepare_steady_pace => 'Garder un rythme régulier';
@@ -274,8 +267,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get prepare_note_voice =>
-      'Le texte attend votre voix. Chaque rakʿa commence quand vous récitez.';
+  String get prepare_note_voice => 'Le texte attend votre voix. Chaque rakʿa commence quand vous récitez.';
 
   @override
   String prepare_note_pace(int wpm) {
@@ -283,8 +275,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get prepare_note_neither =>
-      'Ni l’un ni l’autre : touchez l’écran pour passer au mot suivant.';
+  String get prepare_note_neither => 'Ni l’un ni l’autre : touchez l’écran pour passer au mot suivant.';
 
   @override
   String get prepare_kicker_screen => 'À l’écran';
@@ -310,8 +301,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prepare_silence => 'Couper les notifications';
 
   @override
-  String get prepare_silence_hint =>
-      'Activez Ne pas déranger ou un mode Concentration avant de commencer';
+  String get prepare_silence_hint => 'Activez Ne pas déranger ou un mode Concentration avant de commencer';
 
   @override
   String get prepare_preview => 'Aperçu';
@@ -338,8 +328,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get chooser_go_to_hint =>
-      'Commence à ce verset ; vous pourrez l’élargir ensuite';
+  String get chooser_go_to_hint => 'Commence à ce verset ; vous pourrez l’élargir ensuite';
 
   @override
   String get chooser_suggested => 'Suggestions';
@@ -442,8 +431,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get progress_rootsKnown => 'LES RACINES QUE VOUS CONNAISSEZ';
 
   @override
-  String get progress_rootsEmpty =>
-      'Les racines de chaque passage que vous comprenez sont rassemblées ici.';
+  String get progress_rootsEmpty => 'Les racines de chaque passage que vous comprenez sont rassemblées ici.';
 
   @override
   String progress_rootsCoverage(String roots, int percent) {
@@ -465,8 +453,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get aboutProvidesMorphology =>
-      'Racines, formes des mots et morphologie';
+  String get aboutProvidesMorphology => 'Racines, formes des mots et morphologie';
 
   @override
   String get aboutProvidesText => 'Le texte coranique';
@@ -584,8 +571,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboard_allUnderstood => 'Chaque verset est compris.';
 
   @override
-  String get dashboard_allUnderstoodWhy =>
-      'Il ne reste rien à servir. L\'index ouvre de nouveau n\'importe quelle sourate.';
+  String get dashboard_allUnderstoodWhy => 'Il ne reste rien à servir. L\'index ouvre de nouveau n\'importe quelle sourate.';
 
   @override
   String get dashboard_whereToGo => 'OÙ ALLER';
@@ -609,19 +595,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboard_doorPray => 'Préparer une prière';
 
   @override
-  String get dashboard_doorPrayWhy =>
-      'N’importe quel passage, autant de rakʿas que voulu';
+  String get dashboard_doorPrayWhy => 'N’importe quel passage, autant de rakʿas que voulu';
 
   @override
-  String get dashboard_doorKeptWhy =>
-      'Les versets et les racines que vous avez gardés';
+  String get dashboard_doorKeptWhy => 'Les versets et les racines que vous avez gardés';
 
   @override
   String get report_title => 'Signaler quelque chose';
 
   @override
-  String get report_one_way =>
-      'Cela part dans un seul sens. Le message parvient à ceux qui font tourner Wird, et rien ne revient — il n\'y a pas de boîte de réception à consulter ici.';
+  String get report_one_way => 'Cela part dans un seul sens. Le message parvient à ceux qui font tourner Wird, et rien ne revient — il n\'y a pas de boîte de réception à consulter ici.';
 
   @override
   String get report_kind_heading => 'QUEL TYPE';
@@ -650,8 +633,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get report_context_heading => 'ENVOYÉ AVEC';
 
   @override
-  String get report_context_only =>
-      'Recueilli pour que vous n\'ayez pas à le saisir. Rien d\'autre ne part : ni ce que vous lisiez, ni ce que vous avez gardé, ni votre progression.';
+  String get report_context_only => 'Recueilli pour que vous n\'ayez pas à le saisir. Rien d\'autre ne part : ni ce que vous lisiez, ni ce que vous avez gardé, ni votre progression.';
 
   @override
   String get report_context_loading => 'Lecture de cette version…';
@@ -663,8 +645,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get report_queued_heading => 'EN ATTENTE';
 
   @override
-  String get report_queued_body =>
-      'C\'est noté sur ce téléphone et partira à la prochaine synchronisation, même si vous êtes hors ligne.';
+  String get report_queued_body => 'C\'est noté sur ce téléphone et partira à la prochaine synchronisation, même si vous êtes hors ligne.';
 
   @override
   String get report_write_another => 'En écrire un autre';
@@ -764,12 +745,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get root_coreSense => 'Sens fondamental';
 
   @override
-  String get root_senseRefused =>
-      'Les sens sont ceux de Wird et ils sont écrits une racine à la fois. Aucun n’a encore été écrit pour cette racine. Quand ce sera fait, il atteindra ce téléphone sans attendre une nouvelle version de l’application.';
+  String get root_senseRefused => 'Les sens sont ceux de Wird et ils sont écrits une racine à la fois. Aucun n’a encore été écrit pour cette racine. Quand ce sera fait, il atteindra ce téléphone sans attendre une nouvelle version de l’application.';
 
   @override
-  String get root_senseNotFetched =>
-      'Les sens ne font pas partie du téléchargement. Ils sont récupérés, afin qu’un sens puisse être corrigé sans nouvelle version de l’application — et ce téléphone n’en a encore récupéré aucun. Les réglages portent le bouton.';
+  String get root_senseNotFetched => 'Les sens ne font pas partie du téléchargement. Ils sont récupérés, afin qu’un sens puisse être corrigé sans nouvelle version de l’application — et ce téléphone n’en a encore récupéré aucun. Les réglages portent le bouton.';
 
   @override
   String root_senseByApp(String borne) {
@@ -811,8 +790,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get root_tafsirPending =>
-      'Le tafsir est récupéré verset par verset. Rien n’a encore été téléchargé, donc rien n’est attribué ici.';
+  String get root_tafsirPending => 'Le tafsir est récupéré verset par verset. Rien n’a encore été téléchargé, donc rien n’est attribué ici.';
 
   @override
   String get root_irab => 'Iʿrāb';
@@ -856,8 +834,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsLanguageFrench => 'Français';
 
   @override
-  String get settingsLanguageCaption =>
-      'L\'écran et le sens d\'une racine. Les sens ont été écrits en anglais puis traduits : une racine dont le français n\'est pas arrivé se lit en anglais.';
+  String get settingsLanguageCaption => 'L\'écran et le sens d\'une racine. Les sens ont été écrits en anglais puis traduits : une racine dont le français n\'est pas arrivé se lit en anglais.';
 
   @override
   String get settingsReading => 'LECTURE';
@@ -881,8 +858,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsAyaTranslationHidden => 'Arabe seul';
 
   @override
-  String get settingsAyaTranslationCaption =>
-      'La traduction de Rashid Maash, ou l’anglais de Pickthall, sous chaque verset.';
+  String get settingsAyaTranslationCaption => 'La traduction de Rashid Maash, ou l’anglais de Pickthall, sous chaque verset.';
 
   @override
   String get settingsWordCaption => 'Ce qui est imprimé sous chaque mot arabe.';
@@ -894,22 +870,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsOrderMushaf => 'Muṣḥaf';
 
   @override
-  String get settingsOrderCaption =>
-      'La chronologie ordonne les sourates ; à l’intérieur d’une sourate, les versets restent dans l’ordre écrit.';
+  String get settingsOrderCaption => 'La chronologie ordonne les sourates ; à l’intérieur d’une sourate, les versets restent dans l’ordre écrit.';
 
   @override
   String get settingsArabic => 'Arabe';
 
   @override
-  String get settingsArabicCaption =>
-      'La taille de l’arabe sur l’écran de lecture.';
+  String get settingsArabicCaption => 'La taille de l’arabe sur l’écran de lecture.';
 
   @override
   String get settingsSetWidth => 'CE QUE VOUS PRENEZ À LA FOIS';
 
   @override
-  String get settingsNoSetWaiting =>
-      'Tous les versets sont compris : aucun passage n’attend.';
+  String get settingsNoSetWaiting => 'Tous les versets sont compris : aucun passage n’attend.';
 
   @override
   String settingsSetAyas(int count) {
@@ -923,8 +896,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get settingsSetWidthCaption =>
-      'Un passage plus large peut englober un verset que vous avez déjà compris. Il est récité avec les autres et reste compté là où il est.';
+  String get settingsSetWidthCaption => 'Un passage plus large peut englober un verset que vous avez déjà compris. Il est récité avec les autres et reste compté là où il est.';
 
   @override
   String get settingsRecitation => 'RÉCITATION';
@@ -933,8 +905,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsNoReciter => 'Aucun récitant n’est nommé dans ce corpus.';
 
   @override
-  String get settingsReciterCaption =>
-      'La voix qui récite le passage et chaque mot touché. Les mots s’allument au rythme de ce récitant.';
+  String get settingsReciterCaption => 'La voix qui récite le passage et chaque mot touché. Les mots s’allument au rythme de ce récitant.';
+
+  @override
+  String get settingsWordFromReciter => 'Du récitant';
+
+  @override
+  String get settingsWordAlone => 'Mot à mot';
+
+  @override
+  String get settingsWordVoiceCaption => 'Ce que joue un mot touché : son passage dans le verset du récitant, ou le mot prononcé seul par la voix mot à mot de quran.com, téléchargée à part.';
 
   @override
   String get settingsMicrophone => 'MICROPHONE';
@@ -943,19 +923,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsAllowMicrophone => 'Autoriser le microphone';
 
   @override
-  String get settingsMicNotAsked =>
-      'Le suivi vocal a besoin du microphone. Désactivé par défaut ; jamais demandé pendant une prière.';
+  String get settingsMicNotAsked => 'Le suivi vocal a besoin du microphone. Désactivé par défaut ; jamais demandé pendant une prière.';
 
   @override
   String get settingsMicGranted => 'Microphone autorisé.';
 
   @override
-  String get settingsMicDenied =>
-      'Microphone refusé. L’écran de prière avance d’une touche, comme il l’a toujours fait.';
+  String get settingsMicDenied => 'Microphone refusé. L’écran de prière avance d’une touche, comme il l’a toujours fait.';
 
   @override
-  String get settingsMicUnavailable =>
-      'Le microphone n’a pas pu être atteint la dernière fois qu’il a été demandé. Réessayez ; dans tous les cas, l’écran de prière avance d’une touche.';
+  String get settingsMicUnavailable => 'Le microphone n’a pas pu être atteint la dernière fois qu’il a été demandé. Réessayez ; dans tous les cas, l’écran de prière avance d’une touche.';
 
   @override
   String get settingsAccount => 'COMPTE';
@@ -977,28 +954,22 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get settingsRecogniserDownloading =>
-      'Téléchargement en cours. L’arrêter conserve ce qui est déjà arrivé, et appuyer de nouveau sur Télécharger reprend à partir de là.';
+  String get settingsRecogniserDownloading => 'Téléchargement en cours. L’arrêter conserve ce qui est déjà arrivé, et appuyer de nouveau sur Télécharger reprend à partir de là.';
 
   @override
-  String get settingsRecogniserReady =>
-      'L’écran de prière suit votre voix. Votre récitation est reconnue sur ce téléphone et ne le quitte jamais.';
+  String get settingsRecogniserReady => 'L’écran de prière suit votre voix. Votre récitation est reconnue sur ce téléphone et ne le quitte jamais.';
 
   @override
-  String get settingsRecogniserNotServed =>
-      'Wird ne sert pas le reconnaisseur depuis cette adresse. Rien sur ce téléphone n’y changera quoi que ce soit, et le bouton ne le fera pas venir non plus — le suivi vocal attend qu’il soit publié à nouveau.';
+  String get settingsRecogniserNotServed => 'Wird ne sert pas le reconnaisseur depuis cette adresse. Rien sur ce téléphone n’y changera quoi que ce soit, et le bouton ne le fera pas venir non plus — le suivi vocal attend qu’il soit publié à nouveau.';
 
   @override
-  String get settingsRecogniserInterrupted =>
-      'Le téléchargement s’est arrêté avant la fin. Ce qui est arrivé est toujours sur le téléphone, et appuyer de nouveau sur Télécharger reprend à partir de là.';
+  String get settingsRecogniserInterrupted => 'Le téléchargement s’est arrêté avant la fin. Ce qui est arrivé est toujours sur le téléphone, et appuyer de nouveau sur Télécharger reprend à partir de là.';
 
   @override
-  String get settingsRecogniserPartial =>
-      'Un téléchargement interrompu est toujours sur le téléphone. Le relancer reprend là où il s’est arrêté.';
+  String get settingsRecogniserPartial => 'Un téléchargement interrompu est toujours sur le téléphone. Le relancer reprend là où il s’est arrêté.';
 
   @override
-  String get settingsRecogniserAbsent =>
-      'Un reconnaisseur du Coran qui fonctionne sur le téléphone : rien de ce que vous récitez n’est envoyé ailleurs. Le télécharger est ce qui active le suivi vocal ; jusque-là, et après l’avoir supprimé, l’écran de prière avance d’une touche.';
+  String get settingsRecogniserAbsent => 'Un reconnaisseur du Coran qui fonctionne sur le téléphone : rien de ce que vous récitez n’est envoyé ailleurs. Le télécharger est ce qui active le suivi vocal ; jusque-là, et après l’avoir supprimé, l’écran de prière avance d’une touche.';
 
   @override
   String get settingsSenses => 'SENS';
@@ -1010,28 +981,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsSensesAskAgain => 'Redemander';
 
   @override
-  String get settingsSensesAsking =>
-      'Nous demandons au serveur s’il y a du nouveau.';
+  String get settingsSensesAsking => 'Nous demandons au serveur s’il y a du nouveau.';
 
   @override
-  String get settingsSensesOnOffer =>
-      'Le serveur propose des sens que ce téléphone n’a pas. Ils pèsent quelques centaines de kilooctets ; rien ne se télécharge avant que vous n’appuyiez.';
+  String get settingsSensesOnOffer => 'Le serveur propose des sens que ce téléphone n’a pas. Ils pèsent quelques centaines de kilooctets ; rien ne se télécharge avant que vous n’appuyiez.';
 
   @override
-  String get settingsSensesInstalling =>
-      'Téléchargement en cours. Rien de ce qui est déjà sur le téléphone n’est remplacé avant que tout soit arrivé.';
+  String get settingsSensesInstalling => 'Téléchargement en cours. Rien de ce qui est déjà sur le téléphone n’est remplacé avant que tout soit arrivé.';
 
   @override
-  String get settingsSensesCurrent =>
-      'Ce téléphone a les sens que le serveur sert. Un sens est la lecture propre à Wird, écrite par une machine et lue par personne ; la ligne sous chacun le dit, et le pouce à côté est ce qui permet de corriger un sens erroné.';
+  String get settingsSensesCurrent => 'Ce téléphone a les sens que le serveur sert. Un sens est la lecture propre à Wird, écrite par une machine et lue par personne ; la ligne sous chacun le dit, et le pouce à côté est ce qui permet de corriger un sens erroné.';
 
   @override
-  String get settingsSensesUnreachable =>
-      'Le serveur n’a pas répondu : on ne sait donc pas s’il y a de nouveaux sens. Tous les sens déjà sur le téléphone y sont toujours, et l’application se lit sans réseau.';
+  String get settingsSensesUnreachable => 'Le serveur n’a pas répondu : on ne sait donc pas s’il y a de nouveaux sens. Tous les sens déjà sur le téléphone y sont toujours, et l’application se lit sans réseau.';
 
   @override
-  String get settingsSensesNotThisCorpus =>
-      'Les sens arrivés ne nomment aucune racine que cet exemplaire du Coran enregistre : aucun d’eux ne pourrait jamais être lu. Rien n’a été modifié sur le téléphone.';
+  String get settingsSensesNotThisCorpus => 'Les sens arrivés ne nomment aucune racine que cet exemplaire du Coran enregistre : aucun d’eux ne pourrait jamais être lu. Rien n’a été modifié sur le téléphone.';
 
   @override
   String get settingsVoiceCheckTitle => 'Ce téléphone vous entend-il ?';
@@ -1045,16 +1010,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsVoiceCheckOpening => 'Démarrage du reconnaisseur…';
 
   @override
-  String get settingsVoiceCheckListening =>
-      'Récitez : les mots que vous dites devraient apparaître ci-dessous.';
+  String get settingsVoiceCheckListening => 'Récitez : les mots que vous dites devraient apparaître ci-dessous.';
 
   @override
-  String get settingsVoiceCheckNoModel =>
-      'Le reconnaisseur n’a pas démarré. Le téléchargement est peut-être incomplet, ou ce téléphone n’arrive pas à le charger. Le suivi vocal reste désactivé et l’écran de prière répond à votre touche, comme il l’a toujours fait.';
+  String get settingsVoiceCheckNoModel => 'Le reconnaisseur n’a pas démarré. Le téléchargement est peut-être incomplet, ou ce téléphone n’arrive pas à le charger. Le suivi vocal reste désactivé et l’écran de prière répond à votre touche, comme il l’a toujours fait.';
 
   @override
-  String get settingsVoiceCheckNoMicrophone =>
-      'Le microphone a été refusé : il n’y a rien à entendre.';
+  String get settingsVoiceCheckNoMicrophone => 'Le microphone a été refusé : il n’y a rien à entendre.';
 
   @override
   String settingsVoiceCheckCursor(int word, int total, int moves) {
@@ -1098,30 +1060,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsSignOut => 'Se déconnecter';
 
   @override
-  String get settingsSignOutCaption =>
-      'Se déconnecter arrête la synchronisation. Tout ce que vous avez lu, gardé et marqué reste sur ce téléphone.';
+  String get settingsSignOutCaption => 'Se déconnecter arrête la synchronisation. Tout ce que vous avez lu, gardé et marqué reste sur ce téléphone.';
 
   @override
-  String get settingsSignedOutCaption =>
-      'Wird fonctionne sans compte. Se connecter porte ce que vous marquez et gardez vers vos autres appareils.';
+  String get settingsSignedOutCaption => 'Wird fonctionne sans compte. Se connecter porte ce que vous marquez et gardez vers vos autres appareils.';
 
   @override
   String get settingsSignIn => 'Se connecter';
 
   @override
-  String get settingsFinishInBrowser =>
-      'Terminez la connexion dans votre navigateur. Ce téléphone attend qu’il vous renvoie ici.';
+  String get settingsFinishInBrowser => 'Terminez la connexion dans votre navigateur. Ce téléphone attend qu’il vous renvoie ici.';
 
   @override
   String get settingsCancelSignIn => 'Annuler';
 
   @override
-  String get settingsNoBrowser =>
-      'aucun navigateur ici n’ouvrirait l’adresse de connexion';
+  String get settingsNoBrowser => 'aucun navigateur ici n’ouvrirait l’adresse de connexion';
 
   @override
-  String get settingsSignInUnreachable =>
-      'Le serveur de connexion n’a pas pu être atteint. Rien n’a changé.';
+  String get settingsSignInUnreachable => 'Le serveur de connexion n’a pas pu être atteint. Rien n’a changé.';
 
   @override
   String settingsParkedCount(int count) {
@@ -1135,8 +1092,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get settingsParkedCaption =>
-      'Elles sont toujours sur ce téléphone. Envoyez-les à nouveau, ou laissez-les partir.';
+  String get settingsParkedCaption => 'Elles sont toujours sur ce téléphone. Envoyez-les à nouveau, ou laissez-les partir.';
 
   @override
   String get settingsSendAgain => 'Envoyer à nouveau';
@@ -1159,8 +1115,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsParkedKept => 'Quelque chose que vous avez gardé';
 
   @override
-  String get settingsParkedUnkept =>
-      'Quelque chose que vous avez retiré de Gardés';
+  String get settingsParkedUnkept => 'Quelque chose que vous avez retiré de Gardés';
 
   @override
   String get settingsParkedSetRead => 'Un passage que vous avez lu';
@@ -1184,8 +1139,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_ayaTranslated => 'Rashid Maash';
 
   @override
-  String get study_glossesSource =>
-      'Le sens sous chaque mot vient de The Last Dialogue ; les quelques mots qu’il ne couvre pas restent en anglais.';
+  String get study_glossesSource => 'Le sens sous chaque mot vient de The Last Dialogue ; les quelques mots qu’il ne couvre pas restent en anglais.';
 
   @override
   String get root_senseJudgeThanks => 'C’est noté — merci.';
@@ -1218,8 +1172,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shell_notSignedIn => 'NON CONNECTÉ';
 
   @override
-  String get shell_drawerBlurb =>
-      'Tout ce que vous avez lu et gardé est sur ce téléphone. Les comptes arriveront avec le serveur avec lequel ils se synchronisent.';
+  String get shell_drawerBlurb => 'Tout ce que vous avez lu et gardé est sur ce téléphone. Les comptes arriveront avec le serveur avec lequel ils se synchronisent.';
 
   @override
   String appCorpusWouldNotOpen(String error) {
@@ -1242,51 +1195,40 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aboutLicencePermission => 'Utilisé avec autorisation';
 
   @override
-  String get aboutTermsCorpus =>
-      'Chaque racine vers laquelle un mot s’ouvre vient d’ici. Copies à l’identique uniquement — modifier l’annotation n’est pas permis. Utilisé à condition que sa source soit clairement indiquée et qu’un lien mène à corpus.quran.com, pour que vous puissiez suivre ce qui a changé depuis cette version.';
+  String get aboutTermsCorpus => 'Chaque racine vers laquelle un mot s’ouvre vient d’ici. Copies à l’identique uniquement — modifier l’annotation n’est pas permis. Utilisé à condition que sa source soit clairement indiquée et qu’un lien mène à corpus.quran.com, pour que vous puissiez suivre ce qui a changé depuis cette version.';
 
   @override
-  String get aboutTermsTanzil =>
-      'Le texte uthmani vérifié d’après lequel chaque verset est dessiné, et sur lequel le Quranic Arabic Corpus s’appuie aussi. Copié à l’identique ; modifier le texte n’est pas permis. Lié pour que vous puissiez suivre les modifications.';
+  String get aboutTermsTanzil => 'Le texte uthmani vérifié d’après lequel chaque verset est dessiné, et sur lequel le Quranic Arabic Corpus s’appuie aussi. Copié à l’identique ; modifier le texte n’est pas permis. Lié pour que vous puissiez suivre les modifications.';
 
   @override
-  String get aboutTermsQuranFoundation =>
-      'L’anglais sous chaque mot, servi par l’API de quran.com. En français, ce sont les gloses de The Last Dialogue qui s’affichent ; l’anglais ne reste que là où le français manque. Leurs conditions permettent à une application d’afficher ce contenu, mais pas de le conserver indéfiniment sans une resynchronisation hebdomadaire, ce que ne fait pas un corpus embarqué. Non réglé, et consigné comme non réglé.';
+  String get aboutTermsQuranFoundation => 'L’anglais sous chaque mot, servi par l’API de quran.com. En français, ce sont les gloses de The Last Dialogue qui s’affichent ; l’anglais ne reste que là où le français manque. Leurs conditions permettent à une application d’afficher ce contenu, mais pas de le conserver indéfiniment sans une resynchronisation hebdomadaire, ce que ne fait pas un corpus embarqué. Non réglé, et consigné comme non réglé.';
 
   @override
-  String get aboutTermsLastDialogue =>
-      'Le français sous chaque mot, pour qui lit Wird en français. Le site signale que son mot à mot est en version bêta. Ils en ont accordé l’usage à Wird par courriel le 30 septembre 2026, sans exiger d’être cités ; Wird les nomme tout de même, parce qu’il nomme chacune de ses sources.';
+  String get aboutTermsLastDialogue => 'Le français sous chaque mot, pour qui lit Wird en français. Le site signale que son mot à mot est en version bêta. Ils en ont accordé l’usage à Wird par courriel le 30 septembre 2026, sans exiger d’être cités ; Wird les nomme tout de même, parce qu’il nomme chacune de ses sources.';
 
   @override
-  String get aboutTermsNocturne =>
-      'Le système de design d’après lequel chaque écran est dessiné. Sombre uniquement ; il n’y a pas de mode clair.';
+  String get aboutTermsNocturne => 'Le système de design d’après lequel chaque écran est dessiné. Sombre uniquement ; il n’y a pas de mode clair.';
 
   @override
-  String get aboutTermsScheherazade =>
-      'Embarquée sans modification, parce que les polices arabes du système abîment les signes diacritiques coraniques.';
+  String get aboutTermsScheherazade => 'Embarquée sans modification, parce que les polices arabes du système abîment les signes diacritiques coraniques.';
 
   @override
   String get aboutTermsInter => 'Embarquée sans modification.';
 
   @override
-  String get aboutTermsTimings =>
-      'La milliseconde à laquelle chaque mot est prononcé : c’est ce qui permet à un mot de s’allumer au moment où vous l’entendez. Tiré de github.com/cpfair/quran-align, aligné sur ce même enregistrement muʿallim. Réindexé pour cette application : les données publiées comptent à partir de zéro et excluent leur borne de fin, et elles sont stockées ici à partir de un, rattachées au mot auquel elles appartiennent. Fourni tel quel, sans garantie.';
+  String get aboutTermsTimings => 'La milliseconde à laquelle chaque mot est prononcé : c’est ce qui permet à un mot de s’allumer au moment où vous l’entendez. Tiré de github.com/cpfair/quran-align, aligné sur ce même enregistrement muʿallim. Réindexé pour cette application : les données publiées comptent à partir de zéro et excluent leur borne de fin, et elles sont stockées ici à partir de un, rattachées au mot auquel elles appartiennent. Fourni tel quel, sans garantie.';
 
   @override
-  String get aboutTermsRecitation =>
-      'L’enregistrement muʿallim est téléchargé par votre appareil depuis everyayah.com quand vous appuyez sur lecture, comme un navigateur charge une page, puis mis en cache sur votre téléphone. Wird ne l’embarque pas, n’en fait pas de copie miroir et ne le sert pas. Les archives ne publient aucune condition d’utilisation : rien ici ne vaut donc permission de le redistribuer — et c’est pourquoi cette application ne le fait jamais.';
+  String get aboutTermsRecitation => 'L’enregistrement muʿallim est téléchargé par votre appareil depuis everyayah.com quand vous appuyez sur lecture, comme un navigateur charge une page, puis mis en cache sur votre téléphone. Wird ne l’embarque pas, n’en fait pas de copie miroir et ne le sert pas. Les archives ne publient aucune condition d’utilisation : rien ici ne vaut donc permission de le redistribuer — et c’est pourquoi cette application ne le fait jamais.';
 
   @override
-  String get aboutTermsVoice =>
-      'Le reconnaisseur qui entend votre récitation, téléchargé à votre demande et exécuté sur ce téléphone ; rien de ce que vous dites n’est envoyé ailleurs. Il écrit des phonèmes coraniques, y compris les marques du tajwīd. Wird s’en sert uniquement pour savoir où vous en êtes dans le passage, et jamais pour juger votre récitation : un retour automatique sur le tajwīd peut se tromper, et aucun logiciel, ici ou ailleurs, ne remplace un enseignant qualifié. Sa licence interdit de faire payer le modèle ou toute fonction qu’il alimente, ce que Wird ne fait pas et ne fera pas.';
+  String get aboutTermsVoice => 'Le reconnaisseur qui entend votre récitation, téléchargé à votre demande et exécuté sur ce téléphone ; rien de ce que vous dites n’est envoyé ailleurs. Il écrit des phonèmes coraniques, y compris les marques du tajwīd. Wird s’en sert uniquement pour savoir où vous en êtes dans le passage, et jamais pour juger votre récitation : un retour automatique sur le tajwīd peut se tromper, et aucun logiciel, ici ou ailleurs, ne remplace un enseignant qualifié. Sa licence interdit de faire payer le modèle ou toute fonction qu’il alimente, ce que Wird ne fait pas et ne fera pas.';
 
   @override
-  String get aboutSelfTerms =>
-      'Wird est un logiciel libre sous GNU Affero General Public License, version 3 ou ultérieure. L’AGPL plutôt que la GPL, parce que Wird a un serveur : quiconque le fait tourner comme service doit à ses utilisateurs le code source de ce qu’ils utilisent.';
+  String get aboutSelfTerms => 'Wird est un logiciel libre sous GNU Affero General Public License, version 3 ou ultérieure. L’AGPL plutôt que la GPL, parce que Wird a un serveur : quiconque le fait tourner comme service doit à ses utilisateurs le code source de ce qu’ils utilisent.';
 
   @override
-  String get study_expandSheet =>
-      'Afficher les nombres, les formes et les autres versets';
+  String get study_expandSheet => 'Afficher les nombres, les formes et les autres versets';
 
   @override
   String get study_collapseSheet => 'Revoir toute la sourate';
@@ -1295,8 +1237,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_senses => 'Sens';
 
   @override
-  String get study_particleNote =>
-      'Les particules et les pronoms n’ont pas de racine trilitère. Glissez jusqu’au mot suivant.';
+  String get study_particleNote => 'Les particules et les pronoms n’ont pas de racine trilitère. Glissez jusqu’au mot suivant.';
 
   @override
   String get study_moreRow => 'Nombres, formes, autres versets';
@@ -1314,8 +1255,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_countSurah => 'dans cette sourate';
 
   @override
-  String get study_ringCaption =>
-      'Ses formes, et combien de fois chacune est lue';
+  String get study_ringCaption => 'Ses formes, et combien de fois chacune est lue';
 
   @override
   String get study_otherAyas => 'Autres versets';
@@ -1359,8 +1299,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_form => 'Forme';
 
   @override
-  String get prepare_trouble =>
-      'Le Coran n\'a pas pu être lu sur cet appareil. Réessayez ; si cela persiste, fermez Wird et rouvrez-le.';
+  String get prepare_trouble => 'Le Coran n\'a pas pu être lu sur cet appareil. Réessayez ; si cela persiste, fermez Wird et rouvrez-le.';
 
   @override
   String get prepare_retry => 'Réessayer';

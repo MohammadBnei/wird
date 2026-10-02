@@ -1175,6 +1175,18 @@
   "@settingsReciterCaption": {
     "description": "Caption under the settings screen's list of reciters. The reader picks whose voice the audio is in; the word highlight follows that recording's own timings."
   },
+  "settingsWordFromReciter": "From the reciter",
+  "@settingsWordFromReciter": {
+    "description": "Settings option: a tapped word plays as its stretch of the chosen reciter's aya recording."
+  },
+  "settingsWordAlone": "Word by word",
+  "@settingsWordAlone": {
+    "description": "Settings option: a tapped word plays its own recording, spoken alone by quran.com's word-by-word voice."
+  },
+  "settingsWordVoiceCaption": "What a tapped word plays: its moment in the reciter's aya, or the word spoken on its own by quran.com's word-by-word voice, which is fetched separately.",
+  "@settingsWordVoiceCaption": {
+    "description": "Caption under the choice of what a tapped word plays."
+  },
   "settingsMicrophone": "MICROPHONE",
   "@settingsMicrophone": {
     "description": "Section heading on the settings screen, over the microphone permission and the recogniser download."

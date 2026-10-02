@@ -43,6 +43,12 @@ const reciterFolders = {
   'hani-rifai': 'Hani_Rifai_192kbps',
 };
 
+/// Where a word spoken on its own is fetched from: quran.com's word-by-word
+/// recordings, one voice for every word, at the path `words.wbw_path` names.
+/// Fetched at playback and held in the same capped cache as the recitation,
+/// never bundled; ADR 0018 records the terms this sits under.
+const wordAudioOrigin = 'https://audio.qurancdn.com/';
+
 /// The whole recitation is 2.75 GB at ~442 KB an aya, so this cap holds about
 /// 450 ayas and evicts on nearly every set. The set being studied is pinned,
 /// so the file the reader is about to hear is never the one thrown away.
@@ -75,11 +81,16 @@ class AyaTrack {
     required this.ayahId,
     required this.relPath,
     required this.segments,
+    this.wordFiles = const {},
   });
 
   final int ayahId;
   final String relPath;
   final List<WordSpan> segments;
+
+  /// Each word's own recording, spoken alone, by word id. A word missing here
+  /// has none and is cut out of [relPath] instead.
+  final Map<int, String> wordFiles;
 }
 
 /// Reads the audio the set needs in [reciter]'s voice: one file per aya, and
@@ -110,6 +121,13 @@ Future<List<AyaTrack>> tracksFor(
         ORDER BY w.ayah_id, s.start_ms''',
     [reciter, ...ayahIds],
   );
+  final alone = await db.rawQuery('''SELECT ayah_id, id, wbw_path FROM words
+        WHERE wbw_path IS NOT NULL AND ayah_id IN ($marks)''', ayahIds);
+  final wordFiles = <int, Map<int, String>>{};
+  for (final w in alone) {
+    (wordFiles[w['ayah_id']! as int] ??= {})[w['id']! as int] =
+        w['wbw_path']! as String;
+  }
   final byAya = <int, List<WordSpan>>{};
   for (final s in spans) {
     (byAya[s['ayah_id']! as int] ??= []).add((
@@ -121,20 +139,27 @@ Future<List<AyaTrack>> tracksFor(
   return [
     for (final id in ayahIds)
       if (paths[id] case final rel?)
-        AyaTrack(ayahId: id, relPath: rel, segments: byAya[id] ?? const []),
+        AyaTrack(
+          ayahId: id,
+          relPath: rel,
+          segments: byAya[id] ?? const [],
+          wordFiles: wordFiles[id] ?? const {},
+        ),
   ];
 }
 
 /// The recitation files screen 1a keeps on disk: the set being studied and,
 /// while the reader is [onTheWalk], the set after it. Pinning only the current
 /// set leaves the cap free to evict the very set the reader is about to be
-/// handed.
+/// handed. With [wordByWord], each word's own recording too, so a tapped word
+/// sounds offline in the voice the reader chose for it.
 Future<List<String>> pathsToKeep(
   Database db,
   ReadingOrder order,
   StudySet current, {
   bool onTheWalk = true,
   String reciter = defaultReciter,
+  bool wordByWord = false,
 }) async {
   final currentIds = [for (final aya in current.ayas) aya.id];
   // An aya the reader asked for has no set after it. [nextSet] does not know
@@ -149,7 +174,11 @@ Future<List<String>> pathsToKeep(
     if (ahead != null)
       for (final aya in ahead.ayas) aya.id,
   ], reciter: reciter);
-  return [for (final track in tracks) track.relPath];
+  return [
+    for (final track in tracks) track.relPath,
+    if (wordByWord)
+      for (final track in tracks) ...track.wordFiles.values,
+  ];
 }
 
 /// The word sounding at [ms] in the track at [index].
@@ -257,6 +286,12 @@ class AudioCache {
 
   File fileFor(String relPath) => File('${dir.path}/${_name(relPath)}');
 
+  /// A word's own recording lives on its own host; everything else is a
+  /// reciter's folder on [origin].
+  String urlFor(String relPath) => relPath.startsWith('wbw/')
+      ? '$wordAudioOrigin$relPath'
+      : '$origin$relPath';
+
   /// The file if it is already on disk, and never a request. A long press has
   /// to answer at once or not at all.
   File? cached(String relPath) {
@@ -286,7 +321,7 @@ class AudioCache {
         continue;
       }
       try {
-        final body = await _fetch('$origin$rel');
+        final body = await _fetch(urlFor(rel));
         if (body.isEmpty) continue;
         await file.writeAsBytes(body, flush: true);
         written = true;
@@ -320,10 +355,20 @@ class AudioCache {
 /// The recitation of one set: plays it, says which word is sounding, and
 /// speaks a single word on demand.
 class SetAudio {
-  SetAudio({required this.cache, required this.tracks});
+  SetAudio({
+    required this.cache,
+    required this.tracks,
+    this.wordByWord = false,
+  });
 
   final AudioCache cache;
   final List<AyaTrack> tracks;
+
+  /// Whether a tapped word plays its own recording, spoken alone, rather than
+  /// the stretch of the reciter's aya it falls in. Set from the reader's
+  /// choice and changed in place: the set's own recitation does not depend on
+  /// it.
+  bool wordByWord;
 
   final currentWordId = ValueNotifier<int?>(null);
   final playing = ValueNotifier<bool>(false);
@@ -391,18 +436,37 @@ class SetAudio {
   /// recomputed, because `cached` is an `existsSync` and the word row rebuilds
   /// every 40 ms while the set plays.
   Set<int> get speakable {
-    if (_speakableAt != cache.revision) {
+    if (_speakableAt != cache.revision || _speakableAlone != wordByWord) {
       _speakableAt = cache.revision;
+      _speakableAlone = wordByWord;
       _speakable = {
-        for (final track in tracks)
+        for (final track in tracks) ...[
           if (cache.cached(track.relPath) != null)
             for (final span in track.segments) span.wordId,
+          if (wordByWord)
+            for (final MapEntry(key: word, value: path)
+                in track.wordFiles.entries)
+              if (cache.cached(path) != null) word,
+        ],
       };
     }
     return _speakable;
   }
 
-  /// Plays one word out of its aya's file. False means that file was never
+  bool? _speakableAlone;
+
+  /// The word's own recording if the reader asked for those and it is on
+  /// disk, else null.
+  File? _alone(int wordId) {
+    if (!wordByWord) return null;
+    for (final track in tracks) {
+      if (track.wordFiles[wordId] case final path?) return cache.cached(path);
+    }
+    return null;
+  }
+
+  /// Plays one word: its own recording when the reader chose those and it is
+  /// on disk, else its stretch of its aya's file. False means neither was
   /// downloaded, or the platform refused it: the caller shows the
   /// transliteration, and nothing spins.
   ///
@@ -413,19 +477,24 @@ class SetAudio {
   /// keeps a superseded word, and the set's own position stream, from writing
   /// over the word that superseded them.
   Future<bool> playWord(int wordId) async {
-    final found = locate(tracks, wordId);
-    if (found == null) return false;
-    final file = cache.cached(found.track.relPath);
+    final alone = _alone(wordId);
+    final found = alone == null ? locate(tracks, wordId) : null;
+    final file =
+        alone ?? (found == null ? null : cache.cached(found.track.relPath));
     if (file == null) return false;
     final token = ++_turn;
     try {
       final player = _player ??= AudioPlayer();
       await player.pause();
       await player.setAudioSource(AudioSource.file(file.path));
-      await player.setClip(
-        start: clipStart(found.span.startMs),
-        end: Duration(milliseconds: found.span.endMs),
-      );
+      // A word's own file is the word, start to end; only a stretch of the
+      // reciter's aya needs cutting out.
+      if (found != null) {
+        await player.setClip(
+          start: clipStart(found.span.startMs),
+          end: Duration(milliseconds: found.span.endMs),
+        );
+      }
       if (token != _turn) return true;
       currentWordId.value = wordId;
       playing.value = true;

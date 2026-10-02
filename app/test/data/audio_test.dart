@@ -357,16 +357,20 @@ void main() {
 
   test('a reciter a later corpus dropped leaves the reader with no recitation '
       'at all', () async {
-    await setAudioPref(db, 'a-reciter-no-corpus-carries');
-    expect(await audioPref(db), defaultReciter);
+    await setAudioPref(
+      db,
+      reciter: 'a-reciter-no-corpus-carries',
+      wordByWord: true,
+    );
+    expect(await audioPref(db), (reciter: defaultReciter, wordByWord: true));
     expect(
-      await db.query('audio_pref'),
-      isEmpty,
-      reason: 'the stale choice is cleared rather than kept and ignored',
+      (await db.query('audio_pref')).single['reciter'],
+      defaultReciter,
+      reason: 'the stale choice is replaced rather than kept and ignored',
     );
 
-    await setAudioPref(db, 'alafasy');
-    expect(await audioPref(db), 'alafasy');
+    await setAudioPref(db, reciter: 'alafasy', wordByWord: false);
+    expect(await audioPref(db), (reciter: 'alafasy', wordByWord: false));
     await db.delete('audio_pref');
   });
 
@@ -383,5 +387,83 @@ void main() {
       [for (final f in dir.listSync()) f.uri.pathSegments.last],
       ['Alafasy_128kbps_096001.mp3'],
     );
+  });
+
+  test('a word spoken alone is the file of the word beside it, because the '
+      'word-by-word files count the pause marks as words', () async {
+    // 12:1 opens on the letters alif lam ra, which the word-by-word files
+    // number as two: the text's second word is the third file.
+    final track = (await tracksFor(db, [12001])).single;
+    expect(track.wordFiles[12001002], 'wbw/012_001_003.mp3');
+  });
+
+  test('the words of the set are not fetched for a reader who asked to hear '
+      'each word alone, so a tapped word is silent offline', () async {
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    final cdn = FakeCdn();
+    await AudioCache(await tempAudioDir(), fetch: cdn.call).prefetch(
+      await pathsToKeep(
+        db,
+        ReadingOrder.nuzul,
+        set,
+        onTheWalk: false,
+        wordByWord: true,
+      ),
+    );
+    expect(cdn.served, contains('${wordAudioOrigin}wbw/096_001_001.mp3'));
+    expect(
+      cdn.served,
+      contains('${defaultAudioOrigin}Husary_Muallim_128kbps/096001.mp3'),
+      reason: 'the set\'s own recitation still comes with it',
+    );
+  });
+
+  test('a word the reader asked to hear alone plays a stretch of the '
+      'reciter\'s aya instead', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final dir = await tempAudioDir();
+    // Only the word's own file is on the phone, not its aya's.
+    await AudioCache(
+      dir,
+      fetch: FakeCdn().call,
+    ).prefetch([tracks.first.wordFiles[96001001]!]);
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: AudioCache(dir, fetch: RadioOff().call),
+      tracks: tracks,
+      wordByWord: true,
+    );
+
+    expect(audio.speakable, contains(96001001));
+    final played = audio.playWord(96001001);
+    await pumpEventQueue();
+    players.only.finish();
+    expect(await played, isTrue);
+    expect(players.only.loaded.single, contains('wbw_096_001_001.mp3'));
+    expect(
+      players.only.loaded.single,
+      isNot(contains('clipping')),
+      reason: 'the file is the word, start to end',
+    );
+  });
+
+  test('a word with no recording of its own falls silent instead of playing '
+      'its stretch of the aya', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: await cacheHolding(firstSet),
+      tracks: tracks,
+      wordByWord: true,
+    );
+
+    final played = audio.playWord(96001001);
+    await pumpEventQueue();
+    players.only.finish();
+    expect(await played, isTrue);
+    // setClip reloads the source wrapped in the clip, so the clip is last.
+    expect(players.only.loaded.last, contains('clipping'));
   });
 }
