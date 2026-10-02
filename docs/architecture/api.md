@@ -105,7 +105,8 @@ flowchart TB
 | `API_ADDR` | `:8080` | The listen address. [main.go:39](../../server/cmd/api/main.go#L39) |
 | `WIRD_ANDROID_SHA256` | unset, so 404 | Signing-key fingerprints for `assetlinks.json`. [applinks.go:37](../../server/internal/api/applinks.go#L37) |
 | `WIRD_MODELS_S3_*` | unset, so models answer "not configured" | Bucket, endpoint, key pair and region of the voice model store. [models.go:48-68](../../server/internal/api/models.go#L48-L68) |
-| `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. [apk.go:21](../../server/internal/api/apk.go#L21) |
+| `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. [apk.go:22](../../server/internal/api/apk.go#L22) |
+| `WIRD_APK_VERSION` | unset, so `/download/android/version` answers 204 and the page prints plain "APK" | The release that key is, printed beside the page's Download button. Set by `apk.yml` together with the key. [apk.go:47](../../server/internal/api/apk.go#L47) |
 
 Migrations are embedded in the binary. The server and the test database both come up through `Open`, so a migration cannot work in one and fail in the other. [store.go:28-55](../../server/internal/store/store.go#L28-L55)
 
