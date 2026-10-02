@@ -285,4 +285,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Recite Al-'Asr 2–3"), findsOneWidget);
   });
+
+  testWidgets('the range step counts the pause marks of the muṣḥaf as words, '
+      'so it says a passage takes longer than Prepare says it does', (
+    tester,
+  ) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await openTheList(tester);
+    // 2:2 has seven words and two pause marks between them: nine at 40
+    // words a minute is about 15 s, seven is about 10.
+    await tester.enterText(find.byType(TextField), '2:2');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Go to Al-Baqarah 2:2'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 aya · about 10 s · Juzʾ 1'), findsOneWidget);
+  });
+
+  testWidgets('a rakʿah set to Al-Fātiḥa only reopens its chooser with '
+      'nothing to say what it recites', (tester) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    await tester.tap(find.byKey(const Key('passage 2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Al-Fātiḥa only'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('passage 2')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('current')), findsOneWidget);
+  });
 }

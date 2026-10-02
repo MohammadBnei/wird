@@ -418,8 +418,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String range_about(int count, String place, int order) {
-    return '$count ayas · $place · revealed $order of 114';
+  String range_about(int count, String place, String order) {
+    return '$count ayas · $place · $order of 114 revealed';
   }
 
   @override

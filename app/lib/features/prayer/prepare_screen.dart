@@ -200,12 +200,37 @@ class _PrepareScreenState extends State<PrepareScreen> {
   });
 
   Future<void> _choose(int r) async {
+    // One chooser at a time: the suggestion is read before the chooser is
+    // pushed, and a second tap in that moment would stack a second one.
+    if (_choosing) return;
+    _choosing = true;
+    try {
+      await _chooseFor(r);
+    } finally {
+      _choosing = false;
+    }
+  }
+
+  var _choosing = false;
+
+  Future<void> _chooseFor(int r) async {
     final loaded = _loaded!;
     // A later rakʿah is offered the ayas after the first's passage as it is
-    // now, not as it was when the preparation opened.
-    final after = r > 1
-        ? await passageAfter(widget.db, _first, loaded.order, loaded.suras)
-        : null;
+    // now, not as it was when the preparation opened. A database that will
+    // not say what follows costs the suggestion, not the chooser.
+    StudySet? after;
+    if (r > 1) {
+      try {
+        after = await passageAfter(
+          widget.db,
+          _first,
+          loaded.order,
+          loaded.suras,
+        );
+      } on Object {
+        after = null;
+      }
+    }
     if (!mounted) return;
     final choice = await Navigator.of(context).push<PassageChoice>(
       MaterialPageRoute(

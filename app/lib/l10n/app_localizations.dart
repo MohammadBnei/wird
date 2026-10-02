@@ -764,8 +764,8 @@ abstract class AppLocalizations {
   /// Under the sūra's name at the top of the range step.
   ///
   /// In en, this message translates to:
-  /// **'{count} ayas · {place} · revealed {order} of 114'**
-  String range_about(int count, String place, int order);
+  /// **'{count} ayas · {place} · {order} of 114 revealed'**
+  String range_about(int count, String place, String order);
 
   /// Above the sūra's ayas in the range step, before a tap.
   ///

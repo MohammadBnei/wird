@@ -6,7 +6,7 @@ Style: caveman lite. Full sentences, short, no filler. A reader with no context 
 
 ## Context
 
-The index and the prayer's passage chooser draw one shared list, `SuraPicker` ([sura_picker.dart](../../app/lib/features/index/sura_picker.dart#L104-L153)). Until now it listed the sūras in the reading order from Settings, which defaults to revelation order, and searched only sūra names, numbers and a reference such as `2:255`.
+The index and the prayer's passage chooser draw one shared list, `SuraPicker` ([sura_picker.dart](../../app/lib/features/index/sura_picker.dart#L118-L167)). Until now it listed the sūras in the reading order from Settings, which defaults to revelation order, and searched only sūra names, numbers and a reference such as `2:255`.
 
 The updated design (`docs/design/sura-picker.html`, used by `docs/design/wird-prayer.html`) adds two things:
 
@@ -23,9 +23,10 @@ The corpus already ships every aya's Uthmani text, Pickthall's English and Rashi
 - Given the database, the picker also searches:
   - the ayas whose Arabic, English or French holds the query;
   - the ayas that carry a root typed as letters or as its transliteration.
-- The text is read once per database into memory and folded the way a query is folded ([aya_search.dart](../../app/lib/features/index/aya_search.dart#L23-L152)):
-  - Arabic through `recitationKey`, with the waṣl alif kept as an alif.
-  - Latin through `foldLatin`, which now also folds French accents.
+- The text is read once per database into memory and folded the way a query is folded ([aya_search.dart](../../app/lib/features/index/aya_search.dart#L25-L188)):
+  - Arabic through `recitationKey`, with the long ā left out on both sides — every alif, the dagger alif, and the wāw or yāʾ that carries one — because the muṣḥaf writes ٱلرَّحْمَـٰنِ and ٱلصَّلَوٰةَ where a reader types الرحمن and الصلاة.
+  - Latin through `foldLetters`, which drops the marks of transliteration and French, so `hmd` finds ḥ-m-d and "priere" finds « prière ».
+- Hits are worked out once per query, outside the sūras the screen leaves out, never inside the widget's build.
 - The root lookup reads the same `words.root_letters` as the constellation.
 
 ## Alternatives
@@ -36,9 +37,9 @@ The corpus already ships every aya's Uthmani text, Pickthall's English and Rashi
 
 ## Consequences
 
-- Opening the picker reads about 2.5 M characters once per session. On a slow phone this is the first thing to measure.
+- Opening the picker reads and folds about 2.5 M characters once per session, on the UI isolate, and keeps about 10 MB. On a slow phone this is the first thing to measure.
 - A query of under three letters finds no ayas, and a root is looked for only when the query is two to four Arabic letters or a short transliteration.
-- Words are matched as folded substrings, spaces removed, so a short English word can match inside a longer one.
+- Words are matched as folded substrings, spaces removed, so a short English word can match inside a longer one. Folding meets ḥ and h, so `hmd` names both ḥ-m-d and h-m-d; the root spelled as typed comes first.
 
 ## Reversibility
 

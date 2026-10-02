@@ -66,15 +66,26 @@ List<SuraEntry> searchSuras(List<SuraEntry> suras, String query) {
   ];
 }
 
-/// Latin text reduced to plain letters, so `Al-Fātiḥa`, `fatiha` and
-/// `Al-Fatihah` meet, and so do « prière » and "priere". The corpus spells its
-/// names in plain ASCII and the reader may not, so both sides fold. Spaces and
-/// punctuation go too: the aya search matches across them.
-///
-/// ponytail: a table of the marks sūra-name transliterations and French use,
-/// not a Unicode decomposition. Dart has none built in; widen the table if a
-/// word turns up that it misses.
+/// A sūra's name reduced to plain letters, so `Al-Fātiḥa`, `fatiha` and
+/// `Al-Fatihah` meet. The corpus spells its names in plain ASCII and the
+/// reader may not, so both sides fold.
 String foldLatin(String s) {
+  // A trailing h is how half the transliterations end a tāʾ marbūṭa and the
+  // other half do not, so it never decides a match between names. Only
+  // names: in running text, "faith" would turn into the French "fait".
+  final folded = foldLetters(s);
+  return folded.endsWith('h') ? folded.substring(0, folded.length - 1) : folded;
+}
+
+/// Latin text reduced to lower-case letters and digits, with the marks of a
+/// transliteration and of French folded away — « prière » and "priere" meet,
+/// and so do `ḥ-m-d` and "hmd". Spaces, punctuation, ʿ and ʾ go too: the aya
+/// search matches across them.
+///
+/// ponytail: a table of the marks transliterations and French use, not a
+/// Unicode decomposition. Dart has none built in; widen the table if a word
+/// turns up that it misses.
+String foldLetters(String s) {
   const marks = {
     'ā': 'a', 'á': 'a', 'à': 'a', 'â': 'a', 'ī': 'i', 'í': 'i', 'î': 'i', //
     'ū': 'u', 'ú': 'u', 'û': 'u', 'ḥ': 'h', 'ṣ': 's', 'ḍ': 'd', 'ṭ': 't', //
@@ -82,14 +93,17 @@ String foldLatin(String s) {
     'ö': 'o', 'ù': 'u', 'ü': 'u', 'ç': 'c', 'œ': 'oe', 'æ': 'ae',
   };
   final out = StringBuffer();
-  for (final ch in s.toLowerCase().split('')) {
-    final plain = marks[ch] ?? ch;
-    if (RegExp('[a-z0-9]').hasMatch(plain)) out.write(plain);
+  // Code units rather than a split and a pattern per character: this folds
+  // the whole of two translations, 1.7 million characters, as a picker opens.
+  for (final unit in s.toLowerCase().codeUnits) {
+    if ((unit >= 0x61 && unit <= 0x7A) || (unit >= 0x30 && unit <= 0x39)) {
+      out.writeCharCode(unit);
+    } else if (unit >= 0x80) {
+      final plain = marks[String.fromCharCode(unit)];
+      if (plain != null) out.write(plain);
+    }
   }
-  // A trailing h is how half the transliterations end a tāʾ marbūṭa and the
-  // other half do not, so it never decides a match.
-  final folded = out.toString();
-  return folded.endsWith('h') ? folded.substring(0, folded.length - 1) : folded;
+  return out.toString();
 }
 
 /// The one list a reader chooses a sūra from, wherever they choose one: the
@@ -159,9 +173,11 @@ class _SuraPickerState extends State<SuraPicker> {
 
   AyaSearch? _search;
 
-  /// The roots the query names, once read, and the query they were read for:
-  /// a slow answer to an old query is dropped.
-  ({String query, List<RootHit> roots})? _roots;
+  /// What the query found in the text, worked out once per query rather than
+  /// on every build: the scan is the whole Qur'an in three languages. The
+  /// query it was found for is kept, so a slow answer to an old query is
+  /// dropped.
+  ({String query, List<AyaHit> words, List<RootHit> roots})? _hits;
 
   @override
   void initState() {
@@ -171,8 +187,8 @@ class _SuraPickerState extends State<SuraPicker> {
     if (widget.db case final db?) {
       unawaited(
         AyaSearch.of(db).then((s) {
-          if (mounted) setState(() => _search = s);
-          _readRoots();
+          _search = s;
+          _find();
         }, onError: (Object _) {}),
       );
     }
@@ -192,16 +208,20 @@ class _SuraPickerState extends State<SuraPicker> {
 
   void _type(String q) {
     setState(() => _query = q);
-    _readRoots();
+    _find();
   }
 
-  Future<void> _readRoots() async {
+  Future<void> _find() async {
     final search = _search;
     final q = _query.trim();
-    if (search == null) return;
-    final roots = await search.roots(q);
+    if (search == null || q.isEmpty) return;
+    // A reference is not words, and the digits of one are in no aya.
+    final words = RegExp(r'^[\d\s:.]+$').hasMatch(q)
+        ? const <AyaHit>[]
+        : search.words(q, exclude: widget.exclude);
+    final roots = await search.roots(q, exclude: widget.exclude);
     if (mounted && _query.trim() == q) {
-      setState(() => _roots = (query: q, roots: roots));
+      setState(() => _hits = (query: q, words: words, roots: roots));
     }
   }
 
@@ -323,30 +343,18 @@ class _SuraPickerState extends State<SuraPicker> {
       for (final s in searchSuras(widget.suras, query))
         if (!widget.exclude.contains(s.id)) s,
     ], _order);
+    final hits = _hits?.query == query ? _hits : null;
     final roots = [
-      if (_roots case (query: final q, :final roots) when q == query)
-        for (final r in roots)
-          (
-            r: r,
-            ayas: [
-              for (final a in r.ayas)
-                if (_offered(a.id)) a,
-            ],
-          ),
-    ].where((r) => r.ayas.isNotEmpty).toList();
-    // A reference is not words, and the digits of one are in no aya.
-    final words = ref != null || RegExp(r'^[\d\s:.]+$').hasMatch(query)
-        ? const <AyaHit>[]
-        : [
-            for (final a in _search?.words(query, limit: 12) ?? const [])
-              if (_offered(a.id)) a,
-          ].take(6).toList();
+      for (final r in hits?.roots ?? const <RootHit>[])
+        if (r.ayas.isNotEmpty) r,
+    ];
+    final words = ref != null ? const <AyaHit>[] : hits?.words ?? const [];
     final items = <Widget Function()>[
       if (ref != null) () => _goTo(n, l, ref),
       if (suras.isNotEmpty) () => _header(n, l.picker_suras),
       for (final s in suras) () => _row(n, l, s),
       for (final r in roots) ...[
-        () => _header(n, l.picker_root(r.r.display, r.r.translit)),
+        () => _header(n, l.picker_root(r.display, r.translit)),
         for (final a in r.ayas) () => _aya(n, a),
       ],
       if (words.isNotEmpty) () => _header(n, l.picker_containing(query)),
@@ -535,7 +543,7 @@ class _SuraPickerState extends State<SuraPicker> {
                               // second count.
                               Text(
                                 l.index_revealed_nth(
-                                  _ordinal(
+                                  ordinal(
                                     Localizations.localeOf(context)
                                         .languageCode,
                                     sura.revelationOrder,
@@ -590,7 +598,7 @@ class _SuraPickerState extends State<SuraPicker> {
 ///
 // ponytail: two languages, inline. A third locale means a real ordinal
 // formatter — reach for one then, not now.
-String _ordinal(String languageCode, int n) {
+String ordinal(String languageCode, int n) {
   if (languageCode == 'fr') return n == 1 ? '${n}re' : '${n}e';
   final suffix = n % 100 >= 11 && n % 100 <= 13
       ? 'th'

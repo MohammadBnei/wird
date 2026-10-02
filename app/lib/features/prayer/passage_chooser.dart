@@ -88,8 +88,11 @@ class _PassageChooserState extends State<PassageChooser> {
   ({int sura, int from, int to})? _range;
   StudySet? _ranged;
 
-  /// The Arabic of the sūra the range is in, one entry an aya, once read.
-  ({int sura, List<String> ayas})? _text;
+  /// The Arabic of the sūra the range is in, one entry an aya, once read,
+  /// and how many words each aya has — counted in the corpus's words, as
+  /// every other screen counts them, not by the spaces of the Uthmani text,
+  /// which also part off the pause marks.
+  ({int sura, List<String> ayas, List<int> words})? _text;
 
   /// Each aya's row, so the range and the overview bar can scroll to it.
   final _rows = <int, GlobalKey>{};
@@ -121,18 +124,21 @@ class _PassageChooserState extends State<PassageChooser> {
   }
 
   Future<void> _readText(int sura, int from) async {
-    final rows = await widget.db.query(
-      'ayahs',
-      columns: ['text_uthmani'],
-      where: 'surah_id = ?',
-      whereArgs: [sura],
-      orderBy: 'number',
+    final rows = await widget.db.rawQuery(
+      '''
+      SELECT a.text_uthmani AS ar,
+             (SELECT COUNT(*) FROM words w WHERE w.ayah_id = a.id) AS words
+        FROM ayahs a
+       WHERE a.surah_id = ?
+       ORDER BY a.number''',
+      [sura],
     );
     if (!mounted || _range?.sura != sura) return;
     setState(
       () => _text = (
         sura: sura,
-        ayas: [for (final r in rows) r['text_uthmani']! as String],
+        ayas: [for (final r in rows) r['ar']! as String],
+        words: [for (final r in rows) r['words']! as int],
       ),
     );
     _show(from);
@@ -233,7 +239,11 @@ class _PassageChooserState extends State<PassageChooser> {
                                   sura.madani
                                       ? l.picker_madani
                                       : l.picker_makki,
-                                  sura.revelationOrder,
+                                  ordinal(
+                                    Localizations.localeOf(context)
+                                        .languageCode,
+                                    sura.revelationOrder,
+                                  ),
                                 ),
                           style: TextStyle(
                             fontSize: 11.5,
@@ -256,6 +266,7 @@ class _PassageChooserState extends State<PassageChooser> {
   }
 
   Widget _list(Nocturne n, AppLocalizations l) {
+    final current = widget.current;
     final later = widget.rakah > 1;
     final suggested = later ? widget.after : widget.continuing;
     return SuraPicker(
@@ -285,12 +296,14 @@ class _PassageChooserState extends State<PassageChooser> {
             n,
             l.chooser_same,
             passageTitle(widget.first!, widget.suras),
+            marked: current?.same ?? false,
             onTap: () => _choose((set: null, same: true)),
           ),
         _suggestion(
           n,
           l.chooser_fatiha_only,
           l.chooser_fatiha_only_hint,
+          marked: current != null && current.set == null && !current.same,
           onTap: () => _choose((set: null, same: false)),
         ),
         if (widget.recent.isNotEmpty)
@@ -310,6 +323,7 @@ class _PassageChooserState extends State<PassageChooser> {
                 widget.wpm,
               ),
             ].join(' · '),
+            marked: !(current?.same ?? false) && current?.set?.id == set.id,
             onTap: () => _offer(set),
           ),
       ],
@@ -380,6 +394,7 @@ class _PassageChooserState extends State<PassageChooser> {
     Nocturne n,
     String title,
     String? sub, {
+    bool marked = false,
     required VoidCallback onTap,
   }) => InkWell(
     onTap: onTap,
@@ -406,6 +421,18 @@ class _PassageChooserState extends State<PassageChooser> {
               ],
             ),
           ),
+          // What the rakʿah recites now: the one sign of it on a choice that
+          // has no range to open on, such as Al-Fātiḥa only.
+          if (marked)
+            Container(
+              key: const Key('current'),
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: n.accent,
+              ),
+            ),
           Icon(Icons.chevron_right, size: 15, color: n.textAt(0.45)),
         ],
       ),
@@ -442,8 +469,6 @@ class _PassageChooserState extends State<PassageChooser> {
     _show(from);
   }
 
-  int _words(String aya) => aya.split(' ').where((w) => w.isNotEmpty).length;
-
   Widget _rangeStep(
     Nocturne n,
     AppLocalizations l,
@@ -451,18 +476,20 @@ class _PassageChooserState extends State<PassageChooser> {
   ) {
     final count = widget.suras[range.sura - 1].ayahCount;
     final set = _ranged;
-    final text = _text?.sura == range.sura ? _text!.ayas : null;
+    final read = _text?.sura == range.sura ? _text : null;
+    final text = read?.ayas;
     final k = range.to - range.from + 1;
-    final words = text == null
+    final words = read == null
         ? null
-        : [for (var a = range.from; a <= range.to; a++) _words(text[a - 1])]
+        : [for (var a = range.from; a <= range.to; a++) read.words[a - 1]]
               .fold<int>(0, (x, y) => x + y);
     // The end a minute of recitation reaches from the range's first aya.
     int minute() {
+      final counts = read!.words;
       var t = range.from;
-      var said = _words(text![t - 1]);
+      var said = counts[t - 1];
       while (t < count && said * 60 / widget.wpm < 60) {
-        said += _words(text[t]);
+        said += counts[t];
         t++;
       }
       return t;

@@ -382,7 +382,7 @@
   "study_form": "Forme",
   "prepare_trouble": "Le Coran n'a pas pu être lu sur cet appareil. Réessayez ; si cela persiste, fermez Wird et rouvrez-le.",
   "prepare_retry": "Réessayer",
-  "range_about": "{count} versets · {place} · {order}e révélée sur 114",
+  "range_about": "{count} versets · {place} · {order} révélée sur 114",
   "range_tap_hint": "Touchez le premier verset, puis le dernier",
   "range_last_hint": "Touchez maintenant le dernier verset",
   "range_meta": "{count, plural, =1{1 verset} other{{count} versets}} · {time} · Juzʾ {juz}",
