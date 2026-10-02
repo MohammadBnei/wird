@@ -162,6 +162,7 @@ class SoundingNow extends StatelessWidget {
                     Text(
                       switch (sounding.what) {
                         Sounded.word => l10n.shell_soundingWord,
+                        Sounded.aya => l10n.shell_recitingAya,
                         Sounded.set => l10n.shell_recitingSet,
                       },
                       style: TextStyle(
@@ -192,6 +193,23 @@ class SoundingNow extends StatelessWidget {
                   ],
                 ),
               ),
+              // A set can be paused and carried on from any screen, not only
+              // from the reading screen's button; a word is too short to.
+              if (sounding.what != Sounded.word)
+                ValueListenableBuilder<bool>(
+                  valueListenable: recitation.playing,
+                  builder: (context, playing, _) => IconButton(
+                    key: const Key('pause sounding'),
+                    tooltip: playing
+                        ? l10n.study_pauseRecitation
+                        : l10n.study_recite,
+                    onPressed: recitation.toggle,
+                    icon: Icon(
+                      playing ? Icons.pause : Icons.play_arrow,
+                      color: n.color('accent-300'),
+                    ),
+                  ),
+                ),
               // The bare glyph was a 12px lilac square at the edge of the bar,
               // which is a stray mark rather than the only way to silence a
               // recitation. The outline is how this system says "control", and

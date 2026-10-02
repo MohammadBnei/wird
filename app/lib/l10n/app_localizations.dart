@@ -2045,6 +2045,18 @@ abstract class AppLocalizations {
   /// **'SOUNDING ONE WORD'**
   String get shell_soundingWord;
 
+  /// The eyebrow of the bar at the foot of every screen while one aya is recited on its own.
+  ///
+  /// In en, this message translates to:
+  /// **'RECITING ONE AYA'**
+  String get shell_recitingAya;
+
+  /// Tooltip of the play button beside the open aya's reference, which recites that one aya alone.
+  ///
+  /// In en, this message translates to:
+  /// **'Recite this aya'**
+  String get study_reciteAya;
+
   /// The eyebrow of the bar at the foot of every screen while the whole set is being recited.
   ///
   /// In en, this message translates to:

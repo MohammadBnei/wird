@@ -1180,6 +1180,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shell_soundingWord => 'UN MOT EN LECTURE';
 
   @override
+  String get shell_recitingAya => 'RÉCITATION D’UN VERSET';
+
+  @override
+  String get study_reciteAya => 'Réciter ce verset';
+
+  @override
   String get shell_recitingSet => 'RÉCITATION DU PASSAGE';
 
   @override

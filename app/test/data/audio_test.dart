@@ -558,4 +558,21 @@ void main() {
     );
     await recitation.stop();
   });
+
+  test('the aya the reader asked to hear plays the whole set from its first '
+      'aya', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(cache: await cacheHolding(firstSet), tracks: tracks);
+
+    final played = audio.playAya(96003);
+    await pumpEventQueue();
+    final loaded = players.only.loaded.last;
+    expect(loaded, contains('096003'));
+    expect(loaded, isNot(contains('096001')));
+    expect(loaded, isNot(contains('096004')));
+    players.only.finish();
+    expect(await played, isTrue);
+  });
 }

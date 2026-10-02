@@ -201,7 +201,7 @@ That write, like every other write, goes to the **outbox** inside the same trans
 
 ### 6. The network, and who calls it
 
-Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:144](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the two audio hosts into one capped cache; it never reaches `wird-api`. Which reciter, and whether a word plays alone, is a device-local choice in Settings ([ADR 0023](../adr/0023-six-reciters-and-a-word-by-word-voice.md)). Each reciter can be heard on the basmala before choosing, through `Recitation.sample`, which fetches one file without touching the set's pins. While a set plays, the bar names who recites it.
+Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:144](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the two audio hosts into one capped cache; it never reaches `wird-api`. Which reciter, and whether a word plays alone, is a device-local choice in Settings ([ADR 0023](../adr/0023-six-reciters-and-a-word-by-word-voice.md)). Each reciter can be heard on the basmala before choosing, through `Recitation.sample`, which fetches one file without touching the set's pins. While a set plays, the bar names who recites it. The reading screen's button and the bar both pause and resume where the recitation stopped, and the aya being read has its own button, beside its number, that recites it alone.
 
 ```mermaid
 flowchart LR
