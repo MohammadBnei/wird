@@ -212,7 +212,7 @@ The sūra comes from [`ayaSet`](../../../app/lib/data/sets.dart#L295-L337), whos
 
 ### 6. The sūra list is lazy both ways
 
-A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:589](../../../app/lib/features/study/study_screen.dart#L589-L610)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:745](../../../app/lib/features/study/study_screen.dart#L745-L766), [sets.dart:385](../../../app/lib/data/sets.dart#L385-L415)).
+A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:589](../../../app/lib/features/study/study_screen.dart#L589-L610)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:764](../../../app/lib/features/study/study_screen.dart#L764-L785), [sets.dart:385](../../../app/lib/data/sets.dart#L385-L415)).
 
 Each word arrives with its English gloss and, where The Last Dialogue's pages carry it, its French one ([ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md)). Each aya's translation, Pickthall's English or Rashid Maash's French, sits under it unless the reader turns it off in Settings ([ADR 0017](../../adr/0017-ayas-are-translated-into-english-from-pickthall.md)).
 
@@ -257,7 +257,7 @@ The root letters open the root's own screen. A screen that names an aya answers 
 - a root, its spine and the constellation, which call one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39));
 - Progress (1d), whose "All 114" opens the index and passes its answer on ([progress_screen.dart:49](../../../app/lib/features/progress/progress_screen.dart#L49-L53)).
 
-The drawer and home catch an aya too, and push the reader with it ([wird_shell.dart:229](../../../app/lib/shell/wird_shell.dart#L229-L242)).
+The drawer and home catch an aya too, and push the reader with it ([wird_shell.dart:247](../../../app/lib/shell/wird_shell.dart#L247-L260)).
 
 ### 8. Marking an aya understood
 
@@ -277,7 +277,7 @@ Future<void> prayTheSet(BuildContext context, StudySet set) async {
 }
 ```
 
-[app.dart:386](../../../app/lib/app.dart#L386-L390). Home also has a "Prepare a prayer" door, which opens the same screen with no set ([dashboard_screen.dart:284](../../../app/lib/features/dashboard/dashboard_screen.dart#L284-L288)).
+[app.dart:416](../../../app/lib/app.dart#L416-L420). Home also has a "Prepare a prayer" door, which opens the same screen with no set ([dashboard_screen.dart:284](../../../app/lib/features/dashboard/dashboard_screen.dart#L284-L288)).
 
 #### The preparation
 
