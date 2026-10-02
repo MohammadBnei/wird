@@ -78,6 +78,10 @@ class _StudyScreenState extends State<StudyScreen> {
   /// the sūra until they go back.
   RootAya? _away;
 
+  /// Every sūra's place in both orders, for the links to the ones beside
+  /// this one. Read once.
+  List<SurahPlace> _suras = const [];
+
   bool _loaded = false;
   int _generation = 0;
   Locale? _readIn;
@@ -174,6 +178,8 @@ class _StudyScreenState extends State<StudyScreen> {
     final rendered = await translationsFor(widget.db, [
       for (final aya in surah.reading) aya.id,
     ], lang);
+    if (!mounted || generation != _generation) return;
+    if (_suras.isEmpty) _suras = await surahPlaces(widget.db);
     if (!mounted || generation != _generation) return;
     final words = {
       for (final aya in surah.reading)
@@ -673,13 +679,77 @@ class _StudyScreenState extends State<StudyScreen> {
               childCount: ayas.length - focus,
             ),
           ),
-          SliverToBoxAdapter(child: SizedBox(height: n.space('8'))),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: n.space('8')),
+              child: _suraNav(n, ayas.first.surahId),
+            ),
+          ),
         ],
       ),
     );
   }
 
+  /// The sūras either side of this one in the order the reader chose, at the
+  /// top of the sūra and again at its end. Read from the order on every
+  /// build, so switching it in the settings moves the links without a reload.
+  Widget _suraNav(Nocturne n, int surahId) {
+    final l = AppLocalizations.of(context)!;
+    final style = TextStyle(fontSize: 12, color: n.textAt(0.62));
+    Widget link(int by) {
+      final to = surahBeside(_suras, _prefs.order, surahId, by);
+      if (to == null) return const Spacer();
+      final icon = Icon(
+        by < 0 ? Icons.chevron_left : Icons.chevron_right,
+        size: 16,
+        color: n.textAt(0.62),
+      );
+      final name = Flexible(
+        child: Text(
+          to.nameEn,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        ),
+      );
+      return Flexible(
+        child: Tooltip(
+          message: by < 0 ? l.study_previousSura : l.study_nextSura,
+          child: TextButton(
+            key: Key(by < 0 ? 'previous sura' : 'next sura'),
+            onPressed: () => _load(target: to.id * 1000 + 1),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: by < 0 ? [icon, name] : [name, icon],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: n.space('2')),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [link(-1), link(1)],
+      ),
+    );
+  }
+
   Widget _ayaTile(Nocturne n, List<StudyAya> ayas, int index, int? recited) {
+    // Above the first aya, whether or not its words have been read yet.
+    if (index == 0) {
+      return Column(
+        children: [
+          _suraNav(n, ayas.first.surahId),
+          _ayaBody(n, ayas, index, recited),
+        ],
+      );
+    }
+    return _ayaBody(n, ayas, index, recited);
+  }
+
+  Widget _ayaBody(Nocturne n, List<StudyAya> ayas, int index, int? recited) {
     final aya = ayas[index];
     final words = _words[aya.id];
     if (words == null) {

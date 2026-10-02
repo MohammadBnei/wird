@@ -1378,6 +1378,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get study_readFromHere => 'Read this sūra from here';
 
   @override
+  String get study_previousSura => 'Previous sūra';
+
+  @override
+  String get study_nextSura => 'Next sūra';
+
+  @override
   String get study_pray => 'Pray';
 
   @override
