@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:sqflite/sqflite.dart';
 
-import 'sets.dart';
 
 /// RUNTIME FETCH ONLY. No recitation of the Qur'an was found that Wird may
 /// redistribute: every complete per-aya recording is personal-use-only, silent
@@ -156,39 +155,6 @@ Future<List<AyaTrack>> tracksFor(
           segments: byAya[id] ?? const [],
           wordFiles: wordFiles[id] ?? const {},
         ),
-  ];
-}
-
-/// The recitation files screen 1a keeps on disk: the set being studied and,
-/// while the reader is [onTheWalk], the set after it. Pinning only the current
-/// set leaves the cap free to evict the very set the reader is about to be
-/// handed. With [wordByWord], each word's own recording too, so a tapped word
-/// sounds offline in the voice the reader chose for it.
-Future<List<String>> pathsToKeep(
-  Database db,
-  ReadingOrder order,
-  StudySet current, {
-  bool onTheWalk = true,
-  String reciter = defaultReciter,
-  bool wordByWord = false,
-}) async {
-  final currentIds = [for (final aya in current.ayas) aya.id];
-  // An aya the reader asked for has no set after it. [nextSet] does not know
-  // the reader went to it and would answer with the WALK's next set, so every
-  // jump would download a set nobody is looking at — and unpin the aya that is
-  // on screen to make room for it.
-  final ahead = onTheWalk
-      ? await nextSet(db, order, alsoUnderstood: currentIds.toSet())
-      : null;
-  final tracks = await tracksFor(db, [
-    ...currentIds,
-    if (ahead != null)
-      for (final aya in ahead.ayas) aya.id,
-  ], reciter: reciter);
-  return [
-    for (final track in tracks) track.relPath,
-    if (wordByWord)
-      for (final track in tracks) ...track.wordFiles.values,
   ];
 }
 

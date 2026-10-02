@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
-import 'package:wird/data/sets.dart';
 
 import '../corpus.dart';
 import '../offline.dart';
@@ -51,20 +50,5 @@ void main() {
 
     expect(walk, hasLength(10));
     expect(cdn.served, [walk.first.split('/').last, visited.split('/').last]);
-  });
-
-  test('the aya the reader asked for drags the set the walk would have served '
-      'next onto the phone with it', () async {
-    final visited = (await ayaSet(db, ReadingOrder.nuzul, 4082))!;
-
-    final keep = await pathsToKeep(
-      db,
-      ReadingOrder.nuzul,
-      visited,
-      onTheWalk: false,
-    );
-
-    expect(keep, hasLength(1));
-    expect(keep.single, contains('004082'));
   });
 }
