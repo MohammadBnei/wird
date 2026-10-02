@@ -110,7 +110,11 @@ void main() {
     // fetched is the ayas from it on, [aheadAyas] of them; the walk's own
     // next set, Al-ʿAlaq 1–5, is not among them.
     await openStudy(tester, target: 4082);
-    await settleDownloads(tester);
+    // Until the window has landed, not a fixed number of turns: a fixed
+    // number fetched it on a Mac and only eight of ten on the CI runner.
+    for (var i = 0; i < 500 && cdn.served.length < aheadAyas; i++) {
+      await settleDownloads(tester, files: 1);
+    }
 
     expect(cdn.served, [
       for (var aya = 4082; aya < 4082 + aheadAyas; aya++)
