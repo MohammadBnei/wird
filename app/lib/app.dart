@@ -111,7 +111,8 @@ class Recitation {
   /// reciter's voice are another recitation.
   List<String> _covers = const [];
 
-  /// Which word probe owns the transport.
+  /// Which playback owns the transport: a word, an aya or the set. Each
+  /// takes the next number, and only the latest may clear the bar.
   int _probe = 0;
 
   static final _noWord = ValueNotifier<int?>(null);
@@ -193,6 +194,10 @@ class Recitation {
       await set.toggle();
       return;
     }
+    // Whoever starts something next owns the bar: this call clears it after
+    // the set stops only if nothing was started over it meanwhile — a word,
+    // an aya, or this same set again.
+    final probe = ++_probe;
     // Resuming keeps what the bar already says: the set, or the one aya.
     if (!set.paused) {
       if (!set.ready) return;
@@ -202,9 +207,7 @@ class Recitation {
       );
     }
     await set.toggle();
-    if (identical(_set, set) &&
-        !set.paused &&
-        sounding.value?.what != Sounded.word) {
+    if (identical(_set, set) && probe == _probe && !set.paused) {
       sounding.value = null;
     }
   }
@@ -215,12 +218,12 @@ class Recitation {
     final set = _set;
     if (set == null) return false;
     await stopSample();
+    // The same aya tapped twice is two plays with one label: the number, not
+    // the label, says which of them still owns the bar.
+    final probe = ++_probe;
     sounding.value = (what: Sounded.aya, label: label);
     final played = await set.playAya(ayahId);
-    if (identical(_set, set) &&
-        !set.paused &&
-        sounding.value?.what == Sounded.aya &&
-        sounding.value?.label == label) {
+    if (identical(_set, set) && probe == _probe && !set.paused) {
       sounding.value = null;
     }
     return played;

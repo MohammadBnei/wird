@@ -445,7 +445,9 @@ class SetAudio {
     final player = _player;
     if (playing.value) {
       playing.value = false;
-      _paused = true;
+      // Only the set's own playback has a place to resume from; a word paused
+      // here is simply over.
+      _paused = _setTurn == _turn;
       await player?.pause();
       return;
     }
@@ -490,6 +492,11 @@ class SetAudio {
     final turn = _setTurn = ++_turn;
     try {
       final player = _player ??= AudioPlayer();
+      // A player that reached the end of an aya still reports itself playing,
+      // and its next play() answers at once: the aya tapped "again" would
+      // sound with the bar and the highlight already gone. playWord pauses
+      // first for the same reason.
+      await player.pause();
       await player.setAudioSources([
         for (final track in tracks.skip(first).take(count))
           AudioSource.file(cache.fileFor(track.relPath).path),
