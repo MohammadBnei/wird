@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
@@ -465,5 +466,35 @@ void main() {
     expect(await played, isTrue);
     // setClip reloads the source wrapped in the clip, so the clip is last.
     expect(players.only.loaded.last, contains('clipping'));
+  });
+
+  test('a phone whose corpus upgrade failed cannot open the app, because the '
+      'corpus it kept has no reciters to choose from', () async {
+    await testCorpus(); // sets up the ffi database factory
+    final dir = await Directory.systemTemp.createTemp('wird-v6');
+    final path = '${dir.path}/wird.db';
+    await File('assets/corpus.db').copy(path);
+    // The shape corpus 6 shipped: one reciter keyed by slug, timings keyed by
+    // slug, and no word-by-word path.
+    final old = await openDatabase(path);
+    await old.execute('DROP TABLE word_segments');
+    await old.execute('DROP TABLE recitations');
+    await old.execute(
+      'CREATE TABLE recitations (slug TEXT PRIMARY KEY, reciter_name TEXT '
+      'NOT NULL, style TEXT)',
+    );
+    await old.execute(
+      'CREATE TABLE word_segments (word_id INTEGER, recitation_slug TEXT, '
+      'start_ms INTEGER, end_ms INTEGER)',
+    );
+    await old.execute('ALTER TABLE words DROP COLUMN wbw_path');
+    await old.close();
+    final kept = await openWirdAt(path);
+    await setAudioPref(kept, reciter: 'alafasy', wordByWord: true);
+
+    final prefs = await Prefs.read(kept);
+    expect(prefs.reciter, 'alafasy', reason: 'kept for the upgrade that works');
+    expect(await tracksFor(kept, firstSet), isEmpty);
+    await kept.close();
   });
 }

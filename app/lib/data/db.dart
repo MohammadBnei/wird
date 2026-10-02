@@ -719,8 +719,17 @@ typedef Reciter = ({String slug, String label});
 
 /// The reciters the reader can choose between: those the corpus times and this
 /// build knows the folder of, the default first.
+///
+/// Empty on a corpus from before there was a choice — one whose upgrade failed
+/// and was kept (`openWird`) — rather than an error thrown into `Prefs.read`,
+/// which would keep the app from starting at all.
 Future<List<Reciter>> reciters(Database db) async {
-  final rows = await db.query('recitations', orderBy: 'id');
+  final List<Map<String, Object?>> rows;
+  try {
+    rows = await db.query('recitations', orderBy: 'id');
+  } on DatabaseException {
+    return const [];
+  }
   return [
     for (final row in rows)
       if (reciterFolders.containsKey(row['slug']))
@@ -741,12 +750,17 @@ Future<List<Reciter>> reciters(Database db) async {
 /// this build has no folder for them — falls back to the default, so the
 /// reader hears someone rather than nothing and the settings screen shows who
 /// plays. The row is rewritten with the default, keeping the word choice.
+///
+/// A corpus that lists no reciter at all is an old one kept after a failed
+/// upgrade, not a corpus that dropped this one: the choice is left alone for
+/// the upgrade that succeeds.
 Future<({String reciter, bool wordByWord})> audioPref(Database db) async {
   final rows = await db.query('audio_pref', limit: 1);
   if (rows.isEmpty) return (reciter: defaultReciter, wordByWord: false);
   final chosen = rows.first['reciter']! as String;
   final wordByWord = rows.first['word_by_word'] == 1;
-  if ((await reciters(db)).any((r) => r.slug == chosen)) {
+  final carried = await reciters(db);
+  if (carried.isEmpty || carried.any((r) => r.slug == chosen)) {
     return (reciter: chosen, wordByWord: wordByWord);
   }
   await setAudioPref(db, reciter: defaultReciter, wordByWord: wordByWord);

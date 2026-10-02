@@ -95,7 +95,8 @@ class AyaTrack {
 
 /// Reads the audio the set needs in [reciter]'s voice: one file per aya, and
 /// the word timings that drive the highlight. Empty for a reciter this build
-/// has no folder for.
+/// has no folder for, and on a corpus from before there was a choice of
+/// reciter — kept when its upgrade failed — whose tables this cannot read.
 Future<List<AyaTrack>> tracksFor(
   Database db,
   List<int> ayahIds, {
@@ -112,17 +113,22 @@ Future<List<AyaTrack>> tracksFor(
     for (final f in files)
       f['ayah_id']! as int: '$folder/${f['rel_path']! as String}',
   };
-  final spans = await db.rawQuery(
-    '''SELECT w.ayah_id, s.word_id, s.start_ms, s.end_ms
+  final List<Map<String, Object?>> spans, alone;
+  try {
+    spans = await db.rawQuery(
+      '''SELECT w.ayah_id, s.word_id, s.start_ms, s.end_ms
          FROM word_segments s
          JOIN recitations r ON r.id = s.recitation_id
          JOIN words w ON w.id = s.word_id
         WHERE r.slug = ? AND w.ayah_id IN ($marks)
         ORDER BY w.ayah_id, s.start_ms''',
-    [reciter, ...ayahIds],
-  );
-  final alone = await db.rawQuery('''SELECT ayah_id, id, wbw_path FROM words
+      [reciter, ...ayahIds],
+    );
+    alone = await db.rawQuery('''SELECT ayah_id, id, wbw_path FROM words
         WHERE wbw_path IS NOT NULL AND ayah_id IN ($marks)''', ayahIds);
+  } on DatabaseException {
+    return const [];
+  }
   final wordFiles = <int, Map<int, String>>{};
   for (final w in alone) {
     (wordFiles[w['ayah_id']! as int] ??= {})[w['id']! as int] =
