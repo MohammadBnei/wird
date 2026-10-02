@@ -425,24 +425,80 @@ class SetAudio {
   bool get ready =>
       tracks.isNotEmpty && tracks.every((t) => cache.cached(t.relPath) != null);
 
-  /// Plays or pauses the whole set.
+  /// Whether the set's own playback was paused and can carry on from where it
+  /// stopped. A word played since, or the set reaching its end, clears it.
+  bool get paused => _paused;
+  var _paused = false;
+
+  /// Plays, pauses or resumes the whole set.
+  ///
+  /// Pausing used to be stopping: the next press loaded the set again and
+  /// started it from its first aya, so a reader who paused to look at a word
+  /// lost their place in the recitation. A pause now keeps the player where it
+  /// is, and the next press carries on.
   ///
   /// Stopping it while the files are still being opened is not an error: the
   /// player throws `Loading interrupted` into whoever started the play, and
   /// that caller is the screen. Nothing in this app may spin or shout, least
   /// of all over a reader who pressed stop, so an interrupted play is silence.
   Future<void> toggle() async {
+    final player = _player;
     if (playing.value) {
       playing.value = false;
-      await _player?.pause();
+      // Only the set's own playback has a place to resume from; a word paused
+      // here is simply over.
+      _paused = _setTurn == _turn;
+      await player?.pause();
+      return;
+    }
+    // A paused aya resumes even while the rest of the set is downloading.
+    if (_paused && _setTurn == _turn && player != null) {
+      _paused = false;
+      playing.value = true;
+      try {
+        await player.play();
+      } on Exception {
+        // As below: silence, never a shout.
+      } finally {
+        if (_setTurn == _turn && !_paused) {
+          playing.value = false;
+          currentWordId.value = null;
+        }
+      }
       return;
     }
     if (!ready) return;
+    await _play(0, tracks.length);
+  }
+
+  /// Plays one aya of the set alone, from its start to its end, with its
+  /// words lit as it goes. False when its file is not on the phone.
+  Future<bool> playAya(int ayahId) async {
+    final index = tracks.indexWhere((t) => t.ayahId == ayahId);
+    if (index < 0 || cache.cached(tracks[index].relPath) == null) return false;
+    if (playing.value) await _player?.pause();
+    await _play(index, 1);
+    return true;
+  }
+
+  /// Which track the player's first source is: 0 for the whole set, the aya's
+  /// own index when one aya plays alone, so the highlight reads the right
+  /// timings.
+  var _first = 0;
+
+  Future<void> _play(int first, int count) async {
+    _paused = false;
+    _first = first;
     final turn = _setTurn = ++_turn;
     try {
       final player = _player ??= AudioPlayer();
+      // A player that reached the end of an aya still reports itself playing,
+      // and its next play() answers at once: the aya tapped "again" would
+      // sound with the bar and the highlight already gone. playWord pauses
+      // first for the same reason.
+      await player.pause();
       await player.setAudioSources([
-        for (final track in tracks)
+        for (final track in tracks.skip(first).take(count))
           AudioSource.file(cache.fileFor(track.relPath).path),
       ]);
       _listen(player);
@@ -453,11 +509,20 @@ class SetAudio {
       // A platform that will not take the set, or a load the reader cut
       // short. The bar goes back to dark and the screen says nothing.
     } finally {
-      if (turn == _turn) {
+      // A pause also ends play()'s wait; it keeps the word lit and the place.
+      if (turn == _turn && !_paused) {
         playing.value = false;
         currentWordId.value = null;
       }
     }
+  }
+
+  /// Ends a paused set, so the next press starts it again from its start.
+  Future<void> stop() async {
+    _paused = false;
+    playing.value = false;
+    currentWordId.value = null;
+    await _player?.stop();
   }
 
   /// The words that would sound if the reader tapped them: every word of an
@@ -512,6 +577,9 @@ class SetAudio {
         alone ?? (found == null ? null : cache.cached(found.track.relPath));
     if (file == null) return false;
     final token = ++_turn;
+    // The word replaces the set's files in the player, so there is nothing
+    // left to resume.
+    _paused = false;
     try {
       final player = _player ??= AudioPlayer();
       await player.pause();
@@ -551,7 +619,7 @@ class SetAudio {
           if (_setTurn != _turn) return;
           currentWordId.value = wordAt(
             tracks,
-            player.currentIndex ?? 0,
+            _first + (player.currentIndex ?? 0),
             position.inMilliseconds,
           );
         });
@@ -560,8 +628,19 @@ class SetAudio {
   /// ponytail: the two notifiers are left alive. A screen swapping one set's
   /// audio for the next still has builders listening to the old pair for the
   /// rest of the frame, and two dead ValueNotifiers cost nothing.
+  ///
+  /// Disposing a player that was paused mid-set throws from inside just_audio
+  /// (`You cannot close the subject while items are being added from
+  /// addStream`). The player is being thrown away either way, and the throw
+  /// used to escape into the reading screen's carry and stop it before it
+  /// fetched the new reciter's files, so the set stayed in the old voice.
   Future<void> dispose() async {
-    await _positions?.cancel();
-    await _player?.dispose();
+    try {
+      await _positions?.cancel();
+      await _player?.dispose();
+    } catch (_) {
+      // ponytail: swallows any throw from a player being discarded; narrow
+      // it to just_audio's StateError if a real failure ever hides here.
+    }
   }
 }

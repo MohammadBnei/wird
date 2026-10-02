@@ -679,6 +679,25 @@ class _StudyScreenState extends State<StudyScreen> {
                 label: l.study_markUnderstood(ayahRef(aya.id)),
                 onMark: aya.understood ? null : () => _markUnderstood(aya),
               ),
+              // The aya being read, alone, from beside its own number: the
+              // header's button recites the whole passage, and a reader
+              // studying one aya wants to hear just it, again. Only on the
+              // open word's aya, so the reading is not a column of buttons.
+              // Pause and stop are on the bar it brings up.
+              if (open != null && ayahOfWord(open.id) == aya.id)
+                IconButton(
+                  key: const Key('recite aya'),
+                  tooltip: l.study_reciteAya,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _audio?.canPlayAya(aya.id) ?? false
+                      ? () => _audio!.playAya(aya.id, label: ayahRef(aya.id))
+                      : null,
+                  icon: Icon(
+                    Icons.play_circle_outline,
+                    size: 20,
+                    color: n.color('accent-300'),
+                  ),
+                ),
             ],
           ),
           AyaTranslation(_shownTranslation(aya.id)),

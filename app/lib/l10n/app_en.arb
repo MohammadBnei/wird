@@ -1578,6 +1578,14 @@
   "@shell_soundingWord": {
     "description": "The eyebrow of the bar at the foot of every screen while a single word is being sounded."
   },
+  "shell_recitingAya": "RECITING ONE AYA",
+  "@shell_recitingAya": {
+    "description": "The eyebrow of the bar at the foot of every screen while one aya is recited on its own."
+  },
+  "study_reciteAya": "Recite this aya",
+  "@study_reciteAya": {
+    "description": "Tooltip of the play button beside the open aya's reference, which recites that one aya alone."
+  },
   "shell_recitingSet": "RECITING THE SET",
   "@shell_recitingSet": {
     "description": "The eyebrow of the bar at the foot of every screen while the whole set is being recited."

@@ -323,6 +323,8 @@
   "nav_sources": "Sources",
   "shell_stop": "Arrêter",
   "shell_soundingWord": "UN MOT EN LECTURE",
+  "shell_recitingAya": "RÉCITATION D’UN VERSET",
+  "study_reciteAya": "Réciter ce verset",
   "shell_recitingSet": "RÉCITATION DU PASSAGE",
   "shell_notSignedIn": "NON CONNECTÉ",
   "shell_drawerBlurb": "Tout ce que vous avez lu et gardé est sur ce téléphone. Les comptes arriveront avec le serveur avec lequel ils se synchronisent.",

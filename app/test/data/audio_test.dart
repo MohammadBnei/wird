@@ -558,4 +558,74 @@ void main() {
     );
     await recitation.stop();
   });
+
+  test('the aya the reader asked to hear plays the whole set from its first '
+      'aya', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final players = FakePlayers();
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(cache: await cacheHolding(firstSet), tracks: tracks);
+
+    final played = audio.playAya(96003);
+    await pumpEventQueue();
+    final loaded = players.only.loaded.last;
+    expect(loaded, contains('096003'));
+    expect(loaded, isNot(contains('096001')));
+    expect(loaded, isNot(contains('096004')));
+    players.only.finish();
+    expect(await played, isTrue);
+  });
+
+  Future<Recitation> reciting(FakePlayers players) async {
+    JustAudioPlatform.instance = players;
+    final recitation = Recitation(cache: await cacheHolding(firstSet));
+    await recitation.carry(
+      await tracksFor(db, firstSet),
+      title: 'Al-ʿAlaq 1–5',
+      words: const {},
+    );
+    return recitation;
+  }
+
+  test('an aya started while the set recites plays with no bar to pause or '
+      'stop it', () async {
+    final players = FakePlayers();
+    final recitation = await reciting(players);
+    unawaited(recitation.toggle());
+    await pumpEventQueue();
+
+    unawaited(recitation.playAya(96003, label: '96:3'));
+    await pumpEventQueue();
+    expect(recitation.sounding.value?.what, Sounded.aya);
+    expect(recitation.sounding.value?.label, '96:3');
+    await recitation.stop();
+  });
+
+  test('the aya tapped again while it plays loses its bar to the first tap '
+      'ending', () async {
+    final players = FakePlayers();
+    final recitation = await reciting(players);
+    unawaited(recitation.playAya(96003, label: '96:3'));
+    await pumpEventQueue();
+    unawaited(recitation.playAya(96003, label: '96:3'));
+    await pumpEventQueue();
+    expect(recitation.sounding.value?.label, '96:3');
+    expect(recitation.playing.value, isTrue);
+    await recitation.stop();
+  });
+
+  test('a word paused from the play button makes the next press recite the '
+      'whole set with no bar', () async {
+    final players = FakePlayers();
+    final recitation = await reciting(players);
+    unawaited(recitation.playWord(96001001));
+    await pumpEventQueue();
+    await recitation.toggle(); // the header's button, while the word sounds
+    await pumpEventQueue();
+
+    unawaited(recitation.toggle());
+    await pumpEventQueue();
+    expect(recitation.sounding.value?.what, Sounded.set);
+    await recitation.stop();
+  });
 }

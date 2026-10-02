@@ -1185,6 +1185,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shell_soundingWord => 'SOUNDING ONE WORD';
 
   @override
+  String get shell_recitingAya => 'RECITING ONE AYA';
+
+  @override
+  String get study_reciteAya => 'Recite this aya';
+
+  @override
   String get shell_recitingSet => 'RECITING THE SET';
 
   @override

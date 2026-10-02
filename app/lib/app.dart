@@ -50,7 +50,7 @@ class Wird extends InheritedWidget {
 /// both light a word, and on a phone that was the only difference between
 /// them, so a reader could not tell whether they had started a single word or
 /// the whole portion.
-enum Sounded { word, set }
+enum Sounded { word, aya, set }
 
 /// What is sounding, and what to call it on screen.
 typedef Sounding = ({Sounded what, String label});
@@ -111,7 +111,8 @@ class Recitation {
   /// reciter's voice are another recitation.
   List<String> _covers = const [];
 
-  /// Which word probe owns the transport.
+  /// Which playback owns the transport: a word, an aya or the set. Each
+  /// takes the next number, and only the latest may clear the bar.
   int _probe = 0;
 
   static final _noWord = ValueNotifier<int?>(null);
@@ -184,25 +185,56 @@ class Recitation {
     return sounded;
   }
 
-  /// Plays or pauses the whole set.
+  /// Plays, pauses or resumes the whole set. A paused set keeps its bar, so
+  /// the reader can carry on or stop from any screen.
   Future<void> toggle() async {
     final set = _set;
     if (set == null) return;
     if (set.playing.value) {
-      sounding.value = null;
       await set.toggle();
       return;
     }
-    if (!set.ready) return;
-    sounding.value = (
-      what: Sounded.set,
-      label: _voice == null ? _title : '$_title · $_voice',
-    );
+    // Whoever starts something next owns the bar: this call clears it after
+    // the set stops only if nothing was started over it meanwhile — a word,
+    // an aya, or this same set again.
+    final probe = ++_probe;
+    // Resuming keeps what the bar already says: the set, or the one aya.
+    if (!set.paused) {
+      if (!set.ready) return;
+      sounding.value = (
+        what: Sounded.set,
+        label: _voice == null ? _title : '$_title · $_voice',
+      );
+    }
     await set.toggle();
-    if (identical(_set, set) && sounding.value?.what == Sounded.set) {
+    if (identical(_set, set) && probe == _probe && !set.paused) {
       sounding.value = null;
     }
   }
+
+  /// Plays one aya alone, named [label] in the bar. False when its file is
+  /// not on the phone: the button that asked is dark then anyway.
+  Future<bool> playAya(int ayahId, {required String label}) async {
+    final set = _set;
+    if (set == null) return false;
+    await stopSample();
+    // The same aya tapped twice is two plays with one label: the number, not
+    // the label, says which of them still owns the bar.
+    final probe = ++_probe;
+    sounding.value = (what: Sounded.aya, label: label);
+    final played = await set.playAya(ayahId);
+    if (identical(_set, set) && probe == _probe && !set.paused) {
+      sounding.value = null;
+    }
+    return played;
+  }
+
+  /// Whether [ayahId]'s file is on the phone, so one aya can play.
+  bool canPlayAya(int ayahId) =>
+      _set?.tracks.any(
+        (t) => t.ayahId == ayahId && _set!.cache.cached(t.relPath) != null,
+      ) ??
+      false;
 
   /// Silence, from wherever the reader is. A word long-pressed by accident
   /// used to play to its end because the only control was on the screen that
@@ -210,9 +242,7 @@ class Recitation {
   Future<void> stop() async {
     await stopSample();
     sounding.value = null;
-    final set = _set;
-    if (set == null) return;
-    if (set.playing.value) await set.toggle();
+    await _set?.stop();
   }
 
   /// Plays [reciter]'s voice on [sampleFile], or stops it if it is the one

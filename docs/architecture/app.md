@@ -136,7 +136,7 @@ The copy only happens when `wird.db` is missing. A later app update with a newer
     flusher: flusher,
 ```
 
-[nav.dart:202](../../app/lib/nav.dart#L202-L236) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:208](../../app/lib/app.dart#L208)
+[nav.dart:202](../../app/lib/nav.dart#L202-L236) · [Wird, app.dart:20](../../app/lib/app.dart#L20-L44) · [Prefs, app.dart:240](../../app/lib/app.dart#L240)
 
 ### 4. Routes: destinations get the shell, pushed screens do not
 
@@ -160,7 +160,7 @@ Every screen is registered by name in one map. The drawer lists the destinations
 
 ### 5. A prayer is prepared, then recorded on the way back from it
 
-A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:386](../../app/lib/app.dart#L386-L390)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
+A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:416](../../app/lib/app.dart#L416-L420)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
 
 ```mermaid
 sequenceDiagram
@@ -201,7 +201,7 @@ That write, like every other write, goes to the **outbox** inside the same trans
 
 ### 6. The network, and who calls it
 
-Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:144](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the two audio hosts into one capped cache; it never reaches `wird-api`. Which reciter, and whether a word plays alone, is a device-local choice in Settings ([ADR 0023](../adr/0023-six-reciters-and-a-word-by-word-voice.md)). Each reciter can be heard on the basmala before choosing, through `Recitation.sample`, which fetches one file without touching the set's pins. While a set plays, the bar names who recites it.
+Four parts of `data/` leave the phone, and no screen awaits any of them while you pray. At the foreground moment the flusher fetches the senses only when the phone holds none yet: [flush.dart:144](../../app/lib/data/flush.dart#L144-L154). Audio playback is the fifth, fetched from the two audio hosts into one capped cache; it never reaches `wird-api`. Which reciter, and whether a word plays alone, is a device-local choice in Settings ([ADR 0023](../adr/0023-six-reciters-and-a-word-by-word-voice.md)). Each reciter can be heard on the basmala before choosing, through `Recitation.sample`, which fetches one file without touching the set's pins. While a set plays, the bar names who recites it. The reading screen's button and the bar both pause and resume where the recitation stopped, and the aya being read has its own button, beside its number, that recites it alone.
 
 ```mermaid
 flowchart LR
