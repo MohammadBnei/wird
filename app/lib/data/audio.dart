@@ -188,12 +188,16 @@ List<String> windowPaths(
 /// Between two words the previous one stays lit rather than blinking off, and
 /// an aya whose segments overlap — 141 of them do — never hands the highlight
 /// backwards.
-int? wordAt(List<AyaTrack> tracks, int index, int ms) {
+int? wordAt(List<AyaTrack> tracks, int index, int ms) =>
+    _spanAt(tracks, index, ms)?.wordId;
+
+/// The timing of the word [wordAt] names.
+WordSpan? _spanAt(List<AyaTrack> tracks, int index, int ms) {
   if (index < 0 || index >= tracks.length) return null;
-  int? held;
+  WordSpan? held;
   for (final span in tracks[index].segments) {
     if (span.startMs > ms) break;
-    held = span.wordId;
+    held = span;
   }
   return held;
 }
@@ -418,6 +422,57 @@ class AudioCache {
   }
 }
 
+/// What a press of play does after the reader paused and then tapped a word:
+/// recite from that word, or carry on from the pause as if the tap had not
+/// happened (the behaviour before ADR 0030).
+enum OpenAfterPause { restart, resume }
+
+/// What a word long-pressed while the sūra is being recited does to the
+/// recitation: leave it paused at its place, carry on from there once the
+/// word has sounded, or end it (the behaviour before ADR 0030).
+enum HearWhileReciting { hold, resume, cut }
+
+/// The reader's two playback knobs. A record, so two of them compare equal
+/// when their choices do.
+typedef PlaybackTuning = ({OpenAfterPause open, HearWhileReciting hear});
+
+/// [values]' member called [name], or [fallback] for a name it does not have:
+/// a build define mistyped, or a choice stored by a later build.
+T knob<T extends Enum>(List<T> values, String? name, T fallback) =>
+    values.asNameMap()[name] ?? fallback;
+
+const _openDefine = String.fromEnvironment('WIRD_OPEN_AFTER_PAUSE');
+const _hearDefine = String.fromEnvironment('WIRD_HEAR_WHILE_RECITING');
+
+/// What a reader who never chose gets: the defaults, or what the build was
+/// given with `--dart-define=WIRD_OPEN_AFTER_PAUSE=resume` and
+/// `--dart-define=WIRD_HEAR_WHILE_RECITING=cut`.
+final PlaybackTuning buildTuning = (
+  open: knob(OpenAfterPause.values, _openDefine, OpenAfterPause.restart),
+  hear: knob(HearWhileReciting.values, _hearDefine, HearWhileReciting.hold),
+);
+
+/// Where the recitation is: the tracks it covers and how far into the first
+/// it is. The point is always a word's start, never mid-word, so resuming
+/// from it does not swallow a consonant.
+typedef Place = ({int first, int count, Duration at});
+
+/// What the next press of play does, when it does not start the sūra over.
+sealed class Resume {}
+
+/// Carries on from [place]: the reader paused, or heard a word over the
+/// recitation.
+final class Held extends Resume {
+  Held(this.place);
+  final Place place;
+}
+
+/// Recites from [wordId]: the reader tapped a word after pausing.
+final class Touched extends Resume {
+  Touched(this.wordId);
+  final int wordId;
+}
+
 /// The recitation of one sūra: plays it from any word or aya, says which word
 /// is sounding, and speaks a single word on demand.
 class SetAudio {
@@ -425,7 +480,8 @@ class SetAudio {
     required this.cache,
     required this.tracks,
     this.wordByWord = false,
-  });
+    ValueListenable<PlaybackTuning>? tuning,
+  }) : tuning = tuning ?? ValueNotifier(buildTuning);
 
   final AudioCache cache;
   final List<AyaTrack> tracks;
@@ -435,6 +491,10 @@ class SetAudio {
   /// choice and changed in place: the set's own recitation does not depend on
   /// it.
   bool wordByWord;
+
+  /// Read at each decision rather than copied, so a knob turned in the
+  /// settings reaches a recitation that is already paused.
+  final ValueListenable<PlaybackTuning> tuning;
 
   final currentWordId = ValueNotifier<int?>(null);
   final playing = ValueNotifier<bool>(false);
@@ -456,41 +516,98 @@ class SetAudio {
   /// cannot light a word the reader is not on.
   var _setTurn = -1;
 
+  /// The recitation's place, kept as it goes: set from where it was asked to
+  /// start, then moved to each word it lights. Null when nothing has been
+  /// recited, or the recitation ended or was stopped.
+  Place? _place;
+
+  /// The turn whose files the player finished loading. While a recitation
+  /// loads, the position stream still reports the playlist before it, and
+  /// those positions must not move [_place].
+  var _placeTurn = -1;
+
+  /// Whether the player still holds the recitation's files, so a resume can
+  /// simply carry on rather than load them again. A word loads its own.
+  var _setLoaded = false;
+
+  /// Whether the word that just ended was heard over a recitation the reader
+  /// asked to carry on afterwards ([HearWhileReciting.resume]). Answers once:
+  /// asking clears it.
+  bool takeResumeAfterWord() {
+    final take = _resumeAfterWord;
+    _resumeAfterWord = false;
+    return take;
+  }
+
+  var _resumeAfterWord = false;
+
+  /// The hold a word heard over the recitation took. Only that word carries
+  /// the recitation on when it ends; a word heard while the reader had
+  /// paused leaves the pause alone.
+  Held? _wordHeld;
+
   /// There is a recitation to play. Whatever is not on disk is fetched by the
   /// player as it plays, so this no longer waits on a download.
   bool get ready => tracks.isNotEmpty;
 
-  /// Whether the set's own playback was paused and can carry on from where it
-  /// stopped. A word played since, or the set reaching its end, clears it.
-  bool get paused => _paused;
-  var _paused = false;
+  /// What the next press of play does instead of starting over, or null.
+  /// Only a pause, a word heard over the recitation, and a word tapped after
+  /// either of them set it; a start, a stop and the end of the sūra clear it.
+  Resume? get resume => _resume;
+  Resume? _resume;
 
-  /// Pauses, or resumes a paused recitation, or else recites the sūra from
-  /// its start.
+  /// Whether the next press carries on rather than starts the sūra over.
+  bool get paused => _resume != null;
+
+  /// The sūra is being recited, or is loading to be: nothing has taken the
+  /// transport from it since it started.
+  bool get _reciting => _setTurn == _turn && _place != null && _resume == null;
+
+  /// Pauses, or carries on from what [resume] says, or else recites the sūra
+  /// from its start.
   ///
   /// Pausing used to be stopping: the next press loaded the set again and
   /// started it from its first aya, so a reader who paused to look at a word
-  /// lost their place in the recitation. A pause now keeps the player where it
-  /// is, and the next press carries on.
+  /// lost their place in the recitation. A pause now keeps the place, and the
+  /// next press carries on.
   Future<void> toggle() async {
     final player = _player;
     if (playing.value) {
+      // A word heard over a held recitation is simply cut short: the place
+      // it holds stays where it was.
+      if (_resume == null && _reciting) _resume = Held(_place!);
       playing.value = false;
-      // Only the set's own playback has a place to resume from; a word paused
-      // here is simply over.
-      _paused = _setTurn == _turn;
       await player?.pause();
       return;
     }
-    if (_paused && _setTurn == _turn && player != null) {
-      _paused = false;
-      await _run(_turn, (player) async {
-        playing.value = true;
-        await player.play();
-      });
-      return;
+    switch (_resume) {
+      case Held() when _setLoaded && _setTurn == _turn && player != null:
+        _resume = null;
+        // A turn of its own: the paused playback's play() may answer after
+        // this one starts, and must not settle the transport under it. The
+        // player still holds the set, so its positions move the place.
+        final turn = _setTurn = _placeTurn = _take();
+        await _run(turn, (player, _) async {
+          playing.value = true;
+          await player.play();
+        });
+      case Held(:final place):
+        await _recite(place.first, place.count, place.at);
+      case Touched(:final wordId):
+        await playFrom(wordId);
+      case null:
+        await playFrom(null);
     }
-    await playFrom(null);
+  }
+
+  /// The reader tapped [wordId]. After a pause that makes it where the next
+  /// press of play starts, unless the reader asked for a pause to win
+  /// ([OpenAfterPause.resume]). Before any pause it moves nothing: the
+  /// recitation is not the reader's to steer by reading.
+  void touch(int wordId) {
+    if (_resume != null && tuning.value.open == OpenAfterPause.restart) {
+      _resume = Touched(wordId);
+    }
   }
 
   /// Recites from [wordId] to the end of the sūra, or from its first aya when
@@ -528,11 +645,12 @@ class SetAudio {
   Future<bool> _recite(int first, int count, Duration? at) async {
     if (count <= 0) return false;
     _first = first;
+    _resume = null;
+    _setLoaded = false;
+    _place = (first: first, count: count, at: at ?? Duration.zero);
     final turn = _setTurn = _take();
-    final paths = [
-      for (final track in tracks.skip(first).take(count)) track.relPath,
-    ];
-    return _run(turn, (player) async {
+    final paths = _paths(_place!);
+    return _run(turn, (player, _) async {
       // A player that reached the end of an aya still reports itself playing,
       // and its next play() answers at once: the aya tapped "again" would
       // sound with the bar and the highlight already gone. playWord pauses
@@ -545,18 +663,21 @@ class SetAudio {
       ], initialPosition: at);
       _listen(player);
       if (turn != _turn) return;
+      _placeTurn = turn;
+      _setLoaded = true;
       cache.hold(paths);
       playing.value = true;
       await player.play();
     });
   }
 
-  /// A new playback's turn. Whatever was paused is replaced by it, so there
-  /// is nothing left to resume.
-  int _take() {
-    _paused = false;
-    return ++_turn;
-  }
+  List<String> _paths(Place place) => [
+    for (final track in tracks.skip(place.first).take(place.count))
+      track.relPath,
+  ];
+
+  /// A new playback's turn.
+  int _take() => ++_turn;
 
   /// Runs one playback to its end and settles the transport after it, for
   /// every kind of playback alike.
@@ -572,37 +693,76 @@ class SetAudio {
   /// which ends the wait, and the playback answers false like a refused one.
   Future<bool> _run(
     int turn,
-    Future<void> Function(AudioPlayer player) start,
-  ) async {
+    Future<void> Function(AudioPlayer player, _Attempt attempt) start, {
+    bool word = false,
+  }) async {
     final player = _player ??= AudioPlayer();
-    var failed = false;
+    final attempt = _Attempt();
     final errors = player.errorStream.listen((_) {
-      failed = true;
+      // A word's own file that fails to load throws out of the load, and
+      // the reciter's stretch is tried instead; that is not this playback
+      // failing.
+      if (attempt.loadingWord) return;
+      attempt.failed = true;
       if (turn == _turn) unawaited(player.pause().catchError((_) {}));
     });
     try {
-      await start(player);
-      return !failed;
+      await start(player, attempt);
+      return !attempt.failed;
     } on Exception {
       // A platform that will not take the source, or a load the reader cut
       // short. The bar goes back to dark and the screen says nothing.
       return false;
     } finally {
       await errors.cancel();
-      // A pause also ends play()'s wait; it keeps the word lit and the place.
-      if (turn == _turn && !_paused) {
-        playing.value = false;
-        currentWordId.value = null;
-        cache.hold(const []);
-      }
+      if (turn == _turn) _settle(word: word, ended: playing.value);
     }
   }
 
-  /// Ends a paused set, so the next press starts it again from its start.
+  /// The transport after the playback holding it ended: dark, unless there
+  /// is something to carry on from, whose files are kept on disk for it.
+  void _settle({required bool word, required bool ended}) {
+    playing.value = false;
+    _resumeAfterWord =
+        word &&
+        ended &&
+        _wordHeld != null &&
+        identical(_resume, _wordHeld) &&
+        tuning.value.hear == HearWhileReciting.resume;
+    switch (_resume) {
+      case Held(:final place):
+        // The word play carries on from is lit, whether the reader paused
+        // there or a word heard over the recitation stopped it there.
+        if (word) currentWordId.value = _heldWord(place);
+        cache.hold(_paths(place));
+      case Touched():
+        if (word) currentWordId.value = null;
+        cache.hold(const []);
+      case null:
+        currentWordId.value = null;
+        cache.hold(const []);
+        // The recitation ran to its end, or failed: nothing to carry on.
+        if (!word) _place = null;
+    }
+  }
+
+  /// The word [place] resumes on: its clip opens one frame before it.
+  int? _heldWord(Place place) => wordAt(
+    tracks,
+    place.first,
+    (place.at + seekCalibration).inMilliseconds,
+  );
+
+  /// Ends whatever is sounding or paused, so the next press starts the sūra
+  /// again from its start.
   Future<void> stop() async {
     // Taking the turn keeps a load still in flight from starting to play
     // after the reader pressed stop.
     _take();
+    _resume = null;
+    _place = null;
+    _setLoaded = false;
+    _resumeAfterWord = false;
     playing.value = false;
     currentWordId.value = null;
     cache.hold(const []);
@@ -632,12 +792,18 @@ class SetAudio {
 
   /// Plays one word: its own recording when the reader chose those, else its
   /// stretch of its aya's file. False means the sūra has no recording of it,
-  /// or the platform refused it: the caller shows the transliteration, and
+  /// or the platform refused both: the caller shows the transliteration, and
   /// nothing spins.
   ///
-  /// What is on disk comes first. A reader offline whose word was never
-  /// downloaded alone, but whose aya was, hears the reciter's stretch of it
-  /// rather than nothing; online, the word alone is fetched as it plays.
+  /// A reader who chose words alone hears the word voice, fetched as it plays
+  /// when it is not on disk. The reciter's stretch is only the fallback for a
+  /// word file that will not load — offline and never fetched, or one of the
+  /// two words the host has no file for (ADR 0029). Preferring an aya already
+  /// on disk used to answer most taps in the reciter's voice instead.
+  ///
+  /// Heard while the sūra is being recited, the word leaves the recitation
+  /// paused at its place ([HearWhileReciting]); heard while it is paused, it
+  /// moves nothing.
   ///
   /// A tap is the gesture now, so the reader's next word arrives while this
   /// one is still sounding — `play()` answers when the clip ENDS, not when it
@@ -646,30 +812,41 @@ class SetAudio {
   /// keeps a superseded word, and the set's own position stream, from writing
   /// over the word that superseded them.
   Future<bool> playWord(int wordId) async {
+    _resumeAfterWord = false;
     final alone = _alone(wordId);
     final at = locate(tracks, wordId);
-    final stretch =
-        alone == null ||
-        (cache.cached(alone) == null &&
-            at != null &&
-            cache.cached(at.track.relPath) != null);
-    final found = stretch ? at : null;
-    final path = found?.track.relPath ?? alone;
-    if (path == null) return false;
+    if (alone == null && at == null) return false;
+    final hold = _reciting && tuning.value.hear != HearWhileReciting.cut;
     final turn = _take();
-    return _run(turn, (player) async {
+    if (hold) _resume = _wordHeld = Held(_place!);
+    _setLoaded = false;
+    return _run(turn, word: true, (player, attempt) async {
       await player.pause();
-      await player.setAudioSource(cache.sourceFor(path));
-      // A word's own file is the word, start to end; only a stretch of the
-      // reciter's aya needs cutting out.
-      if (found != null) {
-        await player.setClip(
-          start: clipStart(found.span.startMs),
-          end: Duration(milliseconds: found.span.endMs),
-        );
+      Future<void> load(String path, WordSpan? clip) async {
+        await player.setAudioSource(cache.sourceFor(path));
+        // A word's own file is the word, start to end; only a stretch of the
+        // reciter's aya needs cutting out.
+        if (clip != null) {
+          await player.setClip(
+            start: clipStart(clip.startMs),
+            end: Duration(milliseconds: clip.endMs),
+          );
+        }
+      }
+
+      var path = alone ?? at!.track.relPath;
+      try {
+        attempt.loadingWord = alone != null && at != null;
+        await load(path, alone == null ? at!.span : null);
+      } on Exception {
+        if (alone == null || at == null || turn != _turn) rethrow;
+        path = at.track.relPath;
+        await load(path, at.span);
+      } finally {
+        attempt.loadingWord = false;
       }
       if (turn != _turn) return;
-      cache.hold([path]);
+      cache.hold([path, if (_resume case Held(:final place)) ..._paths(place)]);
       currentWordId.value = wordId;
       playing.value = true;
       await player.play();
@@ -684,10 +861,22 @@ class SetAudio {
         )
         .listen((position) {
           if (_setTurn != _turn) return;
-          currentWordId.value = wordAt(
-            tracks,
-            _first + (player.currentIndex ?? 0),
-            position.inMilliseconds,
+          final index = _first + (player.currentIndex ?? 0);
+          final ms = position.inMilliseconds;
+          currentWordId.value = wordAt(tracks, index, ms);
+          if (_placeTurn != _turn || _place == null) return;
+          // The place follows the word being recited, from its start: the
+          // lead-in before an aya's first word holds the aya's start.
+          final place = _place!;
+          final moved = index - place.first;
+          if (moved < 0 || moved >= place.count) return;
+          _place = (
+            first: index,
+            count: place.count - moved,
+            at: switch (_spanAt(tracks, index, ms)) {
+              final span? => clipStart(span.startMs),
+              null => Duration.zero,
+            },
           );
         });
   }
@@ -711,4 +900,16 @@ class SetAudio {
       // it to just_audio's StateError if a real failure ever hides here.
     }
   }
+}
+
+/// One playback's view of its own failure. A word that falls back to the
+/// reciter after its own file failed has not failed, so errors while that
+/// file loads do not count.
+///
+/// ponytail: the platform's report of the failed load can arrive after the
+/// fallback has started, and would then count. Tag errors with their source
+/// if a fallback is ever heard to stop at once.
+class _Attempt {
+  var failed = false;
+  var loadingWord = false;
 }

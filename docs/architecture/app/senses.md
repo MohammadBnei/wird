@@ -116,7 +116,7 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
 
 The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:156](../../../app/lib/data/flush.dart#L156-L159)).
 
-Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:407](../../../app/lib/features/settings/settings_screen.dart#L412-L437)).
+Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:407](../../../app/lib/features/settings/settings_screen.dart#L441-L466)).
 
 ### 2. HEAD asks, and moves no bytes
 
@@ -215,7 +215,7 @@ Before it records the version, the transaction counts the new senses whose root 
 ```
 [senses.dart:142](../../../app/lib/data/senses.dart#L143-L156)
 
-`sense_pack` holds at most one row ([db.dart:255](../../../app/lib/data/db.dart#L255-L264)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
+`sense_pack` holds at most one row ([db.dart:255](../../../app/lib/data/db.dart#L265-L274)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
 
 ### 6. The root screen reads it back
 
@@ -329,7 +329,7 @@ A verdict is a report whose body is `sense good: <root>` or `sense bad: <root>`.
 ```
 [report.dart:153](../../../app/lib/features/report/report.dart#L153-L168)
 
-`sense_verdicts` is keyed by root, language and hash ([db.dart:304](../../../app/lib/data/db.dart#L304-L311)). Reopening a judged root shows the thanks, not the thumbs ([report.dart:173](../../../app/lib/features/report/report.dart#L173-L183)). A redraft or the other language is a new hash, so the reader is asked again. The language comes from the same read that chose the sentence, `RootReading.locale`, so a verdict cannot be filed under one language while judging the other's text.
+`sense_verdicts` is keyed by root, language and hash ([db.dart:304](../../../app/lib/data/db.dart#L314-L321)). Reopening a judged root shows the thanks, not the thumbs ([report.dart:173](../../../app/lib/features/report/report.dart#L173-L183)). A redraft or the other language is a new hash, so the reader is asked again. The language comes from the same read that chose the sentence, `RootReading.locale`, so a verdict cannot be filed under one language while judging the other's text.
 
 The thanks is drawn only after the write succeeds. If it fails, the thumbs come back with a short "not saved" line, rather than thanking the reader for something nobody will receive ([root_sheet.dart:759](../../../app/lib/features/study/root_sheet.dart#L759-L792)). A write or a recall that finishes after the reader has moved to another root or language is ignored, so its answer is never drawn against the new sentence ([root_sheet.dart:723](../../../app/lib/features/study/root_sheet.dart#L723-L726)). When a different reader signs in on the same phone, the record of judged senses is cleared with the rest of the first reader's tables ([Auth](../api/auth.md)). Where verdicts go after the server is on the [Admin web](../adminweb.md#5-sense-verdicts-are-counted-not-listed) page.
 

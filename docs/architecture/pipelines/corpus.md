@@ -96,7 +96,7 @@ erDiagram
     text gloss_fr "NULL where no French card matched"
     text lemma_key "Buckwalter, digit kept"
     text lemma "decoded, NULL without a root"
-    text wbw_path "the word spoken alone, NULL on one word"
+    text wbw_path "the word spoken alone, by position"
   }
   recitations {
     int id PK
@@ -243,7 +243,7 @@ if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?,?)`,
 }
 ```
 
-[etl/write.go:202](../../../server/cmd/etl/write.go#L202-L205) · [the schema](../../../server/cmd/etl/write.go#L16-L145) · [why root_notes is empty](../../../server/cmd/etl/write.go#L252-L266)
+[etl/write.go:202](../../../server/cmd/etl/write.go#L201-L204) · [the schema](../../../server/cmd/etl/write.go#L16-L144) · [why root_notes is empty](../../../server/cmd/etl/write.go#L251-L265)
 
 `corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 7. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
 

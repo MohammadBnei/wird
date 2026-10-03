@@ -48,7 +48,7 @@ Future<Database> openWird() async {
 /// The `corpus_meta.corpus_version` of `assets/corpus.db`. A constant rather
 /// than read from the asset, so a launch need not copy the whole corpus out of
 /// the bundle to learn it; a test holds the two equal.
-const bundledCorpusVersion = 7;
+const bundledCorpusVersion = 8;
 
 Future<Uint8List> _bundledCorpus() async {
   final asset = await rootBundle.load(_corpusAsset);
@@ -219,6 +219,16 @@ Future<Database> openWirdAt(String path) async {
       id           INTEGER PRIMARY KEY CHECK (id = 1),
       reciter      TEXT NOT NULL,
       word_by_word INTEGER NOT NULL DEFAULT 0
+    )''');
+  // How play answers a word tapped after a pause, and a word heard over the
+  // recitation. Each column is written on its own, never the row whole, and
+  // NULL is the build's default (`buildTuning`): a reader who chose one knob
+  // has not chosen the other.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS playback_pref (
+      id                  INTEGER PRIMARY KEY CHECK (id = 1),
+      open_after_pause    TEXT,
+      hear_while_reciting TEXT
     )''');
   await db.execute('''
     CREATE TABLE IF NOT EXISTS mic_consent (
@@ -778,6 +788,39 @@ Future<({String reciter, bool wordByWord})> audioPref(Database db) async {
   }
   await setAudioPref(db, reciter: defaultReciter, wordByWord: wordByWord);
   return (reciter: defaultReciter, wordByWord: wordByWord);
+}
+
+/// The reader's playback knobs, each the build's default until chosen. A
+/// stored name this build does not know reads as the default too.
+Future<PlaybackTuning> playbackPref(Database db) async {
+  final rows = await db.query('playback_pref', limit: 1);
+  final row = rows.isEmpty ? const <String, Object?>{} : rows.first;
+  return (
+    open: knob(
+      OpenAfterPause.values,
+      row['open_after_pause'] as String?,
+      buildTuning.open,
+    ),
+    hear: knob(
+      HearWhileReciting.values,
+      row['hear_while_reciting'] as String?,
+      buildTuning.hear,
+    ),
+  );
+}
+
+/// Stores one knob, leaving the other as it was.
+Future<void> setPlaybackKnob(Database db, Enum value) async {
+  final column = switch (value) {
+    OpenAfterPause() => 'open_after_pause',
+    HearWhileReciting() => 'hear_while_reciting',
+    _ => throw ArgumentError.value(value, 'value', 'not a playback knob'),
+  };
+  await db.rawInsert(
+    'INSERT INTO playback_pref (id, $column) VALUES (1, ?) '
+    'ON CONFLICT (id) DO UPDATE SET $column = excluded.$column',
+    [value.name],
+  );
 }
 
 Future<void> setAudioPref(

@@ -387,11 +387,25 @@ func TestTwoRecitersTimingsMixIntoOneHighlight(t *testing.T) {
 	}
 }
 
-func TestAWordsOwnAudioIsTheFileOfTheWordBesideIt(t *testing.T) {
-	// The word-by-word file index counts pause marks and drifts besides; the path
-	// is taken from the API, never rebuilt from the position. 1:1 has no pause
-	// mark, so this pins that the path arrives at all and lands on its word.
-	c := load(t, fixtureDir)
+func TestAWordAfterAPauseMarkPlaysItsOwnFileNotTheNext(t *testing.T) {
+	// The API's audio_url counts a pause mark as a word, so after one it names
+	// the next word's file. The host numbers files by word: the path comes
+	// from the position, whatever the API says. The fixture has no pause mark,
+	// so this one is drifted by hand the way the API drifts it after 2:2's ۛ.
+	dir := copyFixture(t)
+	verses := filepath.Join(dir, "verses", "001.json")
+	b, err := os.ReadFile(verses)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drifted := strings.Replace(string(b), "wbw/001_001_004.mp3", "wbw/001_001_005.mp3", 1)
+	if drifted == string(b) {
+		t.Fatal("fixture no longer carries 1:1 word 4's audio_url")
+	}
+	if err := os.WriteFile(verses, []byte(drifted), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := load(t, dir)
 	for _, w := range c.Words {
 		if w.ID == wordID(1001, 4) && w.WbwPath != "wbw/001_001_004.mp3" {
 			t.Fatalf("1:1 word 4 plays %q", w.WbwPath)

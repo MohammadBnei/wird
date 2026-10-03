@@ -27,46 +27,53 @@ Future<Widget> wirdAround(
   AudioCache? cache,
   Recitation? recitation,
   RouteFactory? onGenerateRoute,
+
   /// The locale to draw in. Null follows the test binding's own, which is en.
   Locale? locale,
-}) async => Wird(
-  db: db,
-  prefs: await Prefs.read(db),
-  // No cache unless the test hands one over: making a temp directory is real
-  // file work, and a widget test body never gets an answer from it. A screen
-  // that plays nothing asks for nothing.
-  recitation: recitation ?? Recitation(cache: cache),
-  child: MaterialApp(
-    theme: nocturneTheme(),
-    // The delegates the app has, so a screen under test can read a string the
-    // way it will in the app. Without them `AppLocalizations.of(context)` is
-    // null and every localised screen throws under test but not in the app,
-    // which is the worst way round for this to break.
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    locale: locale,
-    onGenerateRoute:
-        onGenerateRoute ?? (settings) => screenRoute(settings, db),
-    home: route == null
-        ? screen
-        : WirdShell(
-            route: route,
-            bar: shellDrawsTheBar(route),
-            child: screen,
-          ),
-  ),
-);
+}) async {
+  final prefs = await Prefs.read(db);
+  return Wird(
+    db: db,
+    prefs: prefs,
+    // No cache unless the test hands one over: making a temp directory is real
+    // file work, and a widget test body never gets an answer from it. A screen
+    // that plays nothing asks for nothing.
+    recitation: recitation ?? Recitation(cache: cache, tuning: prefs.playback),
+    child: MaterialApp(
+      theme: nocturneTheme(),
+      // The delegates the app has, so a screen under test can read a string the
+      // way it will in the app. Without them `AppLocalizations.of(context)` is
+      // null and every localised screen throws under test but not in the app,
+      // which is the worst way round for this to break.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: locale,
+      onGenerateRoute:
+          onGenerateRoute ?? (settings) => screenRoute(settings, db),
+      home: route == null
+          ? screen
+          : WirdShell(
+              route: route,
+              bar: shellDrawsTheBar(route),
+              child: screen,
+            ),
+    ),
+  );
+}
 
 /// The whole app, from its first route, with a cache the test controls.
 Future<Widget> wholeApp(
   Database db, {
   AudioCache? cache,
   Recitation? recitation,
-}) async => wirdApp(
-  db,
-  prefs: await Prefs.read(db),
-  recitation: recitation ?? Recitation(cache: cache),
-);
+}) async {
+  final prefs = await Prefs.read(db);
+  return wirdApp(
+    db,
+    prefs: prefs,
+    recitation: recitation ?? Recitation(cache: cache, tuning: prefs.playback),
+  );
+}
 
 /// Sizes the view to the phone the app is judged on before pumping.
 Future<void> pumpPhone(WidgetTester tester, Widget app) async {

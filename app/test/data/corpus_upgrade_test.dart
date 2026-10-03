@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart' show Sqflite;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/kept_repo.dart';
 
@@ -49,6 +50,7 @@ void main() {
       'note': 'mercy; the womb',
       'source': 'senses',
     });
+    await setPlaybackKnob(db, HearWhileReciting.cut);
     await setPrayerPrefs(db, (
       preset: null,
       rakahs: 2,
@@ -96,6 +98,11 @@ void main() {
       (await prayerPrefs(db)).arabicSize,
       70,
       reason: 'the prayer was set up afresh after the corpus moved on',
+    );
+    expect(
+      (await playbackPref(db)).hear,
+      HearWhileReciting.cut,
+      reason: 'the reader\'s playback choice went with the old corpus',
     );
     await db.close();
     expect(File('${target.path}.next').existsSync(), isFalse);

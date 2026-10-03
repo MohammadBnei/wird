@@ -282,7 +282,7 @@ url_rows() {
 		https://creativecommons.org/licenses/by/4.0/|-||a licence link on the About screen, handed to the reader's browser
 		https://everyayah.com|-||a credit on the About screen, handed to the reader's browser
 		https://opensource.org/license/mit|-||a licence link on the About screen, handed to the reader's browser
-		https://wird.bnei.dev/privacy.html|200||the privacy policy both stores link to stops answering, and a store can pull the listing over it
+		https://wird.bnei.dev/privacy.html|206||the privacy policy both stores link to stops answering, and a store can pull the listing over it
 		-|200|https://wird.bnei.dev/.well-known/apple-app-site-association|the iPhone stops treating the sign-in link as Wird's, so Safari keeps the finished sign-in and the reader pastes it back by hand
 	URLS
 }

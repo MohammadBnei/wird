@@ -1007,6 +1007,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsWordVoiceCaption => 'What a tapped word plays: its moment in the reciter\'s aya, or the word spoken on its own, in one voice for every word.';
 
   @override
+  String get settingsTapAfterPauseRestart => 'Play from the tapped word';
+
+  @override
+  String get settingsTapAfterPauseResume => 'Resume the pause';
+
+  @override
+  String get settingsTapAfterPauseCaption => 'After a pause, where play starts once you tap a word.';
+
+  @override
+  String get settingsHeldWordHold => 'Keep the place';
+
+  @override
+  String get settingsHeldWordResume => 'Carry on';
+
+  @override
+  String get settingsHeldWordCut => 'Stop it';
+
+  @override
+  String get settingsHeldWordCaption => 'What a word you hold down does to the recitation.';
+
+  @override
   String get settingsMicrophone => 'MICROPHONE';
 
   @override

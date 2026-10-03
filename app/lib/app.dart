@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -78,9 +80,14 @@ typedef Sounding = ({Sounded what, String label});
 /// it: the player survives the screen being popped, which is what lets the
 /// transport in the shell show and stop a recitation from anywhere.
 class Recitation {
-  Recitation({AudioCache? cache}) : _given = cache;
+  Recitation({AudioCache? cache, ValueListenable<PlaybackTuning>? tuning})
+    : _given = cache,
+      _tuning = tuning ?? ValueNotifier(buildTuning);
 
   final AudioCache? _given;
+
+  /// The reader's playback knobs, read by each set when it decides.
+  final ValueListenable<PlaybackTuning> _tuning;
   Future<AudioCache>? _cache;
 
   /// One cache for the application. A second one carries a pin list of its own
@@ -152,7 +159,13 @@ class Recitation {
       return;
     }
     final previous = _set;
-    _set = SetAudio(cache: await cache, tracks: tracks, wordByWord: wordByWord);
+    _set = SetAudio(
+      cache: await cache,
+      tracks: tracks,
+      wordByWord: wordByWord,
+      tuning: _tuning,
+    );
+    _recital = null;
     _covers = covers;
     sounding.value = null;
     await previous?.dispose();
@@ -164,16 +177,57 @@ class Recitation {
   /// Plays one word, named [label] in the bar: the transport names the word
   /// rather than leaving the reader to guess whether a whole recitation just
   /// started.
-  Future<bool> playWord(int wordId, {required String label}) =>
-      _own(Sounded.word, label, (set) => set.playWord(wordId));
+  ///
+  /// Heard over the recitation by a reader who asked it to carry on
+  /// ([HearWhileReciting.resume]), the recitation picks up again once the
+  /// word has sounded, under its own name in the bar.
+  Future<bool> playWord(int wordId, {required String label}) async {
+    final set = _set;
+    final heard = await _own(
+      Sounded.word,
+      label,
+      (set) => set.playWord(wordId),
+    );
+    // Not awaited: the recitation answers when the sūra ends.
+    if (set != null && identical(_set, set) && set.takeResumeAfterWord()) {
+      unawaited(toggle());
+    }
+    return heard;
+  }
 
   /// Recites the sūra from [wordId], or from its first aya when null.
-  Future<bool> playFrom(int? wordId) =>
-      _own(Sounded.set, _setLabel, (set) => set.playFrom(wordId));
+  Future<bool> playFrom(int? wordId) {
+    _recital = (what: Sounded.set, label: _setLabel);
+    return _own(Sounded.set, _setLabel, (set) => set.playFrom(wordId));
+  }
 
   /// Plays one aya alone, named [label] in the bar.
-  Future<bool> playAya(int ayahId, {required String label}) =>
-      _own(Sounded.aya, label, (set) => set.playAya(ayahId));
+  Future<bool> playAya(int ayahId, {required String label}) {
+    _recital = (what: Sounded.aya, label: label);
+    return _own(Sounded.aya, label, (set) => set.playAya(ayahId));
+  }
+
+  /// The reader tapped [wordId]. After a pause it can become where the next
+  /// press starts, and the bar then says so: the sūra, not the aya that was
+  /// paused.
+  void touch(int wordId) {
+    final set = _set;
+    if (set == null) return;
+    set.touch(wordId);
+    if (set.resume is Touched && sounding.value != null) {
+      sounding.value = _resumeBar(set);
+    }
+  }
+
+  /// The sūra or the one aya last recited, as the bar named it, so a word
+  /// heard over it hands the bar back to it.
+  Sounding? _recital;
+
+  /// What the bar names while [set] waits to carry on.
+  Sounding _resumeBar(SetAudio set) => switch (set.resume) {
+    Held() => _recital ?? (what: Sounded.set, label: _setLabel),
+    _ => (what: Sounded.set, label: _setLabel),
+  };
 
   /// Pauses, or resumes what was paused. A paused recitation keeps its bar,
   /// so the reader can carry on or stop from any screen.
@@ -188,9 +242,11 @@ class Recitation {
       await playFrom(null);
       return;
     }
-    // Resuming keeps what the bar already says: the sūra, or the one aya.
-    final bar = sounding.value;
-    await _own(bar?.what ?? Sounded.set, bar?.label ?? _setLabel, (set) async {
+    // Resuming names what carries on: the sūra or the one aya that was
+    // held, or the sūra from a word tapped since.
+    final bar = _resumeBar(set);
+    if (set.resume is Touched) _recital = bar;
+    await _own(bar.what, bar.label, (set) async {
       await set.toggle();
       return true;
     });
@@ -219,8 +275,15 @@ class Recitation {
     final probe = ++_probe;
     sounding.value = (what: what, label: label);
     final played = await run(set);
-    if (identical(_set, set) && probe == _probe && !set.paused) {
-      sounding.value = null;
+    if (identical(_set, set) && probe == _probe) {
+      // A word heard over a recitation hands the bar back to it, so the
+      // reader can carry on from the bar on any screen; a word that never
+      // took the player leaves the recitation still sounding under its own.
+      sounding.value = set.paused
+          ? _resumeBar(set)
+          : set.playing.value
+          ? _recital
+          : null;
     }
     return played;
   }
@@ -231,6 +294,7 @@ class Recitation {
   Future<void> stop() async {
     await stopSample();
     sounding.value = null;
+    _recital = null;
     await _set?.stop();
   }
 
@@ -282,8 +346,10 @@ class Prefs extends ChangeNotifier {
     this._mic,
     this._locale,
     ({String reciter, bool wordByWord}) audio,
+    PlaybackTuning playback,
   ) : _reciter = audio.reciter,
-      _wordByWord = audio.wordByWord {
+      _wordByWord = audio.wordByWord,
+      playback = ValueNotifier(playback) {
     locale.value = _locale == null ? null : Locale(_locale!);
   }
 
@@ -300,6 +366,7 @@ class Prefs extends ChangeNotifier {
       await micPermission(db),
       await languagePref(db),
       await audioPref(db),
+      await playbackPref(db),
     );
   }
 
@@ -355,6 +422,26 @@ class Prefs extends ChangeNotifier {
     _wordByWord = alone;
     notifyListeners();
     await setAudioPref(_db, reciter: _reciter, wordByWord: _wordByWord);
+  }
+
+  /// How play answers a word tapped after a pause, and a word heard over the
+  /// recitation. Its own notifier, handed to the recitation, which reads it
+  /// at each press: a knob turned from the drawer reaches a recitation
+  /// already paused, with no reading screen open to pass it on.
+  final ValueNotifier<PlaybackTuning> playback;
+
+  Future<void> setOpenAfterPause(OpenAfterPause open) async {
+    if (open == playback.value.open) return;
+    playback.value = (open: open, hear: playback.value.hear);
+    notifyListeners();
+    await setPlaybackKnob(_db, open);
+  }
+
+  Future<void> setHearWhileReciting(HearWhileReciting hear) async {
+    if (hear == playback.value.hear) return;
+    playback.value = (open: playback.value.open, hear: hear);
+    notifyListeners();
+    await setPlaybackKnob(_db, hear);
   }
 
   /// The language the reader picked, or null to take the phone's. Null is what

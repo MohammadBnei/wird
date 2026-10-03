@@ -73,11 +73,11 @@ type Word struct {
 	// where no card on those pages is this word; the reader then sees GlossEn.
 	GlossFr string
 
-	// The word spoken on its own, as quran.com's word-by-word audio names it,
-	// relative to that host. Not derivable from Position: the file index counts
-	// the pause marks as words and drifts further on 3,984 words besides, so a
-	// path built from the position plays a neighbouring word. Empty on the one
-	// word the API gives no file for.
+	// The word spoken on its own, relative to quran.com's word-by-word host.
+	// Built from the position: the host numbers its files by word. The API's
+	// own audio_url counts the pause marks as words, so after the first mark
+	// in an aya it names the next word's file, or one that does not exist
+	// (ADR 0029).
 	WbwPath string
 
 	// The lemma of the segment the root came from: LemmaKey as the corpus
@@ -207,9 +207,13 @@ type rawVerses struct {
 			Transliteration struct {
 				Text *string `json:"text"`
 			} `json:"transliteration"`
-			AudioURL *string `json:"audio_url"`
 		} `json:"words"`
 	} `json:"verses"`
+}
+
+// wbwPath is where quran.com keeps a word spoken alone, relative to its host.
+func wbwPath(surah, ayah, pos int) string {
+	return fmt.Sprintf("wbw/%03d_%03d_%03d.mp3", surah, ayah, pos)
 }
 
 func readJSON(path string, v any) error {
@@ -302,12 +306,8 @@ func Load(dir string, recitations []Recitation) (*Corpus, error) {
 					rootCount[m.root]++
 				}
 				wid := wordID(aid, pos)
-				wbw := ""
-				if w.AudioURL != nil {
-					wbw = *w.AudioURL
-				}
 				c.Words = append(c.Words, Word{
-					ID: wid, AyahID: aid, Position: pos, WbwPath: wbw,
+					ID: wid, AyahID: aid, Position: pos, WbwPath: wbwPath(su, ay, pos),
 					TextAr: w.TextUthmani, Translit: translit, GlossEn: w.Translation.Text,
 					RootLetters: m.root, Form: m.form, Morphology: m.json,
 					LemmaKey: m.lemmaKey, Lemma: m.lemma,

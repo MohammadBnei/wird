@@ -1007,6 +1007,27 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsWordVoiceCaption => 'Ce que joue un mot touché : son passage dans le verset du récitant, ou le mot prononcé seul, d’une même voix pour chaque mot.';
 
   @override
+  String get settingsTapAfterPauseRestart => 'Lire depuis le mot touché';
+
+  @override
+  String get settingsTapAfterPauseResume => 'Reprendre la pause';
+
+  @override
+  String get settingsTapAfterPauseCaption => 'Après une pause, d’où part la lecture quand vous touchez un mot.';
+
+  @override
+  String get settingsHeldWordHold => 'Garder la place';
+
+  @override
+  String get settingsHeldWordResume => 'Continuer';
+
+  @override
+  String get settingsHeldWordCut => 'L’arrêter';
+
+  @override
+  String get settingsHeldWordCaption => 'Ce que fait à la récitation un mot que vous maintenez.';
+
+  @override
   String get settingsMicrophone => 'MICROPHONE';
 
   @override

@@ -61,8 +61,7 @@ CREATE TABLE words (
   lemma_key    TEXT,
   lemma        TEXT,
   -- The word spoken on its own, relative to quran.com's word-by-word host
-  -- (wbw/SSS_AAA_WWW.mp3). Not derivable from position: the file index counts
-  -- pause marks. NULL on the one word the API gives no file for.
+  -- (wbw/SSS_AAA_WWW.mp3), numbered by the word's position (ADR 0029).
   wbw_path     TEXT
 );
 CREATE TABLE roots (

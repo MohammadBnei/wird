@@ -1244,6 +1244,34 @@
   "@settingsWordVoiceCaption": {
     "description": "Caption under the choice of what a tapped word plays."
   },
+  "settingsTapAfterPauseRestart": "Play from the tapped word",
+  "@settingsTapAfterPauseRestart": {
+    "description": "Settings option: after a pause, a word the reader taps becomes where the next press of play recites from."
+  },
+  "settingsTapAfterPauseResume": "Resume the pause",
+  "@settingsTapAfterPauseResume": {
+    "description": "Settings option: after a pause, play carries on from the pause whatever word the reader tapped."
+  },
+  "settingsTapAfterPauseCaption": "After a pause, where play starts once you tap a word.",
+  "@settingsTapAfterPauseCaption": {
+    "description": "Caption under the choice of what play does after a pause and a tapped word."
+  },
+  "settingsHeldWordHold": "Keep the place",
+  "@settingsHeldWordHold": {
+    "description": "Settings option: a word long-pressed during the recitation sounds, then the recitation waits, paused at its place."
+  },
+  "settingsHeldWordResume": "Carry on",
+  "@settingsHeldWordResume": {
+    "description": "Settings option: a word long-pressed during the recitation sounds, then the recitation carries on by itself from its place."
+  },
+  "settingsHeldWordCut": "Stop it",
+  "@settingsHeldWordCut": {
+    "description": "Settings option: a word long-pressed during the recitation ends the recitation."
+  },
+  "settingsHeldWordCaption": "What a word you hold down does to the recitation.",
+  "@settingsHeldWordCaption": {
+    "description": "Caption under the choice of what a long-pressed word does to a recitation that is playing."
+  },
   "settingsMicrophone": "MICROPHONE",
   "@settingsMicrophone": {
     "description": "Section heading on the settings screen, over the microphone permission and the recogniser download."

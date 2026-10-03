@@ -1,6 +1,6 @@
 # 23. The reader picks one of six reciters, and can hear each word spoken alone
 
-Date: 2026-10-02. Status: accepted, amended by ADR 0025. Supersedes one line of ADR 0001: "Multiple reciters" is no longer deferred.
+Date: 2026-10-02. Status: accepted, amended by ADR 0025 and ADR 0029. Supersedes one line of ADR 0001: "Multiple reciters" is no longer deferred.
 
 ## Context
 

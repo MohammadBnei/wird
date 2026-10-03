@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -377,12 +378,17 @@ void main() {
     );
   });
 
-  test('a word spoken alone is the file of the word beside it, because the '
-      'word-by-word files count the pause marks as words', () async {
-    // 12:1 opens on the letters alif lam ra, which the word-by-word files
-    // number as two: the text's second word is the third file.
-    final track = (await tracksFor(db, [12001])).single;
-    expect(track.wordFiles[12001002], 'wbw/012_001_003.mp3');
+  test('a word after a pause mark is spoken by the word beside it, or not at '
+      'all, because its path counted the mark as a word', () async {
+    // The host numbers its files by word (ADR 0029). 2:2 has seven words and
+    // seven files, with a mark after its fourth and fifth words; the path the
+    // API gives its last word is a ninth file that does not exist.
+    final track = (await tracksFor(db, [2002])).single;
+    expect(track.wordFiles[2002005], 'wbw/002_002_005.mp3');
+    expect(track.wordFiles[2002007], 'wbw/002_002_007.mp3');
+    // 12:1 opens on alif lam ra, one word and one file.
+    final open = (await tracksFor(db, [12001])).single;
+    expect(open.wordFiles[12001002], 'wbw/012_001_002.mp3');
   });
 
   test('the words of the set are not fetched for a reader who asked to hear '
@@ -429,8 +435,8 @@ void main() {
     );
   });
 
-  test('a word with no recording of its own falls silent instead of playing '
-      'its stretch of the aya', () async {
+  test('a word the reader asked to hear alone plays in the reciter\'s voice, '
+      'because its aya was on the phone and the word was not', () async {
     final tracks = await tracksFor(db, firstSet);
     final players = FakePlayers();
     JustAudioPlatform.instance = players;
@@ -444,6 +450,28 @@ void main() {
     await pumpEventQueue();
     players.only.finish();
     expect(await played, isTrue);
+    expect(
+      players.only.loaded.last,
+      contains('${wordAudioOrigin}wbw/096_001_001.mp3'),
+    );
+    expect(players.only.loaded.last, isNot(contains('clipping')));
+  });
+
+  test('a word heard alone that cannot be fetched falls silent instead of '
+      'playing its stretch of the aya on the phone', () async {
+    final tracks = await tracksFor(db, firstSet);
+    final players = FakePlayers(offline: true);
+    JustAudioPlatform.instance = players;
+    final audio = SetAudio(
+      cache: await cacheHolding(firstSet),
+      tracks: tracks,
+      wordByWord: true,
+    );
+
+    final played = audio.playWord(96001001);
+    await pumpEventQueue();
+    players.only.finish();
+    expect(await played, isTrue, reason: 'the reciter\'s stretch was heard');
     // setClip reloads the source wrapped in the clip, so the clip is last.
     expect(players.only.loaded.last, contains('clipping'));
   });
@@ -740,6 +768,406 @@ void main() {
       isEmpty,
       reason: 'nothing was started from the top of the sūra',
     );
+  });
+
+  test('choosing one playback knob fixes the other at this build\'s default, '
+      'and a name a later build stored breaks the reading of both', () async {
+    await setPlaybackKnob(db, HearWhileReciting.cut);
+    expect(
+      (await db.query('playback_pref')).single['open_after_pause'],
+      isNull,
+    );
+    expect(await playbackPref(db), (
+      open: buildTuning.open,
+      hear: HearWhileReciting.cut,
+    ));
+
+    await db.update('playback_pref', {'open_after_pause': 'rewind'});
+    expect((await playbackPref(db)).open, buildTuning.open);
+    await db.delete('playback_pref');
+  });
+
+  group('play carries on from what the reader touched last', () {
+    late List<AyaTrack> tracks;
+    late FakePlayers players;
+
+    /// The word the recitation is on when a test acts: one that starts
+    /// inside the fake player's three-second file.
+    WordSpan? placed;
+
+    setUp(() async {
+      tracks = await tracksFor(db, firstSet);
+      players = FakePlayers();
+      JustAudioPlatform.instance = players;
+    });
+
+    /// A set reciting from its top, got to the third word of its second aya.
+    Future<SetAudio> recitingAt96002({
+      ValueNotifier<PlaybackTuning>? tuning,
+    }) async {
+      final audio = SetAudio(
+        cache: await cacheHolding(firstSet),
+        tracks: tracks,
+        tuning: tuning,
+      );
+      unawaited(audio.playFrom(null));
+      await pumpEventQueue();
+      final word = placed = tracks[1].segments.lastWhere(
+        (s) => s.startMs < 2500,
+      );
+      players.only.reach(Duration(milliseconds: word.startMs + 40), index: 1);
+      // Past two highlight periods, so the place has followed the player.
+      await Future<void>.delayed(highlightPeriod * 3);
+      return audio;
+    }
+
+    Duration startOf(int wordId) =>
+        clipStart(locate(tracks, wordId)!.span.startMs);
+
+    Future<void> hear(SetAudio audio, int wordId) async {
+      final heard = audio.playWord(wordId);
+      await pumpEventQueue();
+      players.only.finish();
+      await heard;
+    }
+
+    test('a word heard over the recitation ends it, so play starts the sūra '
+        'over from its first aya', () async {
+      final audio = await recitingAt96002();
+      await hear(audio, 96001001);
+
+      expect(audio.paused, isTrue);
+      expect(audio.playing.value, isFalse);
+      expect(
+        audio.currentWordId.value,
+        placed!.wordId,
+        reason: 'the word play carries on from is lit',
+      );
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      expect(players.only.loaded.last, isNot(contains('096001')));
+      expect(players.only.loaded.last, contains('096002'));
+      expect(players.only.starts.last, clipStart(placed!.startMs));
+      expect(audio.playing.value, isTrue);
+    });
+
+    test('a second word heard before the first ends moves the recitation\'s '
+        'place to it', () async {
+      final audio = await recitingAt96002();
+      unawaited(audio.playWord(96001001));
+      await pumpEventQueue();
+      await hear(audio, 96004001);
+
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      expect(players.only.starts.last, clipStart(placed!.startMs));
+    });
+
+    test('a word heard while the recitation is still loading loses where '
+        'the reader asked it to start', () async {
+      final audio = SetAudio(
+        cache: await cacheHolding(firstSet),
+        tracks: tracks,
+      );
+      // The player cannot be reached before it exists: one word to build it.
+      await hear(audio, 96005001);
+      players.only.gate = Completer<void>();
+      unawaited(audio.playFrom(96003002));
+      await pumpEventQueue();
+      players.only.gate = null;
+      await hear(audio, 96001001);
+
+      expect(audio.paused, isTrue);
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      expect(players.only.loaded.last, isNot(contains('096002')));
+      expect(players.only.starts.last, startOf(96003002));
+    });
+
+    test(
+      'a single aya heard over carries on into the rest of the sūra',
+      () async {
+        final audio = SetAudio(
+          cache: await cacheHolding(firstSet),
+          tracks: tracks,
+        );
+        unawaited(audio.playAya(96003));
+        await pumpEventQueue();
+        await hear(audio, 96001001);
+
+        unawaited(audio.toggle());
+        await pumpEventQueue();
+        expect(players.only.loaded.last, contains('096003'));
+        expect(players.only.loaded.last, isNot(contains('096004')));
+      },
+    );
+
+    test(
+      'a word heard after a pause and a resume ends the recitation',
+      () async {
+        final audio = await recitingAt96002();
+        await audio.toggle();
+        unawaited(audio.toggle());
+        await pumpEventQueue();
+        expect(audio.playing.value, isTrue);
+        await hear(audio, 96001001);
+
+        expect(audio.paused, isTrue);
+      },
+    );
+
+    test('stopping while a word is heard over the recitation leaves play '
+        'carrying on from the stopped place', () async {
+      final audio = await recitingAt96002();
+      unawaited(audio.playWord(96001001));
+      await pumpEventQueue();
+      await audio.stop();
+
+      expect(audio.paused, isFalse);
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      // A stop hands the platform its player back; the next play takes a
+      // new one.
+      expect(players.players.last.loaded.last, contains('096001'));
+      expect(players.players.last.starts.last, isNull);
+    });
+
+    test('a word heard while paused loses the paused place', () async {
+      final audio = await recitingAt96002();
+      await audio.toggle();
+      await hear(audio, 96004001);
+
+      expect(audio.paused, isTrue);
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      expect(players.only.starts.last, clipStart(placed!.startMs));
+    });
+
+    test(
+      'a word with nothing to play pauses the recitation over silence',
+      () async {
+        final audio = await recitingAt96002();
+        expect(await audio.playWord(1001001), isFalse);
+
+        expect(audio.paused, isFalse);
+        expect(audio.playing.value, isTrue);
+      },
+    );
+
+    test(
+      'a word tapped after a pause is ignored by the next press of play',
+      () async {
+        final audio = await recitingAt96002();
+        await audio.toggle();
+        audio.touch(96004002);
+
+        unawaited(audio.toggle());
+        await pumpEventQueue();
+        expect(players.only.loaded.last, contains('096004'));
+        expect(players.only.loaded.last, isNot(contains('096002')));
+        expect(players.only.starts.last, startOf(96004002));
+      },
+    );
+
+    test(
+      'a word tapped while the recitation plays moves where it is',
+      () async {
+        final audio = await recitingAt96002();
+        audio.touch(96004002);
+
+        expect(audio.paused, isFalse);
+        expect(audio.playing.value, isTrue);
+      },
+    );
+
+    test('a reader who asked a pause to win still has play jump to the word '
+        'they tapped', () async {
+      final tuning = ValueNotifier<PlaybackTuning>(buildTuning);
+      final audio = await recitingAt96002(tuning: tuning);
+      await audio.toggle();
+      // Turned in the settings while the recitation waits.
+      tuning.value = (open: OpenAfterPause.resume, hear: buildTuning.hear);
+      final loads = players.only.loaded.length;
+      audio.touch(96004002);
+
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      expect(players.only.loaded.length, loads, reason: 'nothing reloaded');
+      expect(audio.playing.value, isTrue);
+    });
+
+    test('a reader who asked a heard word to end the recitation is left with '
+        'it paused', () async {
+      final audio = await recitingAt96002(
+        tuning: ValueNotifier((
+          open: buildTuning.open,
+          hear: HearWhileReciting.cut,
+        )),
+      );
+      await hear(audio, 96001001);
+
+      expect(audio.paused, isFalse);
+    });
+
+    test('a reader who asked the recitation to carry on after a heard word '
+        'is left in silence, under the word\'s name', () async {
+      final tuning = ValueNotifier<PlaybackTuning>((
+        open: buildTuning.open,
+        hear: HearWhileReciting.resume,
+      ));
+      final recitation = Recitation(
+        cache: await cacheHolding(firstSet),
+        tuning: tuning,
+      );
+      await recitation.carry(tracks, title: 'Al-ʿAlaq 1–5');
+      unawaited(recitation.playFrom(null));
+      await pumpEventQueue();
+
+      final heard = recitation.playWord(96002001, label: 'word');
+      await pumpEventQueue();
+      players.only.finish();
+      await heard;
+      await pumpEventQueue();
+      expect(recitation.playing.value, isTrue);
+      expect(recitation.sounding.value?.what, Sounded.set);
+      expect(recitation.sounding.value?.label, 'Al-ʿAlaq 1–5');
+      await recitation.stop();
+    });
+
+    test('a word heard after a pause and a resume sends play back to where '
+        'the reader paused, not where the recitation had got to', () async {
+      final audio = await recitingAt96002();
+      await audio.toggle();
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      final later = tracks[2].segments.lastWhere((s) => s.startMs < 2500);
+      players.only.reach(Duration(milliseconds: later.startMs + 40), index: 2);
+      await Future<void>.delayed(highlightPeriod * 3);
+      await hear(audio, 96001001);
+
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      expect(players.only.loaded.last, isNot(contains('096002')));
+      expect(players.only.starts.last, clipStart(later.startMs));
+    });
+
+    test('a word heard while paused leaves the screen without the word play '
+        'will carry on from', () async {
+      final audio = await recitingAt96002();
+      await audio.toggle();
+      await hear(audio, 96004001);
+
+      expect(audio.currentWordId.value, placed!.wordId);
+    });
+
+    test(
+      'a reader who asked the recitation to carry on after a heard word '
+      'has it start again by itself after hearing a word while paused',
+      () async {
+        final recitation = Recitation(
+          cache: await cacheHolding(firstSet),
+          tuning: ValueNotifier((
+            open: buildTuning.open,
+            hear: HearWhileReciting.resume,
+          )),
+        );
+        await recitation.carry(tracks, title: 'Al-ʿAlaq 1–5');
+        unawaited(recitation.playFrom(null));
+        await pumpEventQueue();
+        await recitation.toggle();
+        final heard = recitation.playWord(96004001, label: 'word');
+        await pumpEventQueue();
+        players.only.finish();
+        await heard;
+        await pumpEventQueue();
+
+        expect(recitation.playing.value, isFalse);
+        expect(recitation.paused, isTrue);
+        await recitation.stop();
+      },
+    );
+
+    test('a word with nothing to play, after a word the recitation carried on '
+        'from, pauses the recitation and drops its bar', () async {
+      final recitation = Recitation(
+        cache: await cacheHolding(firstSet),
+        tuning: ValueNotifier((
+          open: buildTuning.open,
+          hear: HearWhileReciting.resume,
+        )),
+      );
+      await recitation.carry(tracks, title: 'Al-ʿAlaq 1–5');
+      unawaited(recitation.playFrom(null));
+      await pumpEventQueue();
+      final heard = recitation.playWord(96002001, label: 'word');
+      await pumpEventQueue();
+      players.only.finish();
+      await heard;
+      await pumpEventQueue();
+      expect(recitation.playing.value, isTrue);
+
+      expect(await recitation.playWord(1001001, label: 'none'), isFalse);
+      await pumpEventQueue();
+      expect(recitation.playing.value, isTrue);
+      expect(recitation.sounding.value?.what, Sounded.set);
+      await recitation.stop();
+    });
+
+    test('a knob turned in the settings waits for the reading screen to be '
+        'opened before the recitation hears it', () async {
+      final prefs = await Prefs.read(db);
+      final recitation = Recitation(
+        cache: await cacheHolding(firstSet),
+        tuning: prefs.playback,
+      );
+      await recitation.carry(tracks, title: 'Al-ʿAlaq 1–5');
+      unawaited(recitation.playFrom(null));
+      await pumpEventQueue();
+      // From the drawer: no reading screen is open to pass it on.
+      await prefs.setHearWhileReciting(HearWhileReciting.cut);
+
+      final heard = recitation.playWord(96001001, label: 'one');
+      await pumpEventQueue();
+      players.only.finish();
+      await heard;
+      expect(recitation.paused, isFalse);
+      await db.delete('playback_pref');
+      await recitation.stop();
+    });
+
+    test('a word heard over a recited aya leaves the bar naming the word, '
+        'with no play to press', () async {
+      final recitation = Recitation(cache: await cacheHolding(firstSet));
+      await recitation.carry(tracks, title: 'Al-ʿAlaq 1–5');
+      unawaited(recitation.playAya(96003, label: 'aya 3'));
+      await pumpEventQueue();
+      unawaited(recitation.playWord(96001001, label: 'one'));
+      await pumpEventQueue();
+      final second = recitation.playWord(96004001, label: 'two');
+      await pumpEventQueue();
+      players.only.finish();
+      await second;
+
+      expect(recitation.paused, isTrue);
+      expect(recitation.sounding.value, (what: Sounded.aya, label: 'aya 3'));
+      await recitation.stop();
+    });
+
+    test('a word tapped after pausing an aya leaves the bar naming the aya, '
+        'though play now recites the sūra', () async {
+      final recitation = Recitation(cache: await cacheHolding(firstSet));
+      await recitation.carry(tracks, title: 'Al-ʿAlaq 1–5');
+      unawaited(recitation.playAya(96003, label: 'aya 3'));
+      await pumpEventQueue();
+      await recitation.toggle();
+      recitation.touch(96004001);
+
+      expect(recitation.sounding.value, (
+        what: Sounded.set,
+        label: 'Al-ʿAlaq 1–5',
+      ));
+      await recitation.stop();
+    });
   });
 
   test('a sweep trips over a download still being written', () async {

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../app.dart';
+import '../../data/audio.dart' show HearWhileReciting, OpenAfterPause;
 import '../../data/db.dart';
 import '../../data/mic.dart';
 import '../../data/senses.dart';
@@ -226,6 +227,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: n.space('1')),
                 _caption(n, l.settingsWordVoiceCaption),
+                // How play answers what the reader touched last. Read by the
+                // recitation at each press, so a change here reaches one that
+                // is already paused.
+                SizedBox(height: n.space('3')),
+                NocturneSegmented(
+                  options: [
+                    l.settingsTapAfterPauseRestart,
+                    l.settingsTapAfterPauseResume,
+                  ],
+                  selected: prefs.playback.value.open.index,
+                  onChanged: (i) =>
+                      prefs.setOpenAfterPause(OpenAfterPause.values[i]),
+                ),
+                SizedBox(height: n.space('1')),
+                _caption(n, l.settingsTapAfterPauseCaption),
+                SizedBox(height: n.space('3')),
+                NocturneSegmented(
+                  options: [
+                    l.settingsHeldWordHold,
+                    l.settingsHeldWordResume,
+                    l.settingsHeldWordCut,
+                  ],
+                  selected: prefs.playback.value.hear.index,
+                  onChanged: (i) =>
+                      prefs.setHearWhileReciting(HearWhileReciting.values[i]),
+                ),
+                SizedBox(height: n.space('1')),
+                _caption(n, l.settingsHeldWordCaption),
               ],
               // The senses sit with what a root means, not with the voice: the
               // recogniser below is a feature a reader turns on, and this is
