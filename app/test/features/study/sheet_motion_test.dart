@@ -102,4 +102,27 @@ void main() {
       reason: 'a second drag up keeps it open rather than toggling it shut',
     );
   });
+
+  testWidgets('a drag down on the expanded sheet folds the root away with the '
+      'counts, when the reader only meant to close the counts', (
+    tester,
+  ) async {
+    await openStudy(tester);
+    await tester.tap(sheetHandle());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('open aya')), findsOneWidget);
+
+    await tester.drag(sheetHandle(), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('open aya')), findsNothing);
+    expect(
+      find.byKey(const Key('next word')),
+      findsOneWidget,
+      reason: 'the first drag down stops at the usual height',
+    );
+
+    await tester.drag(sheetHandle(), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('next word')), findsNothing);
+  });
 }

@@ -593,6 +593,9 @@ class _StudyScreenState extends State<StudyScreen> {
       onExpand: () {
         if (!_expanded) _setExpanded(true);
       },
+      onCollapse: () {
+        if (_expanded) _setExpanded(false);
+      },
       onRoot: (letters) => _visit(Routes.root, letters),
       onJudge: _judgeSense,
       onConstellation: (ayahId, letters) =>

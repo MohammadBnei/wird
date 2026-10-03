@@ -49,6 +49,7 @@ class RootSheet extends StatelessWidget {
     required this.onNext,
     required this.onToggle,
     this.onExpand,
+    this.onCollapse,
     required this.onAya,
     required this.scroll,
     required this.onRoot,
@@ -88,6 +89,9 @@ class RootSheet extends StatelessWidget {
   /// Opens the lower half, and does nothing if it is open: a drag up on the
   /// handle asks for it on every move.
   final VoidCallback? onExpand;
+
+  /// Closes the lower half, and does nothing if it is closed.
+  final VoidCallback? onCollapse;
   final void Function(RootAya aya) onAya;
 
   /// The sheet's own scroll, which the screen puts back at the top when the
@@ -227,19 +231,15 @@ class RootSheet extends StatelessWidget {
       if (onHidden != null && !hidden)
         CustomSemanticsAction(label: l.study_hideRoot): () => onHidden!(true),
     },
-    child: GestureDetector(
+    child: _Handle(
       key: const Key('sheet handle'),
-      behavior: HitTestBehavior.opaque,
+      expanded: expanded,
       onTap: hidden ? () => onHidden?.call(false) : onToggle,
-      // Past the drag slop, the direction alone says what the reader meant:
-      // down folds the sheet away, up brings it back and then opens its
-      // lower half, so one long drag up from a folded sheet opens it whole.
-      onVerticalDragUpdate: onHidden == null
+      onDrag: onHidden == null
           ? null
-          : (drag) {
-              final dy = drag.primaryDelta ?? 0;
+          : (dy, {required fromExpanded}) {
               if (dy > 0) {
-                onHidden!(true);
+                fromExpanded ? onCollapse?.call() : onHidden!(true);
               } else if (dy < 0) {
                 hidden ? onHidden!(false) : onExpand?.call();
               }
@@ -710,6 +710,52 @@ class _JudgeSenseState extends State<JudgeSense> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The sheet's handle, which remembers whether the sheet was expanded when a
+/// drag began.
+///
+/// Past the drag slop, the direction alone says what the reader meant. Up
+/// brings a folded sheet back and then opens its lower half, so one long drag
+/// up opens it whole. Down from an expanded sheet stops at its usual height,
+/// and only the next drag down folds it away: the reader who meant to put
+/// away the counts did not mean to put away the root.
+class _Handle extends StatefulWidget {
+  const _Handle({
+    super.key,
+    required this.expanded,
+    required this.onTap,
+    required this.onDrag,
+    required this.child,
+  });
+
+  final bool expanded;
+  final VoidCallback? onTap;
+  final void Function(double dy, {required bool fromExpanded})? onDrag;
+  final Widget child;
+
+  @override
+  State<_Handle> createState() => _HandleState();
+}
+
+class _HandleState extends State<_Handle> {
+  var _fromExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final drag = widget.onDrag;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      onVerticalDragStart: drag == null
+          ? null
+          : (_) => _fromExpanded = widget.expanded,
+      onVerticalDragUpdate: drag == null
+          ? null
+          : (d) => drag(d.primaryDelta ?? 0, fromExpanded: _fromExpanded),
+      child: widget.child,
     );
   }
 }
