@@ -17,10 +17,12 @@
   .total { font-family: var(--font-heading); font-size: 30px; line-height: 1.1; }
   .field { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
   .scroll { overflow-x: auto; }
-  .when { white-space: nowrap; vertical-align: top; }
+  td { vertical-align: top; }
+  .when { white-space: nowrap; }
   .what { white-space: pre-wrap; min-width: 18em; }
   @media (max-width: 640px) { .what { min-width: 12em; } }
   .footnote { font-size: 12px; max-width: 60ch; }
+  .triage { display: grid; gap: var(--space-2); margin-top: var(--space-2); min-width: 14em; }
 </style>
 </head>
 <body>
@@ -83,25 +85,84 @@
     {{else if not .Reports}}
       <p class="text-muted">No reports yet.</p>
     {{else}}
+      {{if .ReportsCut}}
+        <p class="text-muted">The newest {{len .Reports}} are listed; the export has more.</p>
+      {{end}}
       <div class="scroll">
         <table class="table">
           <thead>
-            <tr><th>Sent</th><th>Kind</th><th>What they wrote</th><th>Build</th></tr>
+            <tr><th>Sent</th><th>Kind</th><th>What they wrote</th><th>Build</th><th>Triage</th></tr>
           </thead>
           <tbody>
             {{range .Reports}}
+              {{$r := .}}
               <tr>
                 <td class="when">{{.WrittenOn.UTC.Format "2 Jan 2006"}}</td>
                 <td class="when"><span class="tag tag-accent">{{.Kind}}</span></td>
                 <td class="what">{{.Body}}</td>
                 <td class="when text-muted">{{.AppVersion}} · {{.Platform}}<br>
                   {{.Screen}}<br>
-                  {{if .CorpusVersion}}corpus v{{.CorpusVersion}}{{else}}corpus not said{{end}}</td>
+                  {{if .CorpusVersion}}corpus v{{.CorpusVersion}}{{else}}corpus not said{{end}}<br>
+                  {{if .SenseVersion}}senses {{.SenseVersion}}{{end}}
+                  {{if .Locale}}· {{.Locale}}{{end}}
+                  {{if .SenseHash}}· <code>{{.SenseHash}}</code>{{end}}</td>
+                <td class="when">
+                  <span class="tag tag-neutral">{{.Status}}</span>
+                  {{if .Category}}<span class="tag tag-outline">{{.Category}}</span>{{end}}
+                  {{if .IssueURL}}<a href="{{.IssueURL}}" rel="noreferrer">issue</a>{{end}}
+                  <form class="triage" method="post" action="reports/{{.ID}}">
+                    <select class="input" name="category" aria-label="category">
+                      <option value="">no category</option>
+                      {{range categories}}<option{{if eq . $r.Category}} selected{{end}}>{{.}}</option>{{end}}
+                    </select>
+                    <select class="input" name="status" aria-label="status">
+                      {{range statuses}}<option{{if eq . $r.Status}} selected{{end}}>{{.}}</option>{{end}}
+                    </select>
+                    <input class="input" name="issue_url" type="url" placeholder="https://github.com/…" value="{{.IssueURL}}"
+                      pattern="https://github\.com/.*" aria-label="issue link">
+                    <button class="btn btn-secondary" type="submit">Save</button>
+                  </form>
+                </td>
               </tr>
             {{end}}
           </tbody>
         </table>
       </div>
+    {{end}}
+    <p class="text-muted footnote">Export: <a href="reports.json">reports.json</a> ·
+      <a href="reports.json?status=new">new only</a> · <a href="verdicts.json">verdicts.json</a></p>
+  </section>
+
+  <hr class="hr">
+
+  <section>
+    <h6>Sense verdicts</h6>
+    {{if not .VerdictsOK}}
+      <p class="text-muted">The verdicts could not be read, so none are tallied.</p>
+    {{else if not .Verdicts}}
+      <p class="text-muted">No verdicts on a root yet.</p>
+    {{else}}
+      <div class="scroll">
+        <table class="table">
+          <thead>
+            <tr><th>Root</th><th>Locale</th><th>Good</th><th>Bad</th><th>Bad on current text</th></tr>
+          </thead>
+          <tbody>
+            {{range .Verdicts}}
+              <tr>
+                <td lang="ar" dir="rtl">{{.Root}}</td>
+                <td>{{if .Locale}}{{.Locale}}{{else}}<span class="text-muted">not said</span>{{end}}</td>
+                <td>{{.Good}}</td>
+                <td>{{.Bad}}</td>
+                <td>{{.BadOnCurrent}}</td>
+              </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      <p class="footnote text-muted">Worst first. "Bad on current text" counts only the
+        verdicts cast against the sentence served today, so a sense already corrected
+        drops down the list.</p>
     {{end}}
   </section>
 

@@ -1,7 +1,7 @@
-# Push to main -> the Go half of the gate -> build and push wird-api -> bump
-# helm/values.yaml so ArgoCD reconciles. Same shape and the same hard-won
-# details as editable-blog's and ukubi-stt's workflows; where this one differs,
-# the comment says why.
+# Push to main -> the Go half of the gate -> build and push wird-api and
+# wird-adminweb -> bump both helm values files so ArgoCD reconciles. Same
+# shape and the same hard-won details as editable-blog's and ukubi-stt's
+# workflows; where this one differs, the comment says why.
 #
 # WHAT THE GATE IS, AND WHICH HALF RUNS HERE. `./scripts/qa.sh` is Wird's gate
 # and its exit code is the verdict — but it cannot run on a GitHub runner, and
@@ -57,6 +57,7 @@ concurrency:
 env:
   REGISTRY: registry.bnei.lan:5000
   IMAGE: wird-api
+  ADMIN_IMAGE: wird-adminweb
   # Plaintext on purpose. A username is not a secret, and holding it as one
   # cost agent-fleet a release: the secret was never set, so buildah got
   # `--username ""` and the build failed with "Must provide --username with
@@ -217,19 +218,32 @@ jobs:
           # here: it is pinned to overlay on the build box itself, so this
           # build, the cleanup below and the weekly prune timer cannot end up
           # on different stores.
-          sudo buildah bud \
-            --isolation chroot \
-            --format docker \
-            -t "$REGISTRY/$IMAGE:$TAG" \
-            .
-          sudo buildah push --tls-verify=false "$REGISTRY/$IMAGE:$TAG"
+          #
+          # Two targets of one Dockerfile, so both images come from the same
+          # build stage and the same commit. --layers is what lets the second
+          # bud reuse the first one's build stage instead of compiling both
+          # binaries again; buildah caches nothing without it. The cached
+          # layers are left to the build box's weekly prune timer.
+          for target in api adminweb; do
+            image="$IMAGE"; [ "$target" = adminweb ] && image="$ADMIN_IMAGE"
+            sudo buildah bud \
+              --layers \
+              --isolation chroot \
+              --format docker \
+              --target "$target" \
+              -t "$REGISTRY/$image:$TAG" \
+              .
+            sudo buildah push --tls-verify=false "$REGISTRY/$image:$TAG"
+          done
 
       # Only this build's tag. NEVER `buildah rmi --all` — the box is shared
       # with the other build repos and the base-image cache is the whole reason
       # they live together.
       - name: Clean up this build's image
         if: always()
-        run: sudo buildah rmi "$REGISTRY/$IMAGE:${{ steps.tag.outputs.value }}" 2>/dev/null || true
+        run: |
+          sudo buildah rmi "$REGISTRY/$IMAGE:${{ steps.tag.outputs.value }}" 2>/dev/null || true
+          sudo buildah rmi "$REGISTRY/$ADMIN_IMAGE:${{ steps.tag.outputs.value }}" 2>/dev/null || true
 
   # Only now does ArgoCD get told about the new tag. Bumping it before the push
   # is the failure ukubi-stt recorded for real: ArgoCD syncs main within
@@ -255,14 +269,16 @@ jobs:
       - name: Bump the pinned image tag
         run: |
           set -euo pipefail
-          sed -i -E "s/^(  tag: \")[^\"]+(\")/\1${TAG}\2/" helm/values.yaml
           # A no-op sed is the real failure mode: if the pattern stops matching,
-          # values.yaml keeps naming the previous build, ArgoCD redeploys
+          # a values file keeps naming the previous build, ArgoCD redeploys
           # nothing, and this workflow is green. Silence would read as success.
-          grep -q "^  tag: \"${TAG}\"$" helm/values.yaml || {
-            echo "::error::image.tag was not bumped — check the sed against the file's actual indentation"
-            exit 1
-          }
+          for f in helm/values.yaml helm/adminweb-values.yaml; do
+            sed -i -E "s/^(  tag: \")[^\"]+(\")/\1${TAG}\2/" "$f"
+            grep -q "^  tag: \"${TAG}\"$" "$f" || {
+              echo "::error::image.tag was not bumped in $f — check the sed against the file's actual indentation"
+              exit 1
+            }
+          done
 
       # Pushing with the default GITHUB_TOKEN credential deliberately does not
       # trigger workflow runs, so this commit cannot re-enter the push-to-main
@@ -272,9 +288,9 @@ jobs:
           set -euo pipefail
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-          git add helm/values.yaml
+          git add helm/values.yaml helm/adminweb-values.yaml
           git diff --cached --quiet && { echo "image tag already at ${TAG}"; exit 0; }
-          git commit -m "chore(deploy): pin wird-api to ${TAG}"
+          git commit -m "chore(deploy): pin wird-api and wird-adminweb to ${TAG}"
           # A content commit can land between the checkout and this push; rebase
           # rather than fail after the image is already in the registry.
           git pull --rebase --autostash origin main

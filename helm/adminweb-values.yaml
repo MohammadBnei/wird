@@ -1,0 +1,71 @@
+# wird-adminweb — the operations view. Deployed by infra-bootstrap's
+# common-app-chart from that repo's gitops/apps/registry.yaml entry
+# `wird-adminweb`, the same way helm/values.yaml deploys wird-api.
+#
+# This file does nothing until that registry entry exists, and the entry
+# belongs after the infra-bootstrap work ADR 0026 lists: a forwardAuth proxy
+# provider that forwards the operator's token, the `groups` claim, a service
+# account the agent mints tokens for, and a database role that can only read
+# the dashboard and write a report's triage. Registering it before then deploys
+# a page that answers 401 to everyone.
+
+image:
+  repository: registry.bnei.lan:5000/wird-adminweb
+  # Written by .github/workflows/release.yml after the push, in the same step
+  # and to the same SHA as helm/values.yaml. Never bumped by hand.
+  tag: "c0b69af940ac"
+
+# ADMIN_ADDR defaults to :8081 in server/cmd/adminweb/main.go.
+service:
+  port: 8081
+
+ingress:
+  # Not wird.bnei.dev: that host is compiled into the app and carries the API.
+  # The operations view is a separate workload behind a separate login.
+  hostname: wird-admin.bnei.dev
+  # The forwardAuth middleware in front of this host is the chart's to name and
+  # infra-bootstrap's to configure. adminweb verifies the token it is handed
+  # itself (server/cmd/adminweb/auth.go) and never trusts the proxy's say-so,
+  # so a missing middleware fails closed: no token, 401.
+
+livenessProbe:
+  enabled: true
+  path: /healthz
+readinessProbe:
+  enabled: true
+  path: /healthz
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# DATABASE_URL for the restricted `wird_admin` role, NOT wird-config's: that
+# secret carries the API's owner credentials, and this pod is reachable from
+# the internet behind a login. adminweb never migrates (the API does), so it
+# needs no DDL right either.
+envFrom:
+  - secretRef:
+      name: wird-admin-config
+
+env:
+  - name: OIDC_ISSUER
+    value: https://authentik.bnei.dev/application/o/wird-admin/
+  # The proxy provider's client id. authentik puts it in `aud`; set it here
+  # once the provider exists, the way helm/values.yaml carries wird's.
+  - name: OIDC_AUDIENCE
+    value: wird-admin

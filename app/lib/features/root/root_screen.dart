@@ -3,9 +3,12 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../data/root_repo.dart';
 import '../../l10n/app_localizations.dart';
+import '../../nav.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
+import '../report/report.dart';
+import '../study/root_sheet.dart' show JudgeSense;
 import 'root_dial.dart';
 import 'root_sections.dart';
 
@@ -124,7 +127,12 @@ class _RootScreenState extends State<RootScreen> {
                   if (reading == null)
                     Expanded(child: _unknown(n))
                   else if (spine)
-                    Expanded(child: RootSpineView(reading: reading))
+                    Expanded(
+                      child: RootSpineView(
+                        reading: reading,
+                        judge: _judge(reading),
+                      ),
+                    )
                   else
                     Expanded(child: _dialReading(n, reading)),
                 ],
@@ -132,6 +140,13 @@ class _RootScreenState extends State<RootScreen> {
       ),
     );
   }
+
+  /// The thumbs on the sense, filed under the route the reader is on.
+  Widget _judge(RootReading reading) => JudgeSense(
+    db: widget.db,
+    reading: reading,
+    screen: screenName(widget.alwaysSpine ? Routes.rootSpine : Routes.root),
+  );
 
   Widget _unknown(Nocturne n) => Center(
     child: Padding(
@@ -160,7 +175,7 @@ class _RootScreenState extends State<RootScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
-          child: CoreSense(reading: reading),
+          child: CoreSense(reading: reading, judge: _judge(reading)),
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 18),

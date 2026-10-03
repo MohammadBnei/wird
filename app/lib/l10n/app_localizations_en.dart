@@ -677,7 +677,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_title => 'Report something';
 
   @override
-  String get report_one_way => 'This goes one way. It reaches whoever keeps Wird running, and nothing comes back — there is no inbox here to check.';
+  String get report_one_way => 'This goes one way: Wird\'s maintainers read it, and may summarise it — never quote it — in Wird\'s public issue tracker. Nothing comes back here.';
 
   @override
   String get report_kind_heading => 'WHAT KIND';
@@ -710,6 +710,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get report_context_loading => 'Reading this build…';
+
+  @override
+  String get report_failed => 'Not saved on this phone. Your words are still here — try again.';
 
   @override
   String get report_send => 'Send it';
@@ -1250,6 +1253,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get root_senseJudgeThanks => 'Noted — thank you.';
+
+  @override
+  String get root_senseJudgeFailed => 'Not saved — try again';
 
   @override
   String get root_senseJudgeGoodLabel => 'This sense is right';

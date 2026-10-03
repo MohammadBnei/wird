@@ -275,7 +275,7 @@ Whoever edits `sensesSource`, `sensesAttribution` or `sensesBasis` must bump `pr
 
 - [ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md) — what Wird wrote is served, what came from upstream is bundled. Postgres is the one holder of the senses, so the app and jidhr read the same prose.
 - Seeding is a command, not a migration. A correction must not need a new file, a review and a deploy ([main.go:4](../../../server/cmd/senseseed/main.go#L4-L9)).
-- Drafts ship unsigned on purpose ([ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#a-human-signs-every-sense-before-any-of-it-ships)). The reader's verdict is the review, and the served basis says so. A human signing step is deferred, not rejected.
+- Drafts ship unsigned on purpose ([ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#a-human-signs-every-sense-before-any-of-it-ships)). The reader's verdict is the review, and the served basis says so. The operations view counts verdicts per root and language, and counts apart the bad ones cast against the text served today, so a root is redrafted on what readers say about its current sentence ([Admin web](../adminweb.md#5-sense-verdicts-are-counted-not-listed), [ADR 0026](../../adr/0026-reports-are-triaged-and-turned-into-issues.md)). A human signing step is deferred, not rejected.
 - One model call per root, no revise pass. A second pass that told the model what it had "missed" made senses worse by pasting glosses in as clauses ([main.go:3](../../../server/cmd/rootdraft/main.go#L3-L8)).
 
 ## Go deeper

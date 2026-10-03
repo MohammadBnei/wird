@@ -37,9 +37,36 @@ var _ func(*store.Store, context.Context) (store.Health, error) = (*store.Store)
 // them: a reader added to the database must not add a row to any answer. That
 // is what separates a tally of everybody from a tally per person, whatever the
 // key is called.
+//
+// One aggregate answers with words as well as numbers, and it is named here
+// rather than let through by a looser rule: the sense verdict tally is keyed
+// on a root and a locale. The root has to be one of root_senses' own keys —
+// a sentence Wird wrote, not text a reader typed — and the locale is a
+// language, which everybody reading in it shares. The growth check below still
+// holds it: a third reader judging the same root in the same language adds a
+// thumb to a row, never a row.
 func TestNoDashboardAggregateCanBeNarrowedToOneNamedReader(t *testing.T) {
 	db, pool := testenv.Postgres(t)
 	seedTwoReadersWithPractice(t, db)
+	exec(t, pool, `INSERT INTO root_senses (root_letters, sense_en, sense_fr) VALUES ('كتب', 'writing', 'écriture')`)
+	land(t, db, reader(t, db, "sub-admin-one"), verdictOp(opID(805), "bad", "كتب", "en", ""))
+	land(t, db, reader(t, db, "sub-admin-two"), verdictOp(opID(815), "good", "كتب", "en", ""))
+	sweep(t, db)
+
+	// The only words an aggregate may answer with: a root of ours, and one of
+	// the languages the app reads in, or none said.
+	keyedOnRootAndLocale := map[string]bool{store.SenseVerdictsSQL: true}
+	isRoot := func(v any) bool {
+		root, ok := v.(string)
+		var ours bool
+		err := pool.QueryRow(t.Context(),
+			`SELECT EXISTS (SELECT 1 FROM root_senses WHERE root_letters = $1)`, root).Scan(&ours)
+		return ok && err == nil && ours
+	}
+	isLocale := func(v any) bool {
+		locale, ok := v.(string)
+		return ok && (locale == "" || locale == "en" || locale == "fr")
+	}
 
 	rows := map[string]int{}
 	for _, sql := range store.AdminAggregates {
@@ -59,6 +86,13 @@ func TestNoDashboardAggregateCanBeNarrowedToOneNamedReader(t *testing.T) {
 
 		// And it really is a tally when it runs, not only when it is read.
 		for _, row := range answer(t, pool, sql) {
+			if keyedOnRootAndLocale[sql] {
+				if len(row) < 2 || !isRoot(row[0]) || !isLocale(row[1]) {
+					t.Errorf("the verdict tally is keyed on %v, which is not a root of ours and a language: %s", row, short)
+					continue
+				}
+				row = row[2:]
+			}
 			for _, v := range row {
 				switch v.(type) {
 				case int64, int32, int16, int, float64:
@@ -73,6 +107,8 @@ func TestNoDashboardAggregateCanBeNarrowedToOneNamedReader(t *testing.T) {
 	// A third reader whose practice is a copy of the second's: nothing new is
 	// being counted, there is only one more person doing it.
 	seedReaderWithPractice(t, db, "sub-admin-three", 820, 1003, 4)
+	land(t, db, reader(t, db, "sub-admin-three"), verdictOp(opID(825), "bad", "كتب", "en", ""))
+	sweep(t, db)
 
 	for _, sql := range store.AdminAggregates {
 		short := strings.Join(strings.Fields(sql), " ")
@@ -145,7 +181,7 @@ func TestTheDashboardCountsEveryReadersPrayersAndEveryLostWrite(t *testing.T) {
 	// which is the distance an operator's list is actually ordered over.
 	exec(t, pool, `UPDATE reports SET written_on = current_date - 7 WHERE corpus_version = 1`)
 
-	reports, err := db.Reports(t.Context(), 0)
+	reports, _, err := db.Reports(t.Context(), store.ReportFilter{})
 	if err != nil {
 		t.Fatalf("reports: %v", err)
 	}

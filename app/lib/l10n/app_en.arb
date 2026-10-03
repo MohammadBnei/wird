@@ -714,7 +714,7 @@
   "@report_title": {
     "description": "The heading of the report screen, where a reader says what went wrong, what is missing, or what could be better."
   },
-  "report_one_way": "This goes one way. It reaches whoever keeps Wird running, and nothing comes back — there is no inbox here to check.",
+  "report_one_way": "This goes one way: Wird's maintainers read it, and may summarise it — never quote it — in Wird's public issue tracker. Nothing comes back here.",
   "@report_one_way": {
     "description": "Caption under the report screen's heading, saying that no answer comes back."
   },
@@ -765,6 +765,10 @@
   "report_context_loading": "Reading this build…",
   "@report_context_loading": {
     "description": "Stands in for the gathered context on the report screen while the corpus is still being asked for its version."
+  },
+  "report_failed": "Not saved on this phone. Your words are still here — try again.",
+  "@report_failed": {
+    "description": "Shown under the send button when the report could not be written to the phone's queue."
   },
   "report_send": "Send it",
   "@report_send": {
@@ -1601,6 +1605,10 @@
   "root_senseJudgeThanks": "Noted — thank you.",
   "@root_senseJudgeThanks": {
     "description": "Shown once a verdict has been recorded."
+  },
+  "root_senseJudgeFailed": "Not saved — try again",
+  "@root_senseJudgeFailed": {
+    "description": "Shown beside the thumbs when a verdict on a sense could not be queued."
   },
   "root_senseJudgeGoodLabel": "This sense is right",
   "@root_senseJudgeGoodLabel": {

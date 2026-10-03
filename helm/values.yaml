@@ -1,10 +1,10 @@
 # wird-api — deployed by infra-bootstrap's common-app-chart, driven from that
 # repo's gitops/apps/registry.yaml entry `wird`.
 #
-# ONE image and one workload: the API the phone talks to. `server/cmd/adminweb`
-# and `jidhr/cmd/rootd` are built by nothing and deployed by nothing — see
-# docs/adr/0005-deploying-the-api.md for why, and for what has to happen before
-# either of them gets an entry here.
+# One workload: the API the phone talks to. The operations view is its own
+# image and its own values file, helm/adminweb-values.yaml (ADR 0026).
+# `jidhr/cmd/rootd` is built by nothing and deployed by nothing — see
+# docs/adr/0005-deploying-the-api.md for why.
 
 image:
   # The in-cluster Zot registry over plain HTTP (infra-bootstrap ADR-0034);
@@ -20,7 +20,7 @@ image:
   # the registry entry in infra-bootstrap belongs after this repo's first CI
   # run has replaced this line, or the first sync is an ImagePullBackOff
   # against a tag that was never built.
-  tag: "2b83f9028543"
+  tag: "c0b69af940ac"
 
 # API_ADDR defaults to :8080 in server/cmd/api/main.go and nothing overrides it.
 service:

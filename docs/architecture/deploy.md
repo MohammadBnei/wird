@@ -1,10 +1,10 @@
 # Deploy
 
-> From a merged commit to a running pod: CI checks, one container image tagged with the commit, a helm values bump, and ArgoCD. Level L1 · Parent [Overview](../README.md) · Children none
+> From a merged commit to a running pod: CI checks, two container images tagged with the commit, a helm values bump, and ArgoCD. Level L1 · Parent [Overview](../README.md) · Children none
 
 ## Black box
 
-A merge to `main` is a release. Nobody cuts a version or presses a button. CI runs the Go half of **the gate**, builds one container image holding `wird-api`, and writes that image's tag into this repo. ArgoCD sees the new tag and rolls the pod. A pull request runs the checks and stops there.
+A merge to `main` is a release. Nobody cuts a version or presses a button. CI runs the Go half of **the gate**, builds two container images from one Dockerfile, `wird-api` and `wird-adminweb`, and writes their tag into this repo. ArgoCD sees the new tag and rolls the pod. A pull request runs the checks and stops there.
 
 | In | Out | Depends on |
 |---|---|---|
@@ -26,14 +26,14 @@ sequenceDiagram
   Dev->>GH: merge
   GH->>CI: push event
   CI->>CI: Go build, vet, test, marker and size checks
-  CI->>Reg: push wird-api tagged with the commit
+  CI->>Reg: push wird-api and wird-adminweb, tagged with the commit
   CI->>GH: commit the new tag into helm values
   Argo->>GH: notice the new tag
   Argo->>Pod: roll to the new image
   Pod->>Pod: run migrations, then serve
 ```
 
-Only the API ships through this pipeline. The app is built and installed outside it. The admin web and jidhr are built by nothing and deployed by nothing today.
+Only the API is deployed through this pipeline today. The admin web image is built and its tag bumped on every release, but its values file does nothing until the infrastructure repo registers it ([Admin web](adminweb.md#deployment)). The app is built and installed outside this pipeline. jidhr is built by nothing and deployed by nothing.
 
 ```mermaid
 flowchart LR
@@ -80,8 +80,10 @@ flowchart TD
 ```mermaid
 flowchart LR
   subgraph image["Dockerfile"]
-    b["golang build stage<br/>go.work + server + jidhr"] --> bin["static wird-api binary"]
-    bin --> a["alpine + ca-certificates<br/>user 10001"]
+    b["golang build stage<br/>go.work + server + jidhr"] --> bin["static wird-api and<br/>wird-adminweb binaries"]
+    bin --> base["base: alpine + ca-certificates<br/>user 10001"]
+    base --> a["target api<br/>wird-api, :8080"]
+    base --> aw["target adminweb<br/>wird-adminweb + stylesheet, :8081"]
   end
   subgraph pod["Pod at start"]
     s["open Postgres"] --> m["embedded goose migrations"] --> o["reach the OIDC issuer"] --> l["listen on :8080"]
@@ -121,7 +123,7 @@ on:
       - run: go vet ./jidhr/... ./server/...
 ```
 
-[release.yml:106-116](../../.github/workflows/release.yml#L106-L116) · marker rule [release.yml:121-126](../../.github/workflows/release.yml#L121-L126) · corpus budget [release.yml:130-134](../../.github/workflows/release.yml#L130-L134)
+[release.yml:107-117](../../.github/workflows/release.yml#L107-L117) · marker rule [release.yml:122-127](../../.github/workflows/release.yml#L122-L127) · corpus budget [release.yml:131-135](../../.github/workflows/release.yml#L131-L135)
 
 The Flutter half of the gate never runs in CI. It needs fvm and a device, and the runners have neither. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
 
@@ -135,73 +137,77 @@ The Flutter half of the gate never runs in CI. It needs fvm and a device, and th
         run: echo "value=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
 ```
 
-[release.yml:156-158](../../.github/workflows/release.yml#L156-L158)
+[release.yml:157-159](../../.github/workflows/release.yml#L157-L159)
 
 It builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC at build time. It is never stored in the repo.
 
+Both images are built from the same Dockerfile, one target each, in one job and from one commit. `--layers` lets the second build reuse the first one's build stage instead of compiling both binaries again; the cached layers are left to the build box's weekly prune.
+
 ```yaml
-          sudo buildah bud \
-            --isolation chroot \
-            --format docker \
-            -t "$REGISTRY/$IMAGE:$TAG" \
-            .
-          sudo buildah push --tls-verify=false "$REGISTRY/$IMAGE:$TAG"
+          for target in api adminweb; do
+            image="$IMAGE"; [ "$target" = adminweb ] && image="$ADMIN_IMAGE"
+            sudo buildah bud \
+              --layers \
+              --isolation chroot \
+              --format docker \
+              --target "$target" \
+              -t "$REGISTRY/$image:$TAG" \
+              .
+            sudo buildah push --tls-verify=false "$REGISTRY/$image:$TAG"
+          done
 ```
 
-[release.yml:218-223](../../.github/workflows/release.yml#L218-L223) · job guard [release.yml:136-144](../../.github/workflows/release.yml#L136-L144) · password step [release.yml:168-185](../../.github/workflows/release.yml#L168-L185)
+[release.yml:227-237](../../.github/workflows/release.yml#L227-L237) · job guard [release.yml:137-145](../../.github/workflows/release.yml#L137-L145) · password step [release.yml:169-186](../../.github/workflows/release.yml#L169-L186)
 
 ### 4. One binary per image
 
-The Dockerfile copies the Go workspace and builds `server/cmd/api` only. The public page is part of that binary: `server/internal/site/static` is embedded, so it ships with every image and needs no other workload ([ADR 0018](../adr/0018-the-public-site-is-served-by-the-api.md)). The `app/` folder is never copied, so the bundled **corpus** cannot end up in the image. CGO is off, so the binary is static.
+The Dockerfile copies the Go workspace and builds two binaries, `server/cmd/api` and `server/cmd/adminweb`. Each final image holds one of them. The public page is part of that binary: `server/internal/site/static` is embedded, so it ships with every image and needs no other workload ([ADR 0018](../adr/0018-the-public-site-is-served-by-the-api.md)). The `app/` folder is never copied, so the bundled **corpus** cannot end up in the image. CGO is off, so the binaries are static. The one file outside the Go tree that is copied is the Nocturne stylesheet, which admin web reads at start. It is copied in the admin web stage rather than the build stage, so a stylesheet edit does not rebuild both binaries ([Dockerfile:52](../../Dockerfile#L52)).
 
 ```dockerfile
-RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-api ./server/cmd/api
+RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-api ./server/cmd/api \
+ && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-adminweb ./server/cmd/adminweb
 ```
 
-[Dockerfile:31](../../Dockerfile#L31)
+[Dockerfile:32-33](../../Dockerfile#L32-L33)
 
-The final stage is Alpine, for two reasons. It carries CA certificates, which the OIDC client needs to fetch the issuer's keys over HTTPS. And it keeps a shell for debugging. The process runs as an unprivileged user.
+Both final images start from one Alpine base, for two reasons. It carries CA certificates, which the OIDC client needs to fetch the issuer's keys over HTTPS. And it keeps a shell for debugging. The process runs as an unprivileged user. The `api` target comes last, so a plain `docker build .` still produces `wird-api`.
 
 ```dockerfile
-FROM alpine:3.22
-
-RUN apk add --no-cache ca-certificates \
- && adduser -D -u 10001 wird
-
-COPY --from=build /out/wird-api /usr/local/bin/wird-api
-
-USER wird
-EXPOSE 8080
-ENTRYPOINT ["/usr/local/bin/wird-api"]
+FROM base AS adminweb
+COPY --from=build /out/wird-adminweb /usr/local/bin/wird-adminweb
+# adminweb reads the Nocturne stylesheet from disk at start and refuses to run
+# without it. Copied by name, like everything else here, and in this stage
+# rather than the build one, so a stylesheet edit does not rebuild both
+# binaries. .dockerignore lets this one file through.
+COPY docs/design/nocturne-styles.css /usr/share/wird/nocturne-styles.css
+ENV NOCTURNE_CSS=/usr/share/wird/nocturne-styles.css
+EXPOSE 8081
+ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
 ```
 
-[Dockerfile:38-47](../../Dockerfile#L38-L47)
+[Dockerfile:46-55](../../Dockerfile#L46-L55) · the `api` target [Dockerfile:57-61](../../Dockerfile#L57-L61) · the shared base [Dockerfile:40-44](../../Dockerfile#L40-L44)
 
 ### 5. Bump the tag, and only after the push
 
-`deploy` runs on a push to `main`, once the image exists. It rewrites one line of `helm/values.yaml` and commits it. Bumping earlier would let ArgoCD pull a tag that is still being built. If the edit silently matches nothing, the job fails instead of going green.
+`deploy` runs on a push to `main`, once both images exist. It rewrites the tag line of `helm/values.yaml` and of `helm/adminweb-values.yaml`, to the same commit, and commits both. Bumping earlier would let ArgoCD pull a tag that is still being built. If the edit silently matches nothing, the job fails instead of going green.
 
 ```yaml
-      - name: Bump the pinned image tag
-        run: |
-          set -euo pipefail
-          sed -i -E "s/^(  tag: \")[^\"]+(\")/\1${TAG}\2/" helm/values.yaml
-          # A no-op sed is the real failure mode: if the pattern stops matching,
-          # values.yaml keeps naming the previous build, ArgoCD redeploys
-          # nothing, and this workflow is green. Silence would read as success.
-          grep -q "^  tag: \"${TAG}\"$" helm/values.yaml || {
-            echo "::error::image.tag was not bumped — check the sed against the file's actual indentation"
-            exit 1
-          }
+          for f in helm/values.yaml helm/adminweb-values.yaml; do
+            sed -i -E "s/^(  tag: \")[^\"]+(\")/\1${TAG}\2/" "$f"
+            grep -q "^  tag: \"${TAG}\"$" "$f" || {
+              echo "::error::image.tag was not bumped in $f — check the sed against the file's actual indentation"
+              exit 1
+            }
+          done
 ```
 
-[release.yml:253-263](../../.github/workflows/release.yml#L253-L263) · commit and push [release.yml:268-279](../../.github/workflows/release.yml#L268-L279) · the line it edits [values.yaml:23](../../helm/values.yaml#L23)
+[release.yml:275-281](../../.github/workflows/release.yml#L275-L281) · commit and push [release.yml:286-297](../../.github/workflows/release.yml#L286-L297) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
-A manual run builds and pushes an image but skips this job, so it never deploys.
+A manual run builds and pushes both images but skips this job, so it never deploys.
 
 ### 6. What the pod is told
 
-`helm/values.yaml` is the only deployment file in this repo. The chart itself lives in the infrastructure repo, and ArgoCD there reads this file. It sets the host, the port, and health probes on `/healthz`, a route that answers without a token.
+`helm/values.yaml` is the API's deployment file. The chart itself lives in the infrastructure repo, and ArgoCD there reads this file. Admin web has its own, `helm/adminweb-values.yaml`, described on [its page](adminweb.md#deployment). It sets the host, the port, and health probes on `/healthz`, a route that answers without a token.
 
 ```yaml
   hostname: wird.bnei.dev
@@ -254,7 +260,8 @@ A second workflow, `docs`, runs on every pull request and every push to `main`, 
 
 ## Why it is this way
 
-- [ADR 0005](../adr/0005-deploying-the-api.md) — one image with the API only, the commit hash as tag, secrets assembled in one place, and only the Go half of the gate in CI.
+- [ADR 0005](../adr/0005-deploying-the-api.md) — one binary per image, the commit hash as tag, secrets assembled in one place, and only the Go half of the gate in CI.
+- [ADR 0026](../adr/0026-reports-are-triaged-and-turned-into-issues.md) — the operations view became a second image from the same build, inert until the infrastructure work it lists is done.
 - [ADR 0018](../adr/0018-the-public-site-is-served-by-the-api.md) — the public page is embedded in that same image, and the APK is published by digest-named key.
 
 ### Publishing the Android build

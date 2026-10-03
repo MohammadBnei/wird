@@ -105,6 +105,15 @@ and confirm the token really carries `groups`, and if it does not, add the
 property mapping in infra-bootstrap. Until that is done, expect 403 rather than
 a way in.
 
+The `groups` claim is one of four things the operations view waits for before
+its values file is registered ([ADR 0026](../adr/0026-reports-are-triaged-and-turned-into-issues.md)).
+The other three also live in infra-bootstrap: a forwardAuth proxy provider
+whose client id is the view's audience and which forwards the operator's token;
+a service account in `platform-admins` with a client-credentials grant, for the
+agent that pulls the export; and a database role that can only read the
+dashboard and write a report's triage. See
+[Admin web](../architecture/adminweb.md#deployment).
+
 ## What the client has to be, structurally
 
 Wird works entirely offline and the whole reading loop is local. So:

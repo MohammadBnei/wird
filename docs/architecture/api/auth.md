@@ -51,13 +51,12 @@ flowchart LR
   subgraph server["server"]
     mw["auth.Middleware"]
     verify["go-oidc Verify<br/>signature, iss, aud, exp"]
-    deleted["deleted before?<br/>auth_time vs deleted_readers"]
-    ensure["store.EnsureUser"]
+    ensure["store.ReaderFor<br/>refuses a deleted account"]
     v1["v1 handlers"]
   end
   begin --> complete --> exchange --> handover --> table
   table --> token --> header
-  header -->|"Bearer ID token"| mw --> verify --> deleted --> ensure --> v1
+  header -->|"Bearer ID token"| mw --> verify --> ensure --> v1
   header -.->|"401: refresh once, retry"| token
 ```
 
@@ -83,7 +82,7 @@ The app is a **public client**: it holds no secret. PKCE stands in for one. The 
 
 [auth.dart:202-219](../../../app/lib/data/auth.dart#L202-L219)
 
-The endpoints come from the issuer's discovery document, not from string joins, because Authentik does not put them under the issuer path ([auth.dart:355-361](../../../app/lib/data/auth.dart#L355-L361)). The issuer, client id and redirect are compile-time defines, so a debug run can point at the local stub ([auth.dart:23-58](../../../app/lib/data/auth.dart#L23-L58)). The redirect is `https://wird.bnei.dev/auth/callback`, an App Link, and it must match the Authentik registration character for character. The settings panel starts the flow and listens for the link before the browser opens ([account_panel.dart:117-120](../../../app/lib/features/settings/account_panel.dart#L117-L120)).
+The endpoints come from the issuer's discovery document, not from string joins, because Authentik does not put them under the issuer path ([auth.dart:355-361](../../../app/lib/data/auth.dart#L355-L361)). The issuer, client id and redirect are compile-time defines, so a debug run can point at the local stub ([auth.dart:23-58](../../../app/lib/data/auth.dart#L23-L58)). The redirect is `https://wird.bnei.dev/auth/callback`, an App Link, and it must match the Authentik registration character for character. The settings panel starts the flow and listens for the link before the browser opens ([account_panel.dart:110-113](../../../app/lib/features/settings/account_panel.dart#L117-L120)).
 
 ### 2. The code comes back and is traded for tokens
 
@@ -126,7 +125,7 @@ There is no secure-storage plugin. The tokens live in one row of an `auth_tokens
 
 [auth.dart:342-351](../../../app/lib/data/auth.dart#L342-L351)
 
-`_handOver` compares the token's `sub` with the last reader this device knew. The same reader coming back keeps everything. A different reader clears the reader's own tables, including the outbox, so one person's notes never show on another's screen ([auth.dart:425-448](../../../app/lib/data/auth.dart#L425-L448)). Signing out deletes the tokens row and nothing else ([auth.dart:259-262](../../../app/lib/data/auth.dart#L259-L262)).
+`_handOver` compares the token's `sub` with the last reader this device knew. The same reader coming back keeps everything. A different reader clears the reader's own tables, including the outbox and the record of which senses were judged, so one person's notes never show on another's screen ([auth.dart:426-449](../../../app/lib/data/auth.dart#L426-L449)). Signing out deletes the tokens row and nothing else ([auth.dart:259-262](../../../app/lib/data/auth.dart#L259-L262)).
 
 ### 4. Every sync request carries the ID token
 
@@ -148,7 +147,7 @@ The token the device sends is the **ID token**, not the access token. This was s
 
 [auth.dart:188-198](../../../app/lib/data/auth.dart#L188-L198)
 
-A Dio interceptor is the only place a token is attached ([auth.dart:494-501](../../../app/lib/data/auth.dart#L494-L501)), and only the sync client has it ([flush.dart:193](../../../app/lib/data/flush.dart#L193)). On a 401 it refreshes once and retries on a plain client, so it cannot loop ([auth.dart:509-527](../../../app/lib/data/auth.dart#L509-L527)). Only a 400 on the refresh itself signs the reader out. A lost network leaves the account alone ([auth.dart:296-304](../../../app/lib/data/auth.dart#L296-L304)).
+A Dio interceptor is the only place a token is attached ([auth.dart:495-502](../../../app/lib/data/auth.dart#L495-L502)), and only the sync client has it ([flush.dart:193](../../../app/lib/data/flush.dart#L193)). On a 401 it refreshes once and retries on a plain client, so it cannot loop ([auth.dart:510-528](../../../app/lib/data/auth.dart#L510-L528)). Only a 400 on the refresh itself signs the reader out. A lost network leaves the account alone ([auth.dart:296-304](../../../app/lib/data/auth.dart#L296-L304)).
 
 ### 5. The API builds a verifier from the issuer
 
@@ -168,7 +167,7 @@ func New(ctx context.Context, issuer, audience string, users *store.Store, log *
 }
 ```
 
-[auth.go:28-38](../../../server/internal/auth/auth.go#L28-L38)
+[auth.go:29-39](../../../server/internal/auth/auth.go#L29-L39)
 
 Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE` ([main.go:29-30](../../../server/cmd/api/main.go#L29-L30)). Swapping the local stub for the real Authentik is one variable, and no code on this path knows which it talks to.
 

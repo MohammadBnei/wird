@@ -162,13 +162,13 @@ flowchart LR
   V -->|Download| A[GET /download/android] -->|302| O[(Object store)]
 ```
 
-The middleware verifies the token, then finds the reader behind its subject, creating the row the first time. [Auth](api/auth.md) has the details. [auth.go:45](../../server/internal/auth/auth.go#L45)
+The middleware verifies the token, then finds the reader behind its subject, creating the row the first time. [Auth](api/auth.md) has the details. [auth.go:46](../../server/internal/auth/auth.go#L46)
 
 ### 3. Handlers stay thin
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes. [httpx.go:10-22](../../server/internal/httpx/httpx.go#L10-L22)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:203-210](../../server/internal/api/api.go#L203-L210)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:204-211](../../server/internal/api/api.go#L204-L211)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -181,7 +181,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:177-185](../../server/internal/api/api.go#L177-L185)), a root must be at most 32 bytes of Arabic letters ([api.go:189-199](../../server/internal/api/api.go#L189-L199)), and a kept kind must be `aya`, `root` or `note` ([api.go:116-123](../../server/internal/api/api.go#L116-L123)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:178-186](../../server/internal/api/api.go#L178-L186)), a root must be at most 32 bytes of Arabic letters ([api.go:190-200](../../server/internal/api/api.go#L190-L200)), and a kept kind must be `aya`, `root` or `note` ([api.go:117-124](../../server/internal/api/api.go#L117-L124)).
 
 ### 4. The store holds every SQL statement
 
@@ -209,18 +209,20 @@ The tables come from nine migrations in `server/migrations`:
 | [00004](../../server/migrations/00004_derived_set_ids.sql) | Set identity per reader, for derived set ids |
 | [00005](../../server/migrations/00005_reports_and_health.sql) to [00008](../../server/migrations/00008_reports_are_written_by_the_clock_not_by_the_reader.sql) | Anonymous `reports`, `report_inbox`, and the `sync_outcomes` totals |
 | [00009](../../server/migrations/00009_the_server_owns_the_senses.sql) | `root_senses`, the senses the server serves |
+| [00010](../../server/migrations/00010_reading_positions.sql) | `reading_positions`, the reader's place in each sūra |
+| [00011](../../server/migrations/00011_report_triage.sql) | A report's `locale` and `sense_hash`, the `verdict_root` the sweep settles for a sense verdict, and the operator's triage: `category`, `status`, `issue_url` |
 
-Read endpoints are pure queries. Progress is counted on each request, never stored; `percent` is understood ayas over 6236, as a fraction. [store.go:160-211](../../server/internal/store/store.go#L160-L211)
+Read endpoints are pure queries. Progress is counted on each request, never stored; `percent` is understood ayas over 6236, as a fraction. [store.go:187-238](../../server/internal/store/store.go#L187-L238)
 
 ### 5. Placeholders answer honestly
 
-No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold a few rows marked `is_placeholder`, and the payload carries `"placeholder": true`. An aya or root with no row is a 404, never an invented answer. [00002_content.sql:3-8](../../server/migrations/00002_content.sql#L3-L8), [store.go:266-290](../../server/internal/store/store.go#L266-L290)
+No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold a few rows marked `is_placeholder`, and the payload carries `"placeholder": true`. An aya or root with no row is a 404, never an invented answer. [00002_content.sql:3-8](../../server/migrations/00002_content.sql#L3-L8), [store.go:293-317](../../server/internal/store/store.go#L293-L317)
 
 `corpus_meta` is seeded once by that migration and nothing updates it, so `/v1/corpus/version` does not follow the corpus the app ships. [00002_content.sql:41](../../server/migrations/00002_content.sql#L41)
 
 ### 6. Two loops run beside the server
 
-`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:52-62](../../server/cmd/api/main.go#L52-L62), [store.go:382-391](../../server/internal/store/store.go#L382-L391)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:75-91](../../server/cmd/api/main.go#L75-L91)). [main.go:36-37](../../server/cmd/api/main.go#L36-L37)
+`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:52-62](../../server/cmd/api/main.go#L52-L62), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:75-91](../../server/cmd/api/main.go#L75-L91)). [main.go:36-37](../../server/cmd/api/main.go#L36-L37)
 
 ```go
 	go maintain(ctx, db, log)
@@ -235,6 +237,7 @@ Both are marked as deliberate ceilings: they assume one replica ([main.go:50-51]
 - [ADR 0002](../adr/0002-set-identity.md) — a set id is derived, and one op records a prayer.
 - [ADR 0004](../adr/0004-the-operations-view-behind-authentiks-group.md) — the operations view sees totals only, which is why reports pass through an inbox and a sweep.
 - [ADR 0005](../adr/0005-deploying-the-api.md) — one image, holding only this binary; the corpus is never in it.
+- [ADR 0026](../adr/0026-reports-are-triaged-and-turned-into-issues.md) — a report says which language and which sentence a sense verdict was about; this binary alone runs the migrations.
 - [ADR 0008](../adr/0008-the-recogniser-is-served-from-wirds-own-host.md) — the voice model is served from Wird's own host, as a redirect.
 - [ADR 0010](../adr/0010-the-server-owns-the-roots-and-their-senses.md) — the server owns the senses, and serves them without a token.
 

@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../data/root_repo.dart';
 import '../../l10n/app_localizations.dart';
+import '../../nav.dart';
 import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/lit_aya.dart';
@@ -10,7 +11,9 @@ import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_rule.dart';
 import '../../widgets/nocturne_segmented.dart';
+import '../report/report.dart';
 import '../root/root_sections.dart';
+import '../study/root_sheet.dart' show JudgeSense;
 
 /// The width the design's own grid needs: the 292 and 336 point rails it
 /// fixes, and a centre at least as wide as the wider of them. Narrower than
@@ -373,7 +376,15 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
               ],
             ),
             const SizedBox(height: 14),
-            CoreSense(reading: reading, senseSize: 14.5),
+            CoreSense(
+              reading: reading,
+              senseSize: 14.5,
+              judge: JudgeSense(
+                db: widget.db,
+                reading: reading,
+                screen: screenName(Routes.deepDive),
+              ),
+            ),
             // The ring draws its pointer hard against its own top edge, so
             // the gap under the sense is the only thing keeping the arrow off
             // the last line of it.

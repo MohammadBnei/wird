@@ -86,6 +86,7 @@ class RootReading {
     required this.surahCount,
     required this.sources,
     required this.coreSense,
+    required this.locale,
     required this.senseSource,
     required this.senseBasis,
     required this.senseEvidence,
@@ -110,6 +111,17 @@ class RootReading {
   /// root. The bundle carries none: [sensesFetched] is what tells "nobody has
   /// written one" apart from "this phone has fetched none".
   final String? coreSense;
+
+  /// The language code [coreSense] was asked for — the `readIn` of the read
+  /// that chose it, even where the French was missing and the English stood
+  /// in. A verdict on the sense is filed under this.
+  ///
+  /// Where the English stood in for a missing French (no pack fetched, or a
+  /// row with no `note_fr`), the hash is of the English text under `fr`,
+  /// while the server hashes its `sense_fr`. Such a verdict never matches the
+  /// current sentence on the server and never counts against it — accepted,
+  /// because a reader judging the English fallback has not judged the French.
+  final String locale;
 
   /// Whose reading [coreSense] is. It is the difference between a claim and a
   /// quotation, so it travels with the sense rather than being assumed.
@@ -274,6 +286,7 @@ Future<RootReading?> rootReading(
     coreSense:
         (french ? sense['note_fr'] as String? : null) ??
         sense['note'] as String?,
+    locale: readIn.languageCode,
     senseSource: sense['source'] as String?,
     senseBasis: sense['basis'] as String?,
     senseEvidence: _evidenceWords(sense['evidence'] as String?),

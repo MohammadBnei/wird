@@ -1,6 +1,6 @@
 # Releasing to the stores
 
-The release button ([releasing the APK](releasing-the-apk.md)) builds for three places at once: the APK at `/download/android`, Google Play's closed testing track, and TestFlight. Promoting a build to the public store listings is done by hand, in each store's console. [ADR 0027](../adr/0027-wird-ships-through-play-and-the-app-store-beside-the-apk.md) records why it works this way.
+The release button ([releasing the APK](releasing-the-apk.md)) builds for three places at once: the APK at `/download/android`, Google Play's closed testing track, and TestFlight. Promoting a build to the public store listings is done by hand, in each store's console. [ADR 0028](../adr/0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md) records why it works this way.
 
 ```mermaid
 flowchart LR

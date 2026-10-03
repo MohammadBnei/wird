@@ -1166,7 +1166,7 @@ abstract class AppLocalizations {
   /// Caption under the report screen's heading, saying that no answer comes back.
   ///
   /// In en, this message translates to:
-  /// **'This goes one way. It reaches whoever keeps Wird running, and nothing comes back — there is no inbox here to check.'**
+  /// **'This goes one way: Wird\'s maintainers read it, and may summarise it — never quote it — in Wird\'s public issue tracker. Nothing comes back here.'**
   String get report_one_way;
 
   /// Section heading on the report screen, over the bug / request / improvement chooser.
@@ -1228,6 +1228,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reading this build…'**
   String get report_context_loading;
+
+  /// Shown under the send button when the report could not be written to the phone's queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved on this phone. Your words are still here — try again.'**
+  String get report_failed;
 
   /// The report screen's one button: it queues the report and returns.
   ///
@@ -2140,6 +2146,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Noted — thank you.'**
   String get root_senseJudgeThanks;
+
+  /// Shown beside the thumbs when a verdict on a sense could not be queued.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved — try again'**
+  String get root_senseJudgeFailed;
 
   /// Screen-reader label for the yes control.
   ///

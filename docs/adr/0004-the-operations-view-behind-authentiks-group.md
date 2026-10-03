@@ -1,6 +1,6 @@
 # 4. The operations view sits behind Authentik's group, and can only see totals
 
-Date: 2026-09-24. Status: accepted.
+Date: 2026-09-24. Status: accepted. Amended by ADR 0026.
 
 ## Context
 

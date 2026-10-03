@@ -1,6 +1,6 @@
 # 22. A release is cut by one button, and the pubspec holds the only version
 
-Date: 2026-10-01. Status: accepted, extended by ADR 0027 (the button also feeds Play and TestFlight). Amends ADR 0019 (how a release is started).
+Date: 2026-10-01. Status: accepted, extended by ADR 0028 (the button also feeds Play and TestFlight). Amends ADR 0019 (how a release is started).
 
 ## Context
 

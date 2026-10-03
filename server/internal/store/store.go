@@ -86,7 +86,7 @@ var ErrDeleted = errors.New("account deleted")
 
 // lockSubject serialises everything that creates or deletes one subject's
 // reader, so a request already past the middleware cannot mint the reader
-// back between a deletion's two statements (migration 00011).
+// back between a deletion's two statements (migration 00012).
 func lockSubject(ctx context.Context, tx pgx.Tx, subject string) error {
 	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, subject)
 	return err
@@ -125,7 +125,7 @@ func (s *Store) ReaderFor(ctx context.Context, subject string, signedIn time.Tim
 
 // DeleteReader removes the reader and, by cascade, everything they own, and
 // records when it happened so a token signed in before then cannot mint them
-// back (migration 00011). Deleting a reader who was never minted still records
+// back (migration 00012). Deleting a reader who was never minted still records
 // the moment: the phone asking is holding a token either way.
 func (s *Store) DeleteReader(ctx context.Context, subject string) error {
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {

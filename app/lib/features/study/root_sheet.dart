@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../../data/root_repo.dart';
 import '../../data/sets.dart';
 import '../../l10n/app_localizations.dart';
+import '../../nav.dart';
 import '../../theme/glow.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/lit_aya.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_tag.dart';
+import '../report/report.dart';
 import 'lemma_ring.dart';
 import 'word_swipe.dart';
 
@@ -54,7 +57,7 @@ class RootSheet extends StatelessWidget {
     required this.onAya,
     required this.scroll,
     required this.onRoot,
-    required this.onJudge,
+    required this.db,
     required this.onConstellation,
     required this.translations,
     this.previous,
@@ -108,8 +111,9 @@ class RootSheet extends StatelessWidget {
   /// its parsing, which the sheet has no room for.
   final void Function(String letters) onRoot;
 
-  /// The reader's yes or no on the root's sense (ADR 0010).
-  final void Function(String root, bool good) onJudge;
+  /// Where the reader's yes or no on the root's sense is queued and
+  /// remembered (ADR 0010).
+  final Database db;
 
   /// Opens the deep dive on an aya and a root's whole family, drawn as a
   /// constellation where the window is wide enough.
@@ -177,7 +181,7 @@ class RootSheet extends StatelessWidget {
           onAya: onAya,
           scroll: scroll,
           onRoot: onRoot,
-          onJudge: onJudge,
+          db: db,
           onConstellation: onConstellation,
           translations: translations,
         )._content(context, Nocturne.of(context), AppLocalizations.of(context)!);
@@ -403,8 +407,9 @@ class RootSheet extends StatelessWidget {
           const Spacer(),
           JudgeSense(
             key: ValueKey('judge ${root.letters}'),
-            root: root.letters,
-            onJudge: onJudge,
+            db: db,
+            reading: root,
+            screen: screenName(Routes.study),
           ),
         ],
       ),
@@ -659,33 +664,142 @@ class RootSheet extends StatelessWidget {
 /// Yes or no on the sense below, and then nothing.
 ///
 /// Stateful only to stop asking once answered: a control that stays live invites a
-/// second press, and two verdicts from one reader on one root is noise in the one
-/// signal this feature exists to collect. It does not undo — a reader who
+/// second press, and two verdicts from one reader on one sentence is noise in the
+/// one signal this feature exists to collect. It does not undo — a reader who
 /// mis-taps has said something true about how clear the sense was.
+///
+/// "Answered" is remembered on the device ([senseJudged]), keyed by the root, the
+/// language and the sentence itself, so reopening the root does not ask again —
+/// but a redraft or the other language does. The thanks is drawn only once the
+/// verdict is queued: a write that failed puts the thumbs back with a line saying
+/// so, rather than thanking the reader for something nobody will receive.
+///
+/// Draws nothing for a root with no sense: there is nothing to judge.
 class JudgeSense extends StatefulWidget {
-  const JudgeSense({super.key, required this.root, required this.onJudge});
+  const JudgeSense({
+    super.key,
+    required this.db,
+    required this.reading,
+    required this.screen,
+  });
 
-  final String root;
-  final void Function(String root, bool good) onJudge;
+  final Database db;
+
+  /// The root, the sentence and the language it was read in, all from the one
+  /// read, so the verdict cannot name one language and judge the other's text.
+  final RootReading reading;
+
+  /// The screen the verdict is filed under, as [screenName] spells it.
+  final String screen;
 
   @override
   State<JudgeSense> createState() => _JudgeSenseState();
 }
 
 class _JudgeSenseState extends State<JudgeSense> {
-  bool _answered = false;
+  /// Null until the device has said whether this sentence was judged before,
+  /// so a judged root does not flash its thumbs on the way to the thanks.
+  bool? _answered;
+  bool _sending = false;
+  bool _failed = false;
 
-  void _say(bool good) {
-    if (_answered) return;
-    setState(() => _answered = true);
-    widget.onJudge(widget.root, good);
+  @override
+  void initState() {
+    super.initState();
+    _recall();
+  }
+
+  /// Which sentence [reading] puts in front of the reader: the root, the
+  /// language and the hash of the text. Two reads of the same sentence are
+  /// equal however many times the screen re-reads it; a redraft or the other
+  /// language is not.
+  static (String, String, String)? _sentence(RootReading reading) {
+    final sense = reading.coreSense;
+    return sense == null
+        ? null
+        : (reading.letters, reading.locale, senseHash(sense));
+  }
+
+  /// Whether the widget still shows [sentence], so an answer that arrives
+  /// after the reader moved on is not drawn against the new sentence.
+  bool _stillShowing((String, String, String)? sentence) =>
+      mounted && sentence == _sentence(widget.reading);
+
+  @override
+  void didUpdateWidget(JudgeSense old) {
+    super.didUpdateWidget(old);
+    if (_sentence(old.reading) != _sentence(widget.reading)) {
+      _answered = null;
+      _failed = false;
+      _sending = false;
+      _recall();
+    }
+  }
+
+  Future<void> _recall() async {
+    final reading = widget.reading;
+    final sentence = _sentence(reading);
+    if (sentence == null) return;
+    bool judged;
+    try {
+      judged = await senseJudged(
+        widget.db,
+        root: reading.letters,
+        locale: reading.locale,
+        sense: reading.coreSense!,
+      );
+    } on Object {
+      // Not knowing is asking again: thumbs a reader can press beat a heading
+      // with nothing on it.
+      judged = false;
+    }
+    if (_stillShowing(sentence)) setState(() => _answered = judged);
+  }
+
+  Future<void> _say(bool good) async {
+    final reading = widget.reading;
+    final sentence = _sentence(reading);
+    if (sentence == null || _answered != false || _sending) return;
+    setState(() {
+      _sending = true;
+      _failed = false;
+    });
+    var answered = false;
+    try {
+      await judgeSense(
+        widget.db,
+        root: reading.letters,
+        sense: reading.coreSense!,
+        good: good,
+        context: await reportContext(
+          widget.db,
+          screen: widget.screen,
+          locale: reading.locale,
+        ),
+      );
+      answered = true;
+    } on Object {
+      answered = false;
+    }
+    // The reader may have moved to another root or language while this was
+    // written; the new sentence has its own answer, read by [_recall].
+    if (!_stillShowing(sentence)) return;
+    setState(() {
+      _sending = false;
+      _answered = answered;
+      _failed = !answered;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
     final l = AppLocalizations.of(context)!;
-    if (_answered) {
+    final answered = _answered;
+    if (widget.reading.coreSense == null || answered == null) {
+      return const SizedBox.shrink();
+    }
+    if (answered) {
       return Text(
         l.root_senseJudgeThanks,
         style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
@@ -698,6 +812,11 @@ class _JudgeSenseState extends State<JudgeSense> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (_failed)
+          Text(
+            l.root_senseJudgeFailed,
+            style: TextStyle(fontSize: 10.5, color: n.textAt(0.6)),
+          ),
         for (final (good, icon, semantics) in [
           (true, Icons.thumb_up_outlined, l.root_senseJudgeGoodLabel),
           (false, Icons.thumb_down_outlined, l.root_senseJudgeBadLabel),

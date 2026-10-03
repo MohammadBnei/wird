@@ -1,4 +1,4 @@
-# 26. Wird's own code is MIT licensed
+# 27. Wird's own code is MIT licensed
 
 Date: 2026-10-03. Status: accepted.
 
