@@ -23,10 +23,14 @@ ingress:
   # Not wird.bnei.dev: that host is compiled into the app and carries the API.
   # The operations view is a separate workload behind a separate login.
   hostname: wird-admin.bnei.dev
-  # The forwardAuth middleware in front of this host is the chart's to name and
-  # infra-bootstrap's to configure. adminweb verifies the token it is handed
-  # itself (server/cmd/adminweb/auth.go) and never trusts the proxy's say-so,
-  # so a missing middleware fails closed: no token, 401.
+  # The cluster's shared authentik forwardAuth, appended after the chart's
+  # baseline chain (infra-bootstrap#267). It hands the operator's token over as
+  # X-authentik-jwt. adminweb verifies that token itself
+  # (server/cmd/adminweb/auth.go) and never trusts the proxy's say-so, so a
+  # missing middleware fails closed: no token, 401.
+  middlewares:
+    - name: authentik-forwardauth
+      namespace: default
 
 livenessProbe:
   enabled: true
@@ -54,7 +58,8 @@ securityContext:
   capabilities:
     drop: [ALL]
 
-# DATABASE_URL for the restricted `wird_admin` role, NOT wird-config's: that
+# DATABASE_URL for the restricted `wird_admin` role, and OIDC_CLIENT_SECRET,
+# both from wird-admin-config and NOT wird-config: that
 # secret carries the API's owner credentials, and this pod is reachable from
 # the internet behind a login. adminweb never migrates (the API does), so it
 # needs no DDL right either.
@@ -65,7 +70,9 @@ envFrom:
 env:
   - name: OIDC_ISSUER
     value: https://authentik.bnei.dev/application/o/wird-admin/
-  # The proxy provider's client id. authentik puts it in `aud`; set it here
-  # once the provider exists, the way helm/values.yaml carries wird's.
+  # The wird-admin proxy provider's client id (infra-bootstrap#267). authentik
+  # puts it in `aud`. Committed, like wird's in helm/values.yaml: a client id
+  # is not a secret. Its client secret is: OIDC_CLIENT_SECRET arrives through
+  # wird-admin-config above, and is the HS256 key the provider signs with.
   - name: OIDC_AUDIENCE
-    value: wird-admin
+    value: 5gOqSotRlzaM2moPIvlRiS6UQNqBJHnysQ0wKqhR

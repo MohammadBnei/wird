@@ -15,7 +15,7 @@ The maintainer works with a coding agent. The agent signs in as a service accoun
 | An operator's browser, through the cluster's forwardAuth proxy | One HTML page: totals, corpus versions, reports with their triage, sense verdicts | Postgres, the same database as `wird-api` |
 | The agent, with a service account's token | `reports.json` and `verdicts.json` | Authentik, for the signing keys and the group claim |
 | A triage for one report: category, status, issue link | The report's triage, stored | The Nocturne stylesheet, read from disk at start |
-| A signed token in `X-Forwarded-Access-Token` or `Authorization: Bearer` | 401 for no or bad token, 403 outside the group | |
+| A signed token in `X-authentik-jwt` (what the outpost forwards), `X-Forwarded-Access-Token` or `Authorization: Bearer` | 401 for no or bad token, 403 outside the group | |
 
 ```mermaid
 flowchart LR
@@ -123,7 +123,9 @@ Every gated answer carries `Cache-Control: no-store` ([main.go:97-102](../../ser
 
 ### 3. The group gate
 
-The proxy handles the login. Admin web makes the decision. Either header may carry the token, and both go through the same verifier, so a header set by hand gets a 401 ([auth.go:48-57](../../server/cmd/adminweb/auth.go#L48-L57)). A valid token without the group gets a 403.
+The proxy handles the login. Admin web makes the decision. authentik's outpost forwards the operator's token as `X-authentik-jwt`, and lets an agent's `Authorization: Bearer` through without a login redirect. Whichever header carries it, the token goes through the same verifier, so a header set by hand gets a 401. The outpost's unsigned `X-authentik-groups` is never read ([auth.go:70-89](../../server/cmd/adminweb/auth.go#L70-L89)).
+
+authentik's proxy provider has no signing key and cannot be given one, so it signs HS256 with its client secret. In production adminweb holds that secret (`OIDC_CLIENT_SECRET`) and checks every token against it, with the same issuer, audience and expiry checks as the published-key path the local stub uses ([auth.go:14-36](../../server/cmd/adminweb/auth.go#L14-L36)). Only HS256 is parsed, so a token whose header names another algorithm is refused, and a token signed with another provider's secret does not verify. The provider always allows the password grant, so any directory user can mint a valid token for this audience: the group check is what keeps them out. A valid token without the group gets a 403.
 
 ```go
 		token, err := verifier.Verify(r.Context(), raw)
@@ -142,9 +144,9 @@ The proxy handles the login. Admin web makes the decision. Either header may car
 		}
 ```
 
-[auth.go:26-39](../../server/cmd/adminweb/auth.go#L26-L39)
+[auth.go:52-65](../../server/cmd/adminweb/auth.go#L52-L65)
 
-There is no admin table in Wird. An operator is whoever Authentik says is in `platform-admins` ([auth.go:12-17](../../server/cmd/adminweb/auth.go#L12-L17)). A token with no `groups` claim contains nothing, so it gets a 403. That is the safe way round.
+There is no admin table in Wird. An operator is whoever Authentik says is in `platform-admins` ([auth.go:38-43](../../server/cmd/adminweb/auth.go#L38-L43)). A token with no `groups` claim contains nothing, so it gets a 403. That is the safe way round.
 
 ### 4. The page reads four things, each on its own
 

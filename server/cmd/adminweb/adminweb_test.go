@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/MohammadBnei/wird/server/internal/store"
@@ -134,6 +135,93 @@ func TestNoUnprovenTokenReachesTheOperationsPage(t *testing.T) {
 				t.Fatalf("answered %d, wanted %d", w.Code, http.StatusUnauthorized)
 			}
 		})
+	}
+}
+
+// The failure: authentik's outpost forwards the operator's token as
+// X-authentik-jwt, and a page that reads only Authorization answers every
+// signed-in operator 401. Or the page takes the outpost's unsigned
+// X-authentik-groups at its word, or a token another provider on the same
+// signing key minted, and anything that can reach the port is an operator.
+func TestTheOutpostsTokenHeaderLetsAnOperatorInAndNothingElseDoes(t *testing.T) {
+	h := newHarness(t)
+	ask := func(header, value string) int {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.Header.Set(header, value)
+		w := httptest.NewRecorder()
+		h.routes.ServeHTTP(w, r)
+		return w.Code
+	}
+	operators := map[string]any{"groups": []string{operatorGroup}}
+
+	if code := ask("X-authentik-jwt", h.operator(t)); code != http.StatusOK {
+		t.Fatalf("an operator's token forwarded as X-authentik-jwt was answered %d, wanted 200", code)
+	}
+	if code := ask("X-authentik-groups", operatorGroup); code != http.StatusUnauthorized {
+		t.Fatalf("the unsigned group header alone was answered %d, wanted 401", code)
+	}
+	grafana := h.issuer.Token(t, "operator", "grafana", time.Hour, operators)
+	if code := ask("X-authentik-jwt", grafana); code != http.StatusUnauthorized {
+		t.Fatalf("a token minted for another provider was answered %d, wanted 401", code)
+	}
+}
+
+// The failure: authentik's proxy provider signs HS256 with its client secret,
+// so a page that only knows the issuer's published keys refuses every real
+// operator. Or the page takes the secret path and stops checking what the
+// published-key path checks: a token signed with another provider's secret, a
+// token whose header names RS256 to dodge the secret, a token for another
+// audience, a token outside the group.
+func TestATokenSignedWithTheClientSecretIsTheOnlyWayIn(t *testing.T) {
+	db, _ := testenv.Postgres(t)
+	const issuer = "https://authentik.example/application/o/wird-admin/"
+	secret := "the-wird-admin-client-secret-at-least-32-bytes"
+	h := routes(db, clientSecretVerifier(issuer, audience, secret), []byte(""), slog.New(slog.DiscardHandler))
+
+	mint := func(key, aud string, groups ...string) string {
+		signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: []byte(key)}, nil)
+		if err != nil {
+			t.Fatalf("signer: %v", err)
+		}
+		claims, _ := json.Marshal(map[string]any{
+			"iss": issuer, "aud": aud, "sub": "operator", "groups": groups,
+			"iat": time.Now().Unix(), "exp": time.Now().Add(time.Hour).Unix(),
+		})
+		jws, err := signer.Sign(claims)
+		if err != nil {
+			t.Fatalf("sign: %v", err)
+		}
+		raw, err := jws.CompactSerialize()
+		if err != nil {
+			t.Fatalf("serialize: %v", err)
+		}
+		return raw
+	}
+	ask := func(token string) int {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.Header.Set("X-authentik-jwt", token)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Code
+	}
+
+	if code := ask(mint(secret, audience, operatorGroup)); code != http.StatusOK {
+		t.Fatalf("an operator's token signed with the client secret was answered %d, wanted 200", code)
+	}
+	rs256 := testenv.NewIssuer(t).Token(t, "operator", audience, time.Hour, map[string]any{"groups": []string{operatorGroup}})
+	for _, row := range []struct {
+		name  string
+		token string
+		want  int
+	}{
+		{"signed with another provider's secret", mint("grafana-client-secret-also-at-least-32-bytes", audience, operatorGroup), http.StatusUnauthorized},
+		{"an RS256 token", rs256, http.StatusUnauthorized},
+		{"minted for another audience", mint(secret, "grafana", operatorGroup), http.StatusUnauthorized},
+		{"a directory user outside the group", mint(secret, audience, "readers"), http.StatusForbidden},
+	} {
+		if code := ask(row.token); code != row.want {
+			t.Errorf("%s: answered %d, wanted %d", row.name, code, row.want)
+		}
 	}
 }
 
