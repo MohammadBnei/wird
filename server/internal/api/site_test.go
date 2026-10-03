@@ -145,3 +145,20 @@ func TestThePageNamesAVersionTheButtonDoesNotServe(t *testing.T) {
 		t.Errorf("body is %s", got)
 	}
 }
+
+// Both stores refuse a listing whose privacy policy URL does not answer, and
+// Play refuses one that does not say how to delete an account.
+func TestTheStoresPrivacyPolicyIsMissing(t *testing.T) {
+	h := newHarness(t)
+
+	w := h.get(t, "/privacy.html", "")
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("answered %d", w.Code)
+	}
+	for _, must := range []string{"Delete account", "wird@bnei.dev", "microphone"} {
+		if !strings.Contains(w.Body.String(), must) {
+			t.Errorf("the policy does not mention %q", must)
+		}
+	}
+}
