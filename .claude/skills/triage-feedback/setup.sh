@@ -19,7 +19,7 @@ mkdir -p "$HOME/.config/wird"
   [ -n "$id" ] && [ -n "$cs" ] && [ -n "$sa" ] || { echo "a value came back empty" >&2; exit 1; }
   {
     echo "export WIRD_ADMIN_URL=https://wird-admin.bnei.dev"
-    echo "export WIRD_ADMIN_CLIENT_ID=$id"
+    printf "export WIRD_ADMIN_CLIENT_ID='%s'\n" "$id"
     printf "export WIRD_ADMIN_CLIENT_SECRET='%s'\n" "$cs"
     printf "export WIRD_AGENT_AUTHENTIK_TOKEN='%s'\n" "$sa"
   } > "$HOME/.config/wird/agent.env.tmp"
