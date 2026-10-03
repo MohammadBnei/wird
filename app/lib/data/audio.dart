@@ -189,10 +189,10 @@ List<String> windowPaths(
 /// an aya whose segments overlap — 141 of them do — never hands the highlight
 /// backwards.
 int? wordAt(List<AyaTrack> tracks, int index, int ms) =>
-    spanAt(tracks, index, ms)?.wordId;
+    _spanAt(tracks, index, ms)?.wordId;
 
 /// The timing of the word [wordAt] names.
-WordSpan? spanAt(List<AyaTrack> tracks, int index, int ms) {
+WordSpan? _spanAt(List<AyaTrack> tracks, int index, int ms) {
   if (index < 0 || index >= tracks.length) return null;
   WordSpan? held;
   for (final span in tracks[index].segments) {
@@ -848,7 +848,7 @@ class SetAudio {
           _place = (
             first: index,
             count: place.count - moved,
-            at: switch (spanAt(tracks, index, ms)) {
+            at: switch (_spanAt(tracks, index, ms)) {
               final span? => clipStart(span.startMs),
               null => Duration.zero,
             },
