@@ -15,7 +15,7 @@ The maintainer works with a coding agent. The agent signs in as a service accoun
 | An operator's browser, through the cluster's forwardAuth proxy | One HTML page: totals, corpus versions, reports with their triage, sense verdicts | Postgres, the same database as `wird-api` |
 | The agent, with a service account's token | `reports.json` and `verdicts.json` | Authentik, for the signing keys and the group claim |
 | A triage for one report: category, status, issue link | The report's triage, stored | The Nocturne stylesheet, read from disk at start |
-| A signed token in `X-Forwarded-Access-Token` or `Authorization: Bearer` | 401 for no or bad token, 403 outside the group | |
+| A signed token in `X-authentik-jwt` (what the outpost forwards), `X-Forwarded-Access-Token` or `Authorization: Bearer` | 401 for no or bad token, 403 outside the group | |
 
 ```mermaid
 flowchart LR
@@ -123,7 +123,7 @@ Every gated answer carries `Cache-Control: no-store` ([main.go:97-102](../../ser
 
 ### 3. The group gate
 
-The proxy handles the login. Admin web makes the decision. Either header may carry the token, and both go through the same verifier, so a header set by hand gets a 401 ([auth.go:48-57](../../server/cmd/adminweb/auth.go#L48-L57)). A valid token without the group gets a 403.
+The proxy handles the login. Admin web makes the decision. authentik's outpost forwards the operator's token as `X-authentik-jwt`, and lets an agent's `Authorization: Bearer` through without a login redirect. Whichever header carries it, the token goes through the same verifier, so a header set by hand gets a 401. The outpost's unsigned `X-authentik-groups` is never read ([auth.go:44-63](../../server/cmd/adminweb/auth.go#L44-L63)). The audience is what refuses a token another provider minted, because every provider on the cluster signs with the same key. A valid token without the group gets a 403.
 
 ```go
 		token, err := verifier.Verify(r.Context(), raw)

@@ -41,13 +41,19 @@ func operators(verifier *oidc.IDTokenVerifier, log *slog.Logger, next http.Handl
 	})
 }
 
-// Either header carries the token the proxy forwarded, and neither is trusted
-// as an assertion: the signature and the audience are checked whichever one it
-// arrives in, so a header set by anything that can reach this port buys
-// nothing.
+// Any of these headers carries the token, and none is trusted as an assertion:
+// the signature and the audience are checked whichever one it arrives in, so a
+// header set by anything that can reach this port buys nothing.
+// X-authentik-jwt is the one authentik's outpost actually forwards; its
+// X-authentik-groups beside it is exactly the unsigned claim this never reads.
+// The audience is the only thing that matters among them: every provider on
+// the cluster signs with one key, so a token minted for Grafana verifies
+// against the same keys and is refused only for not being this page's.
 func presentedToken(r *http.Request) (string, bool) {
-	if raw := r.Header.Get("X-Forwarded-Access-Token"); raw != "" {
-		return raw, true
+	for _, h := range []string{"X-authentik-jwt", "X-Forwarded-Access-Token"} {
+		if raw := r.Header.Get(h); raw != "" {
+			return raw, true
+		}
 	}
 	scheme, raw, found := strings.Cut(r.Header.Get("Authorization"), " ")
 	if !found || !strings.EqualFold(scheme, "bearer") || raw == "" {

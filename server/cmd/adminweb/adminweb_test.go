@@ -137,6 +137,34 @@ func TestNoUnprovenTokenReachesTheOperationsPage(t *testing.T) {
 	}
 }
 
+// The failure: authentik's outpost forwards the operator's token as
+// X-authentik-jwt, and a page that reads only Authorization answers every
+// signed-in operator 401. Or the page takes the outpost's unsigned
+// X-authentik-groups at its word, or a token another provider on the same
+// signing key minted, and anything that can reach the port is an operator.
+func TestTheOutpostsTokenHeaderLetsAnOperatorInAndNothingElseDoes(t *testing.T) {
+	h := newHarness(t)
+	ask := func(header, value string) int {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.Header.Set(header, value)
+		w := httptest.NewRecorder()
+		h.routes.ServeHTTP(w, r)
+		return w.Code
+	}
+	operators := map[string]any{"groups": []string{operatorGroup}}
+
+	if code := ask("X-authentik-jwt", h.operator(t)); code != http.StatusOK {
+		t.Fatalf("an operator's token forwarded as X-authentik-jwt was answered %d, wanted 200", code)
+	}
+	if code := ask("X-authentik-groups", operatorGroup); code != http.StatusUnauthorized {
+		t.Fatalf("the unsigned group header alone was answered %d, wanted 401", code)
+	}
+	grafana := h.issuer.Token(t, "operator", "grafana", time.Hour, operators)
+	if code := ask("X-authentik-jwt", grafana); code != http.StatusUnauthorized {
+		t.Fatalf("a token minted for another provider was answered %d, wanted 401", code)
+	}
+}
+
 // The rule the design is accountable to, made structural. An operator cannot
 // watch one person's practice because nothing this binary can call has a
 // reader in it: the store's own aggregates, and no SQL of its own to reach

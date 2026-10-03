@@ -65,7 +65,9 @@ envFrom:
 env:
   - name: OIDC_ISSUER
     value: https://authentik.bnei.dev/application/o/wird-admin/
-  # The proxy provider's client id. authentik puts it in `aud`; set it here
-  # once the provider exists, the way helm/values.yaml carries wird's.
+  # The wird-admin proxy provider's client id (infra-bootstrap#267). authentik
+  # puts it in `aud`, and it is the only check that refuses a token another
+  # provider minted: every provider on the cluster signs with one key.
+  # Committed, like wird's in helm/values.yaml: a client id is not a secret.
   - name: OIDC_AUDIENCE
-    value: wird-admin
+    value: 5gOqSotRlzaM2moPIvlRiS6UQNqBJHnysQ0wKqhR
