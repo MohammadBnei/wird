@@ -43,25 +43,40 @@ class RootSheet extends StatelessWidget {
     required this.sheet,
     required this.expanded,
     this.hidden = false,
+    this.folding = false,
     this.onHidden,
     required this.swipe,
     required this.onPrevious,
     required this.onNext,
     required this.onToggle,
+    this.onExpand,
+    this.onCollapse,
     required this.onAya,
     required this.scroll,
     required this.onRoot,
     required this.onJudge,
     required this.onConstellation,
     required this.translations,
+    this.previous,
+    this.next,
   });
 
   final SheetWord sheet;
+
+  /// The words either side, once they have been read, which a swipe drags
+  /// in beside this one.
+  final SheetWord? previous;
+  final SheetWord? next;
   final bool expanded;
 
   /// Folded down to its handle, so the sūra has the screen to itself: a
   /// reader who only wants to read has no use for the root under every word.
   final bool hidden;
+
+  /// Still going down after [hidden] was set: the root stays drawn until it
+  /// has gone, while the handle already answers as a folded sheet's does, so
+  /// a drag back up brings the sheet back rather than expanding it.
+  final bool folding;
 
   /// Folds the sheet down to its handle, or back up. A drag on the handle
   /// does it; a tap on a folded handle brings the sheet back.
@@ -76,6 +91,13 @@ class RootSheet extends StatelessWidget {
   final Future<void> Function()? onNext;
 
   final VoidCallback onToggle;
+
+  /// Opens the lower half, and does nothing if it is open: a drag up on the
+  /// handle asks for it on every move.
+  final VoidCallback? onExpand;
+
+  /// Closes the lower half, and does nothing if it is closed.
+  final VoidCallback? onCollapse;
   final void Function(RootAya aya) onAya;
 
   /// The sheet's own scroll, which the screen puts back at the top when the
@@ -100,7 +122,6 @@ class RootSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
     final l = AppLocalizations.of(context)!;
-    final root = sheet.root;
     return Container(
       decoration: BoxDecoration(
         color: n.surface,
@@ -120,56 +141,86 @@ class RootSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _topBar(n, l),
-          if (!hidden)
+          if (!hidden || folding)
             Expanded(
-              child: SingleChildScrollView(
-                controller: scroll,
-                child: WordSwipe(
-                  key: swipe,
-                  wordId: sheet.word.id,
-                  onNext: onNext,
-                  onPrevious: onPrevious,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // The arrows sit at the sheet's edges; the rest is
-                      // indented as the design draws it.
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: _wordRow(context, n, l, root),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (root != null) ..._senses(n, l, root),
-                            _form(n, l),
-                          ],
-                        ),
-                      ),
-                      if (!expanded) _moreRow(n, l),
-                      if (root != null)
-                        _secondary(n, l, root)
-                      else
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
-                          child: Text(
-                            l.study_particleNote,
-                            style: TextStyle(
-                              fontSize: 12,
-                              height: 1.5,
-                              color: n.textAt(0.55),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+              child: WordSwipe(
+                key: swipe,
+                wordId: sheet.word.id,
+                onNext: onNext,
+                onPrevious: onPrevious,
+                nextId: next?.word.id,
+                next: _beside(next),
+                previousId: previous?.word.id,
+                previous: _beside(previous),
+                child: SingleChildScrollView(
+                  controller: scroll,
+                  child: _content(context, n, l),
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  /// This sheet as it would be drawn for [word], for the swipe to show beside
+  /// it. Built only while the swipe is under way.
+  WidgetBuilder? _beside(SheetWord? word) => word == null
+      ? null
+      : (context) => RootSheet(
+          sheet: word,
+          expanded: expanded,
+          swipe: swipe,
+          onPrevious: onPrevious,
+          onNext: onNext,
+          onToggle: onToggle,
+          onAya: onAya,
+          scroll: scroll,
+          onRoot: onRoot,
+          onJudge: onJudge,
+          onConstellation: onConstellation,
+          translations: translations,
+        )._content(context, Nocturne.of(context), AppLocalizations.of(context)!);
+
+  /// The word, its root's senses, its form, and below them the counts, the
+  /// forms and the other ayas.
+  Widget _content(BuildContext context, Nocturne n, AppLocalizations l) {
+    final root = sheet.root;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // The arrows sit at the sheet's edges; the rest is indented as the
+        // design draws it.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: _wordRow(context, n, l, root),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (root != null) ..._senses(n, l, root),
+              _form(n, l),
+            ],
+          ),
+        ),
+        if (!expanded) _moreRow(n, l),
+        if (root != null)
+          _secondary(n, l, root)
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
+            child: Text(
+              l.study_particleNote,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.5,
+                color: n.textAt(0.55),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -186,16 +237,18 @@ class RootSheet extends StatelessWidget {
       if (onHidden != null && !hidden)
         CustomSemanticsAction(label: l.study_hideRoot): () => onHidden!(true),
     },
-    child: GestureDetector(
+    child: _Handle(
       key: const Key('sheet handle'),
-      behavior: HitTestBehavior.opaque,
+      expanded: expanded,
       onTap: hidden ? () => onHidden?.call(false) : onToggle,
-      // Past the drag slop, the direction alone says what the reader meant.
-      onVerticalDragUpdate: onHidden == null
+      onDrag: onHidden == null
           ? null
-          : (drag) {
-              final dy = drag.primaryDelta ?? 0;
-              if (dy != 0) onHidden!(dy > 0);
+          : (dy, {required fromExpanded}) {
+              if (dy > 0) {
+                fromExpanded ? onCollapse?.call() : onHidden!(true);
+              } else if (dy < 0) {
+                hidden ? onHidden!(false) : onExpand?.call();
+              }
             },
       // A faint mark with room around it to tap and to drag.
       child: Padding(
@@ -663,6 +716,52 @@ class _JudgeSenseState extends State<JudgeSense> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The sheet's handle, which remembers whether the sheet was expanded when a
+/// drag began.
+///
+/// Past the drag slop, the direction alone says what the reader meant. Up
+/// brings a folded sheet back and then opens its lower half, so one long drag
+/// up opens it whole. Down from an expanded sheet stops at its usual height,
+/// and only the next drag down folds it away: the reader who meant to put
+/// away the counts did not mean to put away the root.
+class _Handle extends StatefulWidget {
+  const _Handle({
+    super.key,
+    required this.expanded,
+    required this.onTap,
+    required this.onDrag,
+    required this.child,
+  });
+
+  final bool expanded;
+  final VoidCallback? onTap;
+  final void Function(double dy, {required bool fromExpanded})? onDrag;
+  final Widget child;
+
+  @override
+  State<_Handle> createState() => _HandleState();
+}
+
+class _HandleState extends State<_Handle> {
+  var _fromExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final drag = widget.onDrag;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      onVerticalDragStart: drag == null
+          ? null
+          : (_) => _fromExpanded = widget.expanded,
+      onVerticalDragUpdate: drag == null
+          ? null
+          : (d) => drag(d.primaryDelta ?? 0, fromExpanded: _fromExpanded),
+      child: widget.child,
     );
   }
 }

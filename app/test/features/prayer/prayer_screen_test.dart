@@ -417,4 +417,86 @@ void main() {
     expect(outcome.size, greaterThan(52));
     expect(find.textContaining('remembered'), findsOneWidget);
   });
+
+  group('a turn', () {
+    double y(WidgetTester tester, int word) =>
+        tester.getTopLeft(find.byKey(WordKey(word))).dy;
+
+    testWidgets('the aya leaving fades where it stands while the next one '
+        'rises alone, so the reading jumps instead of flowing', (tester) async {
+      await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
+      final leftAt = y(tester, 103001001);
+      await tapOn(tester, PrayerScreen.nextZone);
+      final restsAt = y(tester, 103002001);
+      await tapOn(tester, PrayerScreen.backZone);
+
+      await tester.tap(find.byKey(PrayerScreen.nextZone));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(y(tester, 103001001), lessThan(leftAt), reason: 'leaving upward');
+      expect(y(tester, 103002001), greaterThan(restsAt), reason: 'from below');
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('stepping back flows the same way as stepping on, so the aya '
+        'before seems to come from after', (tester) async {
+      await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
+      final restsAt = y(tester, 103001001);
+      await tapOn(tester, PrayerScreen.nextZone);
+      final leftAt = y(tester, 103002001);
+
+      await tester.tap(find.byKey(PrayerScreen.backZone));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(y(tester, 103002001), greaterThan(leftAt), reason: 'downward');
+      expect(y(tester, 103001001), lessThan(restsAt), reason: 'from above');
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('tapping back before a turn has finished brings back an aya '
+        'still on its way out, and the two collide', (tester) async {
+      await pumpPrayer(tester, db: db, set: set, wakelock: Phone().keepAwake);
+
+      await tester.tap(find.byKey(PrayerScreen.nextZone));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byKey(PrayerScreen.backZone));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(litWord(tester), 103001001);
+    });
+  });
+
+  testWidgets('deep inside a long aya at a large size the recited word runs '
+      'off the field, because the screen no longer follows it', (
+    tester,
+  ) async {
+    final debt = await setOf(db, [2282]);
+    final words = debt.ayas.single.words;
+    await pumpPrayer(
+      tester,
+      db: db,
+      set: debt,
+      wakelock: Phone().keepAwake,
+      // Neither voice nor pace: a tap steps one word.
+      prefs: (
+        preset: null,
+        rakahs: 1,
+        voice: false,
+        pace: false,
+        wpm: 40,
+        gloss: true,
+        around: true,
+        arabicSize: 80.0,
+      ),
+      cursor: PrayerCursor(words.length, at: 100),
+    );
+
+    await tapOn(tester, PrayerScreen.nextZone);
+    final lit = words[101].id;
+    expect(litWord(tester), lit);
+    final top = tester.getTopLeft(find.byKey(WordKey(lit))).dy;
+    expect(top, greaterThan(0));
+    expect(top, lessThan(874 * 0.75), reason: 'the word is below the field');
+  });
 }

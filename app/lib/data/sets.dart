@@ -351,6 +351,44 @@ Future<int> ayahCount(Database db, int surahId) async =>
         )).single['ayah_count']!
         as int;
 
+/// One sūra's place in either order, and the name a link to it reads.
+typedef SurahPlace = ({int id, String nameEn, int revelationOrder});
+
+/// All 114, for stepping from one sūra to the next.
+Future<List<SurahPlace>> surahPlaces(Database db) async => [
+  for (final r in await db.query(
+    'surahs',
+    columns: ['id', 'name_en', 'revelation_order'],
+  ))
+    (
+      id: r['id']! as int,
+      nameEn: r['name_en']! as String,
+      revelationOrder: r['revelation_order']! as int,
+    ),
+];
+
+/// The sūra [by] along from [surahId] in [order], or null past either end.
+///
+/// The step follows the order the reader chose: read by revelation, the sūra
+/// after Al-ʿAlaq is Al-Qalam, not Al-Qadr.
+SurahPlace? surahBeside(
+  List<SurahPlace> all,
+  ReadingOrder order,
+  int surahId,
+  int by,
+) {
+  final here = all.where((s) => s.id == surahId).firstOrNull;
+  if (here == null) return null;
+  return all
+      .where(
+        (s) => switch (order) {
+          ReadingOrder.mushaf => s.id == here.id + by,
+          ReadingOrder.nuzul => s.revelationOrder == here.revelationOrder + by,
+        },
+      )
+      .firstOrNull;
+}
+
 /// The whole-ayah translation for each of [ayahIds], where there is one.
 ///
 /// Read the way words are, an aya at a time as the reader approaches it, rather

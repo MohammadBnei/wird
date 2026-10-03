@@ -1783,6 +1783,14 @@
   "@study_readFromHere": {
     "description": "Under another aya: opens that aya's sūra at that aya."
   },
+  "study_previousSura": "Previous sūra",
+  "@study_previousSura": {
+    "description": "Tooltip on the link at the top and end of a sūra to the one before it in the reading order."
+  },
+  "study_nextSura": "Next sūra",
+  "@study_nextSura": {
+    "description": "Tooltip on the link at the top and end of a sūra to the one after it in the reading order."
+  },
   "study_pray": "Pray",
   "@study_pray": {
     "description": "App bar action on the reading screen: pray the ayas around the one open."

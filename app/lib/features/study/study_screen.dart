@@ -68,15 +68,35 @@ class _StudyScreenState extends State<StudyScreen> {
   StudyWord? _word;
   SheetWord? _sheet;
 
+  /// The sheets of the words either side of the open one, read ahead so a
+  /// swipe can draw them beside it and land without a wait.
+  final Map<int, SheetWord> _peek = {};
+
   /// The word being opened, while its root is read: a second step counts from
   /// here, so two quick swipes move two words.
   int? _opening;
 
   bool _expanded = false;
 
+  /// Set while the sheet folds down: its content stays drawn until the sūra
+  /// has taken the screen, rather than vanishing at the start of the fold.
+  bool _folding = false;
+
+  /// How the sūra and the sheet trade height: opening, folding and
+  /// expanding all move the same way.
+  static const _sheetMove = Duration(milliseconds: 350);
+  static const _sheetCurve = Cubic(0.3, 0.7, 0.2, 1);
+
+  /// How far the sūra and the open aya drift as one gives way to the other.
+  static const _drift = 24.0;
+
   /// Another aya the reader opened from the root's list, shown in place of
   /// the sūra until they go back.
   RootAya? _away;
+
+  /// Every sūra's place in both orders, for the links to the ones beside
+  /// this one. Read once.
+  List<SurahPlace> _suras = const [];
 
   bool _loaded = false;
   int _generation = 0;
@@ -175,6 +195,8 @@ class _StudyScreenState extends State<StudyScreen> {
       for (final aya in surah.reading) aya.id,
     ], lang);
     if (!mounted || generation != _generation) return;
+    if (_suras.isEmpty) _suras = await surahPlaces(widget.db);
+    if (!mounted || generation != _generation) return;
     final words = {
       for (final aya in surah.reading)
         if (aya.words.isNotEmpty) aya.id: aya.words,
@@ -189,6 +211,7 @@ class _StudyScreenState extends State<StudyScreen> {
         ..clear()
         ..addAll(rendered);
       _pending.clear();
+      _peek.clear();
       _wordKeys.clear();
       _away = null;
       _loaded = true;
@@ -202,9 +225,10 @@ class _StudyScreenState extends State<StudyScreen> {
   /// so a swipe never blanks it.
   Future<void> _open(StudyWord word) async {
     final generation = _generation;
+    final was = _sheet;
     _opening = word.id;
     try {
-      final sheet = await _readSheet(word);
+      final sheet = _peek[word.id] ?? await _readSheet(word);
       // Overtaken: a newer load, or a newer word opened while this one was
       // being read, which must not be drawn over it.
       if (!mounted || generation != _generation || _opening != word.id) {
@@ -220,10 +244,54 @@ class _StudyScreenState extends State<StudyScreen> {
       // step counting from a word the reader never saw.
       if (_opening == word.id) _opening = null;
     }
+    // Not waited on: the recitation below need not wait for it, nor it for
+    // the recitation.
+    unawaited(_peekAround(word.id, was));
     _sheetToTop();
     _position.move(word.id);
     WidgetsBinding.instance.addPostFrameCallback((_) => _centre());
     await _carry(ayahOfWord(word.id));
+  }
+
+  /// Reads the sheets of the words either side of [wordId] into [_peek]. The
+  /// word the reader came from is [was], read already. A side whose aya's
+  /// words have not been read is left out, and a step there reads as before.
+  Future<void> _peekAround(int wordId, SheetWord? was) async {
+    final surah = _surah;
+    if (surah == null) return;
+    final generation = _generation;
+    bool stale() =>
+        !mounted || generation != _generation || _word?.id != wordId;
+    final read = <int, SheetWord>{};
+    for (final by in const [1, -1]) {
+      final step = stepFrom(surah.reading, _words, wordId, by);
+      final id = step?.wordId;
+      if (step == null || id == null) continue;
+      final known = _peek[id] ?? (was?.word.id == id ? was : null);
+      if (known != null) {
+        read[id] = known;
+        continue;
+      }
+      final word = _words[surah.reading[step.ayaIndex].id]!.firstWhere(
+        (w) => w.id == id,
+      );
+      read[id] = await _readSheet(word);
+      if (stale()) return;
+    }
+    if (stale()) return;
+    setState(() {
+      _peek
+        ..clear()
+        ..addAll(read);
+    });
+  }
+
+  /// The read sheet of the word [by] along from [wordId], if there is one.
+  SheetWord? _peekAt(int wordId, int by) {
+    final surah = _surah;
+    if (surah == null) return null;
+    final id = stepFrom(surah.reading, _words, wordId, by)?.wordId;
+    return id == null ? null : _peek[id];
   }
 
   /// Everything the sheet shows for [word], read together.
@@ -449,38 +517,48 @@ class _StudyScreenState extends State<StudyScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _bar(n, surah),
-                        if (!_prefs.rootOpen)
-                          Expanded(
-                            child: KeyedSubtree(
-                              key: _topKey,
-                              child: _top(n, surah),
-                            ),
-                          )
-                        else
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 350),
-                            curve: const Cubic(0.3, 0.7, 0.2, 1),
-                            // The design's 318 of 812 split; open, the aya
-                            // keeps a fifth, enough to be read whole.
-                            height: box.maxHeight * (_expanded ? 0.22 : 0.39),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: n.divider),
-                              ),
-                            ),
-                            clipBehavior: Clip.hardEdge,
-                            child: KeyedSubtree(
-                              key: _topKey,
-                              child: _top(n, surah),
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, rest) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                AnimatedContainer(
+                                  duration: _sheetMove,
+                                  curve: _sheetCurve,
+                                  onEnd: () {
+                                    if (_folding) {
+                                      setState(() => _folding = false);
+                                    }
+                                  },
+                                  // The design's 318 of 812 split; open, the
+                                  // aya keeps a fifth, enough to be read
+                                  // whole. Folded, the sūra takes all but the
+                                  // sheet's handle.
+                                  height: !_prefs.rootOpen
+                                      ? rest.maxHeight - RootSheet.handleHeight
+                                      : box.maxHeight * (_expanded ? 0.22 : 0.39),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: _prefs.rootOpen
+                                          ? BorderSide(color: n.divider)
+                                          : BorderSide.none,
+                                    ),
+                                  ),
+                                  clipBehavior: Clip.hardEdge,
+                                  child: KeyedSubtree(
+                                    key: _topKey,
+                                    child: _top(n, surah),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _rootSheet(
+                                    hidden: !_prefs.rootOpen,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        if (!_prefs.rootOpen)
-                          SizedBox(
-                            height: RootSheet.handleHeight,
-                            child: _rootSheet(hidden: true),
-                          )
-                        else
-                          Expanded(child: _rootSheet()),
+                        ),
                       ],
                     ),
                   ),
@@ -499,16 +577,26 @@ class _StudyScreenState extends State<StudyScreen> {
       sheet: sheet,
       expanded: _expanded,
       hidden: hidden,
+      folding: _folding,
       onHidden: (fold) {
         // The sūra takes the screen whole, not the fifth an open sheet
         // leaves it.
         if (fold) _setExpanded(false);
+        if (fold && _prefs.rootOpen) setState(() => _folding = true);
         _prefs.setRootOpen(!fold);
       },
       swipe: _swipe,
       onPrevious: _stepTo(-1),
       onNext: _stepTo(1),
+      previous: _peekAt(sheet.word.id, -1),
+      next: _peekAt(sheet.word.id, 1),
       onToggle: () => _setExpanded(!_expanded),
+      onExpand: () {
+        if (!_expanded) _setExpanded(true);
+      },
+      onCollapse: () {
+        if (_expanded) _setExpanded(false);
+      },
       onRoot: (letters) => _visit(Routes.root, letters),
       onJudge: _judgeSense,
       onConstellation: (ayahId, letters) =>
@@ -640,8 +728,40 @@ class _StudyScreenState extends State<StudyScreen> {
         onReadFromHere: () => _load(target: away.ayahId),
       );
     }
-    return _expanded ? _openAya(n) : _list(n, surah);
+    // The sūra stays under the open aya rather than being rebuilt from its
+    // anchor: the two cross, one fading as it drifts up and the other after
+    // it, and the reader comes back to the sūra where they left it.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: _expanded ? 1 : 0),
+      duration: _sheetMove,
+      curve: _sheetCurve,
+      builder: (context, t, _) => Stack(
+        fit: StackFit.expand,
+        children: [
+          _crossing(
+            1 - const Interval(0, 0.55).transform(t),
+            -_drift * t,
+            _list(n, surah),
+          ),
+          if (t > 0)
+            _crossing(
+              const Interval(0.45, 1).transform(t),
+              _drift * (1 - t),
+              _openAya(n),
+            ),
+        ],
+      ),
+    );
   }
+
+  /// One side of the crossing: untouchable once it is more gone than here.
+  Widget _crossing(double shown, double dy, Widget child) => IgnorePointer(
+    ignoring: shown < 0.5,
+    child: Opacity(
+      opacity: shown,
+      child: Transform.translate(offset: Offset(0, dy), child: child),
+    ),
+  );
 
   /// The whole sūra, hung from the aya it was opened at.
   ///
@@ -673,13 +793,77 @@ class _StudyScreenState extends State<StudyScreen> {
               childCount: ayas.length - focus,
             ),
           ),
-          SliverToBoxAdapter(child: SizedBox(height: n.space('8'))),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: n.space('8')),
+              child: _suraNav(n, ayas.first.surahId),
+            ),
+          ),
         ],
       ),
     );
   }
 
+  /// The sūras either side of this one in the order the reader chose, at the
+  /// top of the sūra and again at its end. Read from the order on every
+  /// build, so switching it in the settings moves the links without a reload.
+  Widget _suraNav(Nocturne n, int surahId) {
+    final l = AppLocalizations.of(context)!;
+    final style = TextStyle(fontSize: 12, color: n.textAt(0.62));
+    Widget link(int by) {
+      final to = surahBeside(_suras, _prefs.order, surahId, by);
+      if (to == null) return const Spacer();
+      final icon = Icon(
+        by < 0 ? Icons.chevron_left : Icons.chevron_right,
+        size: 16,
+        color: n.textAt(0.62),
+      );
+      final name = Flexible(
+        child: Text(
+          to.nameEn,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        ),
+      );
+      return Flexible(
+        child: Tooltip(
+          message: by < 0 ? l.study_previousSura : l.study_nextSura,
+          child: TextButton(
+            key: Key(by < 0 ? 'previous sura' : 'next sura'),
+            onPressed: () => _load(target: to.id * 1000 + 1),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: by < 0 ? [icon, name] : [name, icon],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: n.space('2')),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [link(-1), link(1)],
+      ),
+    );
+  }
+
   Widget _ayaTile(Nocturne n, List<StudyAya> ayas, int index, int? recited) {
+    // Above the first aya, whether or not its words have been read yet.
+    if (index == 0) {
+      return Column(
+        children: [
+          _suraNav(n, ayas.first.surahId),
+          _ayaBody(n, ayas, index, recited),
+        ],
+      );
+    }
+    return _ayaBody(n, ayas, index, recited);
+  }
+
+  Widget _ayaBody(Nocturne n, List<StudyAya> ayas, int index, int? recited) {
     final aya = ayas[index];
     final words = _words[aya.id];
     if (words == null) {

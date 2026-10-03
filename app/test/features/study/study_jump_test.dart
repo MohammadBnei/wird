@@ -250,6 +250,12 @@ void main() {
     await openStudy(tester, target: 96001);
     await settleDownloads(tester);
 
+    // Below the link to the next sūra, so not built until scrolled to.
+    await tester.dragUntilVisible(
+      mark(96003),
+      find.byType(CustomScrollView),
+      const Offset(0, -100),
+    );
     await tester.ensureVisible(mark(96003));
     await tester.pumpAndSettle();
     await tester.longPress(mark(96003));

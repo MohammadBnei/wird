@@ -2381,6 +2381,18 @@ abstract class AppLocalizations {
   /// **'Read this sūra from here'**
   String get study_readFromHere;
 
+  /// Tooltip on the link at the top and end of a sūra to the one before it in the reading order.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous sūra'**
+  String get study_previousSura;
+
+  /// Tooltip on the link at the top and end of a sūra to the one after it in the reading order.
+  ///
+  /// In en, this message translates to:
+  /// **'Next sūra'**
+  String get study_nextSura;
+
   /// App bar action on the reading screen: pray the ayas around the one open.
   ///
   /// In en, this message translates to:

@@ -374,6 +374,8 @@
   "study_position": "{ref} · mot {n}/{total}",
   "study_backTo": "Retour à {ref}",
   "study_readFromHere": "Lire cette sourate à partir d’ici",
+  "study_previousSura": "Sourate précédente",
+  "study_nextSura": "Sourate suivante",
   "study_pray": "Prier",
   "study_recite": "Réciter depuis ce mot · maintenir pour toute la sourate",
   "study_pauseRecitation": "Mettre la récitation en pause",

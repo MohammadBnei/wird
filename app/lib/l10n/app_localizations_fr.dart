@@ -1378,6 +1378,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get study_readFromHere => 'Lire cette sourate à partir d’ici';
 
   @override
+  String get study_previousSura => 'Sourate précédente';
+
+  @override
+  String get study_nextSura => 'Sourate suivante';
+
+  @override
   String get study_pray => 'Prier';
 
   @override
