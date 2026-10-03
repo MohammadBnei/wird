@@ -377,12 +377,17 @@ void main() {
     );
   });
 
-  test('a word spoken alone is the file of the word beside it, because the '
-      'word-by-word files count the pause marks as words', () async {
-    // 12:1 opens on the letters alif lam ra, which the word-by-word files
-    // number as two: the text's second word is the third file.
-    final track = (await tracksFor(db, [12001])).single;
-    expect(track.wordFiles[12001002], 'wbw/012_001_003.mp3');
+  test('a word after a pause mark is spoken by the word beside it, or not at '
+      'all, because its path counted the mark as a word', () async {
+    // The host numbers its files by word (ADR 0029). 2:2 has seven words and
+    // seven files, with a mark after its fourth and fifth words; the path the
+    // API gives its last word is a ninth file that does not exist.
+    final track = (await tracksFor(db, [2002])).single;
+    expect(track.wordFiles[2002005], 'wbw/002_002_005.mp3');
+    expect(track.wordFiles[2002007], 'wbw/002_002_007.mp3');
+    // 12:1 opens on alif lam ra, one word and one file.
+    final open = (await tracksFor(db, [12001])).single;
+    expect(open.wordFiles[12001002], 'wbw/012_001_002.mp3');
   });
 
   test('the words of the set are not fetched for a reader who asked to hear '

@@ -48,7 +48,7 @@ Future<Database> openWird() async {
 /// The `corpus_meta.corpus_version` of `assets/corpus.db`. A constant rather
 /// than read from the asset, so a launch need not copy the whole corpus out of
 /// the bundle to learn it; a test holds the two equal.
-const bundledCorpusVersion = 7;
+const bundledCorpusVersion = 8;
 
 Future<Uint8List> _bundledCorpus() async {
   final asset = await rootBundle.load(_corpusAsset);

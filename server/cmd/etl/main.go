@@ -16,7 +16,7 @@ func main() {
 	// no flag — so a stale default would silently regress every report's build.
 	// app/test/features/report/report_screen_test.dart asserts the asset agrees
 	// with this, which is what caught the last bump.
-	version := flag.Int("corpus-version", 7, "corpus_version the API negotiates")
+	version := flag.Int("corpus-version", 8, "corpus_version the API negotiates")
 	full := flag.Bool("full", true, "require the whole Qur'an: 114 suras, 6236 ayas")
 	flag.Parse()
 

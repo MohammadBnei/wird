@@ -96,7 +96,7 @@ erDiagram
     text gloss_fr "NULL where no French card matched"
     text lemma_key "Buckwalter, digit kept"
     text lemma "decoded, NULL without a root"
-    text wbw_path "the word spoken alone, NULL on one word"
+    text wbw_path "the word spoken alone, by position"
   }
   recitations {
     int id PK
