@@ -78,6 +78,18 @@ class _StudyScreenState extends State<StudyScreen> {
 
   bool _expanded = false;
 
+  /// Set while the sheet folds down: its content stays drawn until the sūra
+  /// has taken the screen, rather than vanishing at the start of the fold.
+  bool _folding = false;
+
+  /// How the sūra and the sheet trade height: opening, folding and
+  /// expanding all move the same way.
+  static const _sheetMove = Duration(milliseconds: 350);
+  static const _sheetCurve = Cubic(0.3, 0.7, 0.2, 1);
+
+  /// How far the sūra and the open aya drift as one gives way to the other.
+  static const _drift = 24.0;
+
   /// Another aya the reader opened from the root's list, shown in place of
   /// the sūra until they go back.
   RootAya? _away;
@@ -505,38 +517,48 @@ class _StudyScreenState extends State<StudyScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _bar(n, surah),
-                        if (!_prefs.rootOpen)
-                          Expanded(
-                            child: KeyedSubtree(
-                              key: _topKey,
-                              child: _top(n, surah),
-                            ),
-                          )
-                        else
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 350),
-                            curve: const Cubic(0.3, 0.7, 0.2, 1),
-                            // The design's 318 of 812 split; open, the aya
-                            // keeps a fifth, enough to be read whole.
-                            height: box.maxHeight * (_expanded ? 0.22 : 0.39),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: n.divider),
-                              ),
-                            ),
-                            clipBehavior: Clip.hardEdge,
-                            child: KeyedSubtree(
-                              key: _topKey,
-                              child: _top(n, surah),
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, rest) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                AnimatedContainer(
+                                  duration: _sheetMove,
+                                  curve: _sheetCurve,
+                                  onEnd: () {
+                                    if (_folding) {
+                                      setState(() => _folding = false);
+                                    }
+                                  },
+                                  // The design's 318 of 812 split; open, the
+                                  // aya keeps a fifth, enough to be read
+                                  // whole. Folded, the sūra takes all but the
+                                  // sheet's handle.
+                                  height: !_prefs.rootOpen
+                                      ? rest.maxHeight - RootSheet.handleHeight
+                                      : box.maxHeight * (_expanded ? 0.22 : 0.39),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: _prefs.rootOpen
+                                          ? BorderSide(color: n.divider)
+                                          : BorderSide.none,
+                                    ),
+                                  ),
+                                  clipBehavior: Clip.hardEdge,
+                                  child: KeyedSubtree(
+                                    key: _topKey,
+                                    child: _top(n, surah),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _rootSheet(
+                                    hidden: !_prefs.rootOpen && !_folding,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        if (!_prefs.rootOpen)
-                          SizedBox(
-                            height: RootSheet.handleHeight,
-                            child: _rootSheet(hidden: true),
-                          )
-                        else
-                          Expanded(child: _rootSheet()),
+                        ),
                       ],
                     ),
                   ),
@@ -559,6 +581,7 @@ class _StudyScreenState extends State<StudyScreen> {
         // The sūra takes the screen whole, not the fifth an open sheet
         // leaves it.
         if (fold) _setExpanded(false);
+        if (fold && _prefs.rootOpen) setState(() => _folding = true);
         _prefs.setRootOpen(!fold);
       },
       swipe: _swipe,
@@ -698,8 +721,40 @@ class _StudyScreenState extends State<StudyScreen> {
         onReadFromHere: () => _load(target: away.ayahId),
       );
     }
-    return _expanded ? _openAya(n) : _list(n, surah);
+    // The sūra stays under the open aya rather than being rebuilt from its
+    // anchor: the two cross, one fading as it drifts up and the other after
+    // it, and the reader comes back to the sūra where they left it.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: _expanded ? 1 : 0),
+      duration: _sheetMove,
+      curve: _sheetCurve,
+      builder: (context, t, _) => Stack(
+        fit: StackFit.expand,
+        children: [
+          _crossing(
+            1 - const Interval(0, 0.55).transform(t),
+            -_drift * t,
+            _list(n, surah),
+          ),
+          if (t > 0)
+            _crossing(
+              const Interval(0.45, 1).transform(t),
+              _drift * (1 - t),
+              _openAya(n),
+            ),
+        ],
+      ),
+    );
   }
+
+  /// One side of the crossing: untouchable once it is more gone than here.
+  Widget _crossing(double shown, double dy, Widget child) => IgnorePointer(
+    ignoring: shown < 0.5,
+    child: Opacity(
+      opacity: shown,
+      child: Transform.translate(offset: Offset(0, dy), child: child),
+    ),
+  );
 
   /// The whole sūra, hung from the aya it was opened at.
   ///
