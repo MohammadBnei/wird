@@ -43,6 +43,7 @@ docs/     human docs + adr/ + design/ (vendored, never hand-edit)
 - Go: `go build ./server/... ./jidhr/...` · `go test -p 1 ./server/... ./jidhr/...` (never `./...` at root)
 - app: `cd app && fvm flutter analyze && fvm flutter test`
 - local API: `docker compose up -d postgres oidc-stub && go run ./server/cmd/api`
+- reader feedback (reports, sense verdicts) → triage + issues: `.claude/rules/feedback.md`
 
 ## Load-bearing paths — never move/rename
 - `docs/adr/0002-*-vectors.json` ← 4 tests (app + server)

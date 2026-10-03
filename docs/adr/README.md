@@ -19,6 +19,8 @@ flowchart LR
   A18[0018 public page in the API] -. amends .-> A5d
   A23[0023 six reciters, word-by-word voice] -. amends .-> A1
   A25[0025 whole-sūra recitation, streamed] -. amends .-> A23
+  A26[0026 reports triaged, paraphrased issues] -. amends .-> A4[0004 operations view]
+  A26 -. amends .-> A5d
 ```
 
 | File | Decision | Status |
@@ -26,8 +28,8 @@ flowchart LR
 | [0001-stack.md](0001-stack.md) | Flutter, Go, Postgres 18, Authentik, GitOps; offline-first with an outbox | accepted, amended by 0023 |
 | [0002-set-identity.md](0002-set-identity.md) | A set's identity is derived, and one op records a prayer | accepted |
 | [0003-addressable-reader.md](0003-addressable-reader.md) | Screen 1a is addressable, and it changes in place | accepted, amended by 0006 |
-| [0004-the-operations-view-behind-authentiks-group.md](0004-the-operations-view-behind-authentiks-group.md) | The operations view sits behind Authentik's group and only sees totals | accepted |
-| [0005-deploying-the-api.md](0005-deploying-the-api.md) | One image, the API only, database credentials from Infisical | accepted, amended by 0008 and 0018 |
+| [0004-the-operations-view-behind-authentiks-group.md](0004-the-operations-view-behind-authentiks-group.md) | The operations view sits behind Authentik's group and only sees totals | accepted, amended by 0026 |
+| [0005-deploying-the-api.md](0005-deploying-the-api.md) | One image, the API only, database credentials from Infisical | accepted, amended by 0008, 0018 and 0026 |
 | [0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md](0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md) | Voice-follow runs a Qur'an model on the phone | accepted, model choice superseded by 0009 |
 | [0006-a-passage-is-read-a-set-is-answered-for.md](0006-a-passage-is-read-a-set-is-answered-for.md) | A passage is read; a set is answered for | accepted, amended by 0014 and 0020 |
 | [0007-the-voice-model-is-published-where-its-weights-already-live.md](0007-the-voice-model-is-published-where-its-weights-already-live.md) | Publish the voice model where its weights live | superseded by 0008 |
@@ -49,3 +51,4 @@ flowchart LR
 | [0023-six-reciters-and-a-word-by-word-voice.md](0023-six-reciters-and-a-word-by-word-voice.md) | The reader picks one of six reciters, and can hear each word spoken alone | accepted, amended by 0025 |
 | [0024-the-sura-picker-turns-its-order-and-searches-the-text.md](0024-the-sura-picker-turns-its-order-and-searches-the-text.md) | The sūra picker turns its own order, and searches the text of the Qur'an in memory | accepted |
 | [0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md](0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md) | The reader recites the whole sūra, and streams what is not on disk | accepted |
+| [0026-reports-are-triaged-and-turned-into-issues.md](0026-reports-are-triaged-and-turned-into-issues.md) | Reports are triaged on the operations view, exported to the agent, and turned into paraphrased issues | accepted |

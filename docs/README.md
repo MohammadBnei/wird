@@ -23,7 +23,7 @@ flowchart LR
   store[("Object storage<br/>voice model")]
   audio["Recitation site<br/>third party"]
   idp["Authentik<br/>sign-in"]
-  admin["Admin web<br/>not deployed yet"]
+  admin["Admin web<br/>built, not yet live"]
   jidhr["jidhr<br/>root engine, not deployed"]
   pipes["Pipelines<br/>run by hand"]
 
@@ -34,13 +34,13 @@ flowchart LR
   app -->|sign in| idp
   api -->|check tokens| idp
   api --- db
-  admin -->|totals and reports| db
+  admin -->|totals, reports, triage| db
   pipes -->|corpus.db, bundled at build| app
   pipes -->|seed senses| db
   pipes -->|quran.json| jidhr
 ```
 
-The app carries the whole Quran text and its word-by-word data on the phone, so reading and praying work with no network. The server keeps what belongs to you (what you understood, kept and prayed, and your reading order), the reports you choose to send, and the senses of roots, which change after release. Admin web and jidhr are built and tested here but not deployed.
+The app carries the whole Quran text and its word-by-word data on the phone, so reading and praying work with no network. The server keeps what belongs to you (what you understood, kept and prayed, and your reading order), the reports you choose to send, and the senses of roots, which change after release. Admin web is built into its own image on every release, but is not live until the infrastructure work it waits for is done. jidhr is built and tested here but not deployed.
 
 ## Containers
 
@@ -48,10 +48,10 @@ The app carries the whole Quran text and its word-by-word data on the phone, so 
 |---|---|---|
 | App | Flutter client for iOS, Android, tablet and macOS | [app.md](architecture/app.md) |
 | API | `wird-api`, the Go service holding user state and serving senses | [api.md](architecture/api.md) |
-| Admin web | Separate Go binary for operators: totals and reports only. Not deployed yet | [adminweb.md](architecture/adminweb.md) |
+| Admin web | Separate Go binary for operators: totals, reports and their triage, sense verdicts, and an export. Built, not yet live | [adminweb.md](architecture/adminweb.md) |
 | jidhr | Standalone engine that finds an Arabic word's root. Not deployed | [jidhr.md](architecture/jidhr.md) |
 | Pipelines | Offline tools that build the corpus and draft senses | [pipelines.md](architecture/pipelines.md) |
-| Deploy | CI, container image, helm, ArgoCD | [deploy.md](architecture/deploy.md) |
+| Deploy | CI, container images, helm, ArgoCD | [deploy.md](architecture/deploy.md) |
 
 ```mermaid
 flowchart TB
@@ -131,6 +131,7 @@ These words mean one thing each, everywhere in these docs.
 | **Cursor** | Your position in the server's stream of changes, returned by `GET /v1/changes`. |
 | **Tombstone** | A kept item marked deleted. It is never removed, so other devices learn about the delete. |
 | **Report** | Feedback a reader chooses to send. It travels as an op and is shown in the operations view. |
+| **Sense verdict** | A reader's thumb up or down on a root's sense. It is sent as a report, remembered on the phone so the same sentence is not asked twice, and counted per root and language rather than listed. |
 
 ### Voice-follow
 
@@ -148,7 +149,7 @@ These words mean one thing each, everywhere in these docs.
 | Term | Meaning |
 |---|---|
 | **Operator** | A member of the Authentik group allowed into the operations view. |
-| **Operations view** | The page Admin web shows operators: totals and reports, never one reader's data ([ADR 0004](adr/0004-the-operations-view-behind-authentiks-group.md)). |
+| **Operations view** | The page Admin web shows operators: totals, reports with their triage, and sense verdicts, never one reader's data ([ADR 0004](adr/0004-the-operations-view-behind-authentiks-group.md), [ADR 0026](adr/0026-reports-are-triaged-and-turned-into-issues.md)). |
 | **The gate** | `scripts/qa.sh`. Its exit code decides whether a change is ready. |
 
 ## Other documents

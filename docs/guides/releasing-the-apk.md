@@ -26,7 +26,7 @@ sequenceDiagram
 
 ## Where the version lives
 
-In one line: `version:` in [`app/pubspec.yaml`](../../app/pubspec.yaml), as `X.Y.Z+N`. The part before `+` is what people see, and `N` is Android's build number. The release build passes `X.Y.Z` into the app as `--dart-define=WIRD_VERSION`, which is what a bug report names ([report.dart](../../app/lib/features/report/report.dart#L13-L19)). Any other build, a laptop run or a walk build, reports `dev`.
+In one line: `version:` in [`app/pubspec.yaml`](../../app/pubspec.yaml), as `X.Y.Z+N`. The part before `+` is what people see, and `N` is Android's build number. The release build passes `X.Y.Z` into the app as `--dart-define=WIRD_VERSION`, which is what a bug report names ([report.dart](../../app/lib/features/report/report.dart#L16-L22)). Any other build, a laptop run or a walk build, reports `dev`.
 
 Never edit that line by hand. The release workflow raises it.
 
@@ -40,6 +40,10 @@ Never edit that line by hand. The release workflow raises it.
 Nothing is tagged when the checks fail, or when `main` moved while they ran: the push is refused, and running the button again releases the newer `main`. `apk.yml` refuses a tag that disagrees with the pubspec or is not on `main`, any missing signing value, and an APK signed with the debug key. Nothing is published then.
 
 A tag pushed by hand publishes nothing: `apk.yml` no longer starts on a tag push.
+
+## A new key in a sync op ships server first
+
+When a release adds a key to the body of a sync op, release it only after the `wird-api` that accepts that key is deployed. The server decodes every body strictly and refuses a key it does not know ([Sync endpoints](../architecture/api/sync-endpoints.md#5-apply-by-kind)). A refused op is a **parked op**: it is never sent again on its own, and the reader has to send it again by hand in Settings. `locale` and `sense_hash` on `report_written` are such keys ([ADR 0026](../adr/0026-reports-are-triaged-and-turned-into-issues.md#consequences)). Check the running image tag against `helm/values.yaml` before pressing the button ([Deploy](../architecture/deploy.md#8-knowing-your-commit-is-live)).
 
 ## When the build fails after the tag
 

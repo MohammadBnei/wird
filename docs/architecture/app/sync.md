@@ -87,7 +87,7 @@ stateDiagram-v2
 
 ### 1. A write and its op commit together
 
-Every write goes through `enqueue`. When the write also changes local rows, `enqueue` runs inside that same transaction, so both commit or neither does. A report has no local rows and is only queued. The op id is the table's primary key, so pressing twice or replaying lands on the same row.
+Every write goes through `enqueue`. When the write also changes local rows, `enqueue` runs inside that same transaction, so both commit or neither does. A written report has no local rows and is only queued. A sense verdict also records, in the same transaction, that this sentence was judged ([Senses in the app](senses.md#8-the-readers-verdict-on-a-sense)). The op id is the table's primary key, so pressing twice or replaying lands on the same row.
 
 ```dart
 Future<void> enqueue(
@@ -103,19 +103,19 @@ Future<void> enqueue(
 }, conflictAlgorithm: ConflictAlgorithm.ignore);
 ```
 
-[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:303](../../../app/lib/data/db.dart#L303-L309)
+[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:316](../../../app/lib/data/db.dart#L316-L322)
 
 The callers, one per op kind:
 
 | Op kind | Written by |
 |---|---|
-| `ayah_understood` | [markSetUnderstood, db.dart:334](../../../app/lib/data/db.dart#L334-L362) |
-| `set_prayed` | [recordSetPrayed, db.dart:375](../../../app/lib/data/db.dart#L375) |
-| `position_moved` | [movePosition, db.dart:474](../../../app/lib/data/db.dart#L474-L493) |
-| `prefs_set` | [setReadingOrder, db.dart:451](../../../app/lib/data/db.dart#L451-L465) |
+| `ayah_understood` | [markSetUnderstood, db.dart:347](../../../app/lib/data/db.dart#L347-L375) |
+| `set_prayed` | [recordSetPrayed, db.dart:388](../../../app/lib/data/db.dart#L388) |
+| `position_moved` | [movePosition, db.dart:487](../../../app/lib/data/db.dart#L487-L506) |
+| `prefs_set` | [setReadingOrder, db.dart:464](../../../app/lib/data/db.dart#L464-L478) |
 | `kept_upsert` | [kept_repo.dart:99](../../../app/lib/data/kept_repo.dart#L99-L109) |
 | `kept_delete` | [kept_repo.dart:128](../../../app/lib/data/kept_repo.dart#L128-L133) |
-| `report_written` | [report.dart:76](../../../app/lib/features/report/report.dart#L82-L92) |
+| `report_written` | [report.dart:104](../../../app/lib/features/report/report.dart#L104-L114) |
 
 The server still accepts `set_recorded` from older phones. This build no longer writes it.
 
@@ -182,7 +182,7 @@ Flusher flusherFor(Database db) => Flusher(
 );
 ```
 
-[flush.dart:189](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:464](../../../app/lib/data/auth.dart#L464-L471)
+[flush.dart:189](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:465](../../../app/lib/data/auth.dart#L465-L472)
 
 ### 4. Which ops ride
 
@@ -267,7 +267,7 @@ The delay doubles from one minute and stops growing at 256 minutes: [retryIn, ou
 
 ### 7. No answer is not an attempt
 
-Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:479](../../../app/lib/data/auth.dart#L479-L497)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
+Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:480](../../../app/lib/data/auth.dart#L480-L498)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
 
 ```dart
   } on DioException {
