@@ -72,8 +72,13 @@ func TestAReportCannotCarryAReadersNotesProgressOrCorpus(t *testing.T) {
 	// Both tables a report passes through, because the inbox holds the same
 	// text for a sweep interval and a column added there is the same column.
 	for table, want := range map[string][]string{
-		"reports":      {"app_version", "body", "corpus_version", "id", "kind", "platform", "screen", "sense_version", "written_on"},
-		"report_inbox": {"app_version", "body", "corpus_version", "kind", "platform", "screen", "sense_version", "written_on"},
+		// category, status and issue_url are the operator's words about a
+		// report, never the reader's; locale and sense_hash name a language and
+		// a sentence of ours (migration 00011).
+		"reports": {"app_version", "body", "category", "corpus_version", "id", "issue_url", "kind", "locale",
+			"platform", "screen", "sense_hash", "sense_version", "status", "written_on"},
+		"report_inbox": {"app_version", "body", "corpus_version", "kind", "locale", "platform", "screen",
+			"sense_hash", "sense_version", "written_on"},
 	} {
 		var columns []string
 		rows, err := pool.Query(t.Context(),

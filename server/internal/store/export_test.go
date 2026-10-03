@@ -15,3 +15,14 @@ func (s *Store) ApplyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) 
 // AdminAggregates is every statement the dashboard can cause to run, so a test
 // can hold them to the rule that none of them may be about one reader.
 var AdminAggregates = adminAggregates
+
+// SenseVerdictsSQL is the one aggregate keyed on something other than a
+// number, so the test that holds the rest to numbers can name its exception.
+var SenseVerdictsSQL = senseVerdictsSQL
+
+// SweepReportsSQL lets a test hold a sweep open while something else runs.
+var SweepReportsSQL = sweepReportsSQL
+
+// SenseHashSQL is the sense_hash expression, so a test can hold it to the
+// vector the app is held to.
+var SenseHashSQL = senseHashSQL
