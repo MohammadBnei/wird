@@ -171,36 +171,40 @@ Each report row shows the build, the screen, the corpus and sense versions, the 
 
 ### 5. Sense verdicts are counted, not listed
 
-A thumb on a sense arrives as a report whose body is `sense good: <root>` or `sense bad: <root>`, with the language it was read in and a hash of the sentence judged ([Senses in the app](app/senses.md#8-the-readers-verdict-on-a-sense)). One condition, `isVerdict`, says which reports are verdicts. The report list and the export leave out exactly what it matches, and the tally counts exactly that, so no report can fall between them:
+A thumb on a sense arrives as a report whose body is `sense good: <root>` or `sense bad: <root>`, with the language it was read in and a hash of the sentence judged ([Senses in the app](app/senses.md#8-the-readers-verdict-on-a-sense)). One condition, `isVerdict`, says which reports are verdicts:
 
 ```go
 const isVerdict = `r.kind = 'improvement'
    AND r.body IN ('sense good: ' || s.root_letters, 'sense bad: ' || s.root_letters)`
 ```
 
-[admin.go:147-148](../../server/internal/store/admin.go#L147-L148) · used by the list [admin.go:172](../../server/internal/store/admin.go#L172) and the tally [admin.go:256](../../server/internal/store/admin.go#L256)
+[admin.go:148-149](../../server/internal/store/admin.go#L148-L149)
+
+It is applied once, by the report sweep in `wird-api`, when a report first arrives. The sweep stores the matching root in the report's `verdict_root`, judged against the roots served at that moment, and carries it unchanged on every later sweep ([sync.go:569-588](../../server/internal/store/sync.go#L569-L588)). The report list and the export leave out every report with a `verdict_root`, and the tally counts exactly those, so no report can fall between them ([admin.go:173](../../server/internal/store/admin.go#L173)).
 
 The tally groups them by root and language:
 
 ```go
 var senseVerdictsSQL = `
-SELECT s.root_letters, r.locale,
-       count(*) FILTER (WHERE r.body = 'sense good: ' || s.root_letters) AS good,
-       count(*) FILTER (WHERE r.body = 'sense bad: ' || s.root_letters) AS bad,
-       count(*) FILTER (WHERE r.body = 'sense bad: ' || s.root_letters AND r.sense_hash = ` +
+SELECT r.verdict_root, r.locale,
+       count(*) FILTER (WHERE r.body = 'sense good: ' || r.verdict_root) AS good,
+       count(*) FILTER (WHERE r.body = 'sense bad: ' || r.verdict_root) AS bad,
+       count(*) FILTER (WHERE r.body = 'sense bad: ' || r.verdict_root AND r.sense_hash = ` +
 	senseHashSQL(`CASE WHEN r.locale = 'fr' THEN s.sense_fr ELSE s.sense_en END`) + `) AS bad_on_current
   FROM reports r
-  JOIN root_senses s ON ` + isVerdict + `
- GROUP BY s.root_letters, r.locale
- ORDER BY bad_on_current DESC, bad DESC, s.root_letters, r.locale`
+  LEFT JOIN root_senses s ON s.root_letters = r.verdict_root
+ WHERE r.verdict_root IS NOT NULL
+ GROUP BY r.verdict_root, r.locale
+ ORDER BY bad_on_current DESC, bad DESC, r.verdict_root, r.locale`
 ```
 
-[admin.go:249-258](../../server/internal/store/admin.go#L249-L258)
+[admin.go:255-265](../../server/internal/store/admin.go#L255-L265)
 
-Three choices matter here.
+Four choices matter here.
 
 - **A verdict is the whole body, for a root of ours.** A body that only starts like a verdict, such as a reader typing "sense bad: the French for this is wrong", is a written report. It stays in the list and the export, and the tally never counts it.
-- **The root shown is ours.** It is `root_senses`' key, not the body's text. A body is whatever a stranger typed, so a tally keyed on it would be a list of what strangers typed.
+- **The root shown is ours.** It is a `root_senses` key, copied by the sweep, not the body's text. A body is whatever a stranger typed, so a tally keyed on it would be a list of what strangers typed.
+- **A verdict stays a verdict.** Because the root is settled on arrival, a later reseed that drops a root does not turn its votes back into reports. They stay counted and out of the list, with `bad_on_current` at 0, since the root has no current text.
 - **`bad_on_current` counts only the text served today.** The server hashes its own sentence the way the app does, and compares. A bad verdict on a sentence since redrafted drops out, so the root at the top is one whose current text readers judge wrong.
 
 A report's `locale` is `en`, `fr` or empty. The API blanks any other value on arrival, so the tally cannot grow a row for every string a device invents ([Sync endpoints](api/sync-endpoints.md#5-apply-by-kind)).
@@ -228,9 +232,9 @@ func (s *Store) TriageReport(ctx context.Context, id, category, status, issueURL
 }
 ```
 
-[admin.go:212-225](../../server/internal/store/admin.go#L212-L225)
+[admin.go:213-226](../../server/internal/store/admin.go#L213-L226)
 
-The report sweep in `wird-api` deletes every report and writes it back under the same id, in one statement ([Sync endpoints](api/sync-endpoints.md)). An update queued behind it finds the old row gone and cannot see the new one, so it touches nothing. A second statement takes a fresh snapshot and finds the row. The sweep itself carries the triage columns across its rewrite, so it never undoes an operator's work. A second miss is an id that is really not there: 404.
+The report sweep in `wird-api` deletes every report and writes it back under the same id, in one statement ([Sync endpoints](api/sync-endpoints.md)). An update queued behind it finds the old row gone and cannot see the new one, so it touches nothing. A second statement takes a fresh snapshot and finds the row. The sweep itself carries the triage columns and `verdict_root` across its rewrite, so it never undoes an operator's work. A second miss is an id that is really not there: 404.
 
 A triage is the operator's words about a report. Nothing in it travels back to a device, and it adds no channel to the report's author.
 
@@ -254,7 +258,7 @@ Both exports are JSON, gated and uncached like the page.
 }
 ```
 
-`GET /verdicts.json` returns the tally of step 5, worst first, as a list of `{ "root", "locale", "good", "bad", "bad_on_current" }` ([admin.go:261-267](../../server/internal/store/admin.go#L261-L267)).
+`GET /verdicts.json` returns the tally of step 5, worst first, as a list of `{ "root", "locale", "good", "bad", "bad_on_current" }` ([admin.go:268-274](../../server/internal/store/admin.go#L268-L274)).
 
 ### 8. What the agent does with them
 
@@ -281,12 +285,13 @@ Tests hold the rule, not habit:
 
 - The package may call only `Health`, `Reports`, `SenseVerdicts`, `CorpusVersion`, `TriageReport` and `Close`, and holds no SQL of its own ([adminweb_test.go:145](../../server/cmd/adminweb/adminweb_test.go#L145)). `TriageReport` takes a report's id, which no column joins to a reader.
 - Every aggregate the dashboard can run, the verdict tally included, has no argument that could bind it to one reader ([admin_test.go:48](../../server/internal/store/admin_test.go#L48)).
-- The page, rendered from a real database with two readers, never contains their ids or subjects ([adminweb_test.go:233](../../server/cmd/adminweb/adminweb_test.go#L233)). Neither do the exports, and both are never cached ([adminweb_test.go:481](../../server/cmd/adminweb/adminweb_test.go#L481)).
-- A valid token outside the group, and a token that cannot be proven, are both served nothing ([adminweb_test.go:80](../../server/cmd/adminweb/adminweb_test.go#L80), [adminweb_test.go:116](../../server/cmd/adminweb/adminweb_test.go#L116)). A triage posted from another site is refused ([adminweb_test.go:405](../../server/cmd/adminweb/adminweb_test.go#L405)).
+- The page, rendered from a real database with two readers, never contains their ids or subjects ([adminweb_test.go:233](../../server/cmd/adminweb/adminweb_test.go#L233)). Neither do the exports, and both are never cached ([adminweb_test.go:484](../../server/cmd/adminweb/adminweb_test.go#L484)).
+- A valid token outside the group, and a token that cannot be proven, are both served nothing ([adminweb_test.go:80](../../server/cmd/adminweb/adminweb_test.go#L80), [adminweb_test.go:116](../../server/cmd/adminweb/adminweb_test.go#L116)). A triage posted from another site is refused ([adminweb_test.go:408](../../server/cmd/adminweb/adminweb_test.go#L408)).
 - A verdict on a root Wird never wrote never reaches the tally, and a bad verdict on corrected text does not count against today's ([triage_test.go:78](../../server/internal/store/triage_test.go#L78), [triage_test.go:42](../../server/internal/store/triage_test.go#L42)).
-- A triage written while the sweep rewrites the table still lands, and the sweep keeps it ([triage_test.go:145](../../server/internal/store/triage_test.go#L145), [triage_test.go:205](../../server/internal/store/triage_test.go#L205)).
-- A typed report that starts like a verdict stays in the list, and an unknown locale is blanked rather than refused ([triage_test.go:261](../../server/internal/store/triage_test.go#L261), [triage_test.go:241](../../server/internal/store/triage_test.go#L241)).
-- The app and the server hash a sense the same way ([triage_test.go:283](../../server/internal/store/triage_test.go#L283)).
+- A reseed that drops a root leaves its votes counted and out of the list ([triage_test.go:100](../../server/internal/store/triage_test.go#L100)).
+- A triage written while the sweep rewrites the table still lands, and the sweep keeps it ([triage_test.go:174](../../server/internal/store/triage_test.go#L174), [triage_test.go:234](../../server/internal/store/triage_test.go#L234)).
+- A typed report that starts like a verdict stays in the list, and an unknown locale is blanked rather than refused ([triage_test.go:290](../../server/internal/store/triage_test.go#L290), [triage_test.go:270](../../server/internal/store/triage_test.go#L270)).
+- The app and the server hash a sense the same way ([triage_test.go:312](../../server/internal/store/triage_test.go#L312)).
 
 Reports carry no reader id, but ADR 0004 is precise about the limit: the page cannot attribute a report, while someone with `SELECT` on the database still can. That is why the view's database role is to be limited to what it reads and the triage it writes.
 

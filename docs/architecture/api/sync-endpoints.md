@@ -135,8 +135,8 @@ The same lock makes the server-assigned set `ordinal` safe: `MAX(ordinal) + 1` c
 | `kept_delete` | Sets `deleted_at` on a `kept_items` row | A tombstone, never a delete. [L301](../../../server/internal/store/sync.go#L301) |
 | `set_prayed` | The set, if the body carries its range, and the prayer | With a range, the set id is recomputed and must match. Either way the set must exist. [L427](../../../server/internal/store/sync.go#L427) |
 | `set_recorded` | A set | Old shape, kept so old phones can drain their queue. [L398](../../../server/internal/store/sync.go#L398) |
-| `prefs_set` | The reader's `user_prefs` | Reading order must be `mushaf` or `nuzul`; last write wins. [L599](../../../server/internal/store/sync.go#L599) |
-| `position_moved` | The reader's `reading_positions` row for that sūra | The word must belong to the sūra; the time must be set and no more than five minutes ahead of the server; last write wins. [L627](../../../server/internal/store/sync.go#L627) |
+| `prefs_set` | The reader's `user_prefs` | Reading order must be `mushaf` or `nuzul`; last write wins. [L604](../../../server/internal/store/sync.go#L604) |
+| `position_moved` | The reader's `reading_positions` row for that sūra | The word must belong to the sūra; the time must be set and no more than five minutes ahead of the server; last write wins. [L632](../../../server/internal/store/sync.go#L632) |
 | `report_written` | A row in `report_inbox`, with no reader attached | Swept into `reports` later, on a clock. An over-long `sense_version` or `sense_hash`, or a `locale` other than `en` or `fr`, is blanked, not refused, so the words survive. [L498](../../../server/internal/store/sync.go#L498) |
 
 Every body is decoded strictly. One unknown field refuses the op. [store/sync.go:221-228](../../../server/internal/store/sync.go#L221-L228) So a server has to ship before an app that sends a new key: an older server refuses it, and a refusal is permanent. `locale` and `sense_hash` on `report_written` were added that way ([ADR 0026](../../adr/0026-reports-are-triaged-and-turned-into-issues.md#consequences)).
@@ -183,11 +183,11 @@ flowchart LR
   q --> r["changes + cursor seq:last<br/>+ more if the page is full"]
 ```
 
-The six tables the pull reads each carry a `seq` column fed by one sequence, `change_seq`. Each insert takes the next number, and each update of a kept item, of preferences or of a reading position takes a fresh one. [00003_change_order.sql:11-17](../../../server/migrations/00003_change_order.sql#L11-L17), [store/sync.go:292](../../../server/internal/store/sync.go#L292), [store/sync.go:313](../../../server/internal/store/sync.go#L313), [store/sync.go:615](../../../server/internal/store/sync.go#L615) `root_known` has no `seq` and is not in the stream.
+The six tables the pull reads each carry a `seq` column fed by one sequence, `change_seq`. Each insert takes the next number, and each update of a kept item, of preferences or of a reading position takes a fresh one. [00003_change_order.sql:11-17](../../../server/migrations/00003_change_order.sql#L11-L17), [store/sync.go:292](../../../server/internal/store/sync.go#L292), [store/sync.go:313](../../../server/internal/store/sync.go#L313), [store/sync.go:620](../../../server/internal/store/sync.go#L620) `root_known` has no `seq` and is not in the stream.
 
-The query unions `ayah_understood`, `kept_items`, `sets`, `set_prayers`, `user_prefs` and `reading_positions`, orders by `seq`, and stops at 500 rows. A kept item with `deleted_at` set is sent like any other row: that row is the tombstone. [store/sync.go:683-716](../../../server/internal/store/sync.go#L683-L716)
+The query unions `ayah_understood`, `kept_items`, `sets`, `set_prayers`, `user_prefs` and `reading_positions`, orders by `seq`, and stops at 500 rows. A kept item with `deleted_at` set is sent like any other row: that row is the tombstone. [store/sync.go:688-721](../../../server/internal/store/sync.go#L688-L721)
 
-The cursor is the text `seq:` followed by the last number sent. A cursor without that prefix is refused with a 400 rather than read as some place in the stream. [store/sync.go:763-782](../../../server/internal/store/sync.go#L763-L782)
+The cursor is the text `seq:` followed by the last number sent. A cursor without that prefix is refused with a 400 rather than read as some place in the stream. [store/sync.go:768-787](../../../server/internal/store/sync.go#L768-L787)
 
 ```go
 func parseCursor(cursor string) (int64, error) {
@@ -206,7 +206,7 @@ func parseCursor(cursor string) (int64, error) {
 }
 ```
 
-When a page comes back empty, the cursor the device sent is returned unchanged. `more` is true only when the page is full. [store/sync.go:749-752](../../../server/internal/store/sync.go#L749-L752) The endpoint writes nothing.
+When a page comes back empty, the cursor the device sent is returned unchanged. `more` is true only when the page is full. [store/sync.go:754-757](../../../server/internal/store/sync.go#L754-L757) The endpoint writes nothing.
 
 ### 8. One file both sides answer to
 

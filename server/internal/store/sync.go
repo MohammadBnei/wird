@@ -565,22 +565,27 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 // reads, which is silent in both directions. The triage columns are on reports
 // alone, so arrived rows take their defaults here and held rows carry theirs: a
 // sweep that forgot them would undo every operator's verdict on its next tick.
-const sweepReportsSQL = `
+//
+// verdict_root is settled here for an arrived row, by isVerdict against the
+// roots served now, and carried for a held one, so a reseed that later drops a
+// root leaves the votes on it counted as votes.
+var sweepReportsSQL = `
 WITH arrived AS (DELETE FROM report_inbox RETURNING *),
      held AS (DELETE FROM reports RETURNING *),
      all_of_them AS (
        SELECT gen_random_uuid() AS id, kind, body, app_version, platform, screen, corpus_version, sense_version,
-              locale, sense_hash, NULL::text AS category, 'new' AS status, NULL::text AS issue_url, written_on
-         FROM arrived
+              locale, sense_hash, NULL::text AS category, 'new' AS status, NULL::text AS issue_url,
+              (SELECT s.root_letters FROM root_senses s WHERE ` + isVerdict + `) AS verdict_root, written_on
+         FROM arrived r
        UNION ALL
        SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version,
-              locale, sense_hash, category, status, issue_url, written_on
+              locale, sense_hash, category, status, issue_url, verdict_root, written_on
          FROM held
      )
 INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, sense_version,
-                     locale, sense_hash, category, status, issue_url, written_on)
+                     locale, sense_hash, category, status, issue_url, verdict_root, written_on)
 SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version,
-       locale, sense_hash, category, status, issue_url, written_on FROM all_of_them ORDER BY id`
+       locale, sense_hash, category, status, issue_url, verdict_root, written_on FROM all_of_them ORDER BY id`
 
 // SweepReports is the write that belongs to the schedule rather than to a
 // reader. It runs on its tick whether or not anything arrived, and rewrites

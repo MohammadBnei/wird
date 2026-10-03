@@ -220,10 +220,14 @@ jobs:
           # on different stores.
           #
           # Two targets of one Dockerfile, so both images come from the same
-          # build stage and the same commit. The second bud reuses its layers.
+          # build stage and the same commit. --layers is what lets the second
+          # bud reuse the first one's build stage instead of compiling both
+          # binaries again; buildah caches nothing without it. The cached
+          # layers are left to the build box's weekly prune timer.
           for target in api adminweb; do
             image="$IMAGE"; [ "$target" = adminweb ] && image="$ADMIN_IMAGE"
             sudo buildah bud \
+              --layers \
               --isolation chroot \
               --format docker \
               --target "$target" \

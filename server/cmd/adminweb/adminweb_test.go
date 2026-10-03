@@ -380,9 +380,12 @@ func (h *harness) post(t *testing.T, path, contentType, body string, header map[
 func (h *harness) newReport(t *testing.T, kind, body string) string {
 	t.Helper()
 	var id string
+	// verdict_root as the sweep would settle it: a thumb on a root we serve.
 	err := h.pool.QueryRow(t.Context(), `
-		INSERT INTO reports (id, kind, body, app_version, platform, screen, locale, sense_hash)
-		VALUES (gen_random_uuid(), $1, $2, '1.4.0', 'android', 'root', 'en', 'a1b2c3d4e5f6')
+		INSERT INTO reports (id, kind, body, app_version, platform, screen, locale, sense_hash, verdict_root)
+		VALUES (gen_random_uuid(), $1, $2, '1.4.0', 'android', 'root', 'en', 'a1b2c3d4e5f6',
+		        (SELECT root_letters FROM root_senses
+		          WHERE $1 = 'improvement' AND $2 IN ('sense good: ' || root_letters, 'sense bad: ' || root_letters)))
 		RETURNING id`, kind, body).Scan(&id)
 	if err != nil {
 		t.Fatalf("insert report: %v", err)
@@ -482,13 +485,15 @@ func TestTheExportsCarryReportsAndTalliesButNoReaderAndAreNeverCached(t *testing
 	h := newHarness(t)
 	reader := h.newReader(t, "sub-export-a1b2")
 	h.newPrayer(t, reader)
-	h.newReport(t, "bug", "the audio stops")
-	h.newReport(t, "improvement", "sense bad: كتب")
-	h.newReport(t, "improvement", "sense bad: the French for كتب reads backwards")
+	// The sense is served before anybody can judge it, as on a real server: a
+	// verdict is recognised when the sweep lays it down.
 	if _, err := h.pool.Exec(t.Context(),
 		`INSERT INTO root_senses (root_letters, sense_en, sense_fr) VALUES ('كتب', 'writing', 'écriture')`); err != nil {
 		t.Fatalf("insert sense: %v", err)
 	}
+	h.newReport(t, "bug", "the audio stops")
+	h.newReport(t, "improvement", "sense bad: كتب")
+	h.newReport(t, "improvement", "sense bad: the French for كتب reads backwards")
 
 	w := h.get(t, "/reports.json", h.operator(t))
 	if w.Code != http.StatusOK {

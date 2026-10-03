@@ -141,9 +141,10 @@ var (
 // A verdict is a body that is exactly that, for a root root_senses has — not
 // one that merely starts like it. A reader who types "sense bad: the French
 // for this is wrong" wrote a report, and a prefix match would hide it from the
-// list and the export without the tally ever counting it. This one condition
-// is what the list leaves out and what the tally counts, so nothing can fall
-// between them. r is the reports row; s is root_senses.
+// list and the export without the tally ever counting it. The sweep applies
+// this condition once and keeps the answer in verdict_root, which is what the
+// list leaves out and what the tally counts, so nothing can fall between them.
+// r is the report row; s is root_senses.
 const isVerdict = `r.kind = 'improvement'
    AND r.body IN ('sense good: ' || s.root_letters, 'sense bad: ' || s.root_letters)`
 
@@ -169,7 +170,7 @@ func (s *Store) Reports(ctx context.Context, f ReportFilter) ([]Report, bool, er
 		       locale, sense_hash, coalesce(category, ''), status, coalesce(issue_url, ''), written_on
 		  FROM reports r
 		 WHERE ($1 = '' OR status = $1)
-		   AND NOT ($2 AND EXISTS (SELECT 1 FROM root_senses s WHERE `+isVerdict+`))
+		   AND NOT ($2 AND verdict_root IS NOT NULL)
 		 ORDER BY written_on DESC, id LIMIT $3`, f.Status, f.ExcludeVerdicts, limit+1)
 	if err != nil {
 		return nil, false, err
@@ -246,16 +247,22 @@ func senseHashSQL(text string) string {
 // the app's own rule (app/lib/data/root_repo.dart). A bad verdict on a
 // sentence since corrected drops out of it, so a root at the top of this list
 // is one whose current text is judged wrong.
+//
+// The root is verdict_root, which the sweep settled when the row arrived, so a
+// root a reseed has since dropped keeps its votes. It has no current text, so
+// none of them is bad_on_current: the LEFT JOIN leaves s empty and the hash
+// comparison never holds.
 var senseVerdictsSQL = `
-SELECT s.root_letters, r.locale,
-       count(*) FILTER (WHERE r.body = 'sense good: ' || s.root_letters) AS good,
-       count(*) FILTER (WHERE r.body = 'sense bad: ' || s.root_letters) AS bad,
-       count(*) FILTER (WHERE r.body = 'sense bad: ' || s.root_letters AND r.sense_hash = ` +
+SELECT r.verdict_root, r.locale,
+       count(*) FILTER (WHERE r.body = 'sense good: ' || r.verdict_root) AS good,
+       count(*) FILTER (WHERE r.body = 'sense bad: ' || r.verdict_root) AS bad,
+       count(*) FILTER (WHERE r.body = 'sense bad: ' || r.verdict_root AND r.sense_hash = ` +
 	senseHashSQL(`CASE WHEN r.locale = 'fr' THEN s.sense_fr ELSE s.sense_en END`) + `) AS bad_on_current
   FROM reports r
-  JOIN root_senses s ON ` + isVerdict + `
- GROUP BY s.root_letters, r.locale
- ORDER BY bad_on_current DESC, bad DESC, s.root_letters, r.locale`
+  LEFT JOIN root_senses s ON s.root_letters = r.verdict_root
+ WHERE r.verdict_root IS NOT NULL
+ GROUP BY r.verdict_root, r.locale
+ ORDER BY bad_on_current DESC, bad DESC, r.verdict_root, r.locale`
 
 // A SenseVerdict is the thumbs on one root's sense in one language.
 type SenseVerdict struct {

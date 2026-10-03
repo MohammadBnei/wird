@@ -36,8 +36,19 @@ ALTER TABLE reports ADD COLUMN status text NOT NULL DEFAULT 'new'
 ALTER TABLE reports ADD COLUMN issue_url text
   CHECK (issue_url ~ '^https://github\.com/');
 
+-- verdict_root is the root a thumb was about, decided once, when the sweep
+-- lays the row down, against the roots served at that moment. Deciding it at
+-- read time against today's root_senses would turn every vote on a root a
+-- reseed later dropped back into an untriaged report, and stop counting it.
+-- NULL is a written report. The UPDATE settles the reports already held.
+ALTER TABLE reports ADD COLUMN verdict_root text;
+UPDATE reports r SET verdict_root = s.root_letters
+  FROM root_senses s
+ WHERE r.kind = 'improvement'
+   AND r.body IN ('sense good: ' || s.root_letters, 'sense bad: ' || s.root_letters);
+
 -- +goose Down
 
-ALTER TABLE reports DROP COLUMN issue_url, DROP COLUMN status, DROP COLUMN category,
+ALTER TABLE reports DROP COLUMN verdict_root, DROP COLUMN issue_url, DROP COLUMN status, DROP COLUMN category,
                     DROP COLUMN sense_hash, DROP COLUMN locale;
 ALTER TABLE report_inbox DROP COLUMN sense_hash, DROP COLUMN locale;

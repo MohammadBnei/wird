@@ -141,12 +141,13 @@ The Flutter half of the gate never runs in CI. It needs fvm and a device, and th
 
 It builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC at build time. It is never stored in the repo.
 
-Both images are built from the same Dockerfile, one target each, in one job and from one commit. The second build reuses the first one's layers.
+Both images are built from the same Dockerfile, one target each, in one job and from one commit. `--layers` lets the second build reuse the first one's build stage instead of compiling both binaries again; the cached layers are left to the build box's weekly prune.
 
 ```yaml
           for target in api adminweb; do
             image="$IMAGE"; [ "$target" = adminweb ] && image="$ADMIN_IMAGE"
             sudo buildah bud \
+              --layers \
               --isolation chroot \
               --format docker \
               --target "$target" \
@@ -156,7 +157,7 @@ Both images are built from the same Dockerfile, one target each, in one job and 
           done
 ```
 
-[release.yml:224-233](../../.github/workflows/release.yml#L224-L233) · job guard [release.yml:137-145](../../.github/workflows/release.yml#L137-L145) · password step [release.yml:169-186](../../.github/workflows/release.yml#L169-L186)
+[release.yml:227-237](../../.github/workflows/release.yml#L227-L237) · job guard [release.yml:137-145](../../.github/workflows/release.yml#L137-L145) · password step [release.yml:169-186](../../.github/workflows/release.yml#L169-L186)
 
 ### 4. One binary per image
 
@@ -200,7 +201,7 @@ ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
           done
 ```
 
-[release.yml:271-277](../../.github/workflows/release.yml#L271-L277) · commit and push [release.yml:282-293](../../.github/workflows/release.yml#L282-L293) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
+[release.yml:275-281](../../.github/workflows/release.yml#L275-L281) · commit and push [release.yml:286-297](../../.github/workflows/release.yml#L286-L297) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
 A manual run builds and pushes both images but skips this job, so it never deploys.
 

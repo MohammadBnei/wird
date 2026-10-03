@@ -74,9 +74,9 @@ func TestAReportCannotCarryAReadersNotesProgressOrCorpus(t *testing.T) {
 	for table, want := range map[string][]string{
 		// category, status and issue_url are the operator's words about a
 		// report, never the reader's; locale and sense_hash name a language and
-		// a sentence of ours (migration 00011).
+		// a sentence of ours; verdict_root is a root of ours (migration 00011).
 		"reports": {"app_version", "body", "category", "corpus_version", "id", "issue_url", "kind", "locale",
-			"platform", "screen", "sense_hash", "sense_version", "status", "written_on"},
+			"platform", "screen", "sense_hash", "sense_version", "status", "verdict_root", "written_on"},
 		"report_inbox": {"app_version", "body", "corpus_version", "kind", "locale", "platform", "screen",
 			"sense_hash", "sense_version", "written_on"},
 	} {

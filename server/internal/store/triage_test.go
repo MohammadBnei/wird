@@ -94,6 +94,35 @@ func TestAVerdictOnARootWeNeverWroteNeverReachesTheTally(t *testing.T) {
 	}
 }
 
+// The failure: a reseed drops a root readers had voted on, and every vote on
+// it comes back into the operator's list as an untriaged report while the
+// tally stops counting it. A vote is a vote from the sweep that laid it down.
+func TestAReseedThatDropsARootLeavesItsVotesCountedAndOutOfTheList(t *testing.T) {
+	db, pool := testenv.Postgres(t)
+	user := reader(t, db, "sub-reseed")
+	exec(t, pool, `INSERT INTO root_senses (root_letters, sense_en, sense_fr) VALUES ('كتب', 'writing', 'écriture')`)
+	land(t, db, user, verdictOp(opID(1130), "bad", "كتب", "en", hashOf("writing")))
+	sweep(t, db)
+	exec(t, pool, `DELETE FROM root_senses`)
+	sweep(t, db)
+
+	list, _, err := db.Reports(t.Context(), store.ReportFilter{ExcludeVerdicts: true})
+	if err != nil {
+		t.Fatalf("reports: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("a vote on a dropped root came back as a report: %+v", list)
+	}
+	got, err := db.SenseVerdicts(t.Context())
+	if err != nil {
+		t.Fatalf("sense verdicts: %v", err)
+	}
+	// Still counted, and no longer against any text served today.
+	if want := []store.SenseVerdict{{Root: "كتب", Locale: "en", Bad: 1}}; !slices.Equal(got, want) {
+		t.Fatalf("the tally came back %+v after the reseed", got)
+	}
+}
+
 // The failure: the operator's list of reports to read is buried under
 // hundreds of one-word thumbs, or the filter that clears them also drops a
 // real report whose text merely starts like one.
