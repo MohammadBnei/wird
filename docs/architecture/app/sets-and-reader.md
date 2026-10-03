@@ -139,7 +139,7 @@ int _setWidth(List<int> wordCounts, {int? span}) {
 }
 ```
 
-[sets.dart:453](../../../app/lib/data/sets.dart#L453-L466). The chosen width is stored per starting aya in the local `set_span` table ([sets.dart:474](../../../app/lib/data/sets.dart#L474-L491)). It is a width, never a position, and it never leaves the phone. The Settings stepper writes it ([settings_screen.dart:73](../../../app/lib/features/settings/settings_screen.dart#L73-L80)).
+[sets.dart:453](../../../app/lib/data/sets.dart#L453-L466). The chosen width is stored per starting aya in the local `set_span` table ([sets.dart:474](../../../app/lib/data/sets.dart#L474-L491)). It is a width, never a position, and it never leaves the phone. The Settings stepper writes it ([settings_screen.dart:73](../../../app/lib/features/settings/settings_screen.dart#L74-L81)).
 
 ### 3. A set's id is derived, not minted
 

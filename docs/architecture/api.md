@@ -47,6 +47,7 @@ There are two groups. The open group needs no token, because the app is fully us
 | `GET /healthz` | no | 200, for the liveness probe | no |
 | `GET /auth/callback` | no | A page that hands the sign-in code back to the app | through the browser |
 | `GET /.well-known/assetlinks.json` | no | Android's proof that the app owns `/auth/callback` | by Android |
+| `GET /.well-known/apple-app-site-association` | no | iOS's proof that the app owns `/auth/callback` | by iOS |
 | `GET /models/...` | no | 302 to the voice model file; 503 when no store is set up | yes |
 | `GET /v1/senses` | no | Every sense, with who wrote them; 304 when unchanged. `HEAD` checks without the body | yes |
 | `GET /`, `GET /{file}`, `GET /_ds/...` | no | The public page and the files it renders from. See [the site](#the-public-page) | no |
@@ -54,6 +55,7 @@ There are two groups. The open group needs no token, because the app is fully us
 | `POST /v1/sync` | yes | The one write path. See [Sync endpoints](api/sync-endpoints.md) | yes |
 | `GET /v1/changes` | yes | What changed since a cursor. See [Sync endpoints](api/sync-endpoints.md) | yes |
 | `GET /v1/me` | yes | The reader the token belongs to | no |
+| `DELETE /v1/me` | yes | Deletes the reader and everything they own; 204. A token signed in before the deletion is refused from then on | yes |
 | `GET /v1/progress` | yes | Counts for the progress screen | no |
 | `GET /v1/kept` | yes | Kept items, optionally of one kind | no |
 | `GET /v1/corpus/version` | yes | The server's record of the corpus version | no |
@@ -61,7 +63,7 @@ There are two groups. The open group needs no token, because the app is fully us
 | `GET /v1/ayahs/{s}/{a}/irab` | yes | Placeholder parsing, or 404 | no |
 | `GET /v1/roots/{letters}/lexicon` | yes | Placeholder lexicon entries, or 404 | no |
 
-The last column comes from the app's code. The app calls only [`/v1/sync`](../../app/lib/data/sync.dart#L59), [`/v1/changes`](../../app/lib/data/sync.dart#L77), [`/v1/senses`](../../app/lib/data/senses.dart#L94) and [`/models/`](../../app/lib/data/speech.dart#L65). The other bearer routes are served and tested, but no screen reads them today.
+The last column comes from the app's code. The app calls only [`/v1/sync`](../../app/lib/data/sync.dart#L59), [`/v1/changes`](../../app/lib/data/sync.dart#L77), [`/v1/senses`](../../app/lib/data/senses.dart#L94), [`DELETE /v1/me`](../../app/lib/data/auth.dart#L275) and [`/models/`](../../app/lib/data/speech.dart#L65). The other bearer routes are served and tested, but no screen reads them today.
 
 Errors from the JSON endpoints have one shape, `{"error": "<reason>"}`. The reason says what the caller did wrong, never which table or statement failed. The voice model and app-link routes answer errors in plain text.
 
@@ -125,11 +127,12 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-80](../../server/internal/api/api.go#L26-L80)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-82](../../server/internal/api/api.go#L26-L82)
 
 ```go
 	v1 := http.NewServeMux()
 	v1.HandleFunc("GET /v1/me", h.me)
+	v1.HandleFunc("DELETE /v1/me", h.deleteMe)
 	v1.HandleFunc("GET /v1/corpus/version", h.corpusVersion)
 	v1.HandleFunc("POST /v1/sync", h.sync)
 	v1.HandleFunc("GET /v1/changes", h.changes)
@@ -140,11 +143,11 @@ func Migrate(ctx context.Context, url string) error {
 	v1.HandleFunc("GET /v1/roots/{letters}/lexicon", h.lexicon)
 ```
 
-`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:69-78](../../server/internal/api/api.go#L69-L78)
+`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:71-80](../../server/internal/api/api.go#L71-L80)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:70-77](../../server/internal/api/api.go#L70-L77)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:72-79](../../server/internal/api/api.go#L72-L79)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 
@@ -159,13 +162,13 @@ flowchart LR
   V -->|Download| A[GET /download/android] -->|302| O[(Object store)]
 ```
 
-The middleware verifies the token, then finds the reader behind its subject, creating the row the first time. [Auth](api/auth.md) has the details. [auth.go:44](../../server/internal/auth/auth.go#L44)
+The middleware verifies the token, then finds the reader behind its subject, creating the row the first time. [Auth](api/auth.md) has the details. [auth.go:46](../../server/internal/auth/auth.go#L46)
 
 ### 3. Handlers stay thin
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes. [httpx.go:10-22](../../server/internal/httpx/httpx.go#L10-L22)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:191-198](../../server/internal/api/api.go#L191-L198)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:204-211](../../server/internal/api/api.go#L204-L211)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -178,7 +181,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:165-173](../../server/internal/api/api.go#L165-L173)), a root must be at most 32 bytes of Arabic letters ([api.go:177-187](../../server/internal/api/api.go#L177-L187)), and a kept kind must be `aya`, `root` or `note` ([api.go:104-111](../../server/internal/api/api.go#L104-L111)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:178-186](../../server/internal/api/api.go#L178-L186)), a root must be at most 32 bytes of Arabic letters ([api.go:190-200](../../server/internal/api/api.go#L190-L200)), and a kept kind must be `aya`, `root` or `note` ([api.go:117-124](../../server/internal/api/api.go#L117-L124)).
 
 ### 4. The store holds every SQL statement
 
@@ -209,17 +212,17 @@ The tables come from nine migrations in `server/migrations`:
 | [00010](../../server/migrations/00010_reading_positions.sql) | `reading_positions`, the reader's place in each sūra |
 | [00011](../../server/migrations/00011_report_triage.sql) | A report's `locale` and `sense_hash`, the `verdict_root` the sweep settles for a sense verdict, and the operator's triage: `category`, `status`, `issue_url` |
 
-Read endpoints are pure queries. Progress is counted on each request, never stored; `percent` is understood ayas over 6236, as a fraction. [store.go:126-177](../../server/internal/store/store.go#L126-L177)
+Read endpoints are pure queries. Progress is counted on each request, never stored; `percent` is understood ayas over 6236, as a fraction. [store.go:187-238](../../server/internal/store/store.go#L187-L238)
 
 ### 5. Placeholders answer honestly
 
-No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold a few rows marked `is_placeholder`, and the payload carries `"placeholder": true`. An aya or root with no row is a 404, never an invented answer. [00002_content.sql:3-8](../../server/migrations/00002_content.sql#L3-L8), [store.go:232-256](../../server/internal/store/store.go#L232-L256)
+No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold a few rows marked `is_placeholder`, and the payload carries `"placeholder": true`. An aya or root with no row is a 404, never an invented answer. [00002_content.sql:3-8](../../server/migrations/00002_content.sql#L3-L8), [store.go:293-317](../../server/internal/store/store.go#L293-L317)
 
 `corpus_meta` is seeded once by that migration and nothing updates it, so `/v1/corpus/version` does not follow the corpus the app ships. [00002_content.sql:41](../../server/migrations/00002_content.sql#L41)
 
 ### 6. Two loops run beside the server
 
-`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:52-62](../../server/cmd/api/main.go#L52-L62), [store.go:348-357](../../server/internal/store/store.go#L348-L357)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:75-91](../../server/cmd/api/main.go#L75-L91)). [main.go:36-37](../../server/cmd/api/main.go#L36-L37)
+`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:52-62](../../server/cmd/api/main.go#L52-L62), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:75-91](../../server/cmd/api/main.go#L75-L91)). [main.go:36-37](../../server/cmd/api/main.go#L36-L37)
 
 ```go
 	go maintain(ctx, db, log)

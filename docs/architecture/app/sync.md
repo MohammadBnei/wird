@@ -182,7 +182,7 @@ Flusher flusherFor(Database db) => Flusher(
 );
 ```
 
-[flush.dart:189](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:465](../../../app/lib/data/auth.dart#L465-L472)
+[flush.dart:189](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:465](../../../app/lib/data/auth.dart#L495-L502)
 
 ### 4. Which ops ride
 
@@ -267,7 +267,7 @@ The delay doubles from one minute and stops growing at 256 minutes: [retryIn, ou
 
 ### 7. No answer is not an attempt
 
-Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:480](../../../app/lib/data/auth.dart#L480-L498)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
+Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:480](../../../app/lib/data/auth.dart#L510-L528)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
 
 ```dart
   } on DioException {
@@ -334,7 +334,7 @@ Future<void> discard(Database db, String opId) =>
     db.delete('outbox', where: 'client_op_id = ?', whereArgs: [opId]);
 ```
 
-[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:268](../../../app/lib/features/settings/settings_screen.dart#L268)
+[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:268](../../../app/lib/features/settings/settings_screen.dart#L269)
 
 ### 10. The contract both sides answer to
 

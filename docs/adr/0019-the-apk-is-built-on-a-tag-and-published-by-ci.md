@@ -1,6 +1,6 @@
 # 19. A version tag builds the APK and publishes it at /download/android
 
-Date: 2026-10-01. Status: proposed, amended by ADR 0022 (a release is started by a button, not a hand-pushed tag). Amends ADR 0018 (the APK key is set by CI, not by hand).
+Date: 2026-10-01. Status: proposed, amended by ADR 0022 (a release is started by a button, not a hand-pushed tag), extended by ADR 0028 (Play and the App Store). Amends ADR 0018 (the APK key is set by CI, not by hand).
 
 ## Context
 

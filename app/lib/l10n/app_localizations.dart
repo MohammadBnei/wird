@@ -1985,6 +1985,36 @@ abstract class AppLocalizations {
   /// **'Signing out stops the sync. Everything you have read, kept and marked stays on this phone.'**
   String get settingsSignOutCaption;
 
+  /// Button in the settings screen's account panel that starts deleting the reader's account. A second, confirming tap is needed.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get settingsDeleteAccount;
+
+  /// Shown after the first tap on Delete account, above the confirm and cancel buttons.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes your account and everything synced to it, and empties this phone. It cannot be undone.'**
+  String get settingsDeleteAccountCaption;
+
+  /// The confirming button that deletes the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete for good'**
+  String get settingsDeleteAccountConfirm;
+
+  /// Backs out of deleting the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep my account'**
+  String get settingsDeleteAccountCancel;
+
+  /// Shown when the server did not confirm the deletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account could not be deleted, so nothing was removed. Try again with a connection.'**
+  String get settingsDeleteAccountFailed;
+
   /// Caption over the Sign in button in the settings screen's account panel.
   ///
   /// In en, this message translates to:
@@ -2306,7 +2336,7 @@ abstract class AppLocalizations {
   /// The body of the first card of the sources screen, Wird's own terms. The licence title stays in English: it is the licence's own name.
   ///
   /// In en, this message translates to:
-  /// **'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.'**
+  /// **'Wird is free software under the MIT licence: use it, change it and share it, keeping the copyright notice. The data it carries keeps its own terms, listed below.'**
   String get aboutSelfTerms;
 
   /// Screen-reader label of the root sheet's handle while the sūra fills the top half.

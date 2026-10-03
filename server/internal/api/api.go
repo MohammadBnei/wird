@@ -28,6 +28,7 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 
 	v1 := http.NewServeMux()
 	v1.HandleFunc("GET /v1/me", h.me)
+	v1.HandleFunc("DELETE /v1/me", h.deleteMe)
 	v1.HandleFunc("GET /v1/corpus/version", h.corpusVersion)
 	v1.HandleFunc("POST /v1/sync", h.sync)
 	v1.HandleFunc("GET /v1/changes", h.changes)
@@ -48,6 +49,7 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	// Android fetches this before it will treat /auth/callback as this app's
 	// link, and it is fetched by the platform rather than by a signed-in reader.
 	mux.HandleFunc(assetLinksPath, assetLinks)
+	mux.HandleFunc(appSiteAssociationPath, appSiteAssociation)
 	// The recogniser, fetched by a phone that has never signed in and never
 	// needs to. It answers 302 to the store and the bytes never come through
 	// here; without a store configured it says so rather than pretending the
@@ -81,6 +83,17 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, auth.User(r.Context()))
+}
+
+// deleteMe is the store requirement that a reader can delete their account from
+// inside the app. Everything they own goes with the users row; the identity
+// itself is the bnei.dev sign-in, which is not ours to delete.
+func (h *Handler) deleteMe(w http.ResponseWriter, r *http.Request) {
+	if err := h.store.DeleteReader(r.Context(), auth.User(r.Context()).OIDCSubject); err != nil {
+		h.fail(w, "delete reader", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) corpusVersion(w http.ResponseWriter, r *http.Request) {

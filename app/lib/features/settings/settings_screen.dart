@@ -11,6 +11,7 @@ import '../../data/senses.dart';
 import '../../data/sets.dart';
 import '../../data/speech.dart';
 import '../../l10n/app_localizations.dart';
+import '../about/about_screen.dart' show SourceLink;
 import '../report/report.dart' show appVersion;
 import '../../theme/nocturne.dart';
 import 'voice_check.dart';
@@ -285,6 +286,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 key: const Key('app version'),
                 style: TextStyle(fontSize: 10.5, color: n.textAt(0.4)),
               ),
+              // The policy both stores link to, reachable from inside the app
+              // too. Same link as the sources screen: tap copies it.
+              SizedBox(height: n.space('1')),
+              const SourceLink('https://wird.bnei.dev/privacy.html'),
             ],
           ),
         ),

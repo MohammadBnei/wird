@@ -376,4 +376,38 @@ void main() {
       issuer.challenges.single,
     );
   });
+
+  // Store rule: a reader can delete their account from inside the app. Left
+  // behind on the phone, the outbox would flush on the next sign-in and write
+  // the deleted reader's notes straight back.
+  test('a deleted account leaves its notes queued to recreate it', () async {
+    await signIn(theAccount());
+    await aMonthOfReading();
+
+    await theAccount().deleteAccount(server.dio);
+
+    expect(await theAccount().current(), isNull);
+    expect(await queued(db), 0);
+    expect(await understood(db), 0);
+  });
+
+  test("a delete the server refused wipes the reader's month anyway", () async {
+    await signIn(theAccount());
+    await aMonthOfReading();
+    server.accepts = (_) => false;
+
+    await expectLater(
+      theAccount().deleteAccount(server.dio),
+      throwsA(isA<DioException>()),
+    );
+
+    expect(await theAccount().current(), isNotNull);
+    expect(await queued(db), 2);
+  });
+
+  test('signing back in after a deletion reuses the old sign-in', () async {
+    final begun = await theAccount().begin();
+
+    expect(begun.url.queryParameters['prompt'], 'login');
+  });
 }

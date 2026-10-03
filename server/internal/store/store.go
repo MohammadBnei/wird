@@ -81,6 +81,67 @@ func (s *Store) EnsureUser(ctx context.Context, subject string) (User, error) {
 	return u, err
 }
 
+// ErrDeleted is a token signed in before its subject deleted their account.
+var ErrDeleted = errors.New("account deleted")
+
+// lockSubject serialises everything that creates or deletes one subject's
+// reader, so a request already past the middleware cannot mint the reader
+// back between a deletion's two statements (migration 00012).
+func lockSubject(ctx context.Context, tx pgx.Tx, subject string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, subject)
+	return err
+}
+
+// ReaderFor is EnsureUser behind the deletion check, in one transaction under
+// the subject's lock. A subject who deleted their account gets ErrDeleted
+// unless signedIn (the token's auth_time) is after the deletion; a zero
+// signedIn proves nothing and is refused. The deletion moment is cut to the
+// second because auth_time is.
+func (s *Store) ReaderFor(ctx context.Context, subject string, signedIn time.Time) (User, error) {
+	var u User
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := lockSubject(ctx, tx, subject); err != nil {
+			return err
+		}
+		var deletedAt time.Time
+		err := tx.QueryRow(ctx, `
+			SELECT deleted_at FROM deleted_readers WHERE subject_hash = sha256(convert_to($1, 'UTF8'))`,
+			subject).Scan(&deletedAt)
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+		case err != nil:
+			return err
+		case signedIn.IsZero() || signedIn.Before(deletedAt.Truncate(time.Second)):
+			return ErrDeleted
+		}
+		return tx.QueryRow(ctx, `
+			INSERT INTO users (id, oidc_subject) VALUES (gen_random_uuid(), $1)
+			ON CONFLICT (oidc_subject) DO UPDATE SET oidc_subject = EXCLUDED.oidc_subject
+			RETURNING id, oidc_subject, created_at`, subject).
+			Scan(&u.ID, &u.OIDCSubject, &u.CreatedAt)
+	})
+	return u, err
+}
+
+// DeleteReader removes the reader and, by cascade, everything they own, and
+// records when it happened so a token signed in before then cannot mint them
+// back (migration 00012). Deleting a reader who was never minted still records
+// the moment: the phone asking is holding a token either way.
+func (s *Store) DeleteReader(ctx context.Context, subject string) error {
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := lockSubject(ctx, tx, subject); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM users WHERE oidc_subject = $1`, subject); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `
+			INSERT INTO deleted_readers (subject_hash) VALUES (sha256(convert_to($1, 'UTF8')))
+			ON CONFLICT (subject_hash) DO UPDATE SET deleted_at = now()`, subject)
+		return err
+	})
+}
+
 type CorpusVersion struct {
 	CorpusVersion int       `json:"corpus_version"`
 	BuiltAt       time.Time `json:"built_at"`

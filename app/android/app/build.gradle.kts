@@ -68,10 +68,10 @@ android {
         // applicationVariants API, i.e. after androidComponents.onVariants, so
         // an override written here would be clobbered on exactly the
         // --split-per-abi build this comment recommends.
-        // Ceiling: the flag is for development only. Play requires a distinct
-        // version code per split APK — the reason the offsets exist at all —
-        // so shipping there means dropping the flag and bumping the pubspec
-        // build number above the last release's offset code, or `adb install -d`.
+        // Ceiling: the flag is for development only. Releases keep the offset:
+        // the APK is 2000+N, and the Play bundle is built with
+        // --build-number=2000+N to match (apk.yml's aab job), so a phone moves
+        // between the two channels as updates, never as a downgrade.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

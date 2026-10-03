@@ -84,10 +84,30 @@ class IssuerInProcess implements HttpClientAdapter {
   );
 }
 
+/// The Wird server's answer to an account deletion, on this side of the
+/// socket for the same reason as [IssuerInProcess].
+class WirdInProcess implements HttpClientAdapter {
+  /// 204 is the server's yes; anything else is a delete that did not happen.
+  int status = 204;
+
+  Dio get client => Dio()..httpClientAdapter = this;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString('', status);
+}
+
 void main() {
   late Database db;
   late AudioCache audio;
   late IssuerInProcess issuer;
+  late WirdInProcess wird;
 
   /// What the panel asked the phone to open, and what the phone hands back.
   late List<Uri> opened;
@@ -105,6 +125,7 @@ void main() {
     await db.execute('DROP TABLE IF EXISTS local_reader');
     audio = await emptyCache();
     issuer = IssuerInProcess();
+    wird = WirdInProcess();
     opened = [];
     links = StreamController<Uri>.broadcast();
   });
@@ -152,6 +173,7 @@ void main() {
               return true;
             },
             redirects: links.stream,
+            wird: wird.client,
           ),
         ),
       ),
@@ -304,5 +326,44 @@ void main() {
     expect(await db.query('auth_tokens'), isEmpty);
     expect(find.textContaining('Signed in as'), findsNothing);
     expect(find.text('Sign in'), findsOneWidget);
+  });
+
+  // The store rule, from the reader's side: two taps and the account is gone,
+  // with nothing left queued on the phone to sync it back.
+  testWidgets("deleting the account leaves the reader's queue to recreate it", (
+    tester,
+  ) async {
+    await tester.runAsync(theReaderSignsIn);
+    await markSetUnderstood(db, newOpId(), [96001, 96002]);
+    await openThePanel(tester);
+
+    await tester.tap(find.text('Delete account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete for good'));
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign in'), findsOneWidget);
+    expect(await db.query('outbox'), isEmpty);
+    expect(await db.query('ayah_understood'), isEmpty);
+  });
+
+  testWidgets('a delete the server never confirmed says nothing went wrong', (
+    tester,
+  ) async {
+    await tester.runAsync(theReaderSignsIn);
+    await markSetUnderstood(db, newOpId(), [96001, 96002]);
+    wird.status = 503;
+    await openThePanel(tester);
+
+    await tester.tap(find.text('Delete account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete for good'));
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('nothing was removed'), findsOneWidget);
+    expect(find.text('Signed in as reader@bnei.dev'), findsOneWidget);
+    expect(await db.query('ayah_understood'), hasLength(2));
   });
 }

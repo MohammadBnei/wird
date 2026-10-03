@@ -151,8 +151,10 @@ class AboutScreen extends StatelessWidget {
               title: 'Wird',
               body: l.aboutSelfTerms,
               meta: const [
-                NocturneTag('AGPL-3.0-or-later'),
-                Flexible(child: SourceLink('https://www.gnu.org/licenses/')),
+                NocturneTag('MIT'),
+                Flexible(
+                  child: SourceLink('https://opensource.org/license/mit'),
+                ),
               ],
             ),
             Padding(

@@ -156,7 +156,7 @@ These words mean one thing each, everywhere in these docs.
 
 | Folder | What is in it |
 |---|---|
-| [guides/](guides/) | How to run, test and wire things: [getting started](guides/getting-started.md), [Authentik wiring](guides/authentik-wiring.md), [the visual gate](guides/gate-visual.md), [releasing the APK](guides/releasing-the-apk.md) |
+| [guides/](guides/) | How to run, test and wire things: [getting started](guides/getting-started.md), [Authentik wiring](guides/authentik-wiring.md), [the visual gate](guides/gate-visual.md), [releasing the APK](guides/releasing-the-apk.md), [releasing to the stores](guides/releasing-to-stores.md) |
 | [adr/](adr/README.md) | Architecture decisions, oldest first |
 | [research/](research/) | Investigations that shaped a decision. Frozen. |
 | [journal/](journal/) | Notes from walking the app on real devices. Frozen, not kept current. |

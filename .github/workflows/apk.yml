@@ -10,9 +10,8 @@
 # Flutter SDK and the Gradle caches do not fit beside it. Nothing here needs the
 # LAN: the store is reachable at https://s3.bnei.dev.
 #
-# WHY NO iOS. A signed IPA needs an Apple certificate and provisioning profile,
-# and nothing in this estate holds them. An unsigned build would produce
-# nothing installable.
+# iOS is ipa.yml, dispatched by the same button: a macOS runner, and an
+# Infisical identity that cannot read the Android keystore.
 name: apk
 
 on:
@@ -25,6 +24,11 @@ on:
   # No `push: tags` trigger: a tag pushed by hand would publish whatever it
   # points at, untested. Releases go through the button (ADR 0022).
   workflow_dispatch:
+    inputs:
+      pepk:
+        description: Export the app signing key for Play App Signing (once, from main)
+        type: boolean
+        default: false
 
 concurrency:
   group: apk-${{ github.ref }}
@@ -49,6 +53,7 @@ env:
 
 jobs:
   apk:
+    if: ${{ !inputs.pepk }}
     runs-on: ubuntu-latest
     # contents: write to push the WIRD_APK_KEY bump, the way release.yml
     # pushes its image tag. id-token mints the OIDC token Infisical checks.
@@ -279,3 +284,250 @@ jobs:
           git pull -q --rebase origin main
           git push -q origin main
           echo "Published ${GITHUB_REF_NAME}: https://wird.bnei.dev/download/android once ArgoCD syncs." >> "$GITHUB_STEP_SUMMARY"
+
+  # Google Play gets an app bundle, signed with the UPLOAD key, not the app
+  # signing key: Play re-signs it with the app signing key it holds (the APK's
+  # key, handed over once by the pepk job below), so APK and Play installs
+  # share a signature and either can update the other. A leaked upload key is
+  # reset by Google; the app signing key never leaves Infisical and Play.
+  #
+  # Inert until PLAY_RELEASE_ENABLED is set, so releases stay green before the
+  # Play account exists. Its own job: a Play failure never blocks the APK.
+  aab:
+    if: ${{ !inputs.pepk && vars.PLAY_RELEASE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Tag matches the pubspec version, and is on main
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          want=$(sed -n -E 's/^version: ([^+]+).*/\1/p' app/pubspec.yaml)
+          [ "${GITHUB_REF_NAME#v}" = "$want" ] || { echo "::error::tag $GITHUB_REF_NAME but pubspec says $want"; exit 1; }
+          git merge-base --is-ancestor HEAD origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Upload key
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_UPLOAD_P12
+          export-type: env
+      - name: Upload key password
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_UPLOAD_PASSWORD
+          export-type: env
+      - name: Upload key alias
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_UPLOAD_ALIAS
+          export-type: env
+      - name: Play service account
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: PLAY_SERVICE_ACCOUNT_JSON
+          export-type: env
+
+      # Same file, same reader, as the apk job: build.gradle.kts signs the
+      # release with whatever key.properties names, here the upload key.
+      - name: Write key.properties
+        run: |
+          set -euo pipefail
+          for v in WIRD_ANDROID_UPLOAD_P12 WIRD_ANDROID_UPLOAD_PASSWORD WIRD_ANDROID_UPLOAD_ALIAS PLAY_SERVICE_ACCOUNT_JSON; do
+            [ -n "${!v:-}" ] || { echo "::error::Infisical returned no $v"; exit 1; }
+          done
+          echo "::add-mask::$WIRD_ANDROID_UPLOAD_P12"
+          echo "::add-mask::$WIRD_ANDROID_UPLOAD_PASSWORD"
+          printf '%s' "$WIRD_ANDROID_UPLOAD_P12" | base64 -d > "$RUNNER_TEMP/upload.p12"
+          prop() { local v=${2//\\/\\\\}; [ "${v:0:1}" != ' ' ] || v="\\$v"; printf '%s=%s\n' "$1" "$v"; }
+          {
+            prop storeFile "$RUNNER_TEMP/upload.p12"
+            prop storePassword "$WIRD_ANDROID_UPLOAD_PASSWORD"
+            prop keyAlias "$WIRD_ANDROID_UPLOAD_ALIAS"
+            prop keyPassword "$WIRD_ANDROID_UPLOAD_PASSWORD"
+          } > app/android/key.properties
+
+      # 2000+N: the arm64 APK's version code (Flutter's abi*1000 + N), so a
+      # phone holding the APK sees the Play build as the same release, and the
+      # next one as an update, whichever channel it came from.
+      - name: Build
+        working-directory: app
+        run: |
+          set -euo pipefail
+          line=$(sed -n -E 's/^version: (.*)$/\1/p' pubspec.yaml)
+          flutter build appbundle --release \
+            --build-number=$((2000 + ${line##*+})) \
+            --dart-define=WIRD_VERSION="${line%%+*}"
+
+      - name: Signed with the upload key, at 2000+N
+        run: |
+          set -euo pipefail
+          aab=app/build/app/outputs/bundle/release/app-release.aab
+          certs=$(keytool -printcert -jarfile "$aab")
+          echo "$certs" | grep -E 'Owner|SHA256'
+          if grep -q 'CN=Android Debug' <<<"$certs"; then echo "::error::signed with the debug key"; exit 1; fi
+          line=$(sed -n -E 's/^version: (.*)$/\1/p' app/pubspec.yaml)
+          echo "versionCode $((2000 + ${line##*+}))" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.p12" app/android/key.properties
+
+      # Kept for the first upload, which Play only takes by hand in the
+      # Console: the API cannot create the app's first release.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wird-aab
+          path: app/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      # The closed track ("alpha"), because that is where Play's 14-day,
+      # 12-tester clock for a new personal account runs. Production is
+      # promoted by hand in the Console. Pinned to a commit: it holds the
+      # service account.
+      - name: Upload to Play (closed testing)
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ env.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.bnei.wird
+          releaseFiles: app/build/app/outputs/bundle/release/app-release.aab
+          track: alpha
+          status: completed
+
+  # Once, by hand, from main, after the Play app exists: Play App Signing is
+  # handed the APK's key, so Play-installed and APK-installed phones share one
+  # signature. pepk encrypts the key to Google's public key (committed at
+  # app/android/play-encryption-public-key.pem, downloaded from the Console),
+  # so what leaves this job is readable by Google only, and the key itself is
+  # never on a laptop (ADR 0019).
+  pepk:
+    if: ${{ inputs.pepk && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Keystore
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEYSTORE_P12
+          export-type: env
+      - name: Keystore password
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEYSTORE_PASSWORD
+          export-type: env
+      - name: Key alias
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEY_ALIAS
+          export-type: env
+      - name: Key password
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: WIRD_ANDROID_KEY_PASSWORD
+          export-type: env
+
+      - name: Export for Play App Signing
+        run: |
+          set -euo pipefail
+          pem=app/android/play-encryption-public-key.pem
+          [ -f "$pem" ] || { echo "::error::commit Google's encryption key at $pem first"; exit 1; }
+          echo "::add-mask::$WIRD_ANDROID_KEYSTORE_PASSWORD"
+          echo "::add-mask::$WIRD_ANDROID_KEY_PASSWORD"
+          printf '%s' "$WIRD_ANDROID_KEYSTORE_P12" | base64 -d > "$RUNNER_TEMP/release.p12"
+          # Play takes RSA 2048 or more.
+          keytool -list -v -keystore "$RUNNER_TEMP/release.p12" -storepass "$WIRD_ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$WIRD_ANDROID_KEY_ALIAS" | grep -E 'Signature algorithm|Subject Public Key'
+          curl -fsSL -o "$RUNNER_TEMP/pepk.jar" https://www.gstatic.com/play-apps-publisher-rapid/signing-tool/prod/pepk.jar
+          java -jar "$RUNNER_TEMP/pepk.jar" \
+            --keystore="$RUNNER_TEMP/release.p12" --alias="$WIRD_ANDROID_KEY_ALIAS" \
+            --keystore-pass="$WIRD_ANDROID_KEYSTORE_PASSWORD" --key-pass="$WIRD_ANDROID_KEY_PASSWORD" \
+            --output="$RUNNER_TEMP/wird-signing-key.zip" \
+            --include-cert --rsa-aes-encryption --encryption-key-path="$pem"
+          rm -f "$RUNNER_TEMP/release.p12"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: play-app-signing-key
+          path: ${{ runner.temp }}/wird-signing-key.zip
+          retention-days: 1

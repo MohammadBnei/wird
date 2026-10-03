@@ -1,6 +1,6 @@
 # Wird — agent context
 
-Quran prayer companion. Flutter app offline-first + Go API + Go root engine. AGPL-3.0, public repo.
+Quran prayer companion. Flutter app offline-first + Go API + Go root engine. MIT, public repo.
 Deep context: `.claude/spec.md`. Per-area rules: `.claude/rules/*.md` (load by path). Humans read `docs/README.md`.
 
 ## Doc families — RULE

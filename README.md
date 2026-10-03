@@ -28,18 +28,13 @@ every decision in [docs/adr/](docs/adr/README.md).
 
 Copyright (C) 2026 Mohammad Bnei.
 
-Wird is free software under the **GNU Affero General Public License, version 3
-or later**. The full text is in [`LICENSE`](LICENSE).
+Wird's own code is under the **MIT licence**. The full text is in
+[`LICENSE`](LICENSE).
 
-AGPL rather than plain GPL because Wird has a server component. A GPL backend
-that users only ever reach over HTTP triggers no obligation to release source;
-AGPL §13 closes that, so anyone running Wird as a service owes its users the
-source of what they are running. That is the whole point of picking a copyleft
-licence here, and GPL alone would have made it hollow.
-
-Wird is AGPL because its data is copyleft. The morphology below is GPL, and a
-closed binary could not have bundled it at all. Open source is not a footnote
-to that decision — it is the decision.
+The data it ships keeps its own terms, listed below and in
+[`data/SOURCES.md`](data/SOURCES.md). Two of those sources, the Quranic Arabic
+Corpus and Quran Foundation, granted Wird free use of their data in writing, so
+nothing bundled in the app requires the app itself to be copyleft.
 
 ## Attribution
 
@@ -78,10 +73,13 @@ from here. Its terms of use, verbatim from
 Three conditions, each met somewhere a person will actually see it: the source
 is named here and on the in-app screen, the link is here and tappable in the
 app, and the copyright notice above is reproduced in both. The GPL condition is
-met by Wird itself being AGPL-3.0.
+no longer binding on Wird: the corpus team granted Wird free usage of the
+corpus in writing:
 
-Kais Dukes died in March 2024. There is no relicensing conversation to be had;
-the terms are final and are simply met.
+> "we thank you for sharing Islamic knowledge, and hereby grant you free usage of our corpus"
+
+The notice and the link are kept anyway, because Wird names every source.
+
 
 ### Tanzil Project — the Qur'anic text
 

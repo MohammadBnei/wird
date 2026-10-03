@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/auth.dart';
+import '../../data/flush.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
@@ -35,6 +37,7 @@ class AccountPanel extends StatefulWidget {
     this.account,
     this.open,
     this.redirects,
+    this.wird,
   });
 
   final Database db;
@@ -45,6 +48,9 @@ class AccountPanel extends StatefulWidget {
   final Account? account;
   final Future<bool> Function(Uri url)? open;
   final Stream<Uri>? redirects;
+
+  /// The Wird server an account deletion is sent to.
+  final Dio? wird;
 
   @override
   State<AccountPanel> createState() => _AccountPanelState();
@@ -66,6 +72,7 @@ class _AccountPanelState extends State<AccountPanel> {
   StreamSubscription<Uri>? _listening;
   String? _trouble;
   bool _working = false;
+  bool _confirmingDelete = false;
 
   @override
   void initState() {
@@ -149,6 +156,24 @@ class _AccountPanelState extends State<AccountPanel> {
     await _load();
   }
 
+  /// The store rule: the reader can delete their account from here. It takes
+  /// two taps, and a failure leaves both the account and the phone as they
+  /// were, so the message says nothing was removed.
+  Future<void> _delete() async {
+    final failed = AppLocalizations.of(context)!.settingsDeleteAccountFailed;
+    await _attempt(() async {
+      try {
+        await _account.deleteAccount(
+          widget.wird ?? Dio(BaseOptions(baseUrl: syncOrigin)),
+        );
+      } on Object {
+        throw AuthFailed(failed);
+      }
+      if (mounted) setState(() => _confirmingDelete = false);
+      await _load();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final n = Nocturne.of(context);
@@ -178,6 +203,25 @@ class _AccountPanelState extends State<AccountPanel> {
     NocturneButton(onPressed: _signOut, child: Text(l.settingsSignOut)),
     SizedBox(height: n.space('1')),
     _caption(n, l.settingsSignOutCaption),
+    SizedBox(height: n.space('3')),
+    if (!_confirmingDelete)
+      NocturneButton(
+        onPressed: () => setState(() => _confirmingDelete = true),
+        child: Text(l.settingsDeleteAccount),
+      )
+    else ...[
+      _caption(n, l.settingsDeleteAccountCaption),
+      SizedBox(height: n.space('2')),
+      NocturneButton(
+        onPressed: _working ? null : _delete,
+        child: Text(l.settingsDeleteAccountConfirm),
+      ),
+      SizedBox(height: n.space('1')),
+      NocturneButton(
+        onPressed: () => setState(() => _confirmingDelete = false),
+        child: Text(l.settingsDeleteAccountCancel),
+      ),
+    ],
   ];
 
   List<Widget> _signedOut(Nocturne n, AppLocalizations l) => [

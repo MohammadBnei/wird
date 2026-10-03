@@ -126,8 +126,8 @@ void main() {
     expect(find.textContaining('Nothing is downloaded yet'), findsOneWidget);
     // Naming the works it will quote is not a claim about what they say.
     expect(find.text('Al-Ṭabarī'), findsOneWidget);
-    // The lexicon section is gone rather than pending: Lane has no route into
-    // AGPL-3.0 and the core sense answers what the placeholder stood in for.
+    // The lexicon section is gone rather than pending: Lane's ShareAlike terms keep it
+    // out of the bundle and the core sense answers what the placeholder stood in for.
     expect(find.text('LEXICON'), findsNothing);
     expect(find.textContaining('fetched rather than bundled'), findsNothing);
   });
