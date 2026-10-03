@@ -42,7 +42,11 @@ func main() {
 	defer db.Close()
 
 	issuer := env("OIDC_ISSUER", "http://localhost:8082/wird")
-	audience := env("OIDC_AUDIENCE", "wird-admin")
+	// OIDC_CLIENT_ID is the proxy provider's id as authentik generated it,
+	// delivered beside its secret: a proxy provider's id cannot be declared, so
+	// it is read from the deployment rather than committed. OIDC_AUDIENCE is
+	// the local stub's.
+	audience := env("OIDC_CLIENT_ID", env("OIDC_AUDIENCE", "wird-admin"))
 	// authentik's proxy provider has no signing key and cannot be given one, so
 	// it signs HS256 with its client secret and its keys endpoint verifies
 	// nothing it issues. With the secret set, that is the only key; without it
