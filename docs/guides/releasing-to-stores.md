@@ -107,7 +107,14 @@ The iOS privacy manifest, `app/ios/Runner/PrivacyInfo.xcprivacy`, declares the s
 | App Store, iPhone 6.9" | 1320 × 2868 | 3 to 10 |
 | App Store, iPad 13" | 2064 × 2752 | 3 to 10 |
 
-The phone captures in `screens/` are 1080 × 2400 and include alpha. Both stores refuse them as they are: crop them to 1080 × 1920 and flatten the alpha first. The iPhone 16 used for testing is a 6.1" phone, which is the wrong size for the 6.9" slot. Capture the iPhone and iPad sizes from the iPhone 17 Pro Max and iPad Pro 13" simulators instead.
+The phone captures in `screens/` are 1080 × 2400 and include alpha. Both stores refuse them as they are: crop them to 1080 × 1920 and flatten the alpha first. The iPhone 16 used for testing is a 6.1" phone, which is the wrong size for the 6.9" slot. Capture the iPhone and iPad sizes from simulators instead:
+
+```sh
+scripts/store-screens.sh "iPhone 17 Pro Max" out/iphone      # 1320 × 2868
+scripts/store-screens.sh "iPad Pro 13-inch (M5)" out/ipad    # 2064 × 2752
+```
+
+Each run uses a simulator of its own, sets the status bar to 9:41 with a full battery, hides the debug banner, and walks the screens in `app/integration_test/store_screens.dart`. On iPad, the home and prayer preparation screens are phone layouts stretched wide, so the iPad listing uses the set, the root, the constellation and the prayer.
 
 ## Moving between the APK and Play
 
