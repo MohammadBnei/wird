@@ -232,7 +232,7 @@ For a GET, the hash and the rows are read in one read-only, repeatable-read snap
 
 ### 8. Serve the pack, open and cacheable
 
-The route sits on the outer mux, so the bearer-token middleware never sees it ([api.go:69](../../../server/internal/api/api.go#L69)). HEAD reads only the hash. GET reads the rows. Both set the ETag and answer 304 when the phone already has that version.
+The route sits on the outer mux, so the bearer-token middleware never sees it ([api.go:69](../../../server/internal/api/api.go#L70)). HEAD reads only the hash. GET reads the rows. Both set the ETag and answer 304 when the phone already has that version.
 
 ```go
 func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {

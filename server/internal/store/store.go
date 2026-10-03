@@ -81,6 +81,40 @@ func (s *Store) EnsureUser(ctx context.Context, subject string) (User, error) {
 	return u, err
 }
 
+// DeleteReader removes the reader and, by cascade, everything they own, and
+// records when it happened so a token signed in before then cannot mint them
+// back (migration 00011). Deleting a reader who was never minted still records
+// the moment: the phone asking is holding a token either way.
+func (s *Store) DeleteReader(ctx context.Context, subject string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
+	if _, err := tx.Exec(ctx, `DELETE FROM users WHERE oidc_subject = $1`, subject); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO deleted_readers (subject_hash) VALUES (sha256(convert_to($1, 'UTF8')))
+		ON CONFLICT (subject_hash) DO UPDATE SET deleted_at = now()`, subject); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// ReaderDeletedAt answers when subject's account was deleted, and false for a
+// subject that never deleted one.
+func (s *Store) ReaderDeletedAt(ctx context.Context, subject string) (time.Time, bool, error) {
+	var at time.Time
+	err := s.pool.QueryRow(ctx, `
+		SELECT deleted_at FROM deleted_readers WHERE subject_hash = sha256(convert_to($1, 'UTF8'))`,
+		subject).Scan(&at)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
+	return at, err == nil, err
+}
+
 type CorpusVersion struct {
 	CorpusVersion int       `json:"corpus_version"`
 	BuiltAt       time.Time `json:"built_at"`

@@ -210,6 +210,11 @@ class Account {
         'state': state,
         'code_challenge': _challenge(verifier),
         'code_challenge_method': 'S256',
+        // A fresh sign-in every time, never the browser's standing session:
+        // the server refuses any token signed in before an account deletion
+        // (auth_time), so a reader signing back in after deleting would
+        // otherwise be handed the old sign-in and refused for ever.
+        'prompt': 'login',
       },
     );
     return SignIn(url, verifier, state);
@@ -254,6 +259,28 @@ class Account {
   Future<void> signOut() async {
     await ensureAuthTable(db);
     await db.delete('auth_tokens');
+  }
+
+  /// Deletes the reader's account on the server, then everything of theirs on
+  /// this device, and signs out.
+  ///
+  /// The server goes first and has to say yes: a delete that never reached it
+  /// leaves the account standing, and wiping the phone anyway would lose the
+  /// reader's reading while keeping their data. Only once the server has
+  /// answered is the device emptied, outbox included, so nothing queued here
+  /// can recreate the account on the next flush.
+  Future<void> deleteAccount(Dio wird) async {
+    final bearer = await token();
+    if (bearer == null) throw const AuthFailed('not signed in');
+    await wird.delete<void>(
+      '/v1/me',
+      options: Options(headers: {'Authorization': 'Bearer $bearer'}),
+    );
+    await db.transaction((txn) async {
+      await _forgetTheReader(txn);
+      await txn.delete('local_reader');
+      await txn.delete('auth_tokens');
+    });
   }
 
   Future<String?> _refresh(Tokens held) async {
@@ -397,24 +424,27 @@ const _theReadersOwn = [
 /// and only the part that never reached the server.
 Future<void> _handOver(Transaction txn, String sub) async {
   final held = await txn.query('local_reader', columns: ['sub'], limit: 1);
-  if (held.isNotEmpty && held.first['sub'] != sub) {
-    // `kept_items` and `sync_state` are created by the first write that needs
-    // them, so on a device that has never kept a note or synced they are not
-    // there to empty.
-    final present = {
-      for (final row in await txn.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type = 'table'",
-      ))
-        row['name'],
-    };
-    for (final table in _theReadersOwn) {
-      if (present.contains(table)) await txn.delete(table);
-    }
-  }
+  if (held.isNotEmpty && held.first['sub'] != sub) await _forgetTheReader(txn);
   await txn.insert('local_reader', {
     'id': 1,
     'sub': sub,
   }, conflictAlgorithm: ConflictAlgorithm.replace);
+}
+
+/// Empties every table in [_theReadersOwn].
+Future<void> _forgetTheReader(Transaction txn) async {
+  // `kept_items` and `sync_state` are created by the first write that needs
+  // them, so on a device that has never kept a note or synced they are not
+  // there to empty.
+  final present = {
+    for (final row in await txn.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    ))
+      row['name'],
+  };
+  for (final table in _theReadersOwn) {
+    if (present.contains(table)) await txn.delete(table);
+  }
 }
 
 /// A sign-in that cannot go on, in words the settings screen can print.

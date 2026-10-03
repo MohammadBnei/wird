@@ -51,12 +51,13 @@ flowchart LR
   subgraph server["server"]
     mw["auth.Middleware"]
     verify["go-oidc Verify<br/>signature, iss, aud, exp"]
+    deleted["deleted before?<br/>auth_time vs deleted_readers"]
     ensure["store.EnsureUser"]
     v1["v1 handlers"]
   end
   begin --> complete --> exchange --> handover --> table
   table --> token --> header
-  header -->|"Bearer ID token"| mw --> verify --> ensure --> v1
+  header -->|"Bearer ID token"| mw --> verify --> deleted --> ensure --> v1
   header -.->|"401: refresh once, retry"| token
 ```
 
@@ -80,9 +81,9 @@ The app is a **public client**: it holds no secret. PKCE stands in for one. The 
     );
 ```
 
-[auth.dart:202-214](../../../app/lib/data/auth.dart#L202-L214)
+[auth.dart:202-219](../../../app/lib/data/auth.dart#L202-L219)
 
-The endpoints come from the issuer's discovery document, not from string joins, because Authentik does not put them under the issuer path ([auth.dart:328-334](../../../app/lib/data/auth.dart#L328-L334)). The issuer, client id and redirect are compile-time defines, so a debug run can point at the local stub ([auth.dart:23-58](../../../app/lib/data/auth.dart#L23-L58)). The redirect is `https://wird.bnei.dev/auth/callback`, an App Link, and it must match the Authentik registration character for character. The settings panel starts the flow and listens for the link before the browser opens ([account_panel.dart:110-113](../../../app/lib/features/settings/account_panel.dart#L110-L113)).
+The endpoints come from the issuer's discovery document, not from string joins, because Authentik does not put them under the issuer path ([auth.dart:355-361](../../../app/lib/data/auth.dart#L355-L361)). The issuer, client id and redirect are compile-time defines, so a debug run can point at the local stub ([auth.dart:23-58](../../../app/lib/data/auth.dart#L23-L58)). The redirect is `https://wird.bnei.dev/auth/callback`, an App Link, and it must match the Authentik registration character for character. The settings panel starts the flow and listens for the link before the browser opens ([account_panel.dart:117-120](../../../app/lib/features/settings/account_panel.dart#L117-L120)).
 
 ### 2. The code comes back and is traded for tokens
 
@@ -102,7 +103,7 @@ The returned `state` must match the one the app made. Otherwise any link could s
     });
 ```
 
-[auth.dart:228-238](../../../app/lib/data/auth.dart#L228-L238)
+[auth.dart:233-243](../../../app/lib/data/auth.dart#L233-L243)
 
 The scopes ask for `offline_access`, which is what brings a refresh token back. A phone that spends a week mostly offline stays signed in because of it ([auth.dart:64](../../../app/lib/data/auth.dart#L64)).
 
@@ -123,9 +124,9 @@ There is no secure-storage plugin. The tokens live in one row of an `auth_tokens
     });
 ```
 
-[auth.dart:315-324](../../../app/lib/data/auth.dart#L315-L324)
+[auth.dart:342-351](../../../app/lib/data/auth.dart#L342-L351)
 
-`_handOver` compares the token's `sub` with the last reader this device knew. The same reader coming back keeps everything. A different reader clears the reader's own tables, including the outbox, so one person's notes never show on another's screen ([auth.dart:398-418](../../../app/lib/data/auth.dart#L398-L418)). Signing out deletes the tokens row and nothing else ([auth.dart:254-257](../../../app/lib/data/auth.dart#L254-L257)).
+`_handOver` compares the token's `sub` with the last reader this device knew. The same reader coming back keeps everything. A different reader clears the reader's own tables, including the outbox, so one person's notes never show on another's screen ([auth.dart:425-448](../../../app/lib/data/auth.dart#L425-L448)). Signing out deletes the tokens row and nothing else ([auth.dart:259-262](../../../app/lib/data/auth.dart#L259-L262)).
 
 ### 4. Every sync request carries the ID token
 
@@ -147,7 +148,7 @@ The token the device sends is the **ID token**, not the access token. This was s
 
 [auth.dart:188-198](../../../app/lib/data/auth.dart#L188-L198)
 
-A Dio interceptor is the only place a token is attached ([auth.dart:464-471](../../../app/lib/data/auth.dart#L464-L471)), and only the sync client has it ([flush.dart:193](../../../app/lib/data/flush.dart#L193)). On a 401 it refreshes once and retries on a plain client, so it cannot loop ([auth.dart:479-497](../../../app/lib/data/auth.dart#L479-L497)). Only a 400 on the refresh itself signs the reader out. A lost network leaves the account alone ([auth.dart:269-277](../../../app/lib/data/auth.dart#L269-L277)).
+A Dio interceptor is the only place a token is attached ([auth.dart:494-501](../../../app/lib/data/auth.dart#L494-L501)), and only the sync client has it ([flush.dart:193](../../../app/lib/data/flush.dart#L193)). On a 401 it refreshes once and retries on a plain client, so it cannot loop ([auth.dart:509-527](../../../app/lib/data/auth.dart#L509-L527)). Only a 400 on the refresh itself signs the reader out. A lost network leaves the account alone ([auth.dart:296-304](../../../app/lib/data/auth.dart#L296-L304)).
 
 ### 5. The API builds a verifier from the issuer
 
@@ -167,13 +168,13 @@ func New(ctx context.Context, issuer, audience string, users *store.Store, log *
 }
 ```
 
-[auth.go:27-37](../../../server/internal/auth/auth.go#L27-L37)
+[auth.go:28-38](../../../server/internal/auth/auth.go#L28-L38)
 
 Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE` ([main.go:29-30](../../../server/cmd/api/main.go#L29-L30)). Swapping the local stub for the real Authentik is one variable, and no code on this path knows which it talks to.
 
 ### 6. The middleware checks, then finds the reader
 
-The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:40-78](../../../server/internal/api/api.go#L40-L78)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
+The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:41-79](../../../server/internal/api/api.go#L41-L79)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
 
 ```go
 		token, err := a.verifier.Verify(r.Context(), raw)
@@ -186,12 +187,22 @@ The middleware wraps the whole `v1` mux, which answers every path the open route
 			httpx.Error(w, http.StatusUnauthorized, "token rejected")
 			return
 		}
+		if refused, err := a.signedInBeforeDeletion(r.Context(), token); err != nil {
+			a.log.Error("deletion lookup", "err", err)
+			httpx.Error(w, http.StatusInternalServerError, "unavailable")
+			return
+		} else if refused {
+			httpx.Error(w, http.StatusUnauthorized, "token rejected")
+			return
+		}
 		user, err := a.users.EnsureUser(r.Context(), token.Subject)
 ```
 
-[auth.go:51-61](../../../server/internal/auth/auth.go#L51-L61)
+[auth.go:52-70](../../../server/internal/auth/auth.go#L52-L70)
 
-`EnsureUser` finds the reader by subject, or creates one on first contact ([store.go:74](../../../server/internal/store/store.go#L74)). Handlers read the reader back with `auth.User` ([auth.go:82-85](../../../server/internal/auth/auth.go#L82-L85)).
+`EnsureUser` finds the reader by subject, or creates one on first contact ([store.go:74](../../../server/internal/store/store.go#L74)). Handlers read the reader back with `auth.User` ([auth.go:111-114](../../../server/internal/auth/auth.go#L111-L114)).
+
+Between the two sits the deletion check. `DELETE /v1/me` removes the reader (every owned row cascades) and records the moment in `deleted_readers`, under a SHA-256 of the subject ([store.go:88](../../../server/internal/store/store.go#L88)). Without it, the next request from any phone still holding a token would mint the reader again and its outbox would refill the account. So a deleted subject's token passes only if its `auth_time` is after the deletion. The check uses `auth_time`, not `iat`, because a refresh mints a new `iat` and keeps `auth_time`. A token with no `auth_time` is refused. The app asks for `prompt=login`, so signing in again after a deletion carries a fresh `auth_time` and starts an empty account ([auth.go:80-98](../../../server/internal/auth/auth.go#L80-L98)).
 
 ### 7. The `OIDC_AUDIENCE` trap
 

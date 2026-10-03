@@ -1155,6 +1155,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSignOutCaption => 'Signing out stops the sync. Everything you have read, kept and marked stays on this phone.';
 
   @override
+  String get settingsDeleteAccount => 'Delete account';
+
+  @override
+  String get settingsDeleteAccountCaption => 'This deletes your account and everything synced to it, and empties this phone. It cannot be undone.';
+
+  @override
+  String get settingsDeleteAccountConfirm => 'Delete for good';
+
+  @override
+  String get settingsDeleteAccountCancel => 'Keep my account';
+
+  @override
+  String get settingsDeleteAccountFailed => 'Your account could not be deleted, so nothing was removed. Try again with a connection.';
+
+  @override
   String get settingsSignedOutCaption => 'Wird works signed out. Signing in carries what you mark and keep to your other devices.';
 
   @override

@@ -182,7 +182,7 @@ Flusher flusherFor(Database db) => Flusher(
 );
 ```
 
-[flush.dart:189](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:464](../../../app/lib/data/auth.dart#L464-L471)
+[flush.dart:189](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:464](../../../app/lib/data/auth.dart#L494-L501)
 
 ### 4. Which ops ride
 
@@ -267,7 +267,7 @@ The delay doubles from one minute and stops growing at 256 minutes: [retryIn, ou
 
 ### 7. No answer is not an attempt
 
-Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:479](../../../app/lib/data/auth.dart#L479-L497)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
+Any `DioException` ends the flush and leaves the queue as it was. That covers no network, a timeout, a 401 that one token refresh could not fix ([auth.dart:479](../../../app/lib/data/auth.dart#L509-L527)), a server error status, and a captive portal that answers 200 with its own page. The last one is turned into a `DioException` on purpose: [sync.dart:94](../../../app/lib/data/sync.dart#L94-L103).
 
 ```dart
   } on DioException {

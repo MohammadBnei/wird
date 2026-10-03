@@ -1979,6 +1979,36 @@ abstract class AppLocalizations {
   /// **'Signing out stops the sync. Everything you have read, kept and marked stays on this phone.'**
   String get settingsSignOutCaption;
 
+  /// Button in the settings screen's account panel that starts deleting the reader's account. A second, confirming tap is needed.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get settingsDeleteAccount;
+
+  /// Shown after the first tap on Delete account, above the confirm and cancel buttons.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes your account and everything synced to it, and empties this phone. It cannot be undone.'**
+  String get settingsDeleteAccountCaption;
+
+  /// The confirming button that deletes the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete for good'**
+  String get settingsDeleteAccountConfirm;
+
+  /// Backs out of deleting the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep my account'**
+  String get settingsDeleteAccountCancel;
+
+  /// Shown when the server did not confirm the deletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account could not be deleted, so nothing was removed. Try again with a connection.'**
+  String get settingsDeleteAccountFailed;
+
   /// Caption over the Sign in button in the settings screen's account panel.
   ///
   /// In en, this message translates to:

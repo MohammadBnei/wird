@@ -1484,6 +1484,26 @@
   "@settingsSignOutCaption": {
     "description": "Caption under the Sign out button in the settings screen's account panel."
   },
+  "settingsDeleteAccount": "Delete account",
+  "@settingsDeleteAccount": {
+    "description": "Button in the settings screen's account panel that starts deleting the reader's account. A second, confirming tap is needed."
+  },
+  "settingsDeleteAccountCaption": "This deletes your account and everything synced to it, and empties this phone. It cannot be undone.",
+  "@settingsDeleteAccountCaption": {
+    "description": "Shown after the first tap on Delete account, above the confirm and cancel buttons."
+  },
+  "settingsDeleteAccountConfirm": "Delete for good",
+  "@settingsDeleteAccountConfirm": {
+    "description": "The confirming button that deletes the account."
+  },
+  "settingsDeleteAccountCancel": "Keep my account",
+  "@settingsDeleteAccountCancel": {
+    "description": "Backs out of deleting the account."
+  },
+  "settingsDeleteAccountFailed": "Your account could not be deleted, so nothing was removed. Try again with a connection.",
+  "@settingsDeleteAccountFailed": {
+    "description": "Shown when the server did not confirm the deletion."
+  },
   "settingsSignedOutCaption": "Wird works signed out. Signing in carries what you mark and keep to your other devices.",
   "@settingsSignedOutCaption": {
     "description": "Caption over the Sign in button in the settings screen's account panel."

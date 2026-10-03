@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 
@@ -58,6 +59,14 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			httpx.Error(w, http.StatusUnauthorized, "token rejected")
 			return
 		}
+		if refused, err := a.signedInBeforeDeletion(r.Context(), token); err != nil {
+			a.log.Error("deletion lookup", "err", err)
+			httpx.Error(w, http.StatusInternalServerError, "unavailable")
+			return
+		} else if refused {
+			httpx.Error(w, http.StatusUnauthorized, "token rejected")
+			return
+		}
 		user, err := a.users.EnsureUser(r.Context(), token.Subject)
 		if err != nil {
 			a.log.Error("reader lookup", "err", err)
@@ -66,6 +75,26 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
 	})
+}
+
+// signedInBeforeDeletion is true for a token whose sign-in predates its
+// subject's account deletion, which would otherwise mint the account straight
+// back. auth_time, not iat: a refresh mints a new iat and keeps auth_time, so
+// iat would let any phone still holding a refresh token through. A deleted
+// subject's token without auth_time is refused, since nothing proves it came
+// after. The deletion moment is cut to the second because auth_time is.
+func (a *Authenticator) signedInBeforeDeletion(ctx context.Context, token *oidc.IDToken) (bool, error) {
+	deletedAt, deleted, err := a.users.ReaderDeletedAt(ctx, token.Subject)
+	if err != nil || !deleted {
+		return false, err
+	}
+	var claims struct {
+		AuthTime int64 `json:"auth_time"`
+	}
+	if err := token.Claims(&claims); err != nil || claims.AuthTime == 0 {
+		return true, nil
+	}
+	return time.Unix(claims.AuthTime, 0).Before(deletedAt.Truncate(time.Second)), nil
 }
 
 func bearer(r *http.Request) (string, bool) {

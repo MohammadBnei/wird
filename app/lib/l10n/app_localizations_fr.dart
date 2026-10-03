@@ -1155,6 +1155,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsSignOutCaption => 'Se déconnecter arrête la synchronisation. Tout ce que vous avez lu, gardé et marqué reste sur ce téléphone.';
 
   @override
+  String get settingsDeleteAccount => 'Supprimer le compte';
+
+  @override
+  String get settingsDeleteAccountCaption => 'Cela supprime votre compte et tout ce qui y est synchronisé, et vide ce téléphone. C’est définitif.';
+
+  @override
+  String get settingsDeleteAccountConfirm => 'Supprimer définitivement';
+
+  @override
+  String get settingsDeleteAccountCancel => 'Garder mon compte';
+
+  @override
+  String get settingsDeleteAccountFailed => 'Votre compte n’a pas pu être supprimé, rien n’a été effacé. Réessayez avec une connexion.';
+
+  @override
   String get settingsSignedOutCaption => 'Wird fonctionne sans compte. Se connecter porte ce que vous marquez et gardez vers vos autres appareils.';
 
   @override
