@@ -166,8 +166,11 @@ void main() {
 
     final thumbs = find.byKey(const Key('judge sense good'));
     // Every test here runs signed out, which is the thanks a reader with no
-    // account sees.
+    // account sees right after a verdict is queued.
     final thanks = find.text('Noted — sent once you sign in.');
+    // A verdict remembered from before may already have been sent, so it is
+    // thanked plainly.
+    final plainThanks = find.text('Noted — thank you.');
 
     // The failure: a reader who judged a sense opens the root again and is
     // asked again, and either answers twice — noise in the one signal this
@@ -182,8 +185,30 @@ void main() {
 
       await tester.pumpWidget(const SizedBox.shrink());
       await mount(tester);
-      expect(thanks, findsOneWidget);
+      expect(plainThanks, findsOneWidget);
       expect(thumbs, findsNothing);
+    });
+
+    // The failure: a reader signs in, judges, the verdict is sent, and they
+    // sign out. Reopening the root then says the verdict waits for a sign-in,
+    // which is false: the sign-out kept the memory of it, not the queue.
+    testWidgets('a verdict sent before signing out is not promised to a later '
+        'sign-in', (tester) async {
+      await seed(_en);
+      await judgeSense(
+        db,
+        root: root,
+        sense: _en,
+        good: true,
+        context: await reportContext(db, screen: 'study', locale: 'en'),
+      );
+      // Flushed: the queue is empty, the memory of the verdict stays.
+      await db.delete('outbox');
+
+      await mount(tester);
+
+      expect(plainThanks, findsOneWidget);
+      expect(thanks, findsNothing);
     });
 
     // The failure: a signed-out reader is thanked as if the verdict had gone,
@@ -196,7 +221,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(thanks, findsOneWidget);
-      expect(find.text('Noted — thank you.'), findsNothing);
+      expect(plainThanks, findsNothing);
     });
 
     // The failure: the memory is keyed by root alone, so a redrafted sense —

@@ -702,8 +702,9 @@ class _JudgeSenseState extends State<JudgeSense> {
   /// so a judged root does not flash its thumbs on the way to the thanks.
   bool? _answered;
 
-  /// Read with [_answered]: a signed-out reader's verdict waits for a sign-in,
-  /// and the thanks says so.
+  /// Read right after a verdict is queued: a signed-out reader's verdict waits
+  /// for a sign-in, and the thanks says so. A recalled verdict may already have
+  /// been sent before a sign-out, so it gets the plain thanks.
   bool _signedOut = false;
   bool _sending = false;
   bool _failed = false;
@@ -758,11 +759,10 @@ class _JudgeSenseState extends State<JudgeSense> {
       // with nothing on it.
       judged = false;
     }
-    final signedOut = await nobodySignedIn(widget.db);
     if (_stillShowing(sentence)) {
       setState(() {
         _answered = judged;
-        _signedOut = signedOut;
+        _signedOut = false;
       });
     }
   }
@@ -776,6 +776,7 @@ class _JudgeSenseState extends State<JudgeSense> {
       _failed = false;
     });
     var answered = false;
+    var signedOut = false;
     try {
       await judgeSense(
         widget.db,
@@ -789,6 +790,7 @@ class _JudgeSenseState extends State<JudgeSense> {
         ),
       );
       answered = true;
+      signedOut = await nobodySignedIn(widget.db);
     } on Object {
       answered = false;
     }
@@ -798,6 +800,7 @@ class _JudgeSenseState extends State<JudgeSense> {
     setState(() {
       _sending = false;
       _answered = answered;
+      _signedOut = signedOut;
       _failed = !answered;
     });
   }
