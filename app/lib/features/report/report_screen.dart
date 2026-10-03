@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../data/auth.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
@@ -51,6 +52,10 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _sent = false;
   bool _failed = false;
 
+  /// Read at the send: a signed-out reader's report waits in the queue for a
+  /// sign-in, and the sent view says so rather than promising the next sync.
+  bool _signedOut = false;
+
   /// The language the context was read for. The locale is read off the
   /// widget tree, which `initState` cannot reach, and is read again if the
   /// device changes language under the screen.
@@ -91,8 +96,10 @@ class _ReportScreenState extends State<ReportScreen> {
       if (mounted) setState(() => _failed = true);
       return;
     }
+    final signedOut = await nobodySignedIn(widget.db);
     if (mounted) {
       setState(() {
+        _signedOut = signedOut;
         _sent = true;
         _failed = false;
       });
@@ -190,7 +197,7 @@ class _ReportScreenState extends State<ReportScreen> {
   List<Widget> _queued(Nocturne n) => [
     _section(n, _l10n.report_queued_heading),
     Text(
-      _l10n.report_queued_body,
+      _signedOut ? _l10n.report_queued_signed_out : _l10n.report_queued_body,
       style: TextStyle(fontSize: 12, height: 1.45, color: n.textAt(0.75)),
     ),
     SizedBox(height: n.space('6')),

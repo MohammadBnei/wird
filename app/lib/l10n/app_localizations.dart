@@ -1253,6 +1253,12 @@ abstract class AppLocalizations {
   /// **'It is written down on this phone and goes out with the next sync, even if you are offline now.'**
   String get report_queued_body;
 
+  /// What the report screen says after a send when nobody is signed in: the report waits on the phone until the reader signs in.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept on this phone. It is sent once you sign in.'**
+  String get report_queued_signed_out;
+
   /// Button on the report screen after a send, which empties the form for a second report.
   ///
   /// In en, this message translates to:
@@ -2188,6 +2194,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Noted — thank you.'**
   String get root_senseJudgeThanks;
+
+  /// Shown once a verdict has been recorded while nobody is signed in: it waits on the phone until the reader signs in.
+  ///
+  /// In en, this message translates to:
+  /// **'Noted — sent once you sign in.'**
+  String get root_senseJudgeThanksSignedOut;
 
   /// Shown beside the thumbs when a verdict on a sense could not be queued.
   ///

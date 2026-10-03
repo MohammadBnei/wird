@@ -724,6 +724,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get report_queued_body => 'C\'est noté sur ce téléphone et partira à la prochaine synchronisation, même si vous êtes hors ligne.';
 
   @override
+  String get report_queued_signed_out => 'Conservé sur ce téléphone. Il sera envoyé dès que vous vous connecterez.';
+
+  @override
   String get report_write_another => 'En écrire un autre';
 
   @override
@@ -1274,6 +1277,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get root_senseJudgeThanks => 'C’est noté — merci.';
+
+  @override
+  String get root_senseJudgeThanksSignedOut => 'C’est noté — envoyé dès votre connexion.';
 
   @override
   String get root_senseJudgeFailed => 'Non enregistré — réessayez';

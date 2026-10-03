@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/auth.dart';
 import 'package:wird/features/report/report.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
 import '../../offline.dart';
 import '../../wird.dart';
+import '../settings/account_panel_test.dart' show IssuerInProcess;
 
 /// Opens the report screen the way a reader does: from the drawer, having
 /// been somewhere. Where they were is what the report carries.
@@ -123,7 +125,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect((await queued(db))!['body'], 'on a plane');
+    expect(find.textContaining('Kept on this phone'), findsOneWidget);
+  });
+
+  /// Sends one report from the index and settles on the sent view.
+  Future<void> sendOne(WidgetTester tester) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await reportFrom(tester, 'Sūra index');
+    await tester.enterText(find.byType(TextField), 'the audio stops');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('send report')));
+    await tester.pumpAndSettle();
+  }
+
+  // The failure: a signed-out reader is told the report goes out with the
+  // next sync, and it never does — every flush is refused until they sign in,
+  // and nothing on the screen said so.
+  testWidgets('a signed-out report is promised to the next sync it will '
+      'never reach', (tester) async {
+    await sendOne(tester);
+
+    expect(
+      find.text('Kept on this phone. It is sent once you sign in.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('goes out with the next sync'), findsNothing);
+  });
+
+  // The failure: the sign-in line is shown to a reader who is signed in, and
+  // they go looking for a sign-in that is already done.
+  testWidgets('a signed-in reader is told to sign in before the report goes',
+      (tester) async {
+    final issuer = IssuerInProcess();
+    final account = Account(
+      db,
+      http: issuer.client,
+      issuer: IssuerInProcess.issuer,
+      clientId: 'wird-test',
+      redirect: authRedirect,
+    );
+    // The test corpus is shared by the whole file and the sign-in tables are
+    // not among those it empties.
+    addTearDown(() async {
+      await db.execute('DROP TABLE IF EXISTS auth_tokens');
+      await db.execute('DROP TABLE IF EXISTS local_reader');
+    });
+    // The sign-in does not settle under the test's fake clock.
+    await tester.runAsync(() async {
+      final begun = await account.begin();
+      final asked = begun.url.queryParameters;
+      await account.complete(
+        begun,
+        Uri.parse(
+          '${asked['redirect_uri']}?code=a-code&state=${asked['state']}',
+        ),
+      );
+    });
+
+    await sendOne(tester);
+
     expect(find.textContaining('goes out with the next sync'), findsOneWidget);
+    expect(find.textContaining('sign in'), findsNothing);
   });
 
   // The failure: the app asks to transmit something and shows the reader the

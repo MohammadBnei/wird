@@ -724,6 +724,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_queued_body => 'It is written down on this phone and goes out with the next sync, even if you are offline now.';
 
   @override
+  String get report_queued_signed_out => 'Kept on this phone. It is sent once you sign in.';
+
+  @override
   String get report_write_another => 'Write another';
 
   @override
@@ -1274,6 +1277,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get root_senseJudgeThanks => 'Noted — thank you.';
+
+  @override
+  String get root_senseJudgeThanksSignedOut => 'Noted — sent once you sign in.';
 
   @override
   String get root_senseJudgeFailed => 'Not saved — try again';

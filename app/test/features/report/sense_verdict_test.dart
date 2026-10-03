@@ -165,7 +165,9 @@ void main() {
     }
 
     final thumbs = find.byKey(const Key('judge sense good'));
-    final thanks = find.text('Noted — thank you.');
+    // Every test here runs signed out, which is the thanks a reader with no
+    // account sees.
+    final thanks = find.text('Noted — sent once you sign in.');
 
     // The failure: a reader who judged a sense opens the root again and is
     // asked again, and either answers twice — noise in the one signal this
@@ -182,6 +184,19 @@ void main() {
       await mount(tester);
       expect(thanks, findsOneWidget);
       expect(thumbs, findsNothing);
+    });
+
+    // The failure: a signed-out reader is thanked as if the verdict had gone,
+    // and it waits on the phone until a sign-in nothing told them to make.
+    testWidgets('a signed-out verdict is thanked as if it had been sent',
+        (tester) async {
+      await seed(_en);
+      await mount(tester);
+      await tester.tap(thumbs);
+      await tester.pumpAndSettle();
+
+      expect(thanks, findsOneWidget);
+      expect(find.text('Noted — thank you.'), findsNothing);
     });
 
     // The failure: the memory is keyed by root alone, so a redrafted sense —

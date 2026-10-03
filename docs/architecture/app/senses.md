@@ -10,7 +10,7 @@ The corpus bundled in the app carries every root but no senses. The senses come 
 |---|---|---|
 | The sense pack from `GET /v1/senses`, and its version from `HEAD /v1/senses` | The sense and its "whose reading this is" line on every root screen | The API's open senses route ([Senses pipeline](../pipelines/senses.md)) |
 | The app coming back to the foreground | The version of the pack this phone holds | The corpus's list of roots, to prove the pack fits |
-| A thumb up or down on a sense | A sense verdict, queued in the **outbox** as a report | The outbox, which sends it whenever there is a network |
+| A thumb up or down on a sense | A sense verdict, queued in the **outbox** as a report | The outbox, which sends it whenever there is a network and someone is signed in |
 | A tap on the Settings download button | | No account, no sign-in |
 
 ```mermaid
@@ -293,7 +293,7 @@ sentence where they stand, not on the next visit.
 
 ### 8. The reader's verdict on a sense
 
-Wherever a sense is drawn, its heading carries two thumbs: the reading screen's sheet, the root screen, its spine view, and the deep dive. Each screen hands `CoreSense` a `JudgeSense` with the database, the reading and its own screen name ([root_screen.dart:145](../../../app/lib/features/root/root_screen.dart#L145-L149), [deep_dive_screen.dart:382](../../../app/lib/features/deepdive/deep_dive_screen.dart#L382-L386), [root_sheet.dart:408](../../../app/lib/features/study/root_sheet.dart#L408-L412)).
+Wherever a sense is drawn, its heading carries two thumbs: the reading screen's sheet, the root screen, its spine view, and the deep dive. Each screen hands `CoreSense` a `JudgeSense` with the database, the reading and its own screen name ([root_screen.dart:145](../../../app/lib/features/root/root_screen.dart#L145-L149), [deep_dive_screen.dart:382](../../../app/lib/features/deepdive/deep_dive_screen.dart#L382-L386), [root_sheet.dart:409](../../../app/lib/features/study/root_sheet.dart#L409-L413)).
 
 ```mermaid
 stateDiagram-v2
@@ -331,7 +331,7 @@ A verdict is a report whose body is `sense good: <root>` or `sense bad: <root>`.
 
 `sense_verdicts` is keyed by root, language and hash ([db.dart:304](../../../app/lib/data/db.dart#L314-L321)). Reopening a judged root shows the thanks, not the thumbs ([report.dart:173](../../../app/lib/features/report/report.dart#L173-L183)). A redraft or the other language is a new hash, so the reader is asked again. The language comes from the same read that chose the sentence, `RootReading.locale`, so a verdict cannot be filed under one language while judging the other's text.
 
-The thanks is drawn only after the write succeeds. If it fails, the thumbs come back with a short "not saved" line, rather than thanking the reader for something nobody will receive ([root_sheet.dart:759](../../../app/lib/features/study/root_sheet.dart#L759-L792)). A write or a recall that finishes after the reader has moved to another root or language is ignored, so its answer is never drawn against the new sentence ([root_sheet.dart:723](../../../app/lib/features/study/root_sheet.dart#L723-L726)). When a different reader signs in on the same phone, the record of judged senses is cleared with the rest of the first reader's tables ([Auth](../api/auth.md)). Where verdicts go after the server is on the [Admin web](../adminweb.md#5-sense-verdicts-are-counted-not-listed) page.
+The thanks is drawn only after the write succeeds. If it fails, the thumbs come back with a short "not saved" line, rather than thanking the reader for something nobody will receive ([root_sheet.dart:770](../../../app/lib/features/study/root_sheet.dart#L770-L803)). With nobody signed in, the thanks says the verdict goes once the reader signs in, since every flush is refused until then; a judged sense reopened while signed out says the same ([root_sheet.dart:761](../../../app/lib/features/study/root_sheet.dart#L761-L767)). A write or a recall that finishes after the reader has moved to another root or language is ignored, so its answer is never drawn against the new sentence ([root_sheet.dart:728](../../../app/lib/features/study/root_sheet.dart#L728-L731)). When a different reader signs in on the same phone, the record of judged senses is cleared with the rest of the first reader's tables ([Auth](../api/auth.md)). Where verdicts go after the server is on the [Admin web](../adminweb.md#5-sense-verdicts-are-counted-not-listed) page.
 
 ## Why it is this way
 

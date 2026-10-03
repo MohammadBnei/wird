@@ -782,6 +782,10 @@
   "@report_queued_body": {
     "description": "What the report screen says after a send: the report is written locally and flushes with the next sync."
   },
+  "report_queued_signed_out": "Kept on this phone. It is sent once you sign in.",
+  "@report_queued_signed_out": {
+    "description": "What the report screen says after a send when nobody is signed in: the report waits on the phone until the reader signs in."
+  },
   "report_write_another": "Write another",
   "@report_write_another": {
     "description": "Button on the report screen after a send, which empties the form for a second report."
@@ -1633,6 +1637,10 @@
   "root_senseJudgeThanks": "Noted — thank you.",
   "@root_senseJudgeThanks": {
     "description": "Shown once a verdict has been recorded."
+  },
+  "root_senseJudgeThanksSignedOut": "Noted — sent once you sign in.",
+  "@root_senseJudgeThanksSignedOut": {
+    "description": "Shown once a verdict has been recorded while nobody is signed in: it waits on the phone until the reader signs in."
   },
   "root_senseJudgeFailed": "Not saved — try again",
   "@root_senseJudgeFailed": {
