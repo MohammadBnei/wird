@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/MohammadBnei/wird/server/internal/store"
@@ -162,6 +163,65 @@ func TestTheOutpostsTokenHeaderLetsAnOperatorInAndNothingElseDoes(t *testing.T) 
 	grafana := h.issuer.Token(t, "operator", "grafana", time.Hour, operators)
 	if code := ask("X-authentik-jwt", grafana); code != http.StatusUnauthorized {
 		t.Fatalf("a token minted for another provider was answered %d, wanted 401", code)
+	}
+}
+
+// The failure: authentik's proxy provider signs HS256 with its client secret,
+// so a page that only knows the issuer's published keys refuses every real
+// operator. Or the page takes the secret path and stops checking what the
+// published-key path checks: a token signed with another provider's secret, a
+// token whose header names RS256 to dodge the secret, a token for another
+// audience, a token outside the group.
+func TestATokenSignedWithTheClientSecretIsTheOnlyWayIn(t *testing.T) {
+	db, _ := testenv.Postgres(t)
+	const issuer = "https://authentik.example/application/o/wird-admin/"
+	secret := "the-wird-admin-client-secret-at-least-32-bytes"
+	h := routes(db, clientSecretVerifier(issuer, audience, secret), []byte(""), slog.New(slog.DiscardHandler))
+
+	mint := func(key, aud string, groups ...string) string {
+		signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: []byte(key)}, nil)
+		if err != nil {
+			t.Fatalf("signer: %v", err)
+		}
+		claims, _ := json.Marshal(map[string]any{
+			"iss": issuer, "aud": aud, "sub": "operator", "groups": groups,
+			"iat": time.Now().Unix(), "exp": time.Now().Add(time.Hour).Unix(),
+		})
+		jws, err := signer.Sign(claims)
+		if err != nil {
+			t.Fatalf("sign: %v", err)
+		}
+		raw, err := jws.CompactSerialize()
+		if err != nil {
+			t.Fatalf("serialize: %v", err)
+		}
+		return raw
+	}
+	ask := func(token string) int {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.Header.Set("X-authentik-jwt", token)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Code
+	}
+
+	if code := ask(mint(secret, audience, operatorGroup)); code != http.StatusOK {
+		t.Fatalf("an operator's token signed with the client secret was answered %d, wanted 200", code)
+	}
+	rs256 := testenv.NewIssuer(t).Token(t, "operator", audience, time.Hour, map[string]any{"groups": []string{operatorGroup}})
+	for _, row := range []struct {
+		name  string
+		token string
+		want  int
+	}{
+		{"signed with another provider's secret", mint("grafana-client-secret-also-at-least-32-bytes", audience, operatorGroup), http.StatusUnauthorized},
+		{"an RS256 token", rs256, http.StatusUnauthorized},
+		{"minted for another audience", mint(secret, "grafana", operatorGroup), http.StatusUnauthorized},
+		{"a directory user outside the group", mint(secret, audience, "readers"), http.StatusForbidden},
+	} {
+		if code := ask(row.token); code != row.want {
+			t.Errorf("%s: answered %d, wanted %d", row.name, code, row.want)
+		}
 	}
 }
 

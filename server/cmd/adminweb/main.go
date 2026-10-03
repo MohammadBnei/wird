@@ -42,12 +42,22 @@ func main() {
 	defer db.Close()
 
 	issuer := env("OIDC_ISSUER", "http://localhost:8082/wird")
-	provider, err := oidc.NewProvider(ctx, issuer)
-	if err != nil {
-		log.Error("issuer unavailable", "issuer", issuer, "err", err)
-		os.Exit(1)
-	}
 	audience := env("OIDC_AUDIENCE", "wird-admin")
+	// authentik's proxy provider has no signing key and cannot be given one, so
+	// it signs HS256 with its client secret and its keys endpoint verifies
+	// nothing it issues. With the secret set, that is the only key; without it
+	// (the local stub, which signs RS256) the issuer's published keys are.
+	var verifier *oidc.IDTokenVerifier
+	if secret := os.Getenv("OIDC_CLIENT_SECRET"); secret != "" {
+		verifier = clientSecretVerifier(issuer, audience, secret)
+	} else {
+		provider, err := oidc.NewProvider(ctx, issuer)
+		if err != nil {
+			log.Error("issuer unavailable", "issuer", issuer, "err", err)
+			os.Exit(1)
+		}
+		verifier = provider.Verifier(&oidc.Config{ClientID: audience})
+	}
 
 	// Read once, and refuse to start without it. An operations page served
 	// unstyled is a wall of rows nobody reads carefully, and a dashboard is
@@ -60,7 +70,7 @@ func main() {
 
 	addr := env("ADMIN_ADDR", ":8081")
 	log.Info("wird-adminweb listening", "addr", addr, "issuer", issuer, "audience", audience)
-	handler := routes(db, provider.Verifier(&oidc.Config{ClientID: audience}), css, log)
+	handler := routes(db, verifier, css, log)
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Error("wird-adminweb stopped", "err", err)
 		os.Exit(1)
