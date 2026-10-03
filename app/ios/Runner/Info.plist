@@ -31,6 +31,15 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- HTTPS is the only encryption Wird uses, which is exempt: without this
+	     every upload stops at the export-compliance question. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- The sign-in callback arrives as a universal link, and app_links reads
+	     it. Flutter's own deep linking would take it first and push it onto the
+	     router as a route, so it is off. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

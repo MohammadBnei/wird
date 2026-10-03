@@ -1,0 +1,138 @@
+# release-app.yml (the release button) -> this workflow, dispatched on the
+# version tag it just pushed, once IOS_RELEASE_ENABLED is set -> an archive
+# signed by Apple's cloud signing -> uploaded to App Store Connect, where it
+# shows up in TestFlight. Promotion to the App Store is done by hand there.
+# docs/guides/releasing-to-stores.md is the human version of this file.
+#
+# WHY xcodebuild AND NOT `flutter build ipa`. flutter's export step cannot pass
+# an App Store Connect API key, and when the export fails it still exits 0
+# ("Still count this as success"), so a failed upload would leave this job
+# green. `flutter build ios --config-only` writes the version and the
+# dart-defines into Generated.xcconfig, and xcodebuild does the rest.
+#
+# WHY AN ADMIN KEY. -allowProvisioningUpdates with an API key creates the
+# distribution certificate and profile in the cloud, and only an Admin key may.
+#
+# Its Infisical identity is not apk.yml's: that one can read the Android
+# keystore, and this job has no business holding it. The identity and project
+# are repo variables, so this file is inert until they exist.
+name: ipa
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ipa-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  INFISICAL_DOMAIN: https://infisical.bnei.dev
+  INFISICAL_PROJECT_SLUG: ${{ vars.INFISICAL_IPA_PROJECT_SLUG }}
+  INFISICAL_ENV: dev
+  INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_IPA_IDENTITY_ID }}
+
+jobs:
+  ipa:
+    runs-on: macos-26
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Same refusal as apk.yml: a tag off main, or one that disagrees with the
+      # pubspec, never reaches TestFlight.
+      - name: Tag matches the pubspec version, and is on main
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF_TYPE" = tag ] || { echo "::error::run this on a v* tag"; exit 1; }
+          want=$(sed -n -E 's/^version: ([^+]+).*/\1/p' app/pubspec.yaml)
+          [ "${GITHUB_REF_NAME#v}" = "$want" ] || { echo "::error::tag $GITHUB_REF_NAME but pubspec says $want"; exit 1; }
+          git merge-base --is-ancestor HEAD origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: App Store Connect key
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: ASC_KEY_P8
+          export-type: env
+      - name: App Store Connect key id
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: ASC_KEY_ID
+          export-type: env
+      - name: App Store Connect issuer
+        uses: Infisical/secrets-action@v1.0.12
+        with:
+          method: oidc
+          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+          oidc-audience: infisical.bnei.dev
+          domain: ${{ env.INFISICAL_DOMAIN }}
+          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ env.INFISICAL_ENV }}
+          secret-path: /
+          secret-name: ASC_ISSUER_ID
+          export-type: env
+
+      - name: Key file
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$key"
+          echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+
+      - name: Configure
+        working-directory: app
+        run: |
+          set -euo pipefail
+          version=$(sed -n -E 's/^version: ([^+]+).*/\1/p' pubspec.yaml)
+          flutter build ios --release --config-only --dart-define=WIRD_VERSION="$version"
+
+      - name: Archive
+        working-directory: app/ios
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -workspace Runner.xcworkspace -scheme Runner -configuration Release \
+            -destination generic/platform=iOS \
+            -archivePath "$RUNNER_TEMP/Wird.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      # destination=upload in ExportOptions.plist: exporting is uploading.
+      - name: Upload to App Store Connect
+        working-directory: app/ios
+        run: |
+          set -euo pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Wird.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          echo "Uploaded $GITHUB_REF_NAME. It appears in TestFlight once Apple has processed it." >> "$GITHUB_STEP_SUMMARY"

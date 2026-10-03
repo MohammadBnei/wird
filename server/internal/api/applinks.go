@@ -28,9 +28,7 @@ import (
 // an assetlinks file that grants nothing is indistinguishable to Android from
 // one that has not been written yet, and the 404 is the honest one.
 //
-// iOS needs the same thing under a different name — apple-app-site-association,
-// with an Associated Domains entitlement that a personal team cannot hold. That
-// is why sign-in on the iPhone stays the paste-back path for now.
+// iOS needs the same thing under a different name: appSiteAssociation below.
 const assetLinksPath = "GET /.well-known/assetlinks.json"
 
 func assetLinks(w http.ResponseWriter, r *http.Request) {
@@ -63,4 +61,28 @@ func assetLinks(w http.ResponseWriter, r *http.Request) {
     "sha256_cert_fingerprints": [%s]
   }
 }]`, strings.Join(quoted, ", "))
+}
+
+// iOS's half: the file an iPhone fetches (through Apple's CDN) before it will
+// open https://wird.bnei.dev/auth/callback in the app rather than in Safari.
+// The app claims the domain with its Associated Domains entitlement; this names
+// the app back. The app ID is the paid team's prefix and the bundle id, neither
+// of which changes, and neither of which is a secret.
+const appSiteAssociationPath = "GET /.well-known/apple-app-site-association"
+
+const appSiteAssociationBody = `{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["KJYVRCCHU4.dev.bnei.wird"],
+        "components": [{"/": "/auth/callback", "comment": "a finished sign-in"}]
+      }
+    ]
+  }
+}`
+
+func appSiteAssociation(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	fmt.Fprint(w, appSiteAssociationBody)
 }

@@ -100,7 +100,7 @@ The API runs its migrations at startup, so there is no separate step. It reads f
 
 Moving onto the real Authentik changes `OIDC_ISSUER` and `OIDC_AUDIENCE`, nothing else. The audience must be the client id there. See [Authentik wiring](authentik-wiring.md).
 
-Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.go:192-193](../../server/internal/api/api.go#L204-L205)). That is by design: nothing is licensed yet, and Wird never invents commentary.
+Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.go:192-193](../../server/internal/api/api.go#L205-L206)). That is by design: nothing is licensed yet, and Wird never invents commentary.
 
 ## 5. Run jidhr
 

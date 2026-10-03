@@ -47,6 +47,7 @@ There are two groups. The open group needs no token, because the app is fully us
 | `GET /healthz` | no | 200, for the liveness probe | no |
 | `GET /auth/callback` | no | A page that hands the sign-in code back to the app | through the browser |
 | `GET /.well-known/assetlinks.json` | no | Android's proof that the app owns `/auth/callback` | by Android |
+| `GET /.well-known/apple-app-site-association` | no | iOS's proof that the app owns `/auth/callback` | by iOS |
 | `GET /models/...` | no | 302 to the voice model file; 503 when no store is set up | yes |
 | `GET /v1/senses` | no | Every sense, with who wrote them; 304 when unchanged. `HEAD` checks without the body | yes |
 | `GET /`, `GET /{file}`, `GET /_ds/...` | no | The public page and the files it renders from. See [the site](#the-public-page) | no |
@@ -126,7 +127,7 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-81](../../server/internal/api/api.go#L26-L81)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-82](../../server/internal/api/api.go#L26-L82)
 
 ```go
 	v1 := http.NewServeMux()
@@ -142,11 +143,11 @@ func Migrate(ctx context.Context, url string) error {
 	v1.HandleFunc("GET /v1/roots/{letters}/lexicon", h.lexicon)
 ```
 
-`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:70-79](../../server/internal/api/api.go#L70-L79)
+`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:71-80](../../server/internal/api/api.go#L71-L80)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:71-78](../../server/internal/api/api.go#L71-L78)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:72-79](../../server/internal/api/api.go#L72-L79)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 

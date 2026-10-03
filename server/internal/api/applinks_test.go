@@ -89,3 +89,36 @@ func TestAnUnconfiguredDeploymentPublishesAStatementThatGrantsNobody(t *testing.
 		t.Errorf("answered %d: %s", w.Code, w.Body.String())
 	}
 }
+
+// Without it an iPhone opens the sign-in callback in Safari and the reader is
+// left pasting the address back by hand. Fetched by Apple, never with a token.
+func TestTheIPhoneCannotVerifyTheSignInLink(t *testing.T) {
+	h := newHarness(t)
+
+	w := h.get(t, "/.well-known/apple-app-site-association", "")
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("answered %d: %s", w.Code, w.Body.String())
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type is %q; Apple wants application/json", ct)
+	}
+	var got struct {
+		Applinks struct {
+			Details []struct {
+				AppIDs     []string            `json:"appIDs"`
+				Components []map[string]string `json:"components"`
+			} `json:"details"`
+		} `json:"applinks"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("Apple parses this as JSON and it is not: %v", err)
+	}
+	d := got.Applinks.Details
+	if len(d) != 1 || len(d[0].AppIDs) != 1 || d[0].AppIDs[0] != "KJYVRCCHU4.dev.bnei.wird" {
+		t.Fatalf("names %+v, not Wird", d)
+	}
+	if len(d[0].Components) != 1 || d[0].Components[0]["/"] != "/auth/callback" {
+		t.Fatalf("claims %+v, not the sign-in callback", d[0].Components)
+	}
+}

@@ -10,9 +10,8 @@
 # Flutter SDK and the Gradle caches do not fit beside it. Nothing here needs the
 # LAN: the store is reachable at https://s3.bnei.dev.
 #
-# WHY NO iOS. A signed IPA needs an Apple certificate and provisioning profile,
-# and nothing in this estate holds them. An unsigned build would produce
-# nothing installable.
+# iOS is ipa.yml, dispatched by the same button: a macOS runner, and an
+# Infisical identity that cannot read the Android keystore.
 name: apk
 
 on:

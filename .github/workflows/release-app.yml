@@ -105,6 +105,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.next.outputs.version }}
+          IOS_RELEASE_ENABLED: ${{ vars.IOS_RELEASE_ENABLED }}
         run: |
           set -euo pipefail
           {
@@ -115,3 +116,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           gh workflow run apk.yml --ref "v$VERSION"
           echo "apk.yml is building it: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/apk.yml" >> "$GITHUB_STEP_SUMMARY"
+          # iOS only once its Infisical identity and App Store Connect key
+          # exist; until then every release would start a macOS job bound to
+          # fail. A failed ipa is re-run by hand on the tag, like apk.
+          if [ "$IOS_RELEASE_ENABLED" = true ]; then
+            gh workflow run ipa.yml --ref "v$VERSION"
+            echo "ipa.yml is uploading it to TestFlight: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/ipa.yml" >> "$GITHUB_STEP_SUMMARY"
+          fi
