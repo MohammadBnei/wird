@@ -367,6 +367,7 @@ const _theReadersOwn = [
   'set_span',
   'outbox',
   'sync_state',
+  'sense_verdicts',
 ];
 
 /// Hands the device to whoever has just signed in.

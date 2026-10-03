@@ -121,7 +121,7 @@ void main() {
       db,
       kind: ReportKind.bug,
       body: 'the audio stops at the end of the set',
-      context: await reportContext(db, screen: 'study'),
+      context: await reportContext(db, screen: 'study', locale: 'en'),
     );
     final report = (await pending(db)).single;
     await settle(db, [

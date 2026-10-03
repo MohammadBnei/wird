@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -39,9 +42,13 @@ const reportMaxChars = 4000;
 
 /// What a reader does not have to type, read once so the screen can show the
 /// reader exactly the values that will be sent.
+///
+/// [locale] is the language code of the screen the reader was looking at —
+/// `Localizations.localeOf(context).languageCode` — or '' where nobody knows.
 Future<Map<String, Object?>> reportContext(
-  Database db, {
+  DatabaseExecutor db, {
   required String screen,
+  required String locale,
 }) async {
   final meta = await db.query(
     'corpus_meta',
@@ -53,13 +60,28 @@ Future<Map<String, Object?>> reportContext(
     'platform': platformName,
     'screen': screen,
     'corpus_version': meta.isEmpty ? 0 : meta.first['corpus_version']! as int,
-    // Which sense pack the reader was looking at. Last, because the screen
-    // draws this map in the order it is written here. Empty when no pack has
-    // been fetched: '' is the server's own word for a device that did not say
+    // Which sense pack the reader was looking at. Empty when no pack has been
+    // fetched: '' is the server's own word for a device that did not say
     // (migration 00009), and a report is never worth refusing over it.
     'sense_version': await installedSenseVersion(db) ?? '',
+    // The language the screen was drawn in. A sense is written twice, and a
+    // verdict on the French says nothing about the English.
+    'locale': locale,
+    // Which sentence a verdict was about, filled in by [judgeSense]. Empty on
+    // every other report, and still drawn, because the screen shows the reader
+    // every key that leaves the phone.
+    'sense_hash': '',
   };
 }
+
+/// The first 12 hex characters of the sha256 of [sense], exactly as stored —
+/// the whole `; `-joined string, before the screen splits it into lines.
+///
+/// The server hashes the same string to tell which draft a verdict was on, so
+/// a redraft is judged afresh rather than inheriting the old one's thumbs.
+/// Trimming or splitting here would make every hash miss.
+String senseHash(String sense) =>
+    sha256.convert(utf8.encode(sense)).toString().substring(0, 12);
 
 /// The route the reader came from, as a word a person reading the report can
 /// use. Home is a slash on its own and says nothing.
@@ -76,7 +98,7 @@ String screenName(String route) => route == '/' ? 'home' : route.substring(1);
 /// else. What they were reading, what they have understood and what they
 /// wrote in their notes stay on the phone.
 Future<void> sendReport(
-  Database db, {
+  DatabaseExecutor db, {
   required ReportKind kind,
   required String body,
   required Map<String, Object?> context,
@@ -109,17 +131,53 @@ Future<void> sendReport(
 ///
 /// ponytail: `improvement` rather than a fourth [ReportKind], because the
 /// server's column constraint refuses an unknown word and a migration to carry
-/// one bit is not worth it. `sense_version` in the context is what says WHICH
-/// sense was judged — two readers on the same corpus can be shown two different
-/// sentences — so the body does not repeat it.
+/// one bit is not worth it.
+///
+/// [sense] is the sentence the reader judged, as stored, and `sense_hash` is
+/// what says WHICH sentence that was: `sense_version` names a pack, and a pack
+/// carries two languages and outlives a redraft of any one root. The locale
+/// comes from [context], which the caller built from the same `readIn` that
+/// picked [sense] — a verdict filed under the wrong language would be a vote
+/// on a sentence the reader never saw.
+///
+/// The op and the device's own memory of the verdict ([senseJudged]) commit
+/// together: a verdict remembered but never queued would hide the thumbs from
+/// a reader whose answer nobody received.
 Future<void> judgeSense(
   Database db, {
   required String root,
+  required String sense,
   required bool good,
   required Map<String, Object?> context,
-}) => sendReport(
-  db,
-  kind: ReportKind.improvement,
-  body: 'sense ${good ? 'good' : 'bad'}: $root',
-  context: context,
-);
+}) {
+  final hash = senseHash(sense);
+  return db.transaction((txn) async {
+    await sendReport(
+      txn,
+      kind: ReportKind.improvement,
+      body: 'sense ${good ? 'good' : 'bad'}: $root',
+      context: {...context, 'sense_hash': hash},
+    );
+    await txn.insert('sense_verdicts', {
+      'root': root,
+      'locale': context['locale'] as String? ?? '',
+      'sense_hash': hash,
+      'verdict': good ? 'good' : 'bad',
+      'judged_at': DateTime.now().toUtc().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  });
+}
+
+/// Whether this reader has already judged [sense] for [root] in [locale]. A
+/// redraft is a new hash and a new question, and so is the other language.
+Future<bool> senseJudged(
+  DatabaseExecutor db, {
+  required String root,
+  required String locale,
+  required String sense,
+}) async => (await db.query(
+  'sense_verdicts',
+  where: 'root = ? AND locale = ? AND sense_hash = ?',
+  whereArgs: [root, locale, senseHash(sense)],
+  limit: 1,
+)).isNotEmpty;

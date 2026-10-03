@@ -132,7 +132,7 @@ void main() {
             db,
             kind: ReportKind.bug,
             body: 'the audio stops at the end of the set',
-            context: await reportContext(db, screen: 'prayer'),
+            context: await reportContext(db, screen: 'prayer', locale: 'en'),
           );
         default:
           fail('the shared contract carries an op kind "$kind" that no write '

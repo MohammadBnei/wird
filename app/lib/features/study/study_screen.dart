@@ -9,7 +9,6 @@ import '../../data/audio.dart';
 import '../../data/db.dart';
 import '../../data/root_repo.dart';
 import '../../data/sets.dart';
-import '../report/report.dart';
 import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
 import '../../shell/wird_shell.dart';
@@ -456,17 +455,6 @@ class _StudyScreenState extends State<StudyScreen> {
     setState(() => _surah = _surah?.withUnderstood({aya.id}));
   }
 
-  /// Queued, never sent here: a verdict given on a plane is not told it
-  /// failed, and nothing is drawn over the reading either way.
-  Future<void> _judgeSense(String root, bool good) async {
-    await judgeSense(
-      widget.db,
-      root: root,
-      good: good,
-      context: await reportContext(widget.db, screen: screenName(Routes.study)),
-    );
-  }
-
   Future<void> _speak(StudyWord word) async {
     final sounded = await _audio?.playWord(word.id, label: word.text) ?? false;
     if (mounted) setState(() => _unheard = sounded ? null : word.id);
@@ -598,7 +586,7 @@ class _StudyScreenState extends State<StudyScreen> {
         if (_expanded) _setExpanded(false);
       },
       onRoot: (letters) => _visit(Routes.root, letters),
-      onJudge: _judgeSense,
+      db: widget.db,
       onConstellation: (ayahId, letters) =>
           _visit(Routes.deepDive, (ayahId: ayahId, letters: letters)),
       translations: _prefs.ayaTranslation,
