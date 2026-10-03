@@ -220,6 +220,16 @@ Future<Database> openWirdAt(String path) async {
       reciter      TEXT NOT NULL,
       word_by_word INTEGER NOT NULL DEFAULT 0
     )''');
+  // How play answers a word tapped after a pause, and a word heard over the
+  // recitation. Each column is written on its own, never the row whole, and
+  // NULL is the build's default (`buildTuning`): a reader who chose one knob
+  // has not chosen the other.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS playback_pref (
+      id                  INTEGER PRIMARY KEY CHECK (id = 1),
+      open_after_pause    TEXT,
+      hear_while_reciting TEXT
+    )''');
   await db.execute('''
     CREATE TABLE IF NOT EXISTS mic_consent (
       id          INTEGER PRIMARY KEY CHECK (id = 1),
@@ -778,6 +788,38 @@ Future<({String reciter, bool wordByWord})> audioPref(Database db) async {
   }
   await setAudioPref(db, reciter: defaultReciter, wordByWord: wordByWord);
   return (reciter: defaultReciter, wordByWord: wordByWord);
+}
+
+/// The reader's playback knobs, each the build's default until chosen. A
+/// stored name this build does not know reads as the default too.
+Future<PlaybackTuning> playbackPref(Database db) async {
+  final rows = await db.query('playback_pref', limit: 1);
+  final row = rows.isEmpty ? const <String, Object?>{} : rows.first;
+  return (
+    open: knob(
+      OpenAfterPause.values,
+      row['open_after_pause'] as String?,
+      buildTuning.open,
+    ),
+    hear: knob(
+      HearWhileReciting.values,
+      row['hear_while_reciting'] as String?,
+      buildTuning.hear,
+    ),
+  );
+}
+
+/// Stores one knob, leaving the other as it was.
+Future<void> setPlaybackKnob(Database db, Enum value) async {
+  final column = switch (value) {
+    OpenAfterPause() => 'open_after_pause',
+    HearWhileReciting() => 'hear_while_reciting',
+    _ => throw ArgumentError.value(value, 'value', 'not a playback knob'),
+  };
+  await db.insert('playback_pref', {
+    'id': 1,
+  }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  await db.update('playback_pref', {column: value.name}, where: 'id = 1');
 }
 
 Future<void> setAudioPref(

@@ -109,6 +109,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Word-by-word voice (opt-in): `words.wbw_path` = `wbw/SSS_AAA_WWW.mp3` built from `position` (ADR 0029). Never from API `audio_url` — it counts pause marks, host does not (27,962 words wrong). Host `audio.qurancdn.com`, same cache. Host lacks 12:8 w15, 79:1 w2 → reciter clip fallback.
 - quran-align: 6 of 12 pass. New reciter → ingest `defaultRecitations` + ETL `Recitations` + `reciterFolders`, same commit.
 - Long-press uncached → show transliteration, never spin.
+- Play after pause = last touched (ADR 0030). `SetAudio.resume`: `Held(place)` | `Touched(word)` | null. Tap = open (`touch`, only from `word_row` tap, never `_open`). Long-press = hear. Knobs `PlaybackTuning` (`OpenAfterPause`, `HearWhileReciting`): `playback_pref` per column, NULL = build default (`--dart-define=WIRD_OPEN_AFTER_PAUSE` / `WIRD_HEAR_WHILE_RECITING`). Every playback incl. resume takes own turn → stale finally can't settle.
 
 ## UI
 - Nocturne, dark only, no light mode. Tokens only from `app/lib/theme/nocturne.dart` (source `docs/design/nocturne-styles.css`). Never hard-code a hex a token carries.

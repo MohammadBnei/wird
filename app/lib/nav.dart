@@ -208,7 +208,7 @@ Widget wirdApp(
 }) => Wird(
   db: db,
   prefs: prefs,
-  recitation: recitation ?? Recitation(),
+  recitation: recitation ?? Recitation(tuning: prefs.playback),
   child: Flushing(
     flusher: flusher,
     // Rebuilt when the language moves and at no other time. It is the one

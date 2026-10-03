@@ -1727,6 +1727,48 @@ abstract class AppLocalizations {
   /// **'What a tapped word plays: its moment in the reciter\'s aya, or the word spoken on its own, in one voice for every word.'**
   String get settingsWordVoiceCaption;
 
+  /// Settings option: after a pause, a word the reader taps becomes where the next press of play recites from.
+  ///
+  /// In en, this message translates to:
+  /// **'Play from the tapped word'**
+  String get settingsTapAfterPauseRestart;
+
+  /// Settings option: after a pause, play carries on from the pause whatever word the reader tapped.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume the pause'**
+  String get settingsTapAfterPauseResume;
+
+  /// Caption under the choice of what play does after a pause and a tapped word.
+  ///
+  /// In en, this message translates to:
+  /// **'After a pause, where play starts once you tap a word.'**
+  String get settingsTapAfterPauseCaption;
+
+  /// Settings option: a word long-pressed during the recitation sounds, then the recitation waits, paused at its place.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the place'**
+  String get settingsHeldWordHold;
+
+  /// Settings option: a word long-pressed during the recitation sounds, then the recitation carries on by itself from its place.
+  ///
+  /// In en, this message translates to:
+  /// **'Carry on'**
+  String get settingsHeldWordResume;
+
+  /// Settings option: a word long-pressed during the recitation ends the recitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop it'**
+  String get settingsHeldWordCut;
+
+  /// Caption under the choice of what a long-pressed word does to a recitation that is playing.
+  ///
+  /// In en, this message translates to:
+  /// **'What a word you hold down does to the recitation.'**
+  String get settingsHeldWordCaption;
+
   /// Section heading on the settings screen, over the microphone permission and the recogniser download.
   ///
   /// In en, this message translates to:

@@ -455,6 +455,15 @@ class _StudyScreenState extends State<StudyScreen> {
     setState(() => _surah = _surah?.withUnderstood({aya.id}));
   }
 
+  /// A word the reader tapped: opened, and after a pause, where the next
+  /// press of play starts. Only the tap: a word opened by a step, a load or
+  /// a return from another screen is not the reader choosing where to
+  /// recite from.
+  Future<void> _tapped(StudyWord word) {
+    _audio?.touch(word.id);
+    return _open(word);
+  }
+
   Future<void> _speak(StudyWord word) async {
     final sounded = await _audio?.playWord(word.id, label: word.text) ?? false;
     if (mounted) setState(() => _unheard = sounded ? null : word.id);
@@ -647,9 +656,16 @@ class _StudyScreenState extends State<StudyScreen> {
                 style: TextStyle(fontSize: 12, color: n.textAt(0.62)),
               ),
             ),
-          ValueListenableBuilder<bool>(
-            valueListenable: _audio?.playing ?? _paused,
-            builder: (context, playing, _) {
+          // Rebuilt on the bar as well as on playing: a stop from the bar
+          // while paused leaves playing false, and a button still holding
+          // the paused press would start the sūra from its top.
+          ListenableBuilder(
+            listenable: Listenable.merge([
+              _audio?.playing ?? _paused,
+              ?_audio?.sounding,
+            ]),
+            builder: (context, _) {
+              final playing = (_audio?.playing ?? _paused).value;
               final audio = _audio;
               final ready = audio?.ready ?? false;
               return IconButton(
@@ -904,7 +920,7 @@ class _StudyScreenState extends State<StudyScreen> {
                         word.word.id != open?.id &&
                         word.word.root == open?.root,
                     prefs: _prefs,
-                    onOpen: _open,
+                    onOpen: _tapped,
                     onHear: _speak,
                   ),
                 ),

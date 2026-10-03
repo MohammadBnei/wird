@@ -49,6 +49,24 @@ class FakePlayer extends AudioPlayerPlatform {
   bool offline = false;
   Completer<PlayResponse>? _sounding;
 
+  /// Where each load was asked to start, in the order they came.
+  final starts = <Duration?>[];
+
+  /// Set, every load waits on it: the files are still being opened, the way
+  /// a streamed aya keeps a real player loading for seconds.
+  Completer<void>? gate;
+
+  var _position = Duration.zero;
+  var _index = 0;
+
+  /// The player has got to [position] in the [index]th file, as a real one
+  /// reports it while it plays.
+  void reach(Duration position, {int index = 0}) {
+    _position = position;
+    _index = index;
+    _events.add(_ready);
+  }
+
   bool get sounding => _sounding != null;
 
   /// The clip runs out, the way a file does.
@@ -65,10 +83,14 @@ class FakePlayer extends AudioPlayerPlatform {
   Future<LoadResponse> load(LoadRequest request) async {
     if (refuses) throw PlatformException(code: 'abort');
     final source = request.audioSourceMessage.toMap().toString();
-    if (offline && source.contains('://')) {
+    if (offline && source.contains(RegExp('https?://'))) {
       throw PlatformException(code: 'unreachable');
     }
     loaded.add(source);
+    starts.add(request.initialPosition);
+    _position = request.initialPosition ?? Duration.zero;
+    _index = request.initialIndex ?? 0;
+    if (gate case final gate?) await gate.future;
     // The real plugin reports readiness after the load call returns, and
     // just_audio's setAudioSource does not answer until it does.
     Timer(Duration.zero, () => _events.add(_ready));
@@ -78,11 +100,11 @@ class FakePlayer extends AudioPlayerPlatform {
   PlaybackEventMessage get _ready => PlaybackEventMessage(
     processingState: ProcessingStateMessage.ready,
     updateTime: DateTime.now(),
-    updatePosition: Duration.zero,
+    updatePosition: _position,
     bufferedPosition: Duration.zero,
     duration: const Duration(seconds: 3),
     icyMetadata: null,
-    currentIndex: 0,
+    currentIndex: _index,
     androidAudioSessionId: null,
   );
 

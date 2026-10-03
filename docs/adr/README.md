@@ -23,6 +23,7 @@ flowchart LR
   A26 -. amends .-> A5d
   A27[0027 MIT licence]
   A29[0029 word audio by position] -. amends .-> A23
+  A30[0030 play from what was touched last] -. extends .-> A25
   A22 -. extended by .-> A28[0028 Play and App Store beside the APK]
 ```
 
@@ -58,3 +59,4 @@ flowchart LR
 | [0027-wird-is-mit-licensed.md](0027-wird-is-mit-licensed.md) | Wird's own code is MIT licensed | accepted |
 | [0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md](0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md) | Wird ships through Google Play and the App Store, beside the APK | accepted |
 | [0029-a-words-own-audio-is-found-by-its-position.md](0029-a-words-own-audio-is-found-by-its-position.md) | A word's own audio is found by its position, not by the API's path | accepted |
+| [0030-play-carries-on-from-what-the-reader-touched-last.md](0030-play-carries-on-from-what-the-reader-touched-last.md) | Play carries on from what the reader touched last | accepted |
