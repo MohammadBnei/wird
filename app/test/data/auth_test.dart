@@ -11,6 +11,7 @@ import 'package:wird/data/kept_repo.dart';
 import 'package:wird/data/outbox.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/sync.dart';
+import 'package:wird/features/report/report.dart';
 
 import '../corpus.dart';
 import 'fake_issuer.dart';
@@ -237,6 +238,29 @@ void main() {
     expect(await db.query('kept_items'), isEmpty);
     expect(await understood(db), 0);
     expect(await db.query('set_prayers'), isEmpty);
+  });
+
+  // The first reader's verdict is remembered on the device, but their queued
+  // op leaves with the outbox above. Kept, the memory shows the second reader
+  // a "thank you" for a vote they never cast, and no thumbs to cast one.
+  test("a second reader on the tablet is thanked for the first one's verdict "
+      'and cannot give their own', () async {
+    await signInAs('aisha@bnei.dev');
+    await judgeSense(
+      db,
+      root: 'رحم',
+      sense: 'to show mercy',
+      good: false,
+      context: await reportContext(db, screen: 'study', locale: 'en'),
+    );
+    await theAccount().signOut();
+
+    await signInAs('bilal@bnei.dev');
+
+    expect(
+      await senseJudged(db, root: 'رحم', locale: 'en', sense: 'to show mercy'),
+      isFalse,
+    );
   });
 
   // Worse than seeing them: sending them. The queue is carried by whoever is

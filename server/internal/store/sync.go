@@ -471,6 +471,9 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 // with room, and it matches the column CHECK in migration 00009.
 const senseVersionMax = 64
 
+// The column CHECK on sense_hash in migration 00011.
+const senseHashMax = 64
+
 // The one apply that is not handed the reader, because a report has nowhere
 // to put one. It reaches a table an operator reads, so the reader it came from
 // must not be recoverable from it — and the column list is the smallest part
@@ -505,8 +508,14 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 		// can judge two different sentences and both report the same corpus.
 		// Absent is "the device did not say", the same reading zero gets above,
 		// because refusing the report over it would throw away the words.
-		SenseVersion string    `json:"sense_version"`
-		CreatedAt    time.Time `json:"created_at"`
+		SenseVersion string `json:"sense_version"`
+		// The language the reader saw, and which sentence they judged in it: the
+		// first twelve hex characters of the sha256 of the sense text. Together
+		// they say whether a bad verdict is about the text served today or about
+		// one already corrected. Both are '' when the device did not say.
+		Locale    string    `json:"locale"`
+		SenseHash string    `json:"sense_hash"`
+		CreatedAt time.Time `json:"created_at"`
 	}
 	if err := decode(op.Body, &b); err != nil {
 		return err
@@ -521,13 +530,25 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 	// would park the report forever and the text the reader wrote would be lost
 	// to say which prose they meant. A version too long to be one of ours is the
 	// device not having said, which is what an absent one already means.
+	// locale and sense_hash are the device's to set in the same way, so they are
+	// blanked by the same rule rather than left to migration 00011's CHECKs.
 	if len(b.SenseVersion) > senseVersionMax {
 		b.SenseVersion = ""
 	}
+	// The app reads in English or French and nothing else, so any other locale
+	// is the device not having said. Blanking also keeps the verdict tally,
+	// which groups by locale, from growing a row per string a device invents.
+	if b.Locale != "en" && b.Locale != "fr" {
+		b.Locale = ""
+	}
+	if len(b.SenseHash) > senseHashMax {
+		b.SenseHash = ""
+	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO report_inbox (kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.SenseVersion, b.CreatedAt.UTC())
+		INSERT INTO report_inbox (kind, body, app_version, platform, screen, corpus_version, sense_version, locale, sense_hash, written_on)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		b.Kind, b.Body, b.AppVersion, b.Platform, b.Screen, b.CorpusVersion, b.SenseVersion,
+		b.Locale, b.SenseHash, b.CreatedAt.UTC())
 	return err
 }
 
@@ -541,19 +562,30 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 // The column list is written out four times between applyReport and here, and
 // they are one list: a column added to the inbox and forgotten in the sweep is
 // written by the reader's flush and dropped on its way to the table an operator
-// reads, which is silent in both directions.
-const sweepReportsSQL = `
+// reads, which is silent in both directions. The triage columns are on reports
+// alone, so arrived rows take their defaults here and held rows carry theirs: a
+// sweep that forgot them would undo every operator's verdict on its next tick.
+//
+// verdict_root is settled here for an arrived row, by isVerdict against the
+// roots served now, and carried for a held one, so a reseed that later drops a
+// root leaves the votes on it counted as votes.
+var sweepReportsSQL = `
 WITH arrived AS (DELETE FROM report_inbox RETURNING *),
      held AS (DELETE FROM reports RETURNING *),
      all_of_them AS (
-       SELECT gen_random_uuid() AS id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
-         FROM arrived
+       SELECT gen_random_uuid() AS id, kind, body, app_version, platform, screen, corpus_version, sense_version,
+              locale, sense_hash, NULL::text AS category, 'new' AS status, NULL::text AS issue_url,
+              (SELECT s.root_letters FROM root_senses s WHERE ` + isVerdict + `) AS verdict_root, written_on
+         FROM arrived r
        UNION ALL
-       SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on
+       SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version,
+              locale, sense_hash, category, status, issue_url, verdict_root, written_on
          FROM held
      )
-INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on)
-SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version, written_on FROM all_of_them ORDER BY id`
+INSERT INTO reports (id, kind, body, app_version, platform, screen, corpus_version, sense_version,
+                     locale, sense_hash, category, status, issue_url, verdict_root, written_on)
+SELECT id, kind, body, app_version, platform, screen, corpus_version, sense_version,
+       locale, sense_hash, category, status, issue_url, verdict_root, written_on FROM all_of_them ORDER BY id`
 
 // SweepReports is the write that belongs to the schedule rather than to a
 // reader. It runs on its tick whether or not anything arrived, and rewrites

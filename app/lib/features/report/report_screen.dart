@@ -17,9 +17,10 @@ import 'report.dart';
 /// the audio stops — and it is then shown in full, because an app that asks to
 /// transmit something owes the person a plain look at what it is sending.
 ///
-/// The send queues and returns. There is no spinner and no failure to show,
-/// which is the same contract as marking a set understood: the write is local
-/// and the flush is somebody else's problem.
+/// The send queues and returns. There is no spinner, which is the same
+/// contract as marking a set understood: the write is local and the flush is
+/// somebody else's problem. A local write can still fail — a full disk — and
+/// then the reader's words stay in the box with a line saying so.
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key, required this.db, required this.from});
 
@@ -48,12 +49,25 @@ class _ReportScreenState extends State<ReportScreen> {
   /// because what the reader is owed is the thing that leaves the phone.
   Map<String, Object?>? _context;
   bool _sent = false;
+  bool _failed = false;
+
+  /// The language the context was read for. The locale is read off the
+  /// widget tree, which `initState` cannot reach, and is read again if the
+  /// device changes language under the screen.
+  String? _locale;
 
   @override
-  void initState() {
-    super.initState();
-    reportContext(widget.db, screen: screenName(widget.from)).then((context) {
-      if (mounted) setState(() => _context = context);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context).languageCode;
+    if (locale == _locale) return;
+    _locale = locale;
+    reportContext(
+      widget.db,
+      screen: screenName(widget.from),
+      locale: locale,
+    ).then((context) {
+      if (mounted && _locale == locale) setState(() => _context = context);
     });
   }
 
@@ -64,13 +78,25 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Future<void> _send() async {
-    await sendReport(
-      widget.db,
-      kind: _kind,
-      body: _text.text,
-      context: _context!,
-    );
-    if (mounted) setState(() => _sent = true);
+    try {
+      await sendReport(
+        widget.db,
+        kind: _kind,
+        body: _text.text,
+        context: _context!,
+      );
+    } on Object {
+      // The words are still in the box; the reader is told and can press
+      // again.
+      if (mounted) setState(() => _failed = true);
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _sent = true;
+        _failed = false;
+      });
+    }
   }
 
   /// The strings, read off the locale the device is in. A getter rather than a
@@ -155,6 +181,10 @@ class _ReportScreenState extends State<ReportScreen> {
       onPressed: _context == null || _text.text.trim().isEmpty ? null : _send,
       child: Text(_l10n.report_send),
     ),
+    if (_failed) ...[
+      SizedBox(height: n.space('2')),
+      _caption(n, _l10n.report_failed),
+    ],
   ];
 
   List<Widget> _queued(Nocturne n) => [

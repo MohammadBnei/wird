@@ -296,6 +296,19 @@ Future<Database> openWirdAt(String path) async {
       end_ayah_id   INTEGER NOT NULL,
       recited_at    TEXT NOT NULL
     )''');
+  // The senses this reader has already judged, so the thumbs stay answered
+  // when the root is opened again. Keyed by the sentence's hash rather than
+  // the root alone: a redraft, or the other language, is a new question.
+  // Device-local; the verdict itself left by the outbox.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS sense_verdicts (
+      root       TEXT NOT NULL,
+      locale     TEXT NOT NULL,
+      sense_hash TEXT NOT NULL,
+      verdict    TEXT NOT NULL,
+      judged_at  TEXT NOT NULL,
+      PRIMARY KEY (root, locale, sense_hash)
+    )''');
   // The op id is the primary key rather than a column, so a write that is
   // replayed — a flush that timed out after the server had already applied it,
   // a button pressed twice — lands on the same row instead of a second one.

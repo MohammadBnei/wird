@@ -10,6 +10,7 @@ The corpus bundled in the app carries every root but no senses. The senses come 
 |---|---|---|
 | The sense pack from `GET /v1/senses`, and its version from `HEAD /v1/senses` | The sense and its "whose reading this is" line on every root screen | The API's open senses route ([Senses pipeline](../pipelines/senses.md)) |
 | The app coming back to the foreground | The version of the pack this phone holds | The corpus's list of roots, to prove the pack fits |
+| A thumb up or down on a sense | A sense verdict, queued in the **outbox** as a report | The outbox, which sends it whenever there is a network |
 | A tap on the Settings download button | | No account, no sign-in |
 
 ```mermaid
@@ -218,7 +219,7 @@ Before it records the version, the transaction counts the new senses whose root 
 
 ### 6. The root screen reads it back
 
-`rootReading` takes the one root-level row for the root, and checks whether `sense_pack` has a row ([root_repo.dart:251](../../../app/lib/data/root_repo.dart#L251-L262)). `CoreSense` then picks one of three outcomes.
+`rootReading` takes the one root-level row for the root, and checks whether `sense_pack` has a row ([root_repo.dart:263](../../../app/lib/data/root_repo.dart#L263-L274)). `CoreSense` then picks one of three outcomes.
 
 ```mermaid
 flowchart TD
@@ -244,9 +245,9 @@ flowchart TD
       );
     }
 ```
-[root_sections.dart:141](../../../app/lib/features/root/root_sections.dart#L141-L152)
+[root_sections.dart:150](../../../app/lib/features/root/root_sections.dart#L150-L161)
 
-Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:204](../../../app/lib/features/root/root_sections.dart#L204-L234)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
+Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:221](../../../app/lib/features/root/root_sections.dart#L221-L251)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
 
 ### 7. Which language a sense is read in
 
@@ -290,10 +291,53 @@ compare `Localizations.localeOf` against the locale they last read in, and
 reload when it differs — so a reader who switches language is handed the other
 sentence where they stand, not on the next visit.
 
+### 8. The reader's verdict on a sense
+
+Wherever a sense is drawn, its heading carries two thumbs: the reading screen's sheet, the root screen, its spine view, and the deep dive. Each screen hands `CoreSense` a `JudgeSense` with the database, the reading and its own screen name ([root_screen.dart:145](../../../app/lib/features/root/root_screen.dart#L145-L149), [deep_dive_screen.dart:382](../../../app/lib/features/deepdive/deep_dive_screen.dart#L382-L386), [root_sheet.dart:408](../../../app/lib/features/study/root_sheet.dart#L408-L412)).
+
+```mermaid
+stateDiagram-v2
+  [*] --> Nothing: no sense to judge
+  [*] --> Recall: a sense is drawn
+  Recall --> Thanked: already judged on this phone
+  Recall --> Thumbs: not judged yet
+  Thumbs --> Sending: tap
+  Sending --> Thanked: report and memory written
+  Sending --> Thumbs: write failed, say "not saved"
+  Thanked --> Recall: redraft or other language
+```
+
+A verdict is a report whose body is `sense good: <root>` or `sense bad: <root>`. It carries the language the sense was read in and `sense_hash`, the first 12 hex characters of the SHA-256 of the exact sentence judged ([report.dart:83](../../../app/lib/features/report/report.dart#L83-L84)). The server hashes its own copy the same way, so it can tell a verdict on today's sentence from one on a sentence since corrected. The report and the phone's memory of it commit in one transaction:
+
+```dart
+  final hash = senseHash(sense);
+  return db.transaction((txn) async {
+    await sendReport(
+      txn,
+      kind: ReportKind.improvement,
+      body: 'sense ${good ? 'good' : 'bad'}: $root',
+      context: {...context, 'sense_hash': hash},
+    );
+    await txn.insert('sense_verdicts', {
+      'root': root,
+      'locale': context['locale'] as String? ?? '',
+      'sense_hash': hash,
+      'verdict': good ? 'good' : 'bad',
+      'judged_at': DateTime.now().toUtc().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  });
+```
+[report.dart:153](../../../app/lib/features/report/report.dart#L153-L168)
+
+`sense_verdicts` is keyed by root, language and hash ([db.dart:304](../../../app/lib/data/db.dart#L304-L311)). Reopening a judged root shows the thanks, not the thumbs ([report.dart:173](../../../app/lib/features/report/report.dart#L173-L183)). A redraft or the other language is a new hash, so the reader is asked again. The language comes from the same read that chose the sentence, `RootReading.locale`, so a verdict cannot be filed under one language while judging the other's text.
+
+The thanks is drawn only after the write succeeds. If it fails, the thumbs come back with a short "not saved" line, rather than thanking the reader for something nobody will receive ([root_sheet.dart:759](../../../app/lib/features/study/root_sheet.dart#L759-L792)). A write or a recall that finishes after the reader has moved to another root or language is ignored, so its answer is never drawn against the new sentence ([root_sheet.dart:723](../../../app/lib/features/study/root_sheet.dart#L723-L726)). When a different reader signs in on the same phone, the record of judged senses is cleared with the rest of the first reader's tables ([Auth](../api/auth.md)). Where verdicts go after the server is on the [Admin web](../adminweb.md#5-sense-verdicts-are-counted-not-listed) page.
+
 ## Why it is this way
 
 - [ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md) — Wird's own writing is served, upstream data is bundled. Senses are rows in the existing database, not a second file, so a correction reaches readers without a release.
 - The [ADR](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#silent-background-updates) says the app asks before bytes move. The code keeps that for every pack after the first. The first pack is fetched silently, because a phone with no senses has nothing to weigh, and the foreground moment has nowhere safe to ask ([flush.dart:122](../../../app/lib/data/flush.dart#L122-L131)).
+- [ADR 0026](../../adr/0026-reports-are-triaged-and-turned-into-issues.md) — a verdict names its language and its sentence, is remembered on the phone, and thanks the reader only once it is queued.
 - The route is open, with no account. Needing to sign in to learn what a root means would cut off the readers likeliest to need it, and the verdict button with them ([senses.dart:19](../../../app/lib/data/senses.dart#L19-L21), [ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#senses-behind-the-bearer-token)).
 
 ## Go deeper

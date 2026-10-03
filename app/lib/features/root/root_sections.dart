@@ -126,9 +126,18 @@ class PendingSection extends StatelessWidget {
 /// corpus-derivation standard, and it is not the standard the served drafts
 /// were written to; it is not repeated.
 class CoreSense extends StatelessWidget {
-  const CoreSense({super.key, required this.reading, this.senseSize = 13.5});
+  const CoreSense({
+    super.key,
+    required this.reading,
+    this.senseSize = 13.5,
+    this.judge,
+  });
 
   final RootReading reading;
+
+  /// The reader's thumbs on the sense, drawn at the end of its heading. Null
+  /// where the screen has no database to queue a verdict through.
+  final Widget? judge;
 
   /// The deep dive reads the same sentence a point larger than the two root
   /// screens do.
@@ -155,7 +164,15 @@ class CoreSense extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeading(l.root_coreSense),
+        if (judge == null)
+          SectionHeading(l.root_coreSense)
+        else
+          Row(
+            children: [
+              Expanded(child: SectionHeading(l.root_coreSense)),
+              judge!,
+            ],
+          ),
         SizedBox(height: n.space('2')),
         Text(
           sense,
@@ -500,9 +517,12 @@ class IrabSection extends StatelessWidget {
 /// Screen 2b's body: the same root with the dial taken away. A root with more
 /// derivatives than the ring can hold is read here instead.
 class RootSpineView extends StatefulWidget {
-  const RootSpineView({super.key, required this.reading});
+  const RootSpineView({super.key, required this.reading, this.judge});
 
   final RootReading reading;
+
+  /// Handed to [CoreSense.judge].
+  final Widget? judge;
 
   @override
   State<RootSpineView> createState() => _RootSpineViewState();
@@ -556,7 +576,7 @@ class _RootSpineViewState extends State<RootSpineView> {
                 ],
               ),
               SizedBox(height: n.space('4')),
-              CoreSense(reading: reading),
+              CoreSense(reading: reading, judge: widget.judge),
             ],
           ),
         ),

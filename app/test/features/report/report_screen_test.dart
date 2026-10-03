@@ -79,8 +79,33 @@ void main() {
       'screen': 'index',
       'corpus_version': await shippedCorpusVersion(db),
       'sense_version': '',
+      'locale': 'en',
+      'sense_hash': '',
       'created_at': anything,
     });
+  });
+
+  // The failure: the local write fails — a full disk — and the screen flips to
+  // "written down" anyway, clearing the box. The reader believes it went, and
+  // the words are gone.
+  testWidgets('a report the phone could not write is called sent and its '
+      'words thrown away', (tester) async {
+    await db.execute(
+      'CREATE TEMP TRIGGER outbox_full BEFORE INSERT ON main.outbox '
+      "BEGIN SELECT RAISE(ABORT, 'database or disk is full'); END",
+    );
+    addTearDown(() => db.execute('DROP TRIGGER IF EXISTS temp.outbox_full'));
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await reportFrom(tester, 'Sūra index');
+
+    await tester.enterText(find.byType(TextField), 'the audio stops');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('send report')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('goes out with the next sync'), findsNothing);
+    expect(find.text('the audio stops'), findsOneWidget);
+    expect(find.textContaining('Not saved on this phone'), findsOneWidget);
   });
 
   // The failure: the send goes to the server rather than to the queue, so the
@@ -124,6 +149,7 @@ void main() {
       'index',
       version,
       senseVersion,
+      'en',
     ]) {
       expect(
         find.text(shown),
@@ -140,7 +166,7 @@ void main() {
     await pumpPhone(tester, await wholeApp(db, cache: silent));
     await reportFrom(tester, 'Sūra index');
 
-    expect(find.textContaining('nothing comes back'), findsOneWidget);
+    expect(find.textContaining('Nothing comes back'), findsOneWidget);
   });
 
   // The failure: an empty press queues a blank row, and somebody reads it

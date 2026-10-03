@@ -27,6 +27,7 @@ RootReading reading({
   surahCount: 45,
   sources: const ['Quranic Arabic Corpus'],
   coreSense: coreSense,
+  locale: 'en',
   senseSource: 'Wird',
   senseBasis: senseBasis,
   senseEvidence: senseEvidence,

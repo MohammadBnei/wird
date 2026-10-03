@@ -15,7 +15,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 | App | `app/` | Flutter, iOS + Android + tablet. Owns bundled corpus, generates sets, outbox for writes. |
 | wird-api | `server/cmd/api` | Go, stdlib `ServeMux`, `pgx/v5`, `goose`, hand SQL. Source of truth for user state + senses. Only deployed binary. |
 | jidhr | `jidhr/` | Standalone Arabic root engine, own Go module. `rootd` serves `jidhr/testdata/quran.json` in memory: no DB, no network, no key. ✗ not deployed (no caller). |
-| adminweb | `server/cmd/adminweb` | Ops view, totals only. ✗ not deployed (no groups scope mapping yet). ADR 0004, `docs/adr/0005-deploying-the-api.md`. |
+| adminweb | `server/cmd/adminweb` | Ops view: totals, report triage, sense verdict tally, JSON export for agent (`.claude/rules/feedback.md`). Own image, `helm/adminweb-values.yaml` inert until infra-bootstrap (groups claim, forwardAuth, service account, restricted DB role). ADR 0004, 0026. |
 | CLI tools | `server/cmd/{ingest,etl,rootcheck,rootdraft,jidhrcorpus,senseseed}` | Dev-machine only. Never in image. |
 - `go.work` unions `server/` + `jidhr/`; server imports jidhr types across modules. Build modules by name: `go build ./server/... ./jidhr/...` (`./...` at root fails).
 - `server/internal/rootsense` is only SQLite reader in server tree; importers = CLI tools only. `corpus.db` never in image.
@@ -54,7 +54,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 
 ## Sync contract
 - One write path: every write → outbox → `POST /v1/sync`, online or not. Each op carries `client_op_id`; server idempotent via `op_log (user_id, client_op_id)`.
-- Op kinds: `ayah_understood kept_upsert kept_delete set_recorded set_prayed prefs_set report_written`.
+- Op kinds: `ayah_understood kept_upsert kept_delete set_recorded set_prayed prefs_set position_moved report_written`. Report body carries `locale`, `sense_hash` (verdicts: sha256[:12] of judged sense text) — ADR 0026.
 - Per-op result: `applied duplicate refused failed`. `refused` permanent. Client dead-letters after `maxAttempts` = 10 (`app/lib/data/outbox.dart`), surfaced in settings, never mid-prayer.
 - Pull: `GET /v1/changes?since=<cursor>` rows + tombstones.
 - Contract vectors shared by Go + Dart suites: `docs/adr/0002-sync-contract-vectors.json`. Dart test asserts `report_written` key set EXACTLY. Change vectors + both suites in one commit.
@@ -180,7 +180,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 | Voice-follow engine + model hosting | ✓ built; matcher open (finding 9) |
 | Locale en/fr, French translation | ✓ |
 | ADR 0010 server-owned senses | ✓ server + app fetch + prod seeded (1642). Open: see `.claude/handoffs/senses-next-steps.md` |
-| adminweb deploy | ✗ open — needs groups scope mapping + own image |
+| adminweb deploy | ◐ image + values ✓; infra-bootstrap provider, groups claim, service account, DB role ✗ |
 | Poetic register | ✗ stored, not served; own battery unwritten |
 | Human signing workflow | ✗ deferred |
 | Tafsir licensing, QF gloss one-week rule, QF dev account | ✗ open questions (`data/SOURCES.md`) |

@@ -58,7 +58,7 @@ The identity provider signs tokens for many apps with one key. So the audience c
 
 ## 7. Operators pass one more gate
 
-The operations view uses the same kind of token, with its own audience. It also asks for membership in an Authentik admin group, and checks that itself instead of trusting a proxy. It is not deployed yet.
+The operations view uses the same kind of token, with its own audience. It also asks for membership in an Authentik admin group, and checks that itself instead of trusting a proxy. Its image is built, but it is not live yet.
 
 → [Admin web: the group gate](../architecture/adminweb.md#3-the-group-gate)
 

@@ -206,6 +206,8 @@ The tables come from nine migrations in `server/migrations`:
 | [00004](../../server/migrations/00004_derived_set_ids.sql) | Set identity per reader, for derived set ids |
 | [00005](../../server/migrations/00005_reports_and_health.sql) to [00008](../../server/migrations/00008_reports_are_written_by_the_clock_not_by_the_reader.sql) | Anonymous `reports`, `report_inbox`, and the `sync_outcomes` totals |
 | [00009](../../server/migrations/00009_the_server_owns_the_senses.sql) | `root_senses`, the senses the server serves |
+| [00010](../../server/migrations/00010_reading_positions.sql) | `reading_positions`, the reader's place in each sūra |
+| [00011](../../server/migrations/00011_report_triage.sql) | A report's `locale` and `sense_hash`, the `verdict_root` the sweep settles for a sense verdict, and the operator's triage: `category`, `status`, `issue_url` |
 
 Read endpoints are pure queries. Progress is counted on each request, never stored; `percent` is understood ayas over 6236, as a fraction. [store.go:126-177](../../server/internal/store/store.go#L126-L177)
 
@@ -232,6 +234,7 @@ Both are marked as deliberate ceilings: they assume one replica ([main.go:50-51]
 - [ADR 0002](../adr/0002-set-identity.md) — a set id is derived, and one op records a prayer.
 - [ADR 0004](../adr/0004-the-operations-view-behind-authentiks-group.md) — the operations view sees totals only, which is why reports pass through an inbox and a sweep.
 - [ADR 0005](../adr/0005-deploying-the-api.md) — one image, holding only this binary; the corpus is never in it.
+- [ADR 0026](../adr/0026-reports-are-triaged-and-turned-into-issues.md) — a report says which language and which sentence a sense verdict was about; this binary alone runs the migrations.
 - [ADR 0008](../adr/0008-the-recogniser-is-served-from-wirds-own-host.md) — the voice model is served from Wird's own host, as a redirect.
 - [ADR 0010](../adr/0010-the-server-owns-the-roots-and-their-senses.md) — the server owns the senses, and serves them without a token.
 

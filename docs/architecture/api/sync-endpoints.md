@@ -116,7 +116,7 @@ The transaction only commits when the op was `applied`. So the `op_log` row and 
 	return tag.RowsAffected() == 1, nil
 ```
 
-The API prunes op log rows older than 90 days ([store.go:348](../../../server/internal/store/store.go#L348)). A replay older than that is still safe for most kinds, because the writes themselves are upserts or skip rows already there. A report is the exception: replayed that late, it would land twice. [store/sync.go:527-530](../../../server/internal/store/sync.go#L527-L530) A prayer with no id of its own takes the op id as its row id, so even that replay lands on the same row. [store/sync.go:455-460](../../../server/internal/store/sync.go#L455-L460)
+The API prunes op log rows older than 90 days ([store.go:348](../../../server/internal/store/store.go#L348)). A replay older than that is still safe for most kinds, because the writes themselves are upserts or skip rows already there. A report is the exception: replayed that late, it would land twice. [store/sync.go:547-551](../../../server/internal/store/sync.go#L547-L551) A prayer with no id of its own takes the op id as its row id, so even that replay lands on the same row. [store/sync.go:455-460](../../../server/internal/store/sync.go#L455-L460)
 
 ### 4. The reader lock keeps the cursor honest
 
@@ -130,16 +130,16 @@ The same lock makes the server-assigned set `ordinal` safe: `MAX(ordinal) + 1` c
 
 | Kind | What it writes | Rule |
 |---|---|---|
-| `ayah_understood` | One row per aya in `ayah_understood` | Each aya id must fold into a sūra from 1 to 114; already-understood ayas are skipped. [L228](../../../server/internal/store/sync.go#L230) |
-| `kept_upsert` | A `kept_items` row | Last write wins on `updated_at`; another reader's item never moves. [L275](../../../server/internal/store/sync.go#L277) |
-| `kept_delete` | Sets `deleted_at` on a `kept_items` row | A tombstone, never a delete. [L299](../../../server/internal/store/sync.go#L301) |
-| `set_prayed` | The set, if the body carries its range, and the prayer | With a range, the set id is recomputed and must match. Either way the set must exist. [L425](../../../server/internal/store/sync.go#L427) |
-| `set_recorded` | A set | Old shape, kept so old phones can drain their queue. [L396](../../../server/internal/store/sync.go#L398) |
-| `prefs_set` | The reader's `user_prefs` | Reading order must be `mushaf` or `nuzul`; last write wins. [L570](../../../server/internal/store/sync.go#L572) |
-| `position_moved` | The reader's `reading_positions` row for that sūra | The word must belong to the sūra; the time must be set and no more than five minutes ahead of the server; last write wins. [L600](../../../server/internal/store/sync.go#L600) |
-| `report_written` | A row in `report_inbox`, with no reader attached | Swept into `reports` later, on a clock. [L493](../../../server/internal/store/sync.go#L495) |
+| `ayah_understood` | One row per aya in `ayah_understood` | Each aya id must fold into a sūra from 1 to 114; already-understood ayas are skipped. [L230](../../../server/internal/store/sync.go#L230) |
+| `kept_upsert` | A `kept_items` row | Last write wins on `updated_at`; another reader's item never moves. [L277](../../../server/internal/store/sync.go#L277) |
+| `kept_delete` | Sets `deleted_at` on a `kept_items` row | A tombstone, never a delete. [L301](../../../server/internal/store/sync.go#L301) |
+| `set_prayed` | The set, if the body carries its range, and the prayer | With a range, the set id is recomputed and must match. Either way the set must exist. [L427](../../../server/internal/store/sync.go#L427) |
+| `set_recorded` | A set | Old shape, kept so old phones can drain their queue. [L398](../../../server/internal/store/sync.go#L398) |
+| `prefs_set` | The reader's `user_prefs` | Reading order must be `mushaf` or `nuzul`; last write wins. [L604](../../../server/internal/store/sync.go#L604) |
+| `position_moved` | The reader's `reading_positions` row for that sūra | The word must belong to the sūra; the time must be set and no more than five minutes ahead of the server; last write wins. [L632](../../../server/internal/store/sync.go#L632) |
+| `report_written` | A row in `report_inbox`, with no reader attached | Swept into `reports` later, on a clock. An over-long `sense_version` or `sense_hash`, or a `locale` other than `en` or `fr`, is blanked, not refused, so the words survive. [L498](../../../server/internal/store/sync.go#L498) |
 
-Every body is decoded strictly. One unknown field refuses the op. [store/sync.go:221-228](../../../server/internal/store/sync.go#L221-L228)
+Every body is decoded strictly. One unknown field refuses the op. [store/sync.go:221-228](../../../server/internal/store/sync.go#L221-L228) So a server has to ship before an app that sends a new key: an older server refuses it, and a refusal is permanent. `locale` and `sense_hash` on `report_written` were added that way ([ADR 0026](../../adr/0026-reports-are-triaged-and-turned-into-issues.md#consequences)).
 
 ```go
 func decode(body json.RawMessage, into any) error {
@@ -183,11 +183,11 @@ flowchart LR
   q --> r["changes + cursor seq:last<br/>+ more if the page is full"]
 ```
 
-The six tables the pull reads each carry a `seq` column fed by one sequence, `change_seq`. Each insert takes the next number, and each update of a kept item, of preferences or of a reading position takes a fresh one. [00003_change_order.sql:11-17](../../../server/migrations/00003_change_order.sql#L11-L17), [store/sync.go:292](../../../server/internal/store/sync.go#L292), [store/sync.go:313](../../../server/internal/store/sync.go#L313), [store/sync.go:588](../../../server/internal/store/sync.go#L588) `root_known` has no `seq` and is not in the stream.
+The six tables the pull reads each carry a `seq` column fed by one sequence, `change_seq`. Each insert takes the next number, and each update of a kept item, of preferences or of a reading position takes a fresh one. [00003_change_order.sql:11-17](../../../server/migrations/00003_change_order.sql#L11-L17), [store/sync.go:292](../../../server/internal/store/sync.go#L292), [store/sync.go:313](../../../server/internal/store/sync.go#L313), [store/sync.go:620](../../../server/internal/store/sync.go#L620) `root_known` has no `seq` and is not in the stream.
 
-The query unions `ayah_understood`, `kept_items`, `sets`, `set_prayers`, `user_prefs` and `reading_positions`, orders by `seq`, and stops at 500 rows. A kept item with `deleted_at` set is sent like any other row: that row is the tombstone. [store/sync.go:656-689](../../../server/internal/store/sync.go#L656-L689)
+The query unions `ayah_understood`, `kept_items`, `sets`, `set_prayers`, `user_prefs` and `reading_positions`, orders by `seq`, and stops at 500 rows. A kept item with `deleted_at` set is sent like any other row: that row is the tombstone. [store/sync.go:688-721](../../../server/internal/store/sync.go#L688-L721)
 
-The cursor is the text `seq:` followed by the last number sent. A cursor without that prefix is refused with a 400 rather than read as some place in the stream. [store/sync.go:736-755](../../../server/internal/store/sync.go#L736-L755)
+The cursor is the text `seq:` followed by the last number sent. A cursor without that prefix is refused with a 400 rather than read as some place in the stream. [store/sync.go:768-787](../../../server/internal/store/sync.go#L768-L787)
 
 ```go
 func parseCursor(cursor string) (int64, error) {
@@ -206,7 +206,7 @@ func parseCursor(cursor string) (int64, error) {
 }
 ```
 
-When a page comes back empty, the cursor the device sent is returned unchanged. `more` is true only when the page is full. [store/sync.go:722-725](../../../server/internal/store/sync.go#L722-L725) The endpoint writes nothing.
+When a page comes back empty, the cursor the device sent is returned unchanged. `more` is true only when the page is full. [store/sync.go:754-757](../../../server/internal/store/sync.go#L754-L757) The endpoint writes nothing.
 
 ### 8. One file both sides answer to
 
