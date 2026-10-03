@@ -282,7 +282,7 @@ Each source has its own terms. They are recorded, with the date they were read, 
 | Recitation audio, not bundled | [The recitation audio](../../../data/SOURCES.md#the-recitation-audio) |
 | Questions still open | [What is still open](../../../data/SOURCES.md#what-is-still-open) |
 
-The morphology's licence is GPL, which is why the whole repository is AGPL-3.0.
+The morphology's licence is GPL, and its authors granted Wird free usage in writing. That grant is why the repository can be MIT.
 
 ## Why it is this way
 

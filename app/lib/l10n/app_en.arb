@@ -1727,7 +1727,7 @@
   "@aboutTermsVoice": {
     "description": "The body of the recogniser card of the sources screen. Its licence requires an app built on it to say that automatic tajwīd feedback can be wrong and does not replace a qualified teacher; keep both in every locale."
   },
-  "aboutSelfTerms": "Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.",
+  "aboutSelfTerms": "Wird is free software under the MIT licence: use it, change it and share it, keeping the copyright notice. The data it carries keeps its own terms, listed below.",
   "@aboutSelfTerms": {
     "description": "The body of the first card of the sources screen, Wird's own terms. The licence title stays in English: it is the licence's own name."
   },

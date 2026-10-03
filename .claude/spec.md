@@ -27,7 +27,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Natural keys: `ayah_id = surah*1000 + ayah`, `word_id = ayah_id*1000 + position`, roots keyed by joined letters (`وصي`, not spaced).
 - `root_notes` ships EMPTY since ADR 0010; senses arrive over HTTP.
 - `surahs.revelation_order` = Egyptian standard chronology.
-- Sources + licences per table: `data/SOURCES.md`. Morphology = Quranic Arabic Corpus (GPL) → why repo is AGPL-3.0. Timings = quran-align (CC BY 4.0), notice in `corpus_meta.notice`; ETL refuses build without it. Gloss/translit = Quran Foundation API; one-week storage rule → unsettled. `words.gloss_fr` = The Last Dialogue pages, written grant 2026-09-30 (ADR 0012); matched by Arabic (LCS), never position; 128 words NULL → app shows `gloss_en`. `irab_roles.role_fr` drawn for French reader.
+- Sources + licences per table: `data/SOURCES.md`. Morphology = Quranic Arabic Corpus (GPL + written grant of free usage). Repo = MIT (was AGPL-3.0). Timings = quran-align (CC BY 4.0), notice in `corpus_meta.notice`; ETL refuses build without it. Gloss/translit/Maash fr = Quran Foundation API; written grant of free use → one-week rule not binding. `words.gloss_fr` = The Last Dialogue pages, written grant 2026-09-30 (ADR 0012); matched by Arabic (LCS), never position; 128 words NULL → app shows `gloss_en`. `irab_roles.role_fr` drawn for French reader.
 - Exactly one agent/lane rebuilds `corpus.db` at a time.
 - ETL: `go run ./server/cmd/etl -in <abs path>/data/raw/ -out <out> -corpus-version N`. `data/raw/` gitignored → worktrees have none; pass absolute path to owner's checkout.
 - ETL hazards: word text + segment timings must come from same segmentation; overlapping segments exist → assert monotonic starts, not non-overlap.
@@ -157,7 +157,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Whisper / multilingual transducer ✗ superseded by ADR 0009.
 - Mirror MP3s to own origin ✗ dropped (licence; fetched from third party).
 - Timings from QUL / quran.com ✗ → quran-align.
-- "Closed app bundle" licensing blocker ✗ → AGPL.
+- "Closed app bundle" licensing blocker ✗ → AGPL → MIT once corpus + QF granted free use.
 - jidhr meanings table in Postgres `jidhr` schema ✗ → server `root_senses` (ADR 0010); rootd reads file.
 - Senses bundled in `corpus.db` ✗ superseded by ADR 0010.
 - Server never assigns `ordinal` ✗ → server assigns; id derived (ADR 0002).

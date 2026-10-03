@@ -49,3 +49,4 @@ flowchart LR
 | [0023-six-reciters-and-a-word-by-word-voice.md](0023-six-reciters-and-a-word-by-word-voice.md) | The reader picks one of six reciters, and can hear each word spoken alone | accepted, amended by 0025 |
 | [0024-the-sura-picker-turns-its-order-and-searches-the-text.md](0024-the-sura-picker-turns-its-order-and-searches-the-text.md) | The sūra picker turns its own order, and searches the text of the Qur'an in memory | accepted |
 | [0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md](0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md) | The reader recites the whole sūra, and streams what is not on disk | accepted |
+| [0026-wird-is-mit-licensed.md](0026-wird-is-mit-licensed.md) | Wird's own code is MIT licensed | accepted |

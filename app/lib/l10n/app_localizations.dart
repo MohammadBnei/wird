@@ -2324,7 +2324,7 @@ abstract class AppLocalizations {
   /// The body of the first card of the sources screen, Wird's own terms. The licence title stays in English: it is the licence's own name.
   ///
   /// In en, this message translates to:
-  /// **'Wird is free software under the GNU Affero General Public License, version 3 or later. AGPL rather than GPL because Wird has a server: anyone running it as a service owes its users the source of what they are running.'**
+  /// **'Wird is free software under the MIT licence: use it, change it and share it, keeping the copyright notice. The data it carries keeps its own terms, listed below.'**
   String get aboutSelfTerms;
 
   /// Screen-reader label of the root sheet's handle while the sūra fills the top half.

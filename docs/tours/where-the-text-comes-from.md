@@ -59,7 +59,7 @@ The app bundles `corpus.db`. On first launch it copies it out once, and from the
 
 ## 7. The licences travel with it
 
-Each source keeps its own terms, recorded with the date they were read. The morphology licence is why the whole repo is AGPL. The app's Sources and licences screen shows the same credits.
+Each source keeps its own terms, recorded with the date they were read. The morphology and Quran Foundation granted Wird free use in writing, which lets the repo be MIT. The app's Sources and licences screen shows the same credits.
 
 → [Corpus: licences](../architecture/pipelines/corpus.md#licences) · [data/SOURCES.md](../../data/SOURCES.md)
 

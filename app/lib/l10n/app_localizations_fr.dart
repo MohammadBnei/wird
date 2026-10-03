@@ -1344,7 +1344,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aboutTermsVoice => 'Le reconnaisseur qui entend votre récitation, téléchargé à votre demande et exécuté sur ce téléphone ; rien de ce que vous dites n’est envoyé ailleurs. Il écrit des phonèmes coraniques, y compris les marques du tajwīd. Wird s’en sert uniquement pour savoir où vous en êtes dans le passage, et jamais pour juger votre récitation : un retour automatique sur le tajwīd peut se tromper, et aucun logiciel, ici ou ailleurs, ne remplace un enseignant qualifié. Sa licence interdit de faire payer le modèle ou toute fonction qu’il alimente, ce que Wird ne fait pas et ne fera pas.';
 
   @override
-  String get aboutSelfTerms => 'Wird est un logiciel libre sous GNU Affero General Public License, version 3 ou ultérieure. L’AGPL plutôt que la GPL, parce que Wird a un serveur : quiconque le fait tourner comme service doit à ses utilisateurs le code source de ce qu’ils utilisent.';
+  String get aboutSelfTerms => 'Wird est un logiciel libre sous licence MIT : utilisez-le, modifiez-le et partagez-le en gardant la mention de copyright. Les données qu’il contient gardent leurs propres conditions, listées ci-dessous.';
 
   @override
   String get study_expandSheet => 'Afficher les nombres, les formes et les autres versets';

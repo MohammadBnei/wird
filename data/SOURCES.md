@@ -73,10 +73,15 @@ Its terms of use, verbatim from <https://corpus.quran.com/download/>:
 | verbatim copies only; changing it is not allowed | The file on disk is upstream's, byte for byte, and its SHA-256 is in `data/manifest.json`. Nothing writes to it: the ETL reads it and derives `corpus.db`, which the terms address separately as a work derived from the file. `ingest` refuses a copy whose copyright block is missing, and names the reason — that check is what stops a fork sliding back in. |
 | source clearly indicated, with a link to corpus.quran.com | The copyright block, both notices in it, travels into the database: `corpus_meta.notice` carries it verbatim, so it ships inside the app rather than living in a repo file no reader ever sees. `roots.sources` names the corpus per row. The ETL refuses to build a database whose notice does not mention the corpus, Kais Dukes and corpus.quran.com. |
 | the notice reproduced in derived works | Same column. The app has to surface it in the about screen too; `corpus_meta.notice` is where it reads it from. |
-| GNU General Public License | **Wird is AGPL-3.0** (repo root `LICENSE`). There is no closed binary to keep copyleft out of, so the question the previous release blocker raised is answered rather than deferred. |
+| GNU General Public License | **Not binding on Wird: the corpus team granted free usage in writing** (below). Wird's own code is MIT. The notice still ships in `corpus_meta.notice`. |
 
-Kais Dukes died in March 2024. The terms are final: there is nobody to ask for
-different ones, and meeting them as written is the whole of the job.
+**Permission.** The corpus team wrote to the project owner by email:
+
+> "we thank you for sharing Islamic knowledge, and hereby grant you free usage of our corpus"
+
+The owner keeps the email. The conditions above are still met, because they
+cost nothing and Wird names every source, but the app's licence no longer
+depends on them.
 
 ### Tanzil is underneath the corpus, not beside it
 
@@ -288,11 +293,11 @@ is given so the reading can be checked rather than believed.
 | --- | --- | --- | --- |
 | `surahs` (incl. `revelation_order`) | `api.quran.com/api/v4/chapters` | [Quran Foundation Developer Terms](https://api-docs.quran.foundation/legal/developer-terms/) §2.2, §3.1 | **Yes, conditionally** — see *The one-week rule* |
 | `ayahs.text_uthmani`, `words.text_ar` | `api.quran.com/api/v4/verses/by_chapter`; the text is [Tanzil](https://tanzil.net/download/)'s, which quran.com credits | Tanzil: verbatim copies, attribution, a link to tanzil.net. Delivery is governed by the QF terms | **Yes** for the text, unmodified and attributed; the delivery path carries the QF conditions |
-| `words.gloss_en`, `words.translit` | same endpoint | QF terms treat it as QF Content; **no upstream author is named anywhere I could find** | **Could not determine** — conditionally yes under the QF terms, with an unnamed source underneath |
+| `words.gloss_en`, `words.translit` | same endpoint | QF terms treat it as QF Content; **no upstream author is named anywhere I could find** | **Yes, by permission** — see *Quran Foundation's grant* |
 | `words.gloss_fr` | [The Last Dialogue, "Coran Mot à Mot"](https://www.thelastdialogue.org/coran-mot-a-mot-francais/), the sura pages saved by `ingest` | "© 2026 All Rights Reserved", and a written grant to Wird dated 2026-09-30, attribution not required | **Yes, by permission** — see *French word glosses* |
-| `ayah_translations`, `lang = 'fr'` | `api.quran.com/api/v4/verses/by_chapter`, `translations=779` — Rashid Maash's French, arriving in the same response as the Arabic and keyed by verse | QF terms treat it as QF Content, and the translator is named where the word gloss's author is not | **Could not determine** — the same unresolved term as the row above, now carrying prose somebody is credited for |
+| `ayah_translations`, `lang = 'fr'` | `api.quran.com/api/v4/verses/by_chapter`, `translations=779` — Rashid Maash's French, arriving in the same response as the Arabic and keyed by verse | QF terms treat it as QF Content, and the translator is named where the word gloss's author is not | **Yes, by permission** — see *Quran Foundation's grant* |
 | `ayah_translations`, `lang = 'en'` | the same response, resource 19 — Marmaduke Pickthall's English, 1930 | Public domain by age: life plus 70 years since 2007, and in the US since 2026-01-01. Delivery is governed by the QF terms | **Yes** for the text; the delivery path carries the QF conditions — see *English reaches a reader* |
-| `words.root_letters`, `words.form`, `words.morphology`, `roots` | [Quranic Arabic Corpus 0.4](https://corpus.quran.com/download/), the upstream file, placed by hand | GPL, verbatim copies only, attribution and a link; Tanzil underneath it | **Yes** — Wird is AGPL-3.0 and the notice ships in `corpus_meta.notice`; see above |
+| `words.root_letters`, `words.form`, `words.morphology`, `roots` | [Quranic Arabic Corpus 0.4](https://corpus.quran.com/download/), the upstream file, placed by hand | GPL, verbatim copies only, attribution and a link; Tanzil underneath it; and a written grant of free usage | **Yes, by permission** — the notice still ships in `corpus_meta.notice`; see above |
 | `irab` | the same file, one row per segment rather than one per word | as above — it is upstream's own tags and features, rearranged and not edited | **Yes**, under the same row above |
 | `irab_roles` | **written here.** A translation of the annotation vocabulary the file uses; the names themselves are documented only on [corpus.quran.com](https://corpus.quran.com/documentation/) | a derivative of Dukes's annotation, so the GPL row above governs it; the French has no upstream at all | **Yes** — see *The parsing* |
 | `word_segments` | [`cpfair/quran-align`](https://github.com/cpfair/quran-align), release `release-2016-11-24`, six of its twelve files: `Husary_Muallim_128kbps`, `Husary_64kbps`, `Alafasy_128kbps`, `Abdul_Basit_Murattal_64kbps`, `Abu_Bakr_Ash-Shaatree_128kbps`, `Hani_Rifai_192kbps` | **CC BY 4.0** — attribution, and nothing else | **Yes** — see *The word timings* |
@@ -331,6 +336,18 @@ against.
 
 The timings are no longer on this rule. They come from quran-align now, under a
 licence that grants bundling outright.
+
+### Quran Foundation's grant
+
+The rule above no longer binds the bundled rows. Quran Foundation wrote to the
+project owner by email:
+
+> "since data is common knowledge, from 10 centuries ago, you have free right on it"
+
+The owner keeps the email. It covers what `corpus.db` takes from the QF API:
+the surah metadata, the verse text, `words.gloss_en`, `words.translit` and the
+Rashid Maash French translation. No weekly sync is needed. Credit to Quran
+Foundation stays in the app, because Wird names every source.
 
 ## The word timings: cpfair/quran-align
 
@@ -708,13 +725,11 @@ Lane's هيت. Resolve headwords, not division keys.
 
 ## What is still open
 
-1. Who wrote the word-by-word English gloss and transliteration served by
-   quran.com. Nothing on [quran.com/about-us](https://quran.com/about-us) or in
-   the API documentation names an author, and the QF terms defer to "any
-   source-specific license requirements" without saying which. Someone has to ask.
-2. Whether the app takes on a seven-day content sync, or moves the text to Tanzil.
-   The timings half of this question is answered: they come from quran-align and
-   carry their own grant.
+1. Answered: Quran Foundation granted free use of the word-by-word English
+   gloss, the transliteration and the French translation (see *Quran
+   Foundation's grant*).
+2. Answered by the same grant: no seven-day content sync, and the text stays
+   where it is.
 3. Whether Wird registers a Quran Foundation Developer Console account and takes
    the Content Sync route for the audio. It is the only ayah-audio permission in
    this space that is written down, and it costs a permanent seven-day re-sync
