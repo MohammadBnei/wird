@@ -816,10 +816,11 @@ Future<void> setPlaybackKnob(Database db, Enum value) async {
     HearWhileReciting() => 'hear_while_reciting',
     _ => throw ArgumentError.value(value, 'value', 'not a playback knob'),
   };
-  await db.insert('playback_pref', {
-    'id': 1,
-  }, conflictAlgorithm: ConflictAlgorithm.ignore);
-  await db.update('playback_pref', {column: value.name}, where: 'id = 1');
+  await db.rawInsert(
+    'INSERT INTO playback_pref (id, $column) VALUES (1, ?) '
+    'ON CONFLICT (id) DO UPDATE SET $column = excluded.$column',
+    [value.name],
+  );
 }
 
 Future<void> setAudioPref(

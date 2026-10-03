@@ -838,7 +838,11 @@ void main() {
 
       expect(audio.paused, isTrue);
       expect(audio.playing.value, isFalse);
-      expect(audio.currentWordId.value, isNull);
+      expect(
+        audio.currentWordId.value,
+        placed!.wordId,
+        reason: 'the word play carries on from is lit',
+      );
       unawaited(audio.toggle());
       await pumpEventQueue();
       expect(players.only.loaded.last, isNot(contains('096001')));
@@ -1027,6 +1031,85 @@ void main() {
       expect(recitation.playing.value, isTrue);
       expect(recitation.sounding.value?.what, Sounded.set);
       expect(recitation.sounding.value?.label, 'Al-ʿAlaq 1–5');
+      await recitation.stop();
+    });
+
+    test('a word heard after a pause and a resume sends play back to where '
+        'the reader paused, not where the recitation had got to', () async {
+      final audio = await recitingAt96002();
+      await audio.toggle();
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      final later = tracks[2].segments.lastWhere((s) => s.startMs < 2500);
+      players.only.reach(Duration(milliseconds: later.startMs + 40), index: 2);
+      await Future<void>.delayed(highlightPeriod * 3);
+      await hear(audio, 96001001);
+
+      unawaited(audio.toggle());
+      await pumpEventQueue();
+      expect(players.only.loaded.last, isNot(contains('096002')));
+      expect(players.only.starts.last, clipStart(later.startMs));
+    });
+
+    test('a word heard while paused leaves the screen without the word play '
+        'will carry on from', () async {
+      final audio = await recitingAt96002();
+      await audio.toggle();
+      await hear(audio, 96004001);
+
+      expect(audio.currentWordId.value, placed!.wordId);
+    });
+
+    test(
+      'a reader who asked the recitation to carry on after a heard word '
+      'has it start again by itself after hearing a word while paused',
+      () async {
+        final recitation = Recitation(
+          cache: await cacheHolding(firstSet),
+          tuning: ValueNotifier((
+            open: buildTuning.open,
+            hear: HearWhileReciting.resume,
+          )),
+        );
+        await recitation.carry(tracks, title: 'Al-ʿAlaq 1–5');
+        unawaited(recitation.playFrom(null));
+        await pumpEventQueue();
+        await recitation.toggle();
+        final heard = recitation.playWord(96004001, label: 'word');
+        await pumpEventQueue();
+        players.only.finish();
+        await heard;
+        await pumpEventQueue();
+
+        expect(recitation.playing.value, isFalse);
+        expect(recitation.paused, isTrue);
+        await recitation.stop();
+      },
+    );
+
+    test('a word with nothing to play, after a word the recitation carried on '
+        'from, pauses the recitation and drops its bar', () async {
+      final recitation = Recitation(
+        cache: await cacheHolding(firstSet),
+        tuning: ValueNotifier((
+          open: buildTuning.open,
+          hear: HearWhileReciting.resume,
+        )),
+      );
+      await recitation.carry(tracks, title: 'Al-ʿAlaq 1–5');
+      unawaited(recitation.playFrom(null));
+      await pumpEventQueue();
+      final heard = recitation.playWord(96002001, label: 'word');
+      await pumpEventQueue();
+      players.only.finish();
+      await heard;
+      await pumpEventQueue();
+      expect(recitation.playing.value, isTrue);
+
+      expect(await recitation.playWord(1001001, label: 'none'), isFalse);
+      await pumpEventQueue();
+      expect(recitation.playing.value, isTrue);
+      expect(recitation.sounding.value?.what, Sounded.set);
       await recitation.stop();
     });
 

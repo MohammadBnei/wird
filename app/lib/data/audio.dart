@@ -531,9 +531,20 @@ class SetAudio {
   var _setLoaded = false;
 
   /// Whether the word that just ended was heard over a recitation the reader
-  /// asked to carry on afterwards ([HearWhileReciting.resume]).
-  bool get resumeAfterWord => _resumeAfterWord;
+  /// asked to carry on afterwards ([HearWhileReciting.resume]). Answers once:
+  /// asking clears it.
+  bool takeResumeAfterWord() {
+    final take = _resumeAfterWord;
+    _resumeAfterWord = false;
+    return take;
+  }
+
   var _resumeAfterWord = false;
+
+  /// The hold a word heard over the recitation took. Only that word carries
+  /// the recitation on when it ends; a word heard while the reader had
+  /// paused leaves the pause alone.
+  Held? _wordHeld;
 
   /// There is a recitation to play. Whatever is not on disk is fetched by the
   /// player as it plays, so this no longer waits on a download.
@@ -573,10 +584,12 @@ class SetAudio {
       case Held() when _setLoaded && _setTurn == _turn && player != null:
         _resume = null;
         // A turn of its own: the paused playback's play() may answer after
-        // this one starts, and must not settle the transport under it.
-        await _run(_setTurn = _take(), (player, attempt) async {
+        // this one starts, and must not settle the transport under it. The
+        // player still holds the set, so its positions move the place.
+        final turn = _setTurn = _placeTurn = _take();
+        await _run(turn, (player, _) async {
           playing.value = true;
-          await attempt.play(player);
+          await player.play();
         });
       case Held(:final place):
         await _recite(place.first, place.count, place.at);
@@ -637,7 +650,7 @@ class SetAudio {
     _place = (first: first, count: count, at: at ?? Duration.zero);
     final turn = _setTurn = _take();
     final paths = _paths(_place!);
-    return _run(turn, (player, attempt) async {
+    return _run(turn, (player, _) async {
       // A player that reached the end of an aya still reports itself playing,
       // and its next play() answers at once: the aya tapped "again" would
       // sound with the bar and the highlight already gone. playWord pauses
@@ -654,7 +667,7 @@ class SetAudio {
       _setLoaded = true;
       cache.hold(paths);
       playing.value = true;
-      await attempt.play(player);
+      await player.play();
     });
   }
 
@@ -686,9 +699,10 @@ class SetAudio {
     final player = _player ??= AudioPlayer();
     final attempt = _Attempt();
     final errors = player.errorStream.listen((_) {
-      // A source that fails to load throws out of the load as well; only
-      // an error once it plays has to end the wait here.
-      if (!attempt.started) return;
+      // A word's own file that fails to load throws out of the load, and
+      // the reciter's stretch is tried instead; that is not this playback
+      // failing.
+      if (attempt.loadingWord) return;
       attempt.failed = true;
       if (turn == _turn) unawaited(player.pause().catchError((_) {}));
     });
@@ -712,13 +726,14 @@ class SetAudio {
     _resumeAfterWord =
         word &&
         ended &&
-        _resume is Held &&
+        _wordHeld != null &&
+        identical(_resume, _wordHeld) &&
         tuning.value.hear == HearWhileReciting.resume;
     switch (_resume) {
       case Held(:final place):
-        // A paused recitation keeps its word lit; a word heard over it does
-        // not leave itself lit.
-        if (word) currentWordId.value = null;
+        // The word play carries on from is lit, whether the reader paused
+        // there or a word heard over the recitation stopped it there.
+        if (word) currentWordId.value = _heldWord(place);
         cache.hold(_paths(place));
       case Touched():
         if (word) currentWordId.value = null;
@@ -730,6 +745,13 @@ class SetAudio {
         if (!word) _place = null;
     }
   }
+
+  /// The word [place] resumes on: its clip opens one frame before it.
+  int? _heldWord(Place place) => wordAt(
+    tracks,
+    place.first,
+    (place.at + seekCalibration).inMilliseconds,
+  );
 
   /// Ends whatever is sounding or paused, so the next press starts the sūra
   /// again from its start.
@@ -790,14 +812,14 @@ class SetAudio {
   /// keeps a superseded word, and the set's own position stream, from writing
   /// over the word that superseded them.
   Future<bool> playWord(int wordId) async {
+    _resumeAfterWord = false;
     final alone = _alone(wordId);
     final at = locate(tracks, wordId);
     if (alone == null && at == null) return false;
     final hold = _reciting && tuning.value.hear != HearWhileReciting.cut;
     final turn = _take();
-    if (hold) _resume = Held(_place!);
+    if (hold) _resume = _wordHeld = Held(_place!);
     _setLoaded = false;
-    _resumeAfterWord = false;
     return _run(turn, word: true, (player, attempt) async {
       await player.pause();
       Future<void> load(String path, WordSpan? clip) async {
@@ -814,17 +836,20 @@ class SetAudio {
 
       var path = alone ?? at!.track.relPath;
       try {
+        attempt.loadingWord = alone != null && at != null;
         await load(path, alone == null ? at!.span : null);
       } on Exception {
         if (alone == null || at == null || turn != _turn) rethrow;
         path = at.track.relPath;
         await load(path, at.span);
+      } finally {
+        attempt.loadingWord = false;
       }
       if (turn != _turn) return;
       cache.hold([path, if (_resume case Held(:final place)) ..._paths(place)]);
       currentWordId.value = wordId;
       playing.value = true;
-      await attempt.play(player);
+      await player.play();
     });
   }
 
@@ -877,19 +902,14 @@ class SetAudio {
   }
 }
 
-/// One playback's view of its own failure. Only an error once it plays
-/// counts: a source that fails to load throws out of the load, and a word
-/// that falls back to the reciter after its own file failed has not failed.
+/// One playback's view of its own failure. A word that falls back to the
+/// reciter after its own file failed has not failed, so errors while that
+/// file loads do not count.
 ///
-/// ponytail: the platform's report of a failed load can arrive after the
-/// fallback has started playing, and would then count. Tag errors with
-/// their source if a fallback is ever heard to stop at once.
+/// ponytail: the platform's report of the failed load can arrive after the
+/// fallback has started, and would then count. Tag errors with their source
+/// if a fallback is ever heard to stop at once.
 class _Attempt {
   var failed = false;
-  var started = false;
-
-  Future<void> play(AudioPlayer player) {
-    started = true;
-    return player.play();
-  }
+  var loadingWord = false;
 }

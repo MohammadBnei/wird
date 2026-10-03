@@ -189,7 +189,7 @@ class Recitation {
       (set) => set.playWord(wordId),
     );
     // Not awaited: the recitation answers when the sūra ends.
-    if (set != null && identical(_set, set) && set.resumeAfterWord) {
+    if (set != null && identical(_set, set) && set.takeResumeAfterWord()) {
       unawaited(toggle());
     }
     return heard;
@@ -277,8 +277,13 @@ class Recitation {
     final played = await run(set);
     if (identical(_set, set) && probe == _probe) {
       // A word heard over a recitation hands the bar back to it, so the
-      // reader can carry on from the bar on any screen.
-      sounding.value = set.paused ? _resumeBar(set) : null;
+      // reader can carry on from the bar on any screen; a word that never
+      // took the player leaves the recitation still sounding under its own.
+      sounding.value = set.paused
+          ? _resumeBar(set)
+          : set.playing.value
+          ? _recital
+          : null;
     }
     return played;
   }

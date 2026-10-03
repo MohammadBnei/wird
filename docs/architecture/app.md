@@ -160,7 +160,7 @@ Every screen is registered by name in one map. The drawer lists the destinations
 
 ### 5. A prayer is prepared, then recorded on the way back from it
 
-A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:453](../../app/lib/app.dart#L453-L457)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
+A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:453](../../app/lib/app.dart#L540-L544)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
 
 ```mermaid
 sequenceDiagram
