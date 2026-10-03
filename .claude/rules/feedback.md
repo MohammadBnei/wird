@@ -17,11 +17,11 @@ Authentik service account in `platform-admins`, client-credentials grant, fresh 
 ```sh
 TOKEN=$(curl -s https://authentik.bnei.dev/application/o/token/ \
   -d grant_type=client_credentials -d client_id="$WIRD_ADMIN_CLIENT_ID" \
-  -d username="$WIRD_ADMIN_SA" -d password="$WIRD_ADMIN_SA_TOKEN" -d scope='openid profile' \
-  | jq -r .id_token)
+  -d username=wird-agent -d password="$WIRD_AGENT_AUTHENTIK_TOKEN" -d scope='openid profile' \
+  | jq -r .access_token)
 ```
-- `WIRD_ADMIN_CLIENT_ID` = wird-admin proxy provider's generated id, from Infisical (same value as `OIDC_CLIENT_ID` in `wird-admin-config`). Never hardcode: authentik regenerates it on provider recreation. `id_token` carries its `aud` + `groups` (stock `profile` mapping).
-- SA token: user collects from Infisical. Never ask it pasted into chat; read from env.
+- `WIRD_ADMIN_CLIENT_ID` = wird-admin proxy provider's generated id, from Infisical (same value as `OIDC_CLIENT_ID` in `wird-admin-config`). Never hardcode: authentik regenerates it on provider recreation. `access_token` = HS256, carries `aud` + `groups` (stock `profile` mapping). Verified end to end: `/reports.json` → 200 (infra-bootstrap#268).
+- `wird-agent` = service account in `platform-admins`. `WIRD_AGENT_AUTHENTIK_TOKEN` = its app-password token, Infisical. User exports it; never ask it pasted into chat.
 - Env vars from user. Missing → ask, never guess. Local: oidc-stub token, adminweb `:8081`.
 - `WIRD_ADMIN_URL` = `https://wird-admin.bnei.dev`.
 
