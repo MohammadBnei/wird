@@ -466,4 +466,37 @@ void main() {
       expect(litWord(tester), 103001001);
     });
   });
+
+  testWidgets('deep inside a long aya at a large size the recited word runs '
+      'off the field, because the screen no longer follows it', (
+    tester,
+  ) async {
+    final debt = await setOf(db, [2282]);
+    final words = debt.ayas.single.words;
+    await pumpPrayer(
+      tester,
+      db: db,
+      set: debt,
+      wakelock: Phone().keepAwake,
+      // Neither voice nor pace: a tap steps one word.
+      prefs: (
+        preset: null,
+        rakahs: 1,
+        voice: false,
+        pace: false,
+        wpm: 40,
+        gloss: true,
+        around: true,
+        arabicSize: 80.0,
+      ),
+      cursor: PrayerCursor(words.length, at: 100),
+    );
+
+    await tapOn(tester, PrayerScreen.nextZone);
+    final lit = words[101].id;
+    expect(litWord(tester), lit);
+    final top = tester.getTopLeft(find.byKey(WordKey(lit))).dy;
+    expect(top, greaterThan(0));
+    expect(top, lessThan(874 * 0.75), reason: 'the word is below the field');
+  });
 }

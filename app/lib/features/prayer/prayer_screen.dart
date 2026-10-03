@@ -161,6 +161,12 @@ class _PrayerScreenState extends State<PrayerScreen> {
   /// out, and the two would share a key.
   var _turnId = 0;
 
+  /// The key on the lit word, one object per word for this turn. A
+  /// [GlobalObjectKey] matches by identity, so a key built again from the same
+  /// ids is a different key and finds nothing.
+  final _litKeys = <int, GlobalKey>{};
+  GlobalKey _litKey(int wordId) => _litKeys.putIfAbsent(wordId, GlobalKey.new);
+
   /// Whether the move now arriving is the reader's own hand.
   var _theirHand = false;
 
@@ -441,10 +447,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Keyed by the word's own id rather than one key for whichever word is
       // lit: while an aya turns, the one leaving is still in the tree, lit.
-      final lit = GlobalObjectKey((
-        _turnId,
-        _flat[_cursor.at].word.id,
-      )).currentContext;
+      final lit = _litKey(_flat[_cursor.at].word.id).currentContext;
       if (lit == null || !mounted) return;
       unawaited(
         Scrollable.ensureVisible(
@@ -500,7 +503,12 @@ class _PrayerScreenState extends State<PrayerScreen> {
     final drawn = _drawn;
     if (drawn != (_r, at)) {
       _flow = drawn == null || drawn.$1 != _r ? 0 : (at - drawn.$2).sign;
-      if (drawn != null) _turnId++;
+      if (drawn != null) {
+        _turnId++;
+        // The aya leaving keeps the keys it was built with; the one arriving
+        // gets new ones, so the two never share a key.
+        _litKeys.clear();
+      }
       _drawn = (_r, at);
     }
     return Scaffold(
@@ -895,9 +903,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
     children: [
       for (final word in here.aya.words)
         KeyedSubtree(
-          key: word.id == here.word.id
-              ? GlobalObjectKey((_turnId, word.id))
-              : null,
+          key: word.id == here.word.id ? _litKey(word.id) : null,
           child: Text(
             word.text,
             key: WordKey(word.id),
