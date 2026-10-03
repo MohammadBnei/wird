@@ -20,7 +20,7 @@ TOKEN=$(curl -s https://authentik.bnei.dev/application/o/token/ \
   -d username="$WIRD_ADMIN_SA" -d password="$WIRD_ADMIN_SA_TOKEN" -d scope='openid profile' \
   | jq -r .id_token)
 ```
-- `WIRD_ADMIN_CLIENT_ID` = `5gOqSotRlzaM2moPIvlRiS6UQNqBJHnysQ0wKqhR` (wird-admin proxy provider, infra-bootstrap#267). `id_token` carries its `aud` + `groups` (stock `profile` mapping).
+- `WIRD_ADMIN_CLIENT_ID` = wird-admin proxy provider's generated id, from Infisical (same value as `OIDC_CLIENT_ID` in `wird-admin-config`). Never hardcode: authentik regenerates it on provider recreation. `id_token` carries its `aud` + `groups` (stock `profile` mapping).
 - SA token: user collects from Infisical. Never ask it pasted into chat; read from env.
 - Env vars from user. Missing → ask, never guess. Local: oidc-stub token, adminweb `:8081`.
 - `WIRD_ADMIN_URL` = `https://wird-admin.bnei.dev`.
