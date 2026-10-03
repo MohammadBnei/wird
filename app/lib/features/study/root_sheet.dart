@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../data/auth.dart';
 import '../../data/root_repo.dart';
 import '../../data/sets.dart';
 import '../../l10n/app_localizations.dart';
@@ -700,6 +701,11 @@ class _JudgeSenseState extends State<JudgeSense> {
   /// Null until the device has said whether this sentence was judged before,
   /// so a judged root does not flash its thumbs on the way to the thanks.
   bool? _answered;
+
+  /// Read right after a verdict is queued: a signed-out reader's verdict waits
+  /// for a sign-in, and the thanks says so. A recalled verdict may already have
+  /// been sent before a sign-out, so it gets the plain thanks.
+  bool _signedOut = false;
   bool _sending = false;
   bool _failed = false;
 
@@ -753,7 +759,12 @@ class _JudgeSenseState extends State<JudgeSense> {
       // with nothing on it.
       judged = false;
     }
-    if (_stillShowing(sentence)) setState(() => _answered = judged);
+    if (_stillShowing(sentence)) {
+      setState(() {
+        _answered = judged;
+        _signedOut = false;
+      });
+    }
   }
 
   Future<void> _say(bool good) async {
@@ -765,6 +776,7 @@ class _JudgeSenseState extends State<JudgeSense> {
       _failed = false;
     });
     var answered = false;
+    var signedOut = false;
     try {
       await judgeSense(
         widget.db,
@@ -778,6 +790,7 @@ class _JudgeSenseState extends State<JudgeSense> {
         ),
       );
       answered = true;
+      signedOut = await nobodySignedIn(widget.db);
     } on Object {
       answered = false;
     }
@@ -787,6 +800,7 @@ class _JudgeSenseState extends State<JudgeSense> {
     setState(() {
       _sending = false;
       _answered = answered;
+      _signedOut = signedOut;
       _failed = !answered;
     });
   }
@@ -801,7 +815,7 @@ class _JudgeSenseState extends State<JudgeSense> {
     }
     if (answered) {
       return Text(
-        l.root_senseJudgeThanks,
+        _signedOut ? l.root_senseJudgeThanksSignedOut : l.root_senseJudgeThanks,
         style: TextStyle(fontSize: 10.5, color: n.textAt(0.45)),
       );
     }

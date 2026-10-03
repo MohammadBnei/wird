@@ -539,3 +539,16 @@ String _randomToken() => base64UrlEncode([
 String _challenge(String verifier) =>
     base64UrlEncode(sha256.convert(ascii.encode(verifier)).bytes)
         .replaceAll('=', '');
+
+/// Whether nobody is signed in, so what the reader just queued waits for a
+/// sign-in before the flush can send it.
+///
+/// A read that fails answers no: the reader then sees the ordinary "next sync"
+/// line, which is the one that was always shown.
+Future<bool> nobodySignedIn(Database db) async {
+  try {
+    return await Account(db).current() == null;
+  } on Object {
+    return false;
+  }
+}

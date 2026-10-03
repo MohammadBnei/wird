@@ -286,7 +286,7 @@ The procedure lives with the agent's own instructions, in [`.claude/rules/feedba
 
 For senses, it acts only on `bad_on_current`, and proposes a redraft of those roots through the [senses pipeline](pipelines/senses.md).
 
-The reader is told this before sending. The report screen's caption says that maintainers read a report and may summarise it, never quote it, in Wird's public issue tracker ([report_screen.dart:127-130](../../app/lib/features/report/report_screen.dart#L127-L130)).
+The reader is told this before sending. The report screen's caption says that maintainers read a report and may summarise it, never quote it, in Wird's public issue tracker ([report_screen.dart:134-137](../../app/lib/features/report/report_screen.dart#L134-L137)).
 
 ### 9. Totals only, by construction
 
