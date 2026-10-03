@@ -84,4 +84,22 @@ void main() {
       scrolled,
     );
   });
+
+  testWidgets("a drag up on the sheet's handle does nothing, so the counts "
+      'and other ayas open only to a tap', (tester) async {
+    await openStudy(tester);
+    expect(find.byKey(const Key('open aya')), findsNothing);
+
+    await tester.drag(sheetHandle(), const Offset(0, -200));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('open aya')), findsOneWidget);
+    await tester.drag(sheetHandle(), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('open aya')),
+      findsOneWidget,
+      reason: 'a second drag up keeps it open rather than toggling it shut',
+    );
+  });
 }

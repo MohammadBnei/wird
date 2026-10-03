@@ -590,6 +590,9 @@ class _StudyScreenState extends State<StudyScreen> {
       previous: _peekAt(sheet.word.id, -1),
       next: _peekAt(sheet.word.id, 1),
       onToggle: () => _setExpanded(!_expanded),
+      onExpand: () {
+        if (!_expanded) _setExpanded(true);
+      },
       onRoot: (letters) => _visit(Routes.root, letters),
       onJudge: _judgeSense,
       onConstellation: (ayahId, letters) =>

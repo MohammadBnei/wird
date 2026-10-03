@@ -48,6 +48,7 @@ class RootSheet extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onToggle,
+    this.onExpand,
     required this.onAya,
     required this.scroll,
     required this.onRoot,
@@ -83,6 +84,10 @@ class RootSheet extends StatelessWidget {
   final Future<void> Function()? onNext;
 
   final VoidCallback onToggle;
+
+  /// Opens the lower half, and does nothing if it is open: a drag up on the
+  /// handle asks for it on every move.
+  final VoidCallback? onExpand;
   final void Function(RootAya aya) onAya;
 
   /// The sheet's own scroll, which the screen puts back at the top when the
@@ -226,12 +231,18 @@ class RootSheet extends StatelessWidget {
       key: const Key('sheet handle'),
       behavior: HitTestBehavior.opaque,
       onTap: hidden ? () => onHidden?.call(false) : onToggle,
-      // Past the drag slop, the direction alone says what the reader meant.
+      // Past the drag slop, the direction alone says what the reader meant:
+      // down folds the sheet away, up brings it back and then opens its
+      // lower half, so one long drag up from a folded sheet opens it whole.
       onVerticalDragUpdate: onHidden == null
           ? null
           : (drag) {
               final dy = drag.primaryDelta ?? 0;
-              if (dy != 0) onHidden!(dy > 0);
+              if (dy > 0) {
+                onHidden!(true);
+              } else if (dy < 0) {
+                hidden ? onHidden!(false) : onExpand?.call();
+              }
             },
       // A faint mark with room around it to tap and to drag.
       child: Padding(
