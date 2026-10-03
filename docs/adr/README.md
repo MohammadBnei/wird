@@ -19,6 +19,8 @@ flowchart LR
   A18[0018 public page in the API] -. amends .-> A5d
   A23[0023 six reciters, word-by-word voice] -. amends .-> A1
   A25[0025 whole-sūra recitation, streamed] -. amends .-> A23
+  A22 -. extended by .-> A27[0027 Play and App Store beside the APK]
+  A26[0026 MIT licence]
 ```
 
 | File | Decision | Status |
@@ -50,3 +52,4 @@ flowchart LR
 | [0024-the-sura-picker-turns-its-order-and-searches-the-text.md](0024-the-sura-picker-turns-its-order-and-searches-the-text.md) | The sūra picker turns its own order, and searches the text of the Qur'an in memory | accepted |
 | [0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md](0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md) | The reader recites the whole sūra, and streams what is not on disk | accepted |
 | [0026-wird-is-mit-licensed.md](0026-wird-is-mit-licensed.md) | Wird's own code is MIT licensed | accepted |
+| [0027-wird-ships-through-play-and-the-app-store-beside-the-apk.md](0027-wird-ships-through-play-and-the-app-store-beside-the-apk.md) | Wird ships through Google Play and the App Store, beside the APK | accepted |

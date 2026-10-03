@@ -1,6 +1,6 @@
 # Releasing the APK
 
-A release is one button. It checks the app, raises the version, tags it, and builds and publishes a signed Android APK at `https://wird.bnei.dev/download/android`, the link behind the public page's Download button. Nobody edits a version or types a tag. iOS is not built in CI; [ADR 0019](../adr/0019-the-apk-is-built-on-a-tag-and-published-by-ci.md) records why, and [ADR 0022](../adr/0022-a-release-is-cut-by-one-button-from-the-pubspec.md) records the button.
+A release is one button. It checks the app, raises the version, tags it, and builds and publishes a signed Android APK at `https://wird.bnei.dev/download/android`, the link behind the public page's Download button. Nobody edits a version or types a tag. [ADR 0019](../adr/0019-the-apk-is-built-on-a-tag-and-published-by-ci.md) records the APK, and [ADR 0022](../adr/0022-a-release-is-cut-by-one-button-from-the-pubspec.md) records the button. The same button also feeds Google Play and TestFlight once they are switched on: see [releasing to the stores](releasing-to-stores.md).
 
 ```mermaid
 sequenceDiagram
