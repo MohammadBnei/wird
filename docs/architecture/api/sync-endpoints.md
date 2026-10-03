@@ -104,7 +104,7 @@ The transaction only commits when the op was `applied`. So the `op_log` row and 
 
 ### 3. Idempotence: the op log
 
-`op_log` has the key `(user_id, client_op_id)`. Inserting an id that is already there does nothing, and that is how a replay is spotted. [00001_user_state.sql:71-76](../../../server/migrations/00001_user_state.sql#L71-L76), [store.go:337-345](../../../server/internal/store/store.go#L371-L379)
+`op_log` has the key `(user_id, client_op_id)`. Inserting an id that is already there does nothing, and that is how a replay is spotted. [00001_user_state.sql:71-76](../../../server/migrations/00001_user_state.sql#L71-L76), [store.go:337-345](../../../server/internal/store/store.go#L398-L406)
 
 ```go
 	tag, err := q.Exec(ctx, `
@@ -116,7 +116,7 @@ The transaction only commits when the op was `applied`. So the `op_log` row and 
 	return tag.RowsAffected() == 1, nil
 ```
 
-The API prunes op log rows older than 90 days ([store.go:348](../../../server/internal/store/store.go#L382)). A replay older than that is still safe for most kinds, because the writes themselves are upserts or skip rows already there. A report is the exception: replayed that late, it would land twice. [store/sync.go:527-530](../../../server/internal/store/sync.go#L527-L530) A prayer with no id of its own takes the op id as its row id, so even that replay lands on the same row. [store/sync.go:455-460](../../../server/internal/store/sync.go#L455-L460)
+The API prunes op log rows older than 90 days ([store.go:348](../../../server/internal/store/store.go#L409)). A replay older than that is still safe for most kinds, because the writes themselves are upserts or skip rows already there. A report is the exception: replayed that late, it would land twice. [store/sync.go:527-530](../../../server/internal/store/sync.go#L527-L530) A prayer with no id of its own takes the op id as its row id, so even that replay lands on the same row. [store/sync.go:455-460](../../../server/internal/store/sync.go#L455-L460)
 
 ### 4. The reader lock keeps the cursor honest
 

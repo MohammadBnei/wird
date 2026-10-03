@@ -187,22 +187,16 @@ The middleware wraps the whole `v1` mux, which answers every path the open route
 			httpx.Error(w, http.StatusUnauthorized, "token rejected")
 			return
 		}
-		if refused, err := a.signedInBeforeDeletion(r.Context(), token); err != nil {
-			a.log.Error("deletion lookup", "err", err)
-			httpx.Error(w, http.StatusInternalServerError, "unavailable")
-			return
-		} else if refused {
-			httpx.Error(w, http.StatusUnauthorized, "token rejected")
-			return
-		}
-		user, err := a.users.EnsureUser(r.Context(), token.Subject)
+		user, err := a.users.ReaderFor(r.Context(), token.Subject, signedIn(token))
 ```
 
-[auth.go:52-70](../../../server/internal/auth/auth.go#L52-L70)
+[auth.go:53-63](../../../server/internal/auth/auth.go#L53-L63)
 
-`EnsureUser` finds the reader by subject, or creates one on first contact ([store.go:74](../../../server/internal/store/store.go#L74)). Handlers read the reader back with `auth.User` ([auth.go:111-114](../../../server/internal/auth/auth.go#L111-L114)).
+`ReaderFor` finds the reader by subject, or creates one on first contact, and handlers read it back with `auth.User` ([store.go:100](../../../server/internal/store/store.go#L100), [auth.go:108](../../../server/internal/auth/auth.go#L108)).
 
-Between the two sits the deletion check. `DELETE /v1/me` removes the reader (every owned row cascades) and records the moment in `deleted_readers`, under a SHA-256 of the subject ([store.go:88](../../../server/internal/store/store.go#L88)). Without it, the next request from any phone still holding a token would mint the reader again and its outbox would refill the account. So a deleted subject's token passes only if its `auth_time` is after the deletion. The check uses `auth_time`, not `iat`, because a refresh mints a new `iat` and keeps `auth_time`. A token with no `auth_time` is refused. The app asks for `prompt=login`, so signing in again after a deletion carries a fresh `auth_time` and starts an empty account ([auth.go:80-98](../../../server/internal/auth/auth.go#L80-L98)).
+It also refuses an account that was deleted. `DELETE /v1/me` removes the reader (every owned row cascades) and records the moment in `deleted_readers`, under a SHA-256 of the subject ([store.go:130](../../../server/internal/store/store.go#L130)). Without that record, the next request from any phone still holding a token would create the reader again, and its outbox would refill the account. A deleted subject's token passes only if its `auth_time` is after the deletion. `iat` would not do: a refresh mints a new `iat` and keeps `auth_time` ([auth.go:87](../../../server/internal/auth/auth.go#L87)). A token with no `auth_time` is refused. The app asks for `prompt=login`, so signing in again after a deletion carries a fresh `auth_time` and starts an empty account.
+
+The check and the creation run in one transaction, under a lock on the subject that the deletion also takes. A request already past the token check therefore cannot create the reader again in the middle of a deletion. A repeated `DELETE /v1/me` with the old sign-in answers 204 rather than 401, so a phone whose first answer was lost still empties itself.
 
 ### 7. The `OIDC_AUDIENCE` trap
 

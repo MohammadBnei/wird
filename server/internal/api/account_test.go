@@ -94,3 +94,23 @@ func TestSigningInAgainAfterADeletionStartsAnEmptyAccount(t *testing.T) {
 		t.Fatalf("the new account starts with %d sets", n)
 	}
 }
+
+// The server deleted the account but the 204 never reached the phone. The
+// retry carries the same sign-in; refused with a 401, that phone would keep the
+// deleted reader's notes and outbox for ever.
+func TestADeleteWhoseAnswerWasLostCanNeverBeRetried(t *testing.T) {
+	h := newHarness(t)
+	token, _ := h.signedIn(t, "sub-retry", time.Now().Add(-time.Hour))
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		if got := h.serve(h.request(t, http.MethodDelete, "/v1/me", token)).Code; got != http.StatusNoContent {
+			t.Fatalf("attempt %d answered %d", attempt, got)
+		}
+	}
+	if got := h.get(t, "/v1/me", token).Code; got != http.StatusUnauthorized {
+		t.Fatalf("a read with the old sign-in answered %d after the retry", got)
+	}
+	if n := h.readers(t); n != 0 {
+		t.Fatalf("the retry brought %d readers back", n)
+	}
+}

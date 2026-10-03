@@ -5,6 +5,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -59,16 +60,19 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			httpx.Error(w, http.StatusUnauthorized, "token rejected")
 			return
 		}
-		if refused, err := a.signedInBeforeDeletion(r.Context(), token); err != nil {
-			a.log.Error("deletion lookup", "err", err)
-			httpx.Error(w, http.StatusInternalServerError, "unavailable")
+		user, err := a.users.ReaderFor(r.Context(), token.Subject, signedIn(token))
+		switch {
+		case errors.Is(err, store.ErrDeleted) && r.Method == http.MethodDelete && r.URL.Path == "/v1/me":
+			// The account is already gone: a delete whose 204 was lost on
+			// the way back is retried with the same sign-in, and answering
+			// it 401 would leave that phone holding the deleted reader's
+			// data for ever. A repeated delete is done, not refused.
+			w.WriteHeader(http.StatusNoContent)
 			return
-		} else if refused {
+		case errors.Is(err, store.ErrDeleted):
 			httpx.Error(w, http.StatusUnauthorized, "token rejected")
 			return
-		}
-		user, err := a.users.EnsureUser(r.Context(), token.Subject)
-		if err != nil {
+		case err != nil:
 			a.log.Error("reader lookup", "err", err)
 			httpx.Error(w, http.StatusInternalServerError, "unavailable")
 			return
@@ -77,24 +81,17 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-// signedInBeforeDeletion is true for a token whose sign-in predates its
-// subject's account deletion, which would otherwise mint the account straight
-// back. auth_time, not iat: a refresh mints a new iat and keeps auth_time, so
-// iat would let any phone still holding a refresh token through. A deleted
-// subject's token without auth_time is refused, since nothing proves it came
-// after. The deletion moment is cut to the second because auth_time is.
-func (a *Authenticator) signedInBeforeDeletion(ctx context.Context, token *oidc.IDToken) (bool, error) {
-	deletedAt, deleted, err := a.users.ReaderDeletedAt(ctx, token.Subject)
-	if err != nil || !deleted {
-		return false, err
-	}
+// signedIn is when the token's sign-in happened (auth_time), zero when it does
+// not say. auth_time, not iat: a refresh mints a new iat and keeps auth_time,
+// so iat would let any phone still holding a refresh token past a deletion.
+func signedIn(token *oidc.IDToken) time.Time {
 	var claims struct {
 		AuthTime int64 `json:"auth_time"`
 	}
 	if err := token.Claims(&claims); err != nil || claims.AuthTime == 0 {
-		return true, nil
+		return time.Time{}
 	}
-	return time.Unix(claims.AuthTime, 0).Before(deletedAt.Truncate(time.Second)), nil
+	return time.Unix(claims.AuthTime, 0)
 }
 
 func bearer(r *http.Request) (string, bool) {
