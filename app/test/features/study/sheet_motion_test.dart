@@ -125,4 +125,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('next word')), findsNothing);
   });
+
+  testWidgets('a drag down then back up in one gesture leaves the sheet '
+      'folded over the open aya instead of back where it was', (tester) async {
+    await openStudy(tester);
+    final open = surahHeight(tester);
+
+    final gesture = await tester.startGesture(tester.getCenter(sheetHandle()));
+    // The first move only carries the gesture past the slop; the second is
+    // the drag down that starts the fold.
+    await gesture.moveBy(const Offset(0, 20));
+    await gesture.moveBy(const Offset(0, 40));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, -80));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('open aya')), findsNothing);
+    expect(find.byKey(const Key('next word')), findsOneWidget);
+    expect(surahHeight(tester), open);
+  });
 }

@@ -552,7 +552,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 ),
                                 Expanded(
                                   child: _rootSheet(
-                                    hidden: !_prefs.rootOpen && !_folding,
+                                    hidden: !_prefs.rootOpen,
                                   ),
                                 ),
                               ],
@@ -577,6 +577,7 @@ class _StudyScreenState extends State<StudyScreen> {
       sheet: sheet,
       expanded: _expanded,
       hidden: hidden,
+      folding: _folding,
       onHidden: (fold) {
         // The sūra takes the screen whole, not the fifth an open sheet
         // leaves it.

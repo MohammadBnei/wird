@@ -43,6 +43,7 @@ class RootSheet extends StatelessWidget {
     required this.sheet,
     required this.expanded,
     this.hidden = false,
+    this.folding = false,
     this.onHidden,
     required this.swipe,
     required this.onPrevious,
@@ -71,6 +72,11 @@ class RootSheet extends StatelessWidget {
   /// Folded down to its handle, so the sūra has the screen to itself: a
   /// reader who only wants to read has no use for the root under every word.
   final bool hidden;
+
+  /// Still going down after [hidden] was set: the root stays drawn until it
+  /// has gone, while the handle already answers as a folded sheet's does, so
+  /// a drag back up brings the sheet back rather than expanding it.
+  final bool folding;
 
   /// Folds the sheet down to its handle, or back up. A drag on the handle
   /// does it; a tap on a folded handle brings the sheet back.
@@ -135,7 +141,7 @@ class RootSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _topBar(n, l),
-          if (!hidden)
+          if (!hidden || folding)
             Expanded(
               child: WordSwipe(
                 key: swipe,
