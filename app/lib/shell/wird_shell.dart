@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../features/settings/settings_screen.dart' show showSettings;
 import '../l10n/app_localizations.dart';
 import '../nav.dart';
 import '../theme/nocturne.dart';
@@ -247,6 +248,10 @@ class WirdDrawer extends StatelessWidget {
   Future<void> _go(BuildContext context, String route) async {
     final nav = Navigator.of(context);
     nav.pop();
+    // Settings opens over the screen the reader is on rather than replacing
+    // it, so a display change is seen as it is made and closing returns them
+    // to where they stood.
+    if (route == Routes.settings) return showSettings(nav.context);
     if (route == current) return;
     nav.popUntil((r) => r.isFirst);
     if (route == Routes.dashboard) return;

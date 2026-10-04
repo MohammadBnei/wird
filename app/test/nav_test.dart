@@ -99,7 +99,6 @@ void main() {
       Routes.kept: (arguments: null, screen: KeptScreen),
       Routes.about: (arguments: null, screen: AboutScreen),
       Routes.index: (arguments: null, screen: IndexScreen),
-      Routes.settings: (arguments: null, screen: SettingsScreen),
       // The argument is the screen the reader was on when they asked to
       // report something.
       Routes.report: (arguments: Routes.index, screen: ReportScreen),
@@ -137,6 +136,10 @@ void main() {
     for (final door in doors.entries) {
       await goTo(tester, door.key);
       expect(find.byType(door.value), findsOneWidget, reason: door.key);
+      // Settings is a sheet over the screen, and the drawer is under it.
+      if (door.value == SettingsScreen) {
+        await closeSettings(tester);
+      }
     }
     // Home is a pop rather than a push, so the reader who walked all six is
     // one press from the start rather than six.

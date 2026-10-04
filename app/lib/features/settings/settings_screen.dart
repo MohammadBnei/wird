@@ -33,8 +33,16 @@ import 'parked_writes.dart';
 ///
 /// What a preference must do is outlast the screen it was set from, which is
 /// why they are held by the application rather than by a State object.
+///
+/// It opens as a sheet over the screen the reader was on rather than as a
+/// screen of its own, so a change to the display is seen behind it as it is
+/// made and closing it leaves the reader where they stood.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.scroll});
+
+  /// The sheet's, so dragging the list past its top pulls the sheet down
+  /// rather than stopping dead. Null where the screen is drawn on its own.
+  final ScrollController? scroll;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -108,6 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListenableBuilder(
         listenable: prefs,
         builder: (context, _) => SingleChildScrollView(
+          controller: widget.scroll,
           padding: EdgeInsets.fromLTRB(
             n.space('6'),
             n.space('2'),
@@ -396,6 +405,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     style: TextStyle(fontSize: 10.5, height: 1.4, color: n.textAt(0.5)),
   );
 }
+
+/// Settings over whatever screen is open: the preferences are a sheet, not a
+/// place, and the reader is still on their own screen when it closes.
+Future<void> showSettings(BuildContext context) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  showDragHandle: true,
+  backgroundColor: Nocturne.of(context).bg,
+  builder: (_) => DraggableScrollableSheet(
+    expand: false,
+    initialChildSize: 0.9,
+    maxChildSize: 1,
+    builder: (_, scroll) => SettingsScreen(scroll: scroll),
+  ),
+);
 
 /// The reciters, one row each: who, in which style and what that style is
 /// for, and a button to hear them on the basmala before choosing.

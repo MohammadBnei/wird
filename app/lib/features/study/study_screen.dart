@@ -191,6 +191,28 @@ class _StudyScreenState extends State<StudyScreen> {
     _carry(ayahOfWord(word.id));
   }
 
+  /// The set to pray, read again at the tap rather than taken as [_acted]
+  /// left it. Settings opens over this screen, and the order or the width
+  /// changed there would otherwise be recorded as the set worked out before.
+  /// It keeps [_acted]'s first aya, and moves to the open aya only if the new
+  /// width no longer reaches it.
+  Future<void> _pray() async {
+    final acted = _acted;
+    if (acted == null) return;
+    final order = _prefs.order;
+    final width = await readingWidth(widget.db, order);
+    var set = await ayaSet(widget.db, order, acted.ayas.first.id, ayas: width);
+    final open = _word;
+    if (open != null && set != null) {
+      final here = ayahOfWord(open.id);
+      if (!set.ayas.any((a) => a.id == here)) {
+        set = await ayaSet(widget.db, order, here, ayas: width);
+      }
+    }
+    if (!mounted || set == null) return;
+    await prayTheSet(context, set);
+  }
+
   /// Listens to [recited], the word the recitation now loaded sounds, in
   /// place of the one it replaced.
   void _follow(ValueListenable<int?> recited) {
@@ -835,7 +857,7 @@ class _StudyScreenState extends State<StudyScreen> {
             key: const Key('pray'),
             onPressed: _acted == null
                 ? null
-                : () => prayTheSet(context, _acted!),
+                : _pray,
             child: Text(
               l.study_pray,
               style: TextStyle(fontSize: 12.5, color: n.color('accent-300')),

@@ -15,7 +15,6 @@ import 'features/progress/progress_screen.dart';
 import 'features/report/report_screen.dart';
 import 'features/root/root_screen.dart';
 import 'features/root/root_spine_screen.dart';
-import 'features/settings/settings_screen.dart';
 import 'features/study/study_screen.dart';
 import 'shell/wird_shell.dart';
 import 'theme/nocturne.dart';
@@ -67,7 +66,9 @@ typedef ScreenBuilder = Widget Function(Database db, Object? arguments);
 // index: a sūra opens its ayas; an aya is POPPED back up the stack rather than
 //        pushed onto it, so the reader who asked for it lands on the one
 //        reading screen instead of on a second one stacked above the first.
-// settings: what the reader sets and forgets. No navigation, and no prayer.
+// settings: what the reader sets and forgets. No navigation, and no prayer. A
+//   sheet over the current screen (showSettings), not a route: the drawer keeps
+//   its row, and the reader keeps their screen.
 // report: a bug, a request or an improvement, carrying the screen the reader
 //   opened it from. One way: it queues and nothing comes back.
 // kept (1e), deepDive (1c), prepare: back -> back to whoever pushed them. The
@@ -95,7 +96,6 @@ final screens = <String, ScreenBuilder>{
   },
   Routes.progress: (db, _) => ProgressScreen(db: db),
   Routes.kept: (db, _) => KeptScreen(db: db),
-  Routes.settings: (db, _) => const SettingsScreen(),
   // The argument is the screen the reader was on, so the report carries it
   // without anybody having to type "I was on the index".
   Routes.report: (db, args) =>

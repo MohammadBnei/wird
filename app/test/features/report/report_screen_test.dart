@@ -117,7 +117,7 @@ void main() {
   testWidgets('a report is carried to the server instead of the queue, so a '
       'reader with no signal loses what they wrote', (tester) async {
     await pumpPhone(tester, await wholeApp(db, cache: silent));
-    await reportFrom(tester, 'Settings');
+    await reportFrom(tester, 'Kept');
 
     await tester.enterText(find.byType(TextField), 'on a plane');
     await tester.pump();

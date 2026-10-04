@@ -9,7 +9,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/dashboard/dashboard_screen.dart';
-import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/shell/wird_shell.dart';
 
@@ -54,21 +53,19 @@ void main() {
     );
   });
 
-  testWidgets('the settings screen drifts out of Nocturne: the section rules, '
-      'the segmented controls, or the width control under them', (
-    tester,
-  ) async {
-    await pumpPhone(
-      tester,
-      await wirdAround(
-        db,
-        const WirdShell(route: Routes.settings, child: SettingsScreen()),
-        cache: silent,
-      ),
-    );
+  testWidgets('the settings sheet drifts out of Nocturne, or covers the screen '
+      'it was opened over: the section rules, the segmented controls, or the '
+      'width control under them', (tester) async {
+    // The image is the whole screen, sheet and what is under it, so the debug
+    // banner the app paints in its corner would be in it too.
+    WidgetsApp.debugAllowBannerOverride = false;
+    addTearDown(() => WidgetsApp.debugAllowBannerOverride = true);
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await goTo(tester, 'Settings');
+    expect(find.byType(DashboardScreen), findsOneWidget);
 
     await expectLater(
-      find.byType(SettingsScreen),
+      find.byType(Navigator).first,
       matchesGoldenFile('goldens/settings.png'),
     );
   });

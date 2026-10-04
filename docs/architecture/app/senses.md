@@ -116,7 +116,7 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
 
 The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:156](../../../app/lib/data/flush.dart#L156-L159)).
 
-Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:407](../../../app/lib/features/settings/settings_screen.dart#L441-L466)).
+Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:407](../../../app/lib/features/settings/settings_screen.dart#L466-L491)).
 
 ### 2. HEAD asks, and moves no bytes
 

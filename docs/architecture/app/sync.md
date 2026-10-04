@@ -334,7 +334,7 @@ Future<void> discard(Database db, String opId) =>
     db.delete('outbox', where: 'client_op_id = ?', whereArgs: [opId]);
 ```
 
-[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:268](../../../app/lib/features/settings/settings_screen.dart#L298)
+[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:268](../../../app/lib/features/settings/settings_screen.dart#L307)
 
 ### 10. The contract both sides answer to
 
