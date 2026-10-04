@@ -190,19 +190,21 @@ class Recitation {
     );
     // Not awaited: the recitation answers when the sūra ends.
     if (set != null && identical(_set, set) && set.takeResumeAfterWord()) {
-      unawaited(toggle());
+      unawaited(_toggle(asked: false));
     }
     return heard;
   }
 
   /// Recites the sūra from [wordId], or from its first aya when null.
   Future<bool> playFrom(int? wordId) {
+    _asked.value++;
     _recital = (what: Sounded.set, label: _setLabel);
     return _own(Sounded.set, _setLabel, (set) => set.playFrom(wordId));
   }
 
   /// Plays one aya alone, named [label] in the bar.
   Future<bool> playAya(int ayahId, {required String label}) {
+    _asked.value++;
     _recital = (what: Sounded.aya, label: label);
     return _own(Sounded.aya, label, (set) => set.playAya(ayahId));
   }
@@ -231,7 +233,15 @@ class Recitation {
 
   /// Pauses, or resumes what was paused. A paused recitation keeps its bar,
   /// so the reader can carry on or stop from any screen.
-  Future<void> toggle() async {
+  Future<void> toggle() => _toggle(asked: true);
+
+  /// Ticks each time the reader asks for the recitation, from any screen:
+  /// play from a word, one aya, or a resume. Not when it carries on by itself
+  /// after a word heard over it, which nobody asked for.
+  Listenable get asked => _asked;
+  final _asked = ValueNotifier<int>(0);
+
+  Future<void> _toggle({required bool asked}) async {
     final set = _set;
     if (set == null) return;
     if (set.playing.value) return set.toggle();
@@ -244,6 +254,7 @@ class Recitation {
     }
     // Resuming names what carries on: the sūra or the one aya that was
     // held, or the sūra from a word tapped since.
+    if (asked) _asked.value++;
     final bar = _resumeBar(set);
     if (set.resume is Touched) _recital = bar;
     await _own(bar.what, bar.label, (set) async {

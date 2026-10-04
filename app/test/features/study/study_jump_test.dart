@@ -343,6 +343,19 @@ void main() {
     await quiet(tester);
   });
 
+  testWidgets('an aya held to hear it plays while the list stays where it '
+      'was, as if the reader had scrolled away', (tester) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+
+    await tester.longPress(mark(96002));
+    await settlePlayer(tester, () => recitation(tester).playing.value);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('back to recitation')), findsNothing);
+    await quiet(tester);
+  });
+
   testWidgets('an aya can be heard alone only from the open word\'s aya', (
     tester,
   ) async {

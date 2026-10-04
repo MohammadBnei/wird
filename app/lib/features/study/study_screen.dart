@@ -111,9 +111,14 @@ class _StudyScreenState extends State<StudyScreen> {
   /// sets it; anything the reader does to the list clears it (ADR 0031).
   bool _following = false;
 
-  /// Set while the screen scrolls the list itself, so its own scrolls are not
-  /// taken for the reader's hand.
-  bool _steering = false;
+  /// How many of the screen's own scrolls are running, so they are not taken
+  /// for the reader's hand. A count: a scroll started over another ends the
+  /// first, whose end must not clear the second.
+  int _steers = 0;
+  bool get _steering => _steers > 0;
+
+  /// The recitation whose plays the list follows.
+  Recitation? _askedBy;
 
   /// The aya the list hangs from in place of the one it was opened at: moved
   /// there to reach a recited word whose aya had not been built.
@@ -161,6 +166,13 @@ class _StudyScreenState extends State<StudyScreen> {
     if (!identical(prefs, _listening)) {
       _listening?.removeListener(_reciterChanged);
       _listening = prefs..addListener(_reciterChanged);
+    }
+    // Play, from this screen or any bar, is the reader asking for the
+    // recitation, so the list follows it again.
+    final recitation = Wird.of(context).recitation;
+    if (!identical(recitation, _askedBy)) {
+      _askedBy?.asked.removeListener(_engage);
+      _askedBy = recitation..asked.addListener(_engage);
     }
     final locale = Localizations.localeOf(context);
     if (!_loaded || locale != _readIn) {
@@ -221,6 +233,7 @@ class _StudyScreenState extends State<StudyScreen> {
   @override
   void dispose() {
     _reciting?.removeListener(_recited);
+    _askedBy?.asked.removeListener(_engage);
     _listening?.removeListener(_reciterChanged);
     // A reader who leaves before the position settled still left from there.
     _position.flush();
@@ -517,7 +530,7 @@ class _StudyScreenState extends State<StudyScreen> {
   /// Scrolls [context] to [alignment] of the list, marked as the screen's
   /// own scroll.
   Future<void> _steer(BuildContext context, double alignment) async {
-    _steering = true;
+    _steers++;
     try {
       await Scrollable.ensureVisible(
         context,
@@ -525,7 +538,7 @@ class _StudyScreenState extends State<StudyScreen> {
         duration: const Duration(milliseconds: 300),
       );
     } finally {
-      _steering = false;
+      _steers--;
     }
   }
 
@@ -804,24 +817,12 @@ class _StudyScreenState extends State<StudyScreen> {
                     : l.study_noRecitation,
                 // A press carries on from the open word, or resumes a pause;
                 // a hold starts the sūra again from its first aya.
-                // Play, in any form, is the reader asking for the recitation,
-                // so the list follows it again.
                 onPressed: !ready
                     ? null
-                    : playing
+                    : playing || audio!.paused
                     ? audio!.toggle
-                    : () {
-                        _engage();
-                        audio!.paused
-                            ? audio.toggle()
-                            : audio.playFrom(_word?.id);
-                      },
-                onLongPress: ready
-                    ? () {
-                        _engage();
-                        audio!.playFrom(null);
-                      }
-                    : null,
+                    : () => audio.playFrom(_word?.id),
+                onLongPress: ready ? () => audio!.playFrom(null) : null,
                 icon: Icon(
                   playing ? Icons.pause : Icons.play_arrow,
                   size: 20,
