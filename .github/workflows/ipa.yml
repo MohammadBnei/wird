@@ -14,12 +14,11 @@
 # distribution certificate and profile in the cloud, and only an Admin key may.
 #
 # Its Infisical identity is not apk.yml's: that one can read the Android
-# keystore, and this job has no business holding it. Its secrets sit in the
-# /ios folder of Wird's project. ponytail: the identity is a Viewer on the
-# whole project, so it can read the keystore at the root but never change it;
-# Infisical's free plan has no folder-scoped custom role. Upgrade path: a role
-# limited to /ios, or the three keys in a project of their own. The identity
-# and project are repo variables, so this file is inert until they exist.
+# keystore, and this job has no business holding it. Its three secrets live in
+# a project of their own, where the identity is a Viewer and nothing else: a
+# folder in Wird's project would have needed a folder-scoped role, which
+# Infisical's free plan lacks. The identity and project are repo variables, so
+# this file is inert until they exist.
 name: ipa
 
 on:
@@ -71,7 +70,7 @@ jobs:
           domain: ${{ env.INFISICAL_DOMAIN }}
           project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /ios
+          secret-path: /
           secret-name: ASC_KEY_P8
           export-type: env
       - name: App Store Connect key id
@@ -83,7 +82,7 @@ jobs:
           domain: ${{ env.INFISICAL_DOMAIN }}
           project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /ios
+          secret-path: /
           secret-name: ASC_KEY_ID
           export-type: env
       - name: App Store Connect issuer
@@ -95,7 +94,7 @@ jobs:
           domain: ${{ env.INFISICAL_DOMAIN }}
           project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /ios
+          secret-path: /
           secret-name: ASC_ISSUER_ID
           export-type: env
 
