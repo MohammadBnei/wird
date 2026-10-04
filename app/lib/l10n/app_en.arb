@@ -1182,6 +1182,18 @@
   "@settingsTappedWordCaption": {
     "description": "Caption under the tapped-word setting."
   },
+  "settingsRecitationFollowed": "Follows recitation",
+  "@settingsRecitationFollowed": {
+    "description": "Settings: while a sūra is recited, the reading list scrolls to keep the recited word in its middle."
+  },
+  "settingsRecitationStays": "List stays put",
+  "@settingsRecitationStays": {
+    "description": "Settings: the reading list does not scroll on its own while a sūra is recited."
+  },
+  "settingsRecitationCaption": "What the reading list does while a sūra is recited.",
+  "@settingsRecitationCaption": {
+    "description": "Caption under the recitation-follow setting."
+  },
   "settingsWordCaption": "What is printed under each Arabic word.",
   "@settingsWordCaption": {
     "description": "Caption under the word-display segmented control on the settings screen."

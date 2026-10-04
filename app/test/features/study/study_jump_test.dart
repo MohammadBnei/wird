@@ -244,6 +244,60 @@ void main() {
     });
   }
 
+  /// The recitation reaching the lowest word the sūra list has built, well
+  /// below its middle, as its player would. Returns that word and the list's
+  /// rect.
+  Future<(Finder, Rect)> reciteLowInTheList(WidgetTester tester) async {
+    final seen = tester.getRect(find.byType(CustomScrollView));
+    final lowest = tester
+        .widgetList<WordTile>(find.byType(WordTile))
+        .map((w) => w.face.word.id)
+        .reduce(
+          (a, b) =>
+              tester.getRect(find.byKey(WordKey(a))).top >=
+                  tester.getRect(find.byKey(WordKey(b))).top
+              ? a
+              : b,
+        );
+    expect(
+      tester.getCenter(find.byKey(WordKey(lowest))).dy - seen.center.dy,
+      greaterThan(seen.height / 8),
+      reason: 'the recited word starts in the middle, so following it moves '
+          'nothing',
+    );
+    (recitation(tester).currentWordId as ValueNotifier<int?>).value = lowest;
+    await tester.pumpAndSettle();
+    return (find.byKey(WordKey(lowest)), seen);
+  }
+
+  testWidgets('a recitation walks on down the screen while the list stays '
+      'where it was', (tester) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+
+    final (word, seen) = await reciteLowInTheList(tester);
+
+    expect(
+      (tester.getCenter(word).dy - seen.center.dy).abs(),
+      lessThan(seen.height / 8),
+    );
+  });
+
+  testWidgets('with the list asked to stay put, a recitation drags the list '
+      'along under the reader', (tester) async {
+    await (await Prefs.read(db)).setFollowRecitation(false);
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position;
+    final before = position.pixels;
+
+    await reciteLowInTheList(tester);
+
+    expect(position.pixels, before);
+  });
+
   testWidgets('an aya can be heard alone only from the open word\'s aya', (
     tester,
   ) async {

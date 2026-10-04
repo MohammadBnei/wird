@@ -344,6 +344,7 @@ class Prefs extends ChangeNotifier {
     this._rootOpen,
     this._ayaTranslation,
     this._centreTapped,
+    this._followRecitation,
     this._mic,
     this._locale,
     ({String reciter, bool wordByWord}) audio,
@@ -365,6 +366,7 @@ class Prefs extends ChangeNotifier {
       display.rootOpen,
       display.ayaTranslation,
       display.centreTapped,
+      display.followRecitation,
       await micPermission(db),
       await languagePref(db),
       await audioPref(db),
@@ -380,6 +382,7 @@ class Prefs extends ChangeNotifier {
   bool _rootOpen;
   bool _ayaTranslation;
   bool _centreTapped;
+  bool _followRecitation;
   MicPermission _mic;
   String? _locale;
   String _reciter;
@@ -406,6 +409,10 @@ class Prefs extends ChangeNotifier {
   /// Whether a tapped word is scrolled to the middle of the sūra list, or the
   /// list stays where the reader's thumb left it.
   bool get centreTapped => _centreTapped;
+
+  /// Whether the sūra list keeps the word being recited in its middle, or
+  /// stays where the reader left it while the recitation runs.
+  bool get followRecitation => _followRecitation;
 
   MicPermission get mic => _mic;
 
@@ -523,6 +530,12 @@ class Prefs extends ChangeNotifier {
     await _write();
   }
 
+  Future<void> setFollowRecitation(bool follow) async {
+    _followRecitation = follow;
+    notifyListeners();
+    await _write();
+  }
+
   Future<void> _write() => setDisplayPrefs(
     _db,
     display: _display,
@@ -531,6 +544,7 @@ class Prefs extends ChangeNotifier {
     rootOpen: _rootOpen,
     ayaTranslation: _ayaTranslation,
     centreTapped: _centreTapped,
+    followRecitation: _followRecitation,
   );
 
   Future<void> askForTheMic() async {

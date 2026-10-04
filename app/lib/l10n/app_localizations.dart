@@ -1649,6 +1649,24 @@ abstract class AppLocalizations {
   /// **'What the reading list does when you tap a word.'**
   String get settingsTappedWordCaption;
 
+  /// Settings: while a sūra is recited, the reading list scrolls to keep the recited word in its middle.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows recitation'**
+  String get settingsRecitationFollowed;
+
+  /// Settings: the reading list does not scroll on its own while a sūra is recited.
+  ///
+  /// In en, this message translates to:
+  /// **'List stays put'**
+  String get settingsRecitationStays;
+
+  /// Caption under the recitation-follow setting.
+  ///
+  /// In en, this message translates to:
+  /// **'What the reading list does while a sūra is recited.'**
+  String get settingsRecitationCaption;
+
   /// Caption under the word-display segmented control on the settings screen.
   ///
   /// In en, this message translates to:

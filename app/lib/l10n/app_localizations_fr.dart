@@ -958,6 +958,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsTappedWordCaption => 'Ce que fait la liste de lecture quand vous touchez un mot.';
 
   @override
+  String get settingsRecitationFollowed => 'Suit la récitation';
+
+  @override
+  String get settingsRecitationStays => 'La liste ne bouge pas';
+
+  @override
+  String get settingsRecitationCaption => 'Ce que fait la liste de lecture pendant la récitation d’une sourate.';
+
+  @override
   String get settingsWordCaption => 'Ce qui est imprimé sous chaque mot arabe.';
 
   @override

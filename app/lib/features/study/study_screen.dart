@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
@@ -102,6 +103,9 @@ class _StudyScreenState extends State<StudyScreen> {
   Locale? _readIn;
 
   Recitation? _audio;
+
+  /// The recited word the list follows, from the recitation loaded last.
+  ValueListenable<int?>? _reciting;
   Set<int> _speakable = const {};
 
   /// The sūra and the voice the recitation was carried in: the reciter, and
@@ -163,8 +167,23 @@ class _StudyScreenState extends State<StudyScreen> {
     _carry(ayahOfWord(word.id));
   }
 
+  /// Listens to [recited], the word the recitation now loaded sounds, in
+  /// place of the one it replaced.
+  void _follow(ValueListenable<int?> recited) {
+    if (identical(recited, _reciting)) return;
+    _reciting?.removeListener(_recited);
+    _reciting = recited..addListener(_recited);
+  }
+
+  void _recited() {
+    final wordId = _reciting?.value;
+    if (wordId == null || !_prefs.followRecitation) return;
+    _centre(wordId, always: true);
+  }
+
   @override
   void dispose() {
+    _reciting?.removeListener(_recited);
     _listening?.removeListener(_reciterChanged);
     // A reader who leaves before the position settled still left from there.
     _position.flush();
@@ -250,7 +269,7 @@ class _StudyScreenState extends State<StudyScreen> {
     _sheetToTop();
     _position.move(word.id);
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _centre(always: opening || _prefs.centreTapped),
+      (_) => _centre(word.id, always: opening || _prefs.centreTapped),
     );
     await _carry(ayahOfWord(word.id));
   }
@@ -385,6 +404,7 @@ class _StudyScreenState extends State<StudyScreen> {
       _audio = recitation;
       _speakable = recitation.speakable;
     });
+    _follow(recitation.currentWordId);
     if (keep) {
       await recitation.prefetch(
         windowPaths(recitation.tracks, ayahId, wordByWord: wordByWord),
@@ -392,25 +412,25 @@ class _StudyScreenState extends State<StudyScreen> {
     }
   }
 
-  /// Brings the open word back into the sūra list, to its middle, when it is
-  /// out of view — or [always]: for a sūra just opened on it, which hangs it
-  /// from the list's top edge with the aya before it out of sight, and for
-  /// every word when the reader has asked for the tapped word centred.
+  /// Brings [wordId] into the sūra list, to its middle, when it is out of
+  /// view — or [always]: for a sūra just opened on it, which hangs it from
+  /// the list's top edge with the aya before it out of sight, for a tapped
+  /// word when the reader asked for it centred, and for the recited word when
+  /// they asked the list to follow the recitation.
   ///
   /// ponytail: only a word whose aya has been built. A jump to an aya off the
   /// screen lands it at the list's anchor instead, which is where [_load]
   /// opens a sūra; move the anchor if a jump inside a long sūra ever lands
   /// out of sight.
-  void _centre({required bool always}) {
-    final word = _word;
-    if (word == null) return;
-    final context = _keyOf(word.id).currentContext;
+  void _centre(int wordId, {required bool always}) {
+    final context = _keyOf(wordId).currentContext;
     if (context == null) return;
     // Unless asked otherwise, a word the reader can see stays where it is: a
     // tap opens what is under their thumb, and moving the list under it can
     // lose the place they scrolled to. Only a step that walked the open word
-    // out of view brings it back, to the middle. "Can see" is its middle being in view: a word half cut
-    // at the list's edge can still be tapped, and must not jump either.
+    // out of view brings it back, to the middle. "Can see" is its middle
+    // being in view: a word half cut at the list's edge can still be tapped,
+    // and must not jump either.
     final list = Scrollable.maybeOf(context)?.context.findRenderObject();
     final tile = context.findRenderObject();
     if (!always &&
