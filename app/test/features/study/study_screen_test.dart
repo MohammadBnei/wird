@@ -6,6 +6,7 @@ import 'package:just_audio_platform_interface/just_audio_platform_interface.dart
 import 'package:wird/features/study/word_row.dart';
 import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:wird/app.dart' show Prefs;
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/mic.dart';
@@ -614,8 +615,33 @@ void main() {
       .ancestor(of: tile(96001001), matching: find.byType(Scrollable))
       .first;
 
-  testWidgets('a tap on a word moves the sūra out from under the reader\'s '
-      'thumb', (tester) async {
+  testWidgets('a tapped word is left wherever it sat, off the middle of the '
+      'list', (tester) async {
+    await openStudy(tester);
+    // Any word's list, since the first word is unbuilt once scrolled away.
+    final list = find
+        .ancestor(
+          of: find.byWidgetPredicate((w) => w.key is WordKey),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    final word = tile(96005001);
+    await tester.dragUntilVisible(word, list, const Offset(0, -40));
+    await tester.pumpAndSettle();
+
+    await tester.tap(word);
+    await tester.pumpAndSettle();
+
+    final seen = tester.getRect(list);
+    expect(
+      (tester.getCenter(word).dy - seen.center.dy).abs(),
+      lessThan(seen.height / 4),
+    );
+  });
+
+  testWidgets('with the list asked to stay put, a tap on a word moves the '
+      'sūra out from under the reader\'s thumb', (tester) async {
+    await (await Prefs.read(db)).setCentreTapped(false);
     await openStudy(tester);
     await tester.drag(suraList(), const Offset(0, -80));
     await tester.pumpAndSettle();

@@ -1170,6 +1170,18 @@
   "@settingsAyaTranslationCaption": {
     "description": "Caption under the aya translation setting: whose translation is shown, by language."
   },
+  "settingsTappedWordCentred": "Word centred",
+  "@settingsTappedWordCentred": {
+    "description": "Settings: a tapped word on the reading screen is scrolled to the middle of the list."
+  },
+  "settingsTappedWordStays": "List stays put",
+  "@settingsTappedWordStays": {
+    "description": "Settings: a tapped word opens where it is, without scrolling the reading list."
+  },
+  "settingsTappedWordCaption": "What the reading list does when you tap a word.",
+  "@settingsTappedWordCaption": {
+    "description": "Caption under the tapped-word setting."
+  },
   "settingsWordCaption": "What is printed under each Arabic word.",
   "@settingsWordCaption": {
     "description": "Caption under the word-display segmented control on the settings screen."

@@ -1631,6 +1631,24 @@ abstract class AppLocalizations {
   /// **'Pickthall\'s English or Rashid Maash\'s French, under each aya.'**
   String get settingsAyaTranslationCaption;
 
+  /// Settings: a tapped word on the reading screen is scrolled to the middle of the list.
+  ///
+  /// In en, this message translates to:
+  /// **'Word centred'**
+  String get settingsTappedWordCentred;
+
+  /// Settings: a tapped word opens where it is, without scrolling the reading list.
+  ///
+  /// In en, this message translates to:
+  /// **'List stays put'**
+  String get settingsTappedWordStays;
+
+  /// Caption under the tapped-word setting.
+  ///
+  /// In en, this message translates to:
+  /// **'What the reading list does when you tap a word.'**
+  String get settingsTappedWordCaption;
+
   /// Caption under the word-display segmented control on the settings screen.
   ///
   /// In en, this message translates to:

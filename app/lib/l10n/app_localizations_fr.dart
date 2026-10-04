@@ -949,6 +949,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsAyaTranslationCaption => 'La traduction de Rashid Maash, ou l’anglais de Pickthall, sous chaque verset.';
 
   @override
+  String get settingsTappedWordCentred => 'Mot centré';
+
+  @override
+  String get settingsTappedWordStays => 'La liste ne bouge pas';
+
+  @override
+  String get settingsTappedWordCaption => 'Ce que fait la liste de lecture quand vous touchez un mot.';
+
+  @override
   String get settingsWordCaption => 'Ce qui est imprimé sous chaque mot arabe.';
 
   @override

@@ -250,7 +250,7 @@ class _StudyScreenState extends State<StudyScreen> {
     _sheetToTop();
     _position.move(word.id);
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _centre(always: opening),
+      (_) => _centre(always: opening || _prefs.centreTapped),
     );
     await _carry(ayahOfWord(word.id));
   }
@@ -393,8 +393,9 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   /// Brings the open word back into the sūra list, to its middle, when it is
-  /// out of view — or [always], for a sūra just opened on it, which hangs it
-  /// from the list's top edge with the aya before it out of sight.
+  /// out of view — or [always]: for a sūra just opened on it, which hangs it
+  /// from the list's top edge with the aya before it out of sight, and for
+  /// every word when the reader has asked for the tapped word centred.
   ///
   /// ponytail: only a word whose aya has been built. A jump to an aya off the
   /// screen lands it at the list's anchor instead, which is where [_load]
@@ -405,10 +406,10 @@ class _StudyScreenState extends State<StudyScreen> {
     if (word == null) return;
     final context = _keyOf(word.id).currentContext;
     if (context == null) return;
-    // A word the reader can see stays where it is. A tap opens what is under
-    // their thumb, and moving the list under it loses the place they scrolled
-    // to; only a step that walked the open word out of view brings it back,
-    // to the middle. "Can see" is its middle being in view: a word half cut
+    // Unless asked otherwise, a word the reader can see stays where it is: a
+    // tap opens what is under their thumb, and moving the list under it can
+    // lose the place they scrolled to. Only a step that walked the open word
+    // out of view brings it back, to the middle. "Can see" is its middle being in view: a word half cut
     // at the list's edge can still be tapped, and must not jump either.
     final list = Scrollable.maybeOf(context)?.context.findRenderObject();
     final tile = context.findRenderObject();

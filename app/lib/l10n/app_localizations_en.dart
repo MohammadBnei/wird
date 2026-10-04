@@ -949,6 +949,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAyaTranslationCaption => 'Pickthall\'s English or Rashid Maash\'s French, under each aya.';
 
   @override
+  String get settingsTappedWordCentred => 'Word centred';
+
+  @override
+  String get settingsTappedWordStays => 'List stays put';
+
+  @override
+  String get settingsTappedWordCaption => 'What the reading list does when you tap a word.';
+
+  @override
   String get settingsWordCaption => 'What is printed under each Arabic word.';
 
   @override

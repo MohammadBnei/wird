@@ -163,6 +163,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _caption(n, l.settingsAyaTranslationCaption),
               SizedBox(height: n.space('3')),
               NocturneSegmented(
+                options: [
+                  l.settingsTappedWordCentred,
+                  l.settingsTappedWordStays,
+                ],
+                selected: prefs.centreTapped ? 0 : 1,
+                onChanged: (i) => prefs.setCentreTapped(i == 0),
+              ),
+              SizedBox(height: n.space('1')),
+              _caption(n, l.settingsTappedWordCaption),
+              SizedBox(height: n.space('3')),
+              NocturneSegmented(
                 options: [l.settingsOrderChronological, l.settingsOrderMushaf],
                 selected: prefs.order.index,
                 onChanged: (i) async {
