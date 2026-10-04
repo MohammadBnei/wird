@@ -14,8 +14,10 @@
 # distribution certificate and profile in the cloud, and only an Admin key may.
 #
 # Its Infisical identity is not apk.yml's: that one can read the Android
-# keystore, and this job has no business holding it. The identity and project
-# are repo variables, so this file is inert until they exist.
+# keystore, and this job has no business holding it. Its secrets sit in the
+# /ios folder of Wird's project, and its role may read that folder only. The
+# identity and project are repo variables, so this file is inert until they
+# exist.
 name: ipa
 
 on:
@@ -67,7 +69,7 @@ jobs:
           domain: ${{ env.INFISICAL_DOMAIN }}
           project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
+          secret-path: /ios
           secret-name: ASC_KEY_P8
           export-type: env
       - name: App Store Connect key id
@@ -79,7 +81,7 @@ jobs:
           domain: ${{ env.INFISICAL_DOMAIN }}
           project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
+          secret-path: /ios
           secret-name: ASC_KEY_ID
           export-type: env
       - name: App Store Connect issuer
@@ -91,7 +93,7 @@ jobs:
           domain: ${{ env.INFISICAL_DOMAIN }}
           project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
+          secret-path: /ios
           secret-name: ASC_ISSUER_ID
           export-type: env
 
