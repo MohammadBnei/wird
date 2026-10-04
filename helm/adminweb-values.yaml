@@ -13,7 +13,7 @@ image:
   repository: registry.bnei.lan:5000/wird-adminweb
   # Written by .github/workflows/release.yml after the push, in the same step
   # and to the same SHA as helm/values.yaml. Never bumped by hand.
-  tag: "352b31edbfa0"
+  tag: "b5dd6e41f07f"
 
 # ADMIN_ADDR defaults to :8081 in server/cmd/adminweb/main.go.
 service:
