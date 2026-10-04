@@ -13,6 +13,7 @@ import '../../widgets/lit_aya.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_tag.dart';
 import '../report/report.dart';
+import '../root/root_lookup.dart';
 import 'lemma_ring.dart';
 import 'word_swipe.dart';
 
@@ -31,9 +32,10 @@ typedef SheetWord = ({
 /// sideways swipe to the word before or after it ([WordSwipe]).
 ///
 /// It reads in one order: the root, the word as this aya writes it and what
-/// it means here; then the root's senses; then the word's form. The top bar
-/// opens and closes the lower half — the counts, the forms and the other
-/// ayas — and scrolling never does.
+/// it means here; then the root's senses and a way to look the root up in
+/// the dictionaries; then the word's form. The top bar opens and closes the
+/// lower half — the counts, the forms and the other ayas — and scrolling
+/// never does.
 class RootSheet extends StatelessWidget {
   /// The space above and below the handle's mark. A folded sheet is this
   /// strip and nothing else, so it is the target a thumb has to find.
@@ -391,21 +393,32 @@ class RootSheet extends StatelessWidget {
     );
   }
 
-  /// The root's senses, numbered, with the reader's verdict on them at the
-  /// head of the list. A root with no sense written has nothing to judge.
+  /// The root's senses, numbered, with the way to the dictionaries and the
+  /// reader's verdict on them at the head of the list. A root with no sense
+  /// written has nothing to judge.
   List<Widget> _senses(Nocturne n, AppLocalizations l, RootReading root) {
     final senses = root.coreSense
         ?.split('; ')
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
-    if (senses == null || senses.isEmpty) return const [];
+    // A root with no sense written has no thumbs, and is the one most worth
+    // looking up: the word alone, where the thumbs would be.
+    if (senses == null || senses.isEmpty) {
+      return [
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: RootLookUp(letters: root.letters, compact: true),
+        ),
+      ];
+    }
     return [
       const SizedBox(height: 14),
       Row(
         children: [
           NocturneKicker(l.study_senses),
           const Spacer(),
+          RootLookUp(letters: root.letters, compact: true),
           JudgeSense(
             key: ValueKey('judge ${root.letters}'),
             db: db,

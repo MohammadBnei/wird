@@ -1912,5 +1912,9 @@
   "study_backToRecitation": "Back to recitation",
   "@study_backToRecitation": {
     "description": "The way back to the recitation, shown over the reading list once the reader has scrolled or tapped away from the recited word while it plays."
+  },
+  "root_lookUpShort": "Source",
+  "@root_lookUpShort": {
+    "description": "The way to the dictionaries, as the one word Source, on the row of the sense verdict's thumbs in the reading screen's sheet. Its tooltip is root_lookUp."
   }
 }

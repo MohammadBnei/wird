@@ -66,9 +66,19 @@ Future<bool> _inTheBrowser(Uri url) =>
 /// stands in for one. A reader who doubts a sense is owed the books it was
 /// checked against, and a root with no sense needs them most.
 class RootLookUp extends StatelessWidget {
-  const RootLookUp({super.key, required this.letters, this.open});
+  const RootLookUp({
+    super.key,
+    required this.letters,
+    this.open,
+    this.compact = false,
+  });
 
   final String letters;
+
+  /// One small word, for the row the sense verdict's thumbs sit on, where the
+  /// sentence does not fit. The sentence stays its tooltip and what a screen
+  /// reader says.
+  final bool compact;
 
   /// Opens the address. Null is the phone's own browser; tests hand one in.
   final Future<bool> Function(Uri)? open;
@@ -79,6 +89,38 @@ class RootLookUp extends StatelessWidget {
     if (uri == null) return const SizedBox.shrink();
     final n = Nocturne.of(context);
     final l = AppLocalizations.of(context)!;
+    if (compact) {
+      return Tooltip(
+        message: l.root_lookUp,
+        child: Semantics(
+          link: true,
+          label: l.root_lookUp,
+          hint: l.root_lookUpHint,
+          excludeSemantics: true,
+          child: InkWell(
+            onTap: () => _go(context, uri),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 32),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(
+                    l.root_lookUpShort,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: n.accent,
+                      decoration: TextDecoration.underline,
+                      decorationColor: n.accent.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     // Underlined, no trailing arrow, for the reason CoreSense's own line gives:
     // an icon wraps alone onto the second row in the deep dive's centre pane.
     return Semantics(

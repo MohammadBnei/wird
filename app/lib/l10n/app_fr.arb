@@ -411,5 +411,6 @@
   "range_overview": "Aller à un point de la sourate",
   "range_three": "3 versets",
   "range_minute": "~1 min",
-  "study_backToRecitation": "Revenir à la récitation"
+  "study_backToRecitation": "Revenir à la récitation",
+  "root_lookUpShort": "Source"
 }

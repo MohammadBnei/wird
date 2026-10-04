@@ -13,6 +13,7 @@ import 'package:wird/data/mic.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/prayer/prepare_screen.dart';
 import 'package:wird/features/settings/settings_screen.dart';
+import 'package:wird/features/root/root_lookup.dart';
 import 'package:wird/features/study/root_sheet.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/nav.dart';
@@ -647,6 +648,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(position.pixels, at);
+  });
+
+  testWidgets('a root opened under the words cannot be looked up in the '
+      'dictionaries, or the way to them strays from the thumbs on the senses\' '
+      'row', (tester) async {
+    await seedSenses(db, {'قرأ': 'a recitation, the quran; to recite'});
+    await openStudy(tester);
+
+    final book = tester.getRect(find.byType(RootLookUp));
+    final thumbs = tester.getRect(find.byType(JudgeSense));
+    expect(book.center.dy, moreOrLessEquals(thumbs.center.dy, epsilon: 1));
+    expect(book.right, moreOrLessEquals(thumbs.left, epsilon: 1));
+  });
+
+  testWidgets('a root with no sense written cannot be looked up from the '
+      'reading screen, where it needs the dictionaries most', (tester) async {
+    await openStudy(tester);
+
+    expect(find.byType(JudgeSense), findsNothing);
+    expect(find.text('Source'), findsOneWidget);
   });
 
   testWidgets('a step that walks the open word out of view leaves it out of '
