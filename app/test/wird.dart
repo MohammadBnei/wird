@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/shell/wird_shell.dart';
 import 'package:wird/theme/nocturne.dart';
@@ -106,5 +107,12 @@ Future<void> goTo(WidgetTester tester, String label) async {
   await tester.tap(
     find.descendant(of: find.byType(WirdDrawer), matching: find.text(label)),
   );
+  await tester.pumpAndSettle();
+}
+
+/// Closes the settings sheet. Settings opens over the screen it was chosen
+/// from, so the drawer under it cannot be reached until it is closed.
+Future<void> closeSettings(WidgetTester tester) async {
+  Navigator.of(tester.element(find.byType(SettingsScreen))).pop();
   await tester.pumpAndSettle();
 }

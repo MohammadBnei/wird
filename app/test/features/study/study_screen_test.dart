@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -122,17 +123,9 @@ void main() {
     );
   }
 
-  /// The preferences, which are a screen of their own now rather than a panel
-  /// that unfolds over the set.
+  /// The preferences, in the sheet the drawer opens over the set.
   Future<void> openSettings(WidgetTester tester) async {
-    Navigator.of(tester.element(find.byType(StudyScreen)))
-        .pushNamed(Routes.settings);
-    await tester.pumpAndSettle();
-  }
-
-  /// Back to the set, which is where a change to the display has to be seen.
-  Future<void> closeSettings(WidgetTester tester) async {
-    Navigator.of(tester.element(find.byType(SettingsScreen))).pop();
+    unawaited(showSettings(tester.element(find.byType(StudyScreen))));
     await tester.pumpAndSettle();
   }
 

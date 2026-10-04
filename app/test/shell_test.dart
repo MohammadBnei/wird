@@ -248,8 +248,13 @@ void main() {
       'Sūra index',
       'Sources and licences',
     ]) {
+      // Within the sheet: the screen it was opened over is still behind it,
+      // and that screen's own actions are its business.
       expect(
-        find.text(elsewhere),
+        find.descendant(
+          of: find.byType(SettingsScreen),
+          matching: find.text(elsewhere),
+        ),
         findsNothing,
         reason: '"$elsewhere" is not a preference',
       );
@@ -279,6 +284,11 @@ void main() {
           findsNothing,
           reason: '$label: a second control in the same corner',
         );
+      }
+      // Settings is a sheet over the screen, not a destination of its own;
+      // it is closed before the drawer can be opened again.
+      if (destination.route == Routes.settings) {
+        await closeSettings(tester);
       }
     }
   });

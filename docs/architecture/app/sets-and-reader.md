@@ -139,7 +139,7 @@ int _setWidth(List<int> wordCounts, {int? span}) {
 }
 ```
 
-[sets.dart:453](../../../app/lib/data/sets.dart#L453-L466). The chosen width is stored per starting aya in the local `set_span` table ([sets.dart:474](../../../app/lib/data/sets.dart#L474-L491)). It is a width, never a position, and it never leaves the phone. The Settings stepper writes it ([settings_screen.dart:73](../../../app/lib/features/settings/settings_screen.dart#L75-L82)).
+[sets.dart:453](../../../app/lib/data/sets.dart#L453-L466). The chosen width is stored per starting aya in the local `set_span` table ([sets.dart:474](../../../app/lib/data/sets.dart#L474-L491)). It is a width, never a position, and it never leaves the phone. The Settings stepper writes it ([settings_screen.dart:73](../../../app/lib/features/settings/settings_screen.dart#L83-L90)).
 
 ### 3. A set's id is derived, not minted
 
@@ -279,7 +279,7 @@ The root letters open the root's own screen. A screen that names an aya answers 
 - a root, its spine and the constellation, which call one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39));
 - Progress (1d), whose "All 114" opens the index and passes its answer on ([progress_screen.dart:49](../../../app/lib/features/progress/progress_screen.dart#L49-L53)).
 
-The drawer and home catch an aya too, and push the reader with it ([wird_shell.dart:247](../../../app/lib/shell/wird_shell.dart#L247-L260)).
+The drawer and home catch an aya too, and push the reader with it ([wird_shell.dart:247](../../../app/lib/shell/wird_shell.dart#L248-L264)).
 
 ### 8. Marking an aya understood
 

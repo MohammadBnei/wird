@@ -35,7 +35,7 @@ void main() {
     await goTo(tester, 'Settings');
     await tester.tap(find.text('Muṣḥaf'));
     await tester.pumpAndSettle();
-    await goTo(tester, 'Home');
+    await closeSettings(tester);
 
     expect(find.text(mushaf.title), findsOneWidget);
     expect(find.text(chronological.title), findsNothing);
