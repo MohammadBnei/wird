@@ -215,14 +215,15 @@ class _StudyScreenState extends State<StudyScreen> {
       _away = null;
       _loaded = true;
     });
-    if (open != null) await _open(open);
+    if (open != null) await _open(open, opening: true);
   }
 
   /// Reads everything the sheet shows for [word], then shows it.
   ///
   /// The sheet keeps the word it is showing until the next one has been read,
-  /// so a swipe never blanks it.
-  Future<void> _open(StudyWord word) async {
+  /// so a swipe never blanks it. [opening] is a sūra just loaded on [word],
+  /// which the list hangs from its top edge: it is centred whatever.
+  Future<void> _open(StudyWord word, {bool opening = false}) async {
     final generation = _generation;
     final was = _sheet;
     _opening = word.id;
@@ -248,7 +249,9 @@ class _StudyScreenState extends State<StudyScreen> {
     unawaited(_peekAround(word.id, was));
     _sheetToTop();
     _position.move(word.id);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _centre());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _centre(always: opening),
+    );
     await _carry(ayahOfWord(word.id));
   }
 
@@ -390,13 +393,14 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   /// Brings the open word back into the sūra list, to its middle, when it is
-  /// out of view.
+  /// out of view — or [always], for a sūra just opened on it, which hangs it
+  /// from the list's top edge with the aya before it out of sight.
   ///
   /// ponytail: only a word whose aya has been built. A jump to an aya off the
   /// screen lands it at the list's anchor instead, which is where [_load]
   /// opens a sūra; move the anchor if a jump inside a long sūra ever lands
   /// out of sight.
-  void _centre() {
+  void _centre({required bool always}) {
     final word = _word;
     if (word == null) return;
     final context = _keyOf(word.id).currentContext;
@@ -408,7 +412,11 @@ class _StudyScreenState extends State<StudyScreen> {
     // at the list's edge can still be tapped, and must not jump either.
     final list = Scrollable.maybeOf(context)?.context.findRenderObject();
     final tile = context.findRenderObject();
-    if (list is RenderBox && tile is RenderBox && list.hasSize && tile.hasSize) {
+    if (!always &&
+        list is RenderBox &&
+        tile is RenderBox &&
+        list.hasSize &&
+        tile.hasSize) {
       final seen = list.localToGlobal(Offset.zero) & list.size;
       final middle = tile.localToGlobal(tile.size.center(Offset.zero));
       if (seen.contains(middle)) return;
@@ -546,7 +554,8 @@ class _StudyScreenState extends State<StudyScreen> {
                                   // sheet's handle.
                                   height: !_prefs.rootOpen
                                       ? rest.maxHeight - RootSheet.handleHeight
-                                      : box.maxHeight * (_expanded ? 0.22 : 0.39),
+                                      : box.maxHeight *
+                                            (_expanded ? 0.22 : 0.39),
                                   decoration: BoxDecoration(
                                     border: Border(
                                       bottom: _prefs.rootOpen
@@ -561,9 +570,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                   ),
                                 ),
                                 Expanded(
-                                  child: _rootSheet(
-                                    hidden: !_prefs.rootOpen,
-                                  ),
+                                  child: _rootSheet(hidden: !_prefs.rootOpen),
                                 ),
                               ],
                             ),

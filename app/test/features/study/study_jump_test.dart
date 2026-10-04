@@ -314,4 +314,26 @@ void main() {
       );
     },
   );
+
+  // The failure: a sūra opened on an aya hangs that aya from the list's top
+  // edge, and a reader opening at 96:6 sees nothing of 96:5 above it.
+  testWidgets('a sūra opened at an aya leaves its word at the top edge, with '
+      'the aya before it out of sight', (tester) async {
+    await openStudy(tester, target: 96006);
+
+    final list = tester.getRect(
+      find
+          .ancestor(
+            of: find.byKey(const WordKey(96006001)),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    final word = tester.getRect(find.byKey(const WordKey(96006001)));
+    expect(
+      (word.center.dy - list.center.dy).abs(),
+      lessThan(list.height / 4),
+      reason: 'the opened word is not in the middle of the sūra list',
+    );
+  });
 }
