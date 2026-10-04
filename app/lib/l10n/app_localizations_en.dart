@@ -848,6 +848,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get root_whoseReading => 'Whose reading this is';
 
   @override
+  String get root_lookUp => 'Look this root up in the dictionaries';
+
+  @override
+  String get root_lookUpHint => 'Opens in your browser';
+
+  @override
+  String get root_lookUpNoBrowser => 'No browser on this device would open the dictionaries.';
+
+  @override
   String get root_wordsReadFrom => 'The words it was read from';
 
   @override

@@ -1457,6 +1457,24 @@ abstract class AppLocalizations {
   /// **'Whose reading this is'**
   String get root_whoseReading;
 
+  /// Link under a root's sense, or under the notice standing in for one, opening the Arabic Almanac (Hans Wehr, Lane, Kazimirski, Lisan al-Arab) at that root in the phone's browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Look this root up in the dictionaries'**
+  String get root_lookUp;
+
+  /// Screen-reader hint on the dictionaries link, saying the tap leaves the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens in your browser'**
+  String get root_lookUpHint;
+
+  /// Snack bar when the dictionaries link could not be opened because no browser took the address.
+  ///
+  /// In en, this message translates to:
+  /// **'No browser on this device would open the dictionaries.'**
+  String get root_lookUpNoBrowser;
+
   /// Heading in that same sheet, over the root's own words the sense rests on.
   ///
   /// In en, this message translates to:

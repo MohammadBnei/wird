@@ -723,6 +723,21 @@ for several roots at once. Of the 31 roots reaching no division, 18 have their
 headword inside another division — including our mangled هأت, whose article is
 Lane's هيت. Resolve headwords, not division keys.
 
+### Linked, not bundled: the Arabic Almanac
+
+Every root screen carries a link to the Arabic Almanac
+(<https://ejtaal.net/aa/>), which shows the scanned pages of Hans Wehr, Lane,
+Kazimirski and Lisan al-ʿArab for a root side by side. Wird links to it and
+nothing more: no page, image or line of any of those books is bundled, fetched
+or quoted by the app, and the reader's own browser does the fetching. That
+matters because the site hosts in-copyright scans, Hans Wehr's 4th edition
+first among them, which Wird could not ship.
+
+The address is `#bwq=` plus the root in Buckwalter, built by `almanacUri` in
+`app/lib/features/root/root_lookup.dart`. The site was last modified in 2016, so
+the link can rot. Nothing else in the app depends on it: a dead link costs the
+reader a browser error page and nothing more.
+
 ## What is still open
 
 1. Answered: Quran Foundation granted free use of the word-by-word English

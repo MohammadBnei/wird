@@ -6,10 +6,12 @@ import '../../theme/nocturne.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_rule.dart';
 import 'family.dart';
+import 'root_lookup.dart';
 
 // A family's own widgets live in family.dart. They are exported here so a
 // screen reading a root asks one file for the sections and the spine both.
 export 'family.dart';
+export 'root_lookup.dart';
 
 /// Which commentaries the tafsir section will quote once the fetch exists.
 /// Naming them is not a claim about what they say.
@@ -577,6 +579,7 @@ class _RootSpineViewState extends State<RootSpineView> {
               ),
               SizedBox(height: n.space('4')),
               CoreSense(reading: reading, judge: widget.judge),
+              RootLookUp(letters: reading.letters),
             ],
           ),
         ),

@@ -228,6 +228,9 @@ flowchart TD
   C -->|yes| D["root_senseRefused<br/>none written yet"]
   C -->|no| E["root_senseNotFetched<br/>this phone has fetched none"]
   B -->|"when the pack gave a basis"| G["tap opens the basis sheet"]
+  B --> L["link to the Arabic Almanac"]
+  D --> L
+  E --> L
 ```
 
 ```dart
@@ -245,9 +248,11 @@ flowchart TD
       );
     }
 ```
-[root_sections.dart:150](../../../app/lib/features/root/root_sections.dart#L150-L161)
+[root_sections.dart:152](../../../app/lib/features/root/root_sections.dart#L152-L163)
 
-Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:221](../../../app/lib/features/root/root_sections.dart#L221-L251)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
+Under a sense, the "whose reading this is" line is a tap target whenever the pack carried a `basis`. The tap opens the sheet that says the sense is a machine draft no person has read ([root_sections.dart:223](../../../app/lib/features/root/root_sections.dart#L223-L253)). That sentence comes from the server, so a correction to it reaches every phone with the next pack.
+
+Under all three outcomes sits a link that opens the Arabic Almanac at the root in the phone's browser: Hans Wehr, Lane, Kazimirski and Lisan al-ʿArab, side by side. A reader who doubts a sense can check it against the books it was checked against, and a root with no sense still has somewhere to go. Each screen draws it after `CoreSense`, not inside it ([root_screen.dart:182](../../../app/lib/features/root/root_screen.dart#L182), [root_sections.dart:582](../../../app/lib/features/root/root_sections.dart#L582), [deep_dive_screen.dart:388](../../../app/lib/features/deepdive/deep_dive_screen.dart#L388)). The address is spelled in Buckwalter, one letter per radical, and a doubled root is cut to its two distinct letters, because that is how the dictionaries file it ([root_lookup.dart:41](../../../app/lib/features/root/root_lookup.dart#L41-L57)). Nothing is bundled and the app sends nothing; the reader's browser does.
 
 ### 7. Which language a sense is read in
 
