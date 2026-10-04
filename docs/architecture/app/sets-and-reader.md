@@ -279,7 +279,7 @@ The root letters open the root's own screen. A screen that names an aya answers 
 - a root, its spine and the constellation, which call one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39));
 - Progress (1d), whose "All 114" opens the index and passes its answer on ([progress_screen.dart:49](../../../app/lib/features/progress/progress_screen.dart#L49-L53)).
 
-The drawer and home catch an aya too, and push the reader with it ([wird_shell.dart:247](../../../app/lib/shell/wird_shell.dart#L248-L264)).
+The drawer and home catch an aya too, and push the reader with it ([wird_shell.dart:247](../../../app/lib/shell/wird_shell.dart#L248-L265)).
 
 ### 8. Marking an aya understood
 
