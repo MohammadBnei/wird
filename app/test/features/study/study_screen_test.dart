@@ -13,6 +13,7 @@ import 'package:wird/data/mic.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/prayer/prepare_screen.dart';
 import 'package:wird/features/settings/settings_screen.dart';
+import 'package:wird/features/root/root_lookup.dart';
 import 'package:wird/features/study/root_sheet.dart';
 import 'package:wird/features/study/study_screen.dart';
 import 'package:wird/nav.dart';
@@ -647,6 +648,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(position.pixels, at);
+  });
+
+  testWidgets('a root opened under the words cannot be looked up in the '
+      'dictionaries, as it can on its own screen', (tester) async {
+    await openStudy(tester);
+
+    expect(find.byType(RootLookUp), findsOneWidget);
   });
 
   testWidgets('a step that walks the open word out of view leaves it out of '

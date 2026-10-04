@@ -13,6 +13,7 @@ import '../../widgets/lit_aya.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_tag.dart';
 import '../report/report.dart';
+import '../root/root_lookup.dart';
 import 'lemma_ring.dart';
 import 'word_swipe.dart';
 
@@ -31,9 +32,10 @@ typedef SheetWord = ({
 /// sideways swipe to the word before or after it ([WordSwipe]).
 ///
 /// It reads in one order: the root, the word as this aya writes it and what
-/// it means here; then the root's senses; then the word's form. The top bar
-/// opens and closes the lower half — the counts, the forms and the other
-/// ayas — and scrolling never does.
+/// it means here; then the root's senses and a way to look the root up in
+/// the dictionaries; then the word's form. The top bar opens and closes the
+/// lower half — the counts, the forms and the other ayas — and scrolling
+/// never does.
 class RootSheet extends StatelessWidget {
   /// The space above and below the handle's mark. A folded sheet is this
   /// strip and nothing else, so it is the target a thumb has to find.
@@ -206,6 +208,9 @@ class RootSheet extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (root != null) ..._senses(n, l, root),
+              // Under the senses, as on the root's own screen; a root with
+              // no sense written is the one most worth looking up.
+              if (root != null) RootLookUp(letters: root.letters),
               _form(n, l),
             ],
           ),
