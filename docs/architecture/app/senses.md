@@ -95,7 +95,7 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
     unawaited(theFirstSenses().catchError((Object _) => null));
   }
 ```
-[flush.dart:108](../../../app/lib/data/flush.dart#L108-L111)
+[flush.dart:108](../../../app/lib/data/flush.dart#L104-L107)
 
 `theFirstSenses` only fetches for a phone that holds no pack at all. It joins a fetch already running, and waits at least two minutes between tries, so a pack that keeps failing does not download 800 KB on every unlock. It never draws anything, because this moment can come while the reader is praying.
 
@@ -112,15 +112,15 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
     return run.whenComplete(() => _fetchingSenses = null);
   }
 ```
-[flush.dart:144](../../../app/lib/data/flush.dart#L144-L154)
+[flush.dart:144](../../../app/lib/data/flush.dart#L140-L150)
 
-The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:156](../../../app/lib/data/flush.dart#L156-L159)).
+The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:156](../../../app/lib/data/flush.dart#L152-L155)).
 
 Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:407](../../../app/lib/features/settings/settings_screen.dart#L466-L491)).
 
 ### 2. HEAD asks, and moves no bytes
 
-`sensesOnOffer` sends a HEAD to `/v1/senses` on the same origin as sync ([flush.dart:21](../../../app/lib/data/flush.dart#L21-L24)). It compares the ETag with the version in `sense_pack`, and returns the offered version, or null when the phone is already current. If a proxy dropped the ETag, a phone with no pack is still offered one.
+`sensesOnOffer` sends a HEAD to `/v1/senses` on the same origin as sync ([flush.dart:21](../../../app/lib/data/flush.dart#L17-L20)). It compares the ETag with the version in `sense_pack`, and returns the offered version, or null when the phone is already current. If a proxy dropped the ETag, a phone with no pack is still offered one.
 
 ```dart
 Future<String?> sensesOnOffer(Database db, {Dio? over}) async {
@@ -341,7 +341,7 @@ The thanks is drawn only after the write succeeds. If it fails, the thumbs come 
 ## Why it is this way
 
 - [ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md) — Wird's own writing is served, upstream data is bundled. Senses are rows in the existing database, not a second file, so a correction reaches readers without a release.
-- The [ADR](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#silent-background-updates) says the app asks before bytes move. The code keeps that for every pack after the first. The first pack is fetched silently, because a phone with no senses has nothing to weigh, and the foreground moment has nowhere safe to ask ([flush.dart:122](../../../app/lib/data/flush.dart#L122-L131)).
+- The [ADR](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#silent-background-updates) says the app asks before bytes move. The code keeps that for every pack after the first. The first pack is fetched silently, because a phone with no senses has nothing to weigh, and the foreground moment has nowhere safe to ask ([flush.dart:122](../../../app/lib/data/flush.dart#L118-L127)).
 - [ADR 0026](../../adr/0026-reports-are-triaged-and-turned-into-issues.md) — a verdict names its language and its sentence, is remembered on the phone, and thanks the reader only once it is queued.
 - The route is open, with no account. Needing to sign in to learn what a root means would cut off the readers likeliest to need it, and the verdict button with them ([senses.dart:19](../../../app/lib/data/senses.dart#L19-L21), [ADR 0010](../../adr/0010-the-server-owns-the-roots-and-their-senses.md#senses-behind-the-bearer-token)).
 
