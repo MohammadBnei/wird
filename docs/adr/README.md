@@ -25,6 +25,7 @@ flowchart LR
   A29[0029 word audio by position] -. amends .-> A23
   A30[0030 play from what was touched last] -. extends .-> A25
   A22 -. extended by .-> A28[0028 Play and App Store beside the APK]
+  A32[0032 deletion keeps the shared sign-in] -. amends .-> A28
 ```
 
 | File | Decision | Status |
@@ -57,7 +58,8 @@ flowchart LR
 | [0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md](0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md) | The reader recites the whole sūra, and streams what is not on disk | accepted |
 | [0026-reports-are-triaged-and-turned-into-issues.md](0026-reports-are-triaged-and-turned-into-issues.md) | Reports are triaged on the operations view, exported to the agent, and turned into paraphrased issues | accepted |
 | [0027-wird-is-mit-licensed.md](0027-wird-is-mit-licensed.md) | Wird's own code is MIT licensed | accepted |
-| [0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md](0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md) | Wird ships through Google Play and the App Store, beside the APK | accepted |
+| [0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md](0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md) | Wird ships through Google Play and the App Store, beside the APK | accepted, amended by 0032 |
 | [0029-a-words-own-audio-is-found-by-its-position.md](0029-a-words-own-audio-is-found-by-its-position.md) | A word's own audio is found by its position, not by the API's path | accepted |
 | [0030-play-carries-on-from-what-the-reader-touched-last.md](0030-play-carries-on-from-what-the-reader-touched-last.md) | Play carries on from what the reader touched last | accepted |
 | [0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md](0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md) | The reading list follows the recitation until the reader takes it | accepted |
+| [0032-account-deletion-removes-wird-data-and-keeps-the-shared-sign-in.md](0032-account-deletion-removes-wird-data-and-keeps-the-shared-sign-in.md) | Account deletion removes Wird's data and keeps the shared sign-in | accepted |

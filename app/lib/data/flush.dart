@@ -11,13 +11,9 @@ import 'sync.dart';
 /// The server this build carries the queue to. The define is how a debug run
 /// is pointed at a laptop instead.
 ///
-/// The default is a guess that has not come true yet. `wird.bnei.dev` is the
-/// host in the client's registered redirect and it resolves, but on 2026-09-24
-/// every path under it — `/v1/sync`, `/v1/changes`, `/healthz` — answered Go's
-/// bare `404 page not found`, so the API is not behind it today. It stays the
-/// default because it is the name the app was given, and it is a define so
-/// that a build can say otherwise without a release; whoever deploys the API
-/// settles it.
+/// The default is the deployed API at `wird.bnei.dev`, the same host as the
+/// client's registered redirect. It is a define so that a build can say
+/// otherwise without a release.
 const syncOrigin = String.fromEnvironment(
   'WIRD_ORIGIN',
   defaultValue: 'https://wird.bnei.dev',
