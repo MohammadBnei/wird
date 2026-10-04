@@ -2566,6 +2566,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to recitation'**
   String get study_backToRecitation;
+
+  /// The way to the dictionaries, as the one word Source, on the row of the sense verdict's thumbs in the reading screen's sheet. Its tooltip is root_lookUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get root_lookUpShort;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

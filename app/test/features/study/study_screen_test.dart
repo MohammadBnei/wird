@@ -667,7 +667,7 @@ void main() {
     await openStudy(tester);
 
     expect(find.byType(JudgeSense), findsNothing);
-    expect(find.text('Look this root up in the dictionaries'), findsOneWidget);
+    expect(find.text('Source'), findsOneWidget);
   });
 
   testWidgets('a step that walks the open word out of view leaves it out of '

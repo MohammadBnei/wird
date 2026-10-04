@@ -1473,4 +1473,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get study_backToRecitation => 'Revenir à la récitation';
+
+  @override
+  String get root_lookUpShort => 'Source';
 }

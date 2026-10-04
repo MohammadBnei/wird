@@ -402,10 +402,15 @@ class RootSheet extends StatelessWidget {
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
-    // A root with no sense written has no heading to sit on, and is the one
-    // most worth looking up: the full sentence, on its own line.
+    // A root with no sense written has no thumbs, and is the one most worth
+    // looking up: the word alone, where the thumbs would be.
     if (senses == null || senses.isEmpty) {
-      return [RootLookUp(letters: root.letters)];
+      return [
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: RootLookUp(letters: root.letters, compact: true),
+        ),
+      ];
     }
     return [
       const SizedBox(height: 14),

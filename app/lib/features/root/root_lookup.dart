@@ -75,9 +75,9 @@ class RootLookUp extends StatelessWidget {
 
   final String letters;
 
-  /// A book the size of the sense verdict's thumbs, for the senses' own
-  /// heading row, where the sentence does not fit. The sentence stays its
-  /// tooltip and what a screen reader says.
+  /// One small word, for the row the sense verdict's thumbs sit on, where the
+  /// sentence does not fit. The sentence stays its tooltip and what a screen
+  /// reader says.
   final bool compact;
 
   /// Opens the address. Null is the phone's own browser; tests hand one in.
@@ -98,14 +98,23 @@ class RootLookUp extends StatelessWidget {
           hint: l.root_lookUpHint,
           excludeSemantics: true,
           child: InkWell(
-            customBorder: const CircleBorder(),
             onTap: () => _go(context, uri),
-            child: SizedBox.square(
-              dimension: 32,
-              child: Icon(
-                Icons.menu_book_outlined,
-                size: 14,
-                color: n.textAt(0.55),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 32),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(
+                    l.root_lookUpShort,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: n.accent,
+                      decoration: TextDecoration.underline,
+                      decorationColor: n.accent.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
