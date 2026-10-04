@@ -66,9 +66,19 @@ Future<bool> _inTheBrowser(Uri url) =>
 /// stands in for one. A reader who doubts a sense is owed the books it was
 /// checked against, and a root with no sense needs them most.
 class RootLookUp extends StatelessWidget {
-  const RootLookUp({super.key, required this.letters, this.open});
+  const RootLookUp({
+    super.key,
+    required this.letters,
+    this.open,
+    this.compact = false,
+  });
 
   final String letters;
+
+  /// A book the size of the sense verdict's thumbs, for the senses' own
+  /// heading row, where the sentence does not fit. The sentence stays its
+  /// tooltip and what a screen reader says.
+  final bool compact;
 
   /// Opens the address. Null is the phone's own browser; tests hand one in.
   final Future<bool> Function(Uri)? open;
@@ -79,6 +89,29 @@ class RootLookUp extends StatelessWidget {
     if (uri == null) return const SizedBox.shrink();
     final n = Nocturne.of(context);
     final l = AppLocalizations.of(context)!;
+    if (compact) {
+      return Tooltip(
+        message: l.root_lookUp,
+        child: Semantics(
+          link: true,
+          label: l.root_lookUp,
+          hint: l.root_lookUpHint,
+          excludeSemantics: true,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => _go(context, uri),
+            child: SizedBox.square(
+              dimension: 32,
+              child: Icon(
+                Icons.menu_book_outlined,
+                size: 14,
+                color: n.textAt(0.55),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     // Underlined, no trailing arrow, for the reason CoreSense's own line gives:
     // an icon wraps alone onto the second row in the deep dive's centre pane.
     return Semantics(

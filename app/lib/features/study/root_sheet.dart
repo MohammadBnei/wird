@@ -208,9 +208,6 @@ class RootSheet extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (root != null) ..._senses(n, l, root),
-              // Under the senses, as on the root's own screen; a root with
-              // no sense written is the one most worth looking up.
-              if (root != null) RootLookUp(letters: root.letters),
               _form(n, l),
             ],
           ),
@@ -396,21 +393,27 @@ class RootSheet extends StatelessWidget {
     );
   }
 
-  /// The root's senses, numbered, with the reader's verdict on them at the
-  /// head of the list. A root with no sense written has nothing to judge.
+  /// The root's senses, numbered, with the way to the dictionaries and the
+  /// reader's verdict on them at the head of the list. A root with no sense
+  /// written has nothing to judge.
   List<Widget> _senses(Nocturne n, AppLocalizations l, RootReading root) {
     final senses = root.coreSense
         ?.split('; ')
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
-    if (senses == null || senses.isEmpty) return const [];
+    // A root with no sense written has no heading to sit on, and is the one
+    // most worth looking up: the full sentence, on its own line.
+    if (senses == null || senses.isEmpty) {
+      return [RootLookUp(letters: root.letters)];
+    }
     return [
       const SizedBox(height: 14),
       Row(
         children: [
           NocturneKicker(l.study_senses),
           const Spacer(),
+          RootLookUp(letters: root.letters, compact: true),
           JudgeSense(
             key: ValueKey('judge ${root.letters}'),
             db: db,
