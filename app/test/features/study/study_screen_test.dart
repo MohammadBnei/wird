@@ -11,6 +11,7 @@ import 'package:wird/data/audio.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/mic.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
+import 'package:wird/features/prayer/prepare_screen.dart';
 import 'package:wird/features/settings/settings_screen.dart';
 import 'package:wird/features/study/root_sheet.dart';
 import 'package:wird/features/study/study_screen.dart';
@@ -774,6 +775,34 @@ void main() {
       whereArgs: ['ayah_understood'],
     );
     expect(ops.map((op) => op['client_op_id']).toSet(), hasLength(2));
+  });
+
+  // Settings opens over the set, so the order or width changed there must
+  // reach the prayer without the reader leaving the screen first.
+  testWidgets('the order and width changed in settings over the set are '
+      'ignored, and the prayer records the set worked out before', (
+    tester,
+  ) async {
+    await openStudy(tester);
+
+    await openSettings(tester);
+    await tester.ensureVisible(find.byIcon(Icons.add));
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Muṣḥaf'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Muṣḥaf'));
+    await tester.pumpAndSettle();
+    await closeSettings(tester);
+
+    final width = await readingWidth(db, ReadingOrder.mushaf);
+    final set = (await ayaSet(db, ReadingOrder.mushaf, 96001, ayas: width))!;
+    await tester.tap(find.byKey(const Key('pray')));
+    await tester.pumpAndSettle();
+
+    final prepared = tester.widget<PrepareScreen>(find.byType(PrepareScreen));
+    expect(prepared.from!.order, ReadingOrder.mushaf);
+    expect(prepared.from!.id, set.id);
   });
 
   testWidgets('the prayer is lost when the reader leaves the prayer screen by '
