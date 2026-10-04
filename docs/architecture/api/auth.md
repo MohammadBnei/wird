@@ -147,7 +147,7 @@ The token the device sends is the **ID token**, not the access token. This was s
 
 [auth.dart:188-198](../../../app/lib/data/auth.dart#L188-L198)
 
-A Dio interceptor is the only place a token is attached ([auth.dart:495-502](../../../app/lib/data/auth.dart#L495-L502)), and only the sync client has it ([flush.dart:193](../../../app/lib/data/flush.dart#L193)). On a 401 it refreshes once and retries on a plain client, so it cannot loop ([auth.dart:510-528](../../../app/lib/data/auth.dart#L510-L528)). Only a 400 on the refresh itself signs the reader out. A lost network leaves the account alone ([auth.dart:296-304](../../../app/lib/data/auth.dart#L296-L304)).
+A Dio interceptor is the only place a token is attached ([auth.dart:495-502](../../../app/lib/data/auth.dart#L495-L502)), and only the sync client has it ([flush.dart:193](../../../app/lib/data/flush.dart#L189)). On a 401 it refreshes once and retries on a plain client, so it cannot loop ([auth.dart:510-528](../../../app/lib/data/auth.dart#L510-L528)). Only a 400 on the refresh itself signs the reader out. A lost network leaves the account alone ([auth.dart:296-304](../../../app/lib/data/auth.dart#L296-L304)).
 
 ### 5. The API builds a verifier from the issuer
 

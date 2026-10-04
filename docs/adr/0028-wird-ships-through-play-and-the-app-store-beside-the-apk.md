@@ -1,6 +1,6 @@
 # 28. Wird ships through Google Play and the App Store, beside the APK
 
-Date: 2026-10-03. Status: accepted. Extends ADR 0019 (the APK) and ADR 0022 (the release button).
+Date: 2026-10-03. Status: accepted, amended by ADR 0032. Extends ADR 0019 (the APK) and ADR 0022 (the release button).
 
 ## Context
 

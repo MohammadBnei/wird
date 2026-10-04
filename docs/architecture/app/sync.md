@@ -145,7 +145,7 @@ It also flushes when the app is paused, ignoring the two-minute floor. A reader 
   }
 ```
 
-[flush.dart:81](../../../app/lib/data/flush.dart#L81-L99) · the flush and the senses fetch start side by side and swallow their own errors: [flush.dart:108](../../../app/lib/data/flush.dart#L108-L111)
+[flush.dart:81](../../../app/lib/data/flush.dart#L77-L95) · the flush and the senses fetch start side by side and swallow their own errors: [flush.dart:108](../../../app/lib/data/flush.dart#L104-L107)
 
 Only one flush runs at a time, and not more than once every two minutes. A caller that arrives mid-flush joins the flush already running, so no op is sent twice in one round.
 
@@ -164,9 +164,9 @@ Only one flush runs at a time, and not more than once every two minutes. A calle
   }
 ```
 
-[flush.dart:169](../../../app/lib/data/flush.dart#L169-L180)
+[flush.dart:169](../../../app/lib/data/flush.dart#L165-L176)
 
-`Flushing`, a widget near the top of the tree, starts the flusher and stops it: [flush.dart:200](../../../app/lib/data/flush.dart#L200-L227).
+`Flushing`, a widget near the top of the tree, starts the flusher and stops it: [flush.dart:200](../../../app/lib/data/flush.dart#L196-L223).
 
 ### 3. The token is attached in one place
 
@@ -182,7 +182,7 @@ Flusher flusherFor(Database db) => Flusher(
 );
 ```
 
-[flush.dart:189](../../../app/lib/data/flush.dart#L189-L195) · the interceptor: [auth.dart:465](../../../app/lib/data/auth.dart#L495-L502)
+[flush.dart:189](../../../app/lib/data/flush.dart#L185-L191) · the interceptor: [auth.dart:465](../../../app/lib/data/auth.dart#L495-L502)
 
 ### 4. Which ops ride
 

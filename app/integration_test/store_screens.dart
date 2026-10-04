@@ -52,6 +52,19 @@ void main() {
 
     await goThroughTheDrawer(tester, 'The set');
     await waitFor(tester, () => wordsOnScreen(tester).isNotEmpty, 'the set');
+    // Pray stays disabled until a word is open: the prayer is about its aya.
+    // Tapping an open word would close it, so only open one if none is.
+    bool canPray() =>
+        tester.widget<TextButton>(find.byKey(const Key('pray'))).onPressed !=
+        null;
+    for (var i = 0; i < 10 && !canPray(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 500)),
+      );
+      await tester.pump();
+    }
+    if (!canPray()) await tester.tap(find.byKey(WordKey(word.id)));
+    await waitFor(tester, canPray, 'Pray, once a word is open');
     await tester.tap(find.byKey(const Key('pray')));
     await waitFor(
       tester,
