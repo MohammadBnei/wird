@@ -108,9 +108,15 @@ void main() {
       await launchFresh(tester);
       await withNetworkDenied(() async {
         await tester.tap(find.byKey(const Key('pray')));
+        // Hit-testable, not merely built: the preparation slides in, and a tap
+        // while it is still off the edge lands on nothing.
         await waitFor(
           tester,
-          () => find.byKey(const Key('begin')).evaluate().isNotEmpty,
+          () => find
+              .byKey(const Key('begin'))
+              .hitTestable()
+              .evaluate()
+              .isNotEmpty,
           "the prayer's preparation, from the set in hand",
         );
         expectNoSpinnerAndNoApology(tester, 'while preparing the prayer');
