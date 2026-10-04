@@ -195,13 +195,15 @@ void main() {
       );
       // The list may move: by default it brings the tapped word to its
       // middle. What it must not do is drop the word the reader tapped.
+      // Measured once the list has come to rest, as the reader sees it.
+      await tester.pumpAndSettle();
       final list = tester.getRect(ayas);
       final word = tester.getRect(tile);
       expect(
         list.top <= word.top && word.bottom <= list.bottom,
         isTrue,
         reason: 'the aya jumped back to the top when the root opened, losing '
-            'the place the reader had scrolled to',
+            'the place the reader had scrolled to (word $word, list $list)',
       );
     },
   );
