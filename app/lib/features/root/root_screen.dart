@@ -175,7 +175,13 @@ class _RootScreenState extends State<RootScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
-          child: CoreSense(reading: reading, judge: _judge(reading)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CoreSense(reading: reading, judge: _judge(reading)),
+              RootLookUp(letters: reading.letters),
+            ],
+          ),
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 18),

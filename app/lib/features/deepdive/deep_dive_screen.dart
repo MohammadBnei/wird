@@ -385,6 +385,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
                 screen: screenName(Routes.deepDive),
               ),
             ),
+            RootLookUp(letters: reading.letters),
             // The ring draws its pointer hard against its own top edge, so
             // the gap under the sense is the only thing keeping the arrow off
             // the last line of it.

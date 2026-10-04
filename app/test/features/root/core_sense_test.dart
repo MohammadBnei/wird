@@ -128,4 +128,24 @@ void main() {
       findsNothing,
     );
   });
+  testWidgets('an unopenable dictionary link says so instead of failing '
+      'silently', (tester) async {
+    await pumpPhone(
+      tester,
+      await wirdAround(
+        db,
+        Scaffold(
+          body: RootLookUp(letters: 'صبر', open: (_) async => false),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Look this root up in the dictionaries'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No browser on this device would open the dictionaries.'),
+      findsOneWidget,
+    );
+  });
 }

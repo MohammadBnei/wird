@@ -269,6 +269,7 @@ url_rows() {
 		https://wird.bnei.dev|200|/healthz|the API every queued write drains into is not there
 		https://wird.bnei.dev|401|/v1/changes|a second device never catches up, and a 404 reads to the app exactly like a day with nothing in it
 		https://wird.bnei.dev|200|/v1/senses|no phone can fetch a sense, so every root falls back to the notice saying none was fetched; that the pack is not empty is past what a status code proves
+		https://ejtaal.net/aa/|200||a reader who doubts a root's sense is sent to a dictionary that is not there
 		https://wird.bnei.dev/models/ar-phoneme/54f7db6bdcff/|206|model.int8.onnx|voice-follow can never be turned on: Settings offers a download that cannot arrive
 		https://wird.bnei.dev/models/ar-phoneme/54f7db6bdcff/|206|tokens.txt|voice-follow can never be turned on: Settings offers a download that cannot arrive
 		-|200|https://wird.bnei.dev/.well-known/assetlinks.json|Android stops verifying the sign-in link as Wird's, so the browser keeps the finished sign-in and the reader copies a code out of a web page by hand

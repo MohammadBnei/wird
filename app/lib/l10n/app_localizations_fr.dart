@@ -848,6 +848,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get root_whoseReading => 'De qui est cette lecture';
 
   @override
+  String get root_lookUp => 'Chercher cette racine dans les dictionnaires';
+
+  @override
+  String get root_lookUpHint => 'S\'ouvre dans votre navigateur';
+
+  @override
+  String get root_lookUpNoBrowser => 'Aucun navigateur sur cet appareil n\'a pu ouvrir les dictionnaires.';
+
+  @override
   String get root_wordsReadFrom => 'Les mots dont elle a été lue';
 
   @override

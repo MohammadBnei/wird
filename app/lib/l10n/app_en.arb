@@ -1004,6 +1004,18 @@
   "@root_whoseReading": {
     "description": "Heading in the sheet of evidence behind a core sense, over the paragraph saying why the sense is kept."
   },
+  "root_lookUp": "Look this root up in the dictionaries",
+  "@root_lookUp": {
+    "description": "Link under a root's sense, or under the notice standing in for one, opening the Arabic Almanac (Hans Wehr, Lane, Kazimirski, Lisan al-Arab) at that root in the phone's browser."
+  },
+  "root_lookUpHint": "Opens in your browser",
+  "@root_lookUpHint": {
+    "description": "Screen-reader hint on the dictionaries link, saying the tap leaves the app."
+  },
+  "root_lookUpNoBrowser": "No browser on this device would open the dictionaries.",
+  "@root_lookUpNoBrowser": {
+    "description": "Snack bar when the dictionaries link could not be opened because no browser took the address."
+  },
   "root_wordsReadFrom": "The words it was read from",
   "@root_wordsReadFrom": {
     "description": "Heading in that same sheet, over the root's own words the sense rests on."

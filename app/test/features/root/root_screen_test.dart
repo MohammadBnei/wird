@@ -198,6 +198,24 @@ void main() {
     }
   });
 
+  // The reader who doubts a root most is the one shown no sense for it, so the
+  // way to the dictionaries cannot hang off the sense.
+  testWidgets('a root with no fetched sense still offers the dictionaries', (
+    tester,
+  ) async {
+    for (final screen in [
+      RootScreen(db: db, letters: refused),
+      RootSpineScreen(db: db, letters: refused),
+    ]) {
+      await open(tester, screen);
+      expect(find.textContaining('has not fetched'), findsOneWidget);
+      expect(
+        find.text('Look this root up in the dictionaries'),
+        findsOneWidget,
+      );
+    }
+  });
+
   testWidgets('a root that does carry a sense is made to look like an '
       'exception, because the refusal shouts louder than the sense', (
     tester,
