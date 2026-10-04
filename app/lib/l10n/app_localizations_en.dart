@@ -949,24 +949,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAyaTranslationCaption => 'Pickthall\'s English or Rashid Maash\'s French, under each aya.';
 
   @override
-  String get settingsTappedWordCentred => 'Word centred';
-
-  @override
-  String get settingsTappedWordStays => 'List stays put';
-
-  @override
-  String get settingsTappedWordCaption => 'What the reading list does when you tap a word.';
-
-  @override
-  String get settingsRecitationFollowed => 'Follows recitation';
-
-  @override
-  String get settingsRecitationStays => 'List stays put';
-
-  @override
-  String get settingsRecitationCaption => 'What the reading list does while a sūra is recited.';
-
-  @override
   String get settingsWordCaption => 'What is printed under each Arabic word.';
 
   @override
@@ -1488,4 +1470,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prepare_retry => 'Try again';
+
+  @override
+  String get study_backToRecitation => 'Back to recitation';
 }

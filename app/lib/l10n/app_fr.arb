@@ -248,12 +248,6 @@
   "settingsWordNeither": "Aucun",
   "settingsAyaTranslationShown": "Verset traduit",
   "settingsAyaTranslationHidden": "Arabe seul",
-  "settingsTappedWordCentred": "Mot centré",
-  "settingsTappedWordStays": "La liste ne bouge pas",
-  "settingsTappedWordCaption": "Ce que fait la liste de lecture quand vous touchez un mot.",
-  "settingsRecitationFollowed": "Suit la récitation",
-  "settingsRecitationStays": "La liste ne bouge pas",
-  "settingsRecitationCaption": "Ce que fait la liste de lecture pendant la récitation d’une sourate.",
   "settingsAyaTranslationCaption": "La traduction de Rashid Maash, ou l’anglais de Pickthall, sous chaque verset.",
   "settingsWordCaption": "Ce qui est imprimé sous chaque mot arabe.",
   "settingsOrderChronological": "Chronologique",
@@ -416,5 +410,6 @@
   "range_meta": "{count, plural, =1{1 verset} other{{count} versets}} · {time} · Juzʾ {juz}",
   "range_overview": "Aller à un point de la sourate",
   "range_three": "3 versets",
-  "range_minute": "~1 min"
+  "range_minute": "~1 min",
+  "study_backToRecitation": "Revenir à la récitation"
 }

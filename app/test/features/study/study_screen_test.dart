@@ -6,7 +6,6 @@ import 'package:just_audio_platform_interface/just_audio_platform_interface.dart
 import 'package:wird/features/study/word_row.dart';
 import 'package:record/record.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:wird/app.dart' show Prefs;
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/data/mic.dart';
@@ -639,19 +638,21 @@ void main() {
     );
   });
 
-  testWidgets('with the list asked to stay put, a tap on a word moves the '
-      'sūra out from under the reader\'s thumb', (tester) async {
-    await (await Prefs.read(db)).setCentreTapped(false);
+  testWidgets('a step to a word the reader can see moves the sūra out from '
+      'under their thumb', (tester) async {
     await openStudy(tester);
-    await tester.drag(suraList(), const Offset(0, -80));
-    await tester.pumpAndSettle();
-    final position = tester.state<ScrollableState>(suraList()).position;
-    final scrolledTo = position.pixels;
-
     await tester.tap(tile(96002001));
     await tester.pumpAndSettle();
+    // Off the middle, but in view: a step that centred would move it back.
+    await tester.drag(suraList(), const Offset(0, 40));
+    await tester.pumpAndSettle();
+    final position = tester.state<ScrollableState>(suraList()).position;
+    final at = position.pixels;
 
-    expect(position.pixels, scrolledTo);
+    await tester.tap(find.byKey(const Key('next word')));
+    await tester.pumpAndSettle();
+
+    expect(position.pixels, at);
   });
 
   testWidgets('a step that walks the open word out of view leaves it out of '

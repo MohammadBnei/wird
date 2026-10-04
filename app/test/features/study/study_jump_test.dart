@@ -244,58 +244,103 @@ void main() {
     });
   }
 
-  /// The recitation reaching the lowest word the sūra list has built, well
-  /// below its middle, as its player would. Returns that word and the list's
-  /// rect.
-  Future<(Finder, Rect)> reciteLowInTheList(WidgetTester tester) async {
-    final seen = tester.getRect(find.byType(CustomScrollView));
-    final lowest = tester
-        .widgetList<WordTile>(find.byType(WordTile))
-        .map((w) => w.face.word.id)
-        .reduce(
-          (a, b) =>
-              tester.getRect(find.byKey(WordKey(a))).top >=
-                  tester.getRect(find.byKey(WordKey(b))).top
-              ? a
-              : b,
-        );
-    expect(
-      tester.getCenter(find.byKey(WordKey(lowest))).dy - seen.center.dy,
-      greaterThan(seen.height / 8),
-      reason: 'the recited word starts in the middle, so following it moves '
-          'nothing',
+  /// Presses play and waits for the sūra to be playing.
+  Future<void> play(WidgetTester tester) async {
+    await tester.tap(find.byIcon(Icons.play_arrow));
+    await settlePlayer(tester, () => recitation(tester).playing.value);
+  }
+
+  /// The recitation gets to [wordId], as its player reports it.
+  Future<void> reciteTo(WidgetTester tester, int wordId) async {
+    final tracks = recitation(tester).tracks;
+    final index = tracks.indexWhere((t) => t.ayahId == ayahOfWord(wordId));
+    final span = tracks[index].segments.firstWhere((s) => s.wordId == wordId);
+    (JustAudioPlatform.instance as FakePlayers).players
+        .firstWhere((p) => p.sounding)
+        .reach(Duration(milliseconds: span.startMs + 40), index: index);
+    await settlePlayer(
+      tester,
+      () => recitation(tester).currentWordId.value == wordId,
     );
-    (recitation(tester).currentWordId as ValueNotifier<int?>).value = lowest;
     await tester.pumpAndSettle();
-    return (find.byKey(WordKey(lowest)), seen);
+  }
+
+  Finder theList() => find.byType(CustomScrollView);
+
+  /// The lowest word the sūra list has built, wherever that is.
+  int lowestBuilt(WidgetTester tester) => tester
+      .widgetList<WordTile>(find.byType(WordTile))
+      .map((w) => w.face.word.id)
+      .reduce(
+        (a, b) =>
+            tester.getRect(find.byKey(WordKey(a))).top >=
+                tester.getRect(find.byKey(WordKey(b))).top
+            ? a
+            : b,
+      );
+
+  /// Whether [wordId] is on the page a reader reading along reads: in view,
+  /// and not yet past two thirds of the way down.
+  bool onThePage(WidgetTester tester, int wordId) {
+    final seen = tester.getRect(theList());
+    final at = tester.getRect(find.byKey(WordKey(wordId)));
+    return at.top >= seen.top && at.center.dy <= seen.top + seen.height * 2 / 3;
   }
 
   testWidgets('a recitation walks on down the screen while the list stays '
       'where it was', (tester) async {
     await openStudy(tester, target: 96001);
     await settleDownloads(tester);
+    await play(tester);
 
-    final (word, seen) = await reciteLowInTheList(tester);
+    final word = lowestBuilt(tester);
+    expect(onThePage(tester, word), isFalse, reason: 'nothing to follow');
+    await reciteTo(tester, word);
 
-    expect(
-      (tester.getCenter(word).dy - seen.center.dy).abs(),
-      lessThan(seen.height / 8),
-    );
+    expect(onThePage(tester, word), isTrue);
+    await quiet(tester);
   });
 
-  testWidgets('with the list asked to stay put, a recitation drags the list '
-      'along under the reader', (tester) async {
-    await (await Prefs.read(db)).setFollowRecitation(false);
+  testWidgets('a reader who scrolled away during the recitation is pulled back '
+      'to it by the next word', (tester) async {
     await openStudy(tester, target: 96001);
     await settleDownloads(tester);
+    await play(tester);
+    await reciteTo(tester, 96001002);
+
+    await tester.drag(theList(), const Offset(0, -150));
+    await tester.pumpAndSettle();
     final position = tester
         .state<ScrollableState>(find.byType(Scrollable).first)
         .position;
-    final before = position.pixels;
+    final scrolledTo = position.pixels;
+    await reciteTo(tester, lowestBuilt(tester));
 
-    await reciteLowInTheList(tester);
+    expect(position.pixels, scrolledTo);
+    expect(find.byKey(const Key('back to recitation')), findsOneWidget);
+    await quiet(tester);
+  });
 
-    expect(position.pixels, before);
+  testWidgets('the way back leaves a reader who scrolled far from the '
+      'recitation where they are', (tester) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+    await play(tester);
+    await reciteTo(tester, 96002001);
+
+    // Far enough that 96:2 is no longer built.
+    await tester.drag(theList(), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const WordKey(96002001)), findsNothing);
+    await tester.tap(find.byKey(const Key('back to recitation')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const WordKey(96002001)), findsOneWidget);
+    final seen = tester.getRect(theList());
+    final at = tester.getRect(find.byKey(const WordKey(96002001)));
+    expect(at.top >= seen.top && at.bottom <= seen.bottom, isTrue);
+    expect(find.byKey(const Key('back to recitation')), findsNothing);
+    await quiet(tester);
   });
 
   testWidgets('an aya can be heard alone only from the open word\'s aya', (

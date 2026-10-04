@@ -343,8 +343,6 @@ class Prefs extends ChangeNotifier {
     this._headerOpen,
     this._rootOpen,
     this._ayaTranslation,
-    this._centreTapped,
-    this._followRecitation,
     this._mic,
     this._locale,
     ({String reciter, bool wordByWord}) audio,
@@ -365,8 +363,6 @@ class Prefs extends ChangeNotifier {
       display.headerOpen,
       display.rootOpen,
       display.ayaTranslation,
-      display.centreTapped,
-      display.followRecitation,
       await micPermission(db),
       await languagePref(db),
       await audioPref(db),
@@ -381,8 +377,6 @@ class Prefs extends ChangeNotifier {
   bool _headerOpen;
   bool _rootOpen;
   bool _ayaTranslation;
-  bool _centreTapped;
-  bool _followRecitation;
   MicPermission _mic;
   String? _locale;
   String _reciter;
@@ -405,14 +399,6 @@ class Prefs extends ChangeNotifier {
   /// Whether each aya's translation is drawn under it on the reading screen:
   /// Pickthall's English or Rashid Maash's French, by the reader's language.
   bool get ayaTranslation => _ayaTranslation;
-
-  /// Whether a tapped word is scrolled to the middle of the sūra list, or the
-  /// list stays where the reader's thumb left it.
-  bool get centreTapped => _centreTapped;
-
-  /// Whether the sūra list keeps the word being recited in its middle, or
-  /// stays where the reader left it while the recitation runs.
-  bool get followRecitation => _followRecitation;
 
   MicPermission get mic => _mic;
 
@@ -524,18 +510,6 @@ class Prefs extends ChangeNotifier {
     await _write();
   }
 
-  Future<void> setCentreTapped(bool centre) async {
-    _centreTapped = centre;
-    notifyListeners();
-    await _write();
-  }
-
-  Future<void> setFollowRecitation(bool follow) async {
-    _followRecitation = follow;
-    notifyListeners();
-    await _write();
-  }
-
   Future<void> _write() => setDisplayPrefs(
     _db,
     display: _display,
@@ -543,8 +517,6 @@ class Prefs extends ChangeNotifier {
     headerOpen: _headerOpen,
     rootOpen: _rootOpen,
     ayaTranslation: _ayaTranslation,
-    centreTapped: _centreTapped,
-    followRecitation: _followRecitation,
   );
 
   Future<void> askForTheMic() async {

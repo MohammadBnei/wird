@@ -1631,42 +1631,6 @@ abstract class AppLocalizations {
   /// **'Pickthall\'s English or Rashid Maash\'s French, under each aya.'**
   String get settingsAyaTranslationCaption;
 
-  /// Settings: a tapped word on the reading screen is scrolled to the middle of the list.
-  ///
-  /// In en, this message translates to:
-  /// **'Word centred'**
-  String get settingsTappedWordCentred;
-
-  /// Settings: a tapped word opens where it is, without scrolling the reading list.
-  ///
-  /// In en, this message translates to:
-  /// **'List stays put'**
-  String get settingsTappedWordStays;
-
-  /// Caption under the tapped-word setting.
-  ///
-  /// In en, this message translates to:
-  /// **'What the reading list does when you tap a word.'**
-  String get settingsTappedWordCaption;
-
-  /// Settings: while a sūra is recited, the reading list scrolls to keep the recited word in its middle.
-  ///
-  /// In en, this message translates to:
-  /// **'Follows recitation'**
-  String get settingsRecitationFollowed;
-
-  /// Settings: the reading list does not scroll on its own while a sūra is recited.
-  ///
-  /// In en, this message translates to:
-  /// **'List stays put'**
-  String get settingsRecitationStays;
-
-  /// Caption under the recitation-follow setting.
-  ///
-  /// In en, this message translates to:
-  /// **'What the reading list does while a sūra is recited.'**
-  String get settingsRecitationCaption;
-
   /// Caption under the word-display segmented control on the settings screen.
   ///
   /// In en, this message translates to:
@@ -2596,6 +2560,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get prepare_retry;
+
+  /// The way back to the recitation, shown over the reading list once the reader has scrolled or tapped away from the recited word while it plays.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to recitation'**
+  String get study_backToRecitation;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

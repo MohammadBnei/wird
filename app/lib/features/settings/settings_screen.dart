@@ -151,36 +151,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SizedBox(height: n.space('1')),
               _caption(n, l.settingsWordCaption),
               SizedBox(height: n.space('3')),
-              ..._onOff(
-                n,
-                on: prefs.ayaTranslation,
-                labels: (
+              NocturneSegmented(
+                options: [
                   l.settingsAyaTranslationShown,
                   l.settingsAyaTranslationHidden,
-                ),
-                caption: l.settingsAyaTranslationCaption,
-                onChanged: prefs.setAyaTranslation,
+                ],
+                selected: prefs.ayaTranslation ? 0 : 1,
+                onChanged: (i) => prefs.setAyaTranslation(i == 0),
               ),
-              ..._onOff(
-                n,
-                on: prefs.centreTapped,
-                labels: (
-                  l.settingsTappedWordCentred,
-                  l.settingsTappedWordStays,
-                ),
-                caption: l.settingsTappedWordCaption,
-                onChanged: prefs.setCentreTapped,
-              ),
-              ..._onOff(
-                n,
-                on: prefs.followRecitation,
-                labels: (
-                  l.settingsRecitationFollowed,
-                  l.settingsRecitationStays,
-                ),
-                caption: l.settingsRecitationCaption,
-                onChanged: prefs.setFollowRecitation,
-              ),
+              SizedBox(height: n.space('1')),
+              _caption(n, l.settingsAyaTranslationCaption),
+              SizedBox(height: n.space('3')),
               NocturneSegmented(
                 options: [l.settingsOrderChronological, l.settingsOrderMushaf],
                 selected: prefs.order.index,
@@ -409,24 +390,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       const NocturneRule(fade: 30),
     ],
   );
-
-  /// A two-way setting: its control, the on choice first, then its caption.
-  List<Widget> _onOff(
-    Nocturne n, {
-    required bool on,
-    required (String, String) labels,
-    required String caption,
-    required ValueChanged<bool> onChanged,
-  }) => [
-    NocturneSegmented(
-      options: [labels.$1, labels.$2],
-      selected: on ? 0 : 1,
-      onChanged: (i) => onChanged(i == 0),
-    ),
-    SizedBox(height: n.space('1')),
-    _caption(n, caption),
-    SizedBox(height: n.space('3')),
-  ];
 
   Widget _caption(Nocturne n, String text) => Text(
     text,

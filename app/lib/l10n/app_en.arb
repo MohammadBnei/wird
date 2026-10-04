@@ -1170,30 +1170,6 @@
   "@settingsAyaTranslationCaption": {
     "description": "Caption under the aya translation setting: whose translation is shown, by language."
   },
-  "settingsTappedWordCentred": "Word centred",
-  "@settingsTappedWordCentred": {
-    "description": "Settings: a tapped word on the reading screen is scrolled to the middle of the list."
-  },
-  "settingsTappedWordStays": "List stays put",
-  "@settingsTappedWordStays": {
-    "description": "Settings: a tapped word opens where it is, without scrolling the reading list."
-  },
-  "settingsTappedWordCaption": "What the reading list does when you tap a word.",
-  "@settingsTappedWordCaption": {
-    "description": "Caption under the tapped-word setting."
-  },
-  "settingsRecitationFollowed": "Follows recitation",
-  "@settingsRecitationFollowed": {
-    "description": "Settings: while a sūra is recited, the reading list scrolls to keep the recited word in its middle."
-  },
-  "settingsRecitationStays": "List stays put",
-  "@settingsRecitationStays": {
-    "description": "Settings: the reading list does not scroll on its own while a sūra is recited."
-  },
-  "settingsRecitationCaption": "What the reading list does while a sūra is recited.",
-  "@settingsRecitationCaption": {
-    "description": "Caption under the recitation-follow setting."
-  },
   "settingsWordCaption": "What is printed under each Arabic word.",
   "@settingsWordCaption": {
     "description": "Caption under the word-display segmented control on the settings screen."
@@ -1932,5 +1908,9 @@
   "prepare_trouble": "The Qur'an could not be read on this device. Try again; if it keeps failing, close Wird and open it again.",
   "@prepare_trouble": {"description": "On the prepare screen when the database did not answer."},
   "prepare_retry": "Try again",
-  "@prepare_retry": {"description": "Button under prepare_trouble."}
+  "@prepare_retry": {"description": "Button under prepare_trouble."},
+  "study_backToRecitation": "Back to recitation",
+  "@study_backToRecitation": {
+    "description": "The way back to the recitation, shown over the reading list once the reader has scrolled or tapped away from the recited word while it plays."
+  }
 }

@@ -579,22 +579,12 @@ const defaultRootOpen = true;
 /// Each aya's translation is shown under it until the reader turns it off.
 const defaultAyaTranslation = true;
 
-/// A tapped word is scrolled to the middle of the sūra list until the reader
-/// asks for the list to stay where their thumb left it.
-const defaultCentreTapped = true;
-
-/// While a sūra is recited, the list keeps the word being recited in its
-/// middle until the reader asks it to stay where it is.
-const defaultFollowRecitation = true;
-
 typedef DisplayPrefs = ({
   int display,
   double arabicSize,
   bool headerOpen,
   bool rootOpen,
   bool ayaTranslation,
-  bool centreTapped,
-  bool followRecitation,
 });
 
 /// Adds the columns a `display_prefs` written before either end of screen 1a
@@ -606,8 +596,6 @@ Future<void> ensureChromeColumns(Database db) async {
     ('header_open', defaultHeaderOpen),
     ('root_open', defaultRootOpen),
     ('aya_translation', defaultAyaTranslation),
-    ('centre_tapped', defaultCentreTapped),
-    ('follow_recitation', defaultFollowRecitation),
   ]) {
     if (have.contains(column)) continue;
     await db.execute(
@@ -626,8 +614,6 @@ Future<DisplayPrefs> displayPrefs(Database db) async {
       headerOpen: defaultHeaderOpen,
       rootOpen: defaultRootOpen,
       ayaTranslation: defaultAyaTranslation,
-      centreTapped: defaultCentreTapped,
-      followRecitation: defaultFollowRecitation,
     );
   }
   return (
@@ -636,8 +622,6 @@ Future<DisplayPrefs> displayPrefs(Database db) async {
     headerOpen: rows.first['header_open'] == 1,
     rootOpen: rows.first['root_open'] == 1,
     ayaTranslation: rows.first['aya_translation'] == 1,
-    centreTapped: rows.first['centre_tapped'] == 1,
-    followRecitation: rows.first['follow_recitation'] == 1,
   );
 }
 
@@ -650,8 +634,6 @@ Future<void> setDisplayPrefs(
   required bool headerOpen,
   required bool rootOpen,
   required bool ayaTranslation,
-  required bool centreTapped,
-  required bool followRecitation,
 }) => db.insert('display_prefs', {
   'id': 1,
   'display': display,
@@ -659,8 +641,6 @@ Future<void> setDisplayPrefs(
   'header_open': headerOpen ? 1 : 0,
   'root_open': rootOpen ? 1 : 0,
   'aya_translation': ayaTranslation ? 1 : 0,
-  'centre_tapped': centreTapped ? 1 : 0,
-  'follow_recitation': followRecitation ? 1 : 0,
 }, conflictAlgorithm: ConflictAlgorithm.replace);
 
 /// How a prayer is prepared until the reader changes it: Maghrib, voice and
