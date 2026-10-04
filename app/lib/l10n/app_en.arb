@@ -1908,5 +1908,9 @@
   "prepare_trouble": "The Qur'an could not be read on this device. Try again; if it keeps failing, close Wird and open it again.",
   "@prepare_trouble": {"description": "On the prepare screen when the database did not answer."},
   "prepare_retry": "Try again",
-  "@prepare_retry": {"description": "Button under prepare_trouble."}
+  "@prepare_retry": {"description": "Button under prepare_trouble."},
+  "study_backToRecitation": "Back to recitation",
+  "@study_backToRecitation": {
+    "description": "The way back to the recitation, shown over the reading list once the reader has scrolled or tapped away from the recited word while it plays."
+  }
 }

@@ -2560,6 +2560,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get prepare_retry;
+
+  /// The way back to the recitation, shown over the reading list once the reader has scrolled or tapped away from the recited word while it plays.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to recitation'**
+  String get study_backToRecitation;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

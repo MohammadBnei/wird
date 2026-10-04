@@ -614,18 +614,45 @@ void main() {
       .ancestor(of: tile(96001001), matching: find.byType(Scrollable))
       .first;
 
-  testWidgets('a tap on a word moves the sūra out from under the reader\'s '
-      'thumb', (tester) async {
+  testWidgets('a tapped word is left wherever it sat, off the middle of the '
+      'list', (tester) async {
     await openStudy(tester);
-    await tester.drag(suraList(), const Offset(0, -80));
+    // Any word's list, since the first word is unbuilt once scrolled away.
+    final list = find
+        .ancestor(
+          of: find.byWidgetPredicate((w) => w.key is WordKey),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    final word = tile(96005001);
+    await tester.dragUntilVisible(word, list, const Offset(0, -40));
     await tester.pumpAndSettle();
-    final position = tester.state<ScrollableState>(suraList()).position;
-    final scrolledTo = position.pixels;
 
+    await tester.tap(word);
+    await tester.pumpAndSettle();
+
+    final seen = tester.getRect(list);
+    expect(
+      (tester.getCenter(word).dy - seen.center.dy).abs(),
+      lessThan(seen.height / 4),
+    );
+  });
+
+  testWidgets('a step to a word the reader can see moves the sūra out from '
+      'under their thumb', (tester) async {
+    await openStudy(tester);
     await tester.tap(tile(96002001));
     await tester.pumpAndSettle();
+    // Off the middle, but in view: a step that centred would move it back.
+    await tester.drag(suraList(), const Offset(0, 40));
+    await tester.pumpAndSettle();
+    final position = tester.state<ScrollableState>(suraList()).position;
+    final at = position.pixels;
 
-    expect(position.pixels, scrolledTo);
+    await tester.tap(find.byKey(const Key('next word')));
+    await tester.pumpAndSettle();
+
+    expect(position.pixels, at);
   });
 
   testWidgets('a step that walks the open word out of view leaves it out of '

@@ -410,5 +410,6 @@
   "range_meta": "{count, plural, =1{1 verset} other{{count} versets}} · {time} · Juzʾ {juz}",
   "range_overview": "Aller à un point de la sourate",
   "range_three": "3 versets",
-  "range_minute": "~1 min"
+  "range_minute": "~1 min",
+  "study_backToRecitation": "Revenir à la récitation"
 }

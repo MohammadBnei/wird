@@ -244,6 +244,118 @@ void main() {
     });
   }
 
+  /// Presses play and waits for the sūra to be playing.
+  Future<void> play(WidgetTester tester) async {
+    await tester.tap(find.byIcon(Icons.play_arrow));
+    await settlePlayer(tester, () => recitation(tester).playing.value);
+  }
+
+  /// The recitation gets to [wordId], as its player reports it.
+  Future<void> reciteTo(WidgetTester tester, int wordId) async {
+    final tracks = recitation(tester).tracks;
+    final index = tracks.indexWhere((t) => t.ayahId == ayahOfWord(wordId));
+    final span = tracks[index].segments.firstWhere((s) => s.wordId == wordId);
+    (JustAudioPlatform.instance as FakePlayers).players
+        .firstWhere((p) => p.sounding)
+        .reach(Duration(milliseconds: span.startMs + 40), index: index);
+    await settlePlayer(
+      tester,
+      () => recitation(tester).currentWordId.value == wordId,
+    );
+    await tester.pumpAndSettle();
+  }
+
+  Finder theList() => find.byType(CustomScrollView);
+
+  /// The lowest word the sūra list has built, wherever that is.
+  int lowestBuilt(WidgetTester tester) => tester
+      .widgetList<WordTile>(find.byType(WordTile))
+      .map((w) => w.face.word.id)
+      .reduce(
+        (a, b) =>
+            tester.getRect(find.byKey(WordKey(a))).top >=
+                tester.getRect(find.byKey(WordKey(b))).top
+            ? a
+            : b,
+      );
+
+  /// Whether [wordId] is on the page a reader reading along reads: in view,
+  /// and not yet past two thirds of the way down.
+  bool onThePage(WidgetTester tester, int wordId) {
+    final seen = tester.getRect(theList());
+    final at = tester.getRect(find.byKey(WordKey(wordId)));
+    return at.top >= seen.top && at.center.dy <= seen.top + seen.height * 2 / 3;
+  }
+
+  testWidgets('a recitation walks on down the screen while the list stays '
+      'where it was', (tester) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+    await play(tester);
+
+    final word = lowestBuilt(tester);
+    expect(onThePage(tester, word), isFalse, reason: 'nothing to follow');
+    await reciteTo(tester, word);
+
+    expect(onThePage(tester, word), isTrue);
+    await quiet(tester);
+  });
+
+  testWidgets('a reader who scrolled away during the recitation is pulled back '
+      'to it by the next word', (tester) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+    await play(tester);
+    await reciteTo(tester, 96001002);
+
+    await tester.drag(theList(), const Offset(0, -150));
+    await tester.pumpAndSettle();
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position;
+    final scrolledTo = position.pixels;
+    await reciteTo(tester, lowestBuilt(tester));
+
+    expect(position.pixels, scrolledTo);
+    expect(find.byKey(const Key('back to recitation')), findsOneWidget);
+    await quiet(tester);
+  });
+
+  testWidgets('the way back leaves a reader who scrolled far from the '
+      'recitation where they are', (tester) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+    await play(tester);
+    await reciteTo(tester, 96002001);
+
+    // Far enough that 96:2 is no longer built.
+    await tester.drag(theList(), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const WordKey(96002001)), findsNothing);
+    await tester.tap(find.byKey(const Key('back to recitation')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const WordKey(96002001)), findsOneWidget);
+    final seen = tester.getRect(theList());
+    final at = tester.getRect(find.byKey(const WordKey(96002001)));
+    expect(at.top >= seen.top && at.bottom <= seen.bottom, isTrue);
+    expect(find.byKey(const Key('back to recitation')), findsNothing);
+    await quiet(tester);
+  });
+
+  testWidgets('an aya held to hear it plays while the list stays where it '
+      'was, as if the reader had scrolled away', (tester) async {
+    await openStudy(tester, target: 96001);
+    await settleDownloads(tester);
+
+    await tester.longPress(mark(96002));
+    await settlePlayer(tester, () => recitation(tester).playing.value);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('back to recitation')), findsNothing);
+    await quiet(tester);
+  });
+
   testWidgets('an aya can be heard alone only from the open word\'s aya', (
     tester,
   ) async {

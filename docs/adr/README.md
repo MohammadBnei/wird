@@ -60,3 +60,4 @@ flowchart LR
 | [0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md](0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md) | Wird ships through Google Play and the App Store, beside the APK | accepted |
 | [0029-a-words-own-audio-is-found-by-its-position.md](0029-a-words-own-audio-is-found-by-its-position.md) | A word's own audio is found by its position, not by the API's path | accepted |
 | [0030-play-carries-on-from-what-the-reader-touched-last.md](0030-play-carries-on-from-what-the-reader-touched-last.md) | Play carries on from what the reader touched last | accepted |
+| [0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md](0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md) | The reading list follows the recitation until the reader takes it | accepted |

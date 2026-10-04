@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
@@ -102,6 +103,26 @@ class _StudyScreenState extends State<StudyScreen> {
   Locale? _readIn;
 
   Recitation? _audio;
+
+  /// The recited word, from the recitation loaded last.
+  ValueListenable<int?>? _reciting;
+
+  /// Whether the list follows the recitation. A press of play or the way back
+  /// sets it; anything the reader does to the list clears it (ADR 0031).
+  bool _following = false;
+
+  /// How many of the screen's own scrolls are running, so they are not taken
+  /// for the reader's hand. A count: a scroll started over another ends the
+  /// first, whose end must not clear the second.
+  int _steers = 0;
+  bool get _steering => _steers > 0;
+
+  /// The recitation whose plays the list follows.
+  Recitation? _askedBy;
+
+  /// The aya the list hangs from in place of the one it was opened at: moved
+  /// there to reach a recited word whose aya had not been built.
+  int? _hangFrom;
   Set<int> _speakable = const {};
 
   /// The sūra and the voice the recitation was carried in: the reciter, and
@@ -146,6 +167,13 @@ class _StudyScreenState extends State<StudyScreen> {
       _listening?.removeListener(_reciterChanged);
       _listening = prefs..addListener(_reciterChanged);
     }
+    // Play, from this screen or any bar, is the reader asking for the
+    // recitation, so the list follows it again.
+    final recitation = Wird.of(context).recitation;
+    if (!identical(recitation, _askedBy)) {
+      _askedBy?.asked.removeListener(_engage);
+      _askedBy = recitation..asked.addListener(_engage);
+    }
     final locale = Localizations.localeOf(context);
     if (!_loaded || locale != _readIn) {
       _readIn = locale;
@@ -163,8 +191,49 @@ class _StudyScreenState extends State<StudyScreen> {
     _carry(ayahOfWord(word.id));
   }
 
+  /// Listens to [recited], the word the recitation now loaded sounds, in
+  /// place of the one it replaced.
+  void _follow(ValueListenable<int?> recited) {
+    if (identical(recited, _reciting)) return;
+    _reciting?.removeListener(_recited);
+    _reciting = recited..addListener(_recited);
+  }
+
+  void _recited() {
+    final wordId = _reciting?.value;
+    if (wordId == null || !_following || !_recital) return;
+    // Reading along is reading: the reader left from where the recitation was.
+    _position.move(wordId);
+    _turnTo(wordId);
+  }
+
+  /// The sūra or one of its ayas playing, rather than a word heard alone.
+  bool get _recital {
+    final audio = _audio;
+    final what = audio?.sounding.value?.what;
+    return audio != null &&
+        audio.playing.value &&
+        (what == Sounded.set || what == Sounded.aya);
+  }
+
+  /// The list follows the recitation from the next word it reaches, or, for
+  /// the way back, from the word it is on [now].
+  void _engage({bool now = false}) {
+    setState(() => _following = true);
+    final wordId = _reciting?.value;
+    if (now && wordId != null) _turnTo(wordId, now: true);
+  }
+
+  /// The reader took the list: it stays where they put it until they ask for
+  /// the recitation again.
+  void _release() {
+    if (_following) setState(() => _following = false);
+  }
+
   @override
   void dispose() {
+    _reciting?.removeListener(_recited);
+    _askedBy?.asked.removeListener(_engage);
     _listening?.removeListener(_reciterChanged);
     // A reader who leaves before the position settled still left from there.
     _position.flush();
@@ -213,17 +282,21 @@ class _StudyScreenState extends State<StudyScreen> {
       _peek.clear();
       _wordKeys.clear();
       _away = null;
+      _hangFrom = null;
+      // An aya the reader chose to open is the reader's hand on the list.
+      _following = false;
       _loaded = true;
     });
-    if (open != null) await _open(open, opening: true);
+    if (open != null) await _open(open, centre: true);
   }
 
   /// Reads everything the sheet shows for [word], then shows it.
   ///
   /// The sheet keeps the word it is showing until the next one has been read,
-  /// so a swipe never blanks it. [opening] is a sūra just loaded on [word],
-  /// which the list hangs from its top edge: it is centred whatever.
-  Future<void> _open(StudyWord word, {bool opening = false}) async {
+  /// so a swipe never blanks it. [centre] puts [word] in the middle of the
+  /// list: a word the reader asked for, by a tap or by opening a sūra on it.
+  /// A step brings it back only once it has walked out of view.
+  Future<void> _open(StudyWord word, {bool centre = false}) async {
     final generation = _generation;
     final was = _sheet;
     _opening = word.id;
@@ -250,7 +323,7 @@ class _StudyScreenState extends State<StudyScreen> {
     _sheetToTop();
     _position.move(word.id);
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _centre(always: opening),
+      (_) => _centre(word.id, always: centre),
     );
     await _carry(ayahOfWord(word.id));
   }
@@ -385,6 +458,7 @@ class _StudyScreenState extends State<StudyScreen> {
       _audio = recitation;
       _speakable = recitation.speakable;
     });
+    _follow(recitation.currentWordId);
     if (keep) {
       await recitation.prefetch(
         windowPaths(recitation.tracks, ayahId, wordByWord: wordByWord),
@@ -392,40 +466,80 @@ class _StudyScreenState extends State<StudyScreen> {
     }
   }
 
-  /// Brings the open word back into the sūra list, to its middle, when it is
-  /// out of view — or [always], for a sūra just opened on it, which hangs it
-  /// from the list's top edge with the aya before it out of sight.
+  /// Brings [wordId] into the sūra list, to its middle, when its middle is
+  /// out of view, or [always]: a tapped word, and a sūra just opened on it,
+  /// which hangs it from the list's top edge with the aya before it out of
+  /// sight.
   ///
   /// ponytail: only a word whose aya has been built. A jump to an aya off the
   /// screen lands it at the list's anchor instead, which is where [_load]
   /// opens a sūra; move the anchor if a jump inside a long sūra ever lands
   /// out of sight.
-  void _centre({required bool always}) {
-    final word = _word;
-    if (word == null) return;
-    final context = _keyOf(word.id).currentContext;
+  void _centre(int wordId, {required bool always}) {
+    final context = _keyOf(wordId).currentContext;
     if (context == null) return;
-    // A word the reader can see stays where it is. A tap opens what is under
-    // their thumb, and moving the list under it loses the place they scrolled
-    // to; only a step that walked the open word out of view brings it back,
-    // to the middle. "Can see" is its middle being in view: a word half cut
-    // at the list's edge can still be tapped, and must not jump either.
+    final place = _placeOf(context);
+    if (!always && place != null && place.seen.contains(place.at.center)) {
+      return;
+    }
+    _steer(context, 0.5);
+  }
+
+  /// Turns the list to the recited word [wordId] once it has passed two
+  /// thirds of the way down, putting it a third of the way from the top, so
+  /// the list moves about once a third of a screen rather than with every
+  /// word. [now] turns it there whatever: the way back.
+  void _turnTo(int wordId, {bool now = false}) {
+    final context = _keyOf(wordId).currentContext;
+    if (context == null) return _hang(wordId);
+    final place = _placeOf(context);
+    if (!now &&
+        place != null &&
+        place.at.top >= place.seen.top &&
+        place.at.center.dy <= place.seen.top + place.seen.height * 2 / 3) {
+      return;
+    }
+    _steer(context, 1 / 3);
+  }
+
+  /// Rebuilds the list from [wordId]'s aya, which was too far from where it
+  /// hung to have been built. The aya lands at the top; its words are
+  /// followed from there once they are read.
+  void _hang(int wordId) {
+    final index = _surah?.reading.indexWhere((a) => a.id == ayahOfWord(wordId));
+    if (index == null || index < 0 || index == _hangFrom) return;
+    setState(() => _hangFrom = index);
+  }
+
+  /// Where [context]'s word sits, and the part of the list that can be seen.
+  ({Rect seen, Rect at})? _placeOf(BuildContext context) {
     final list = Scrollable.maybeOf(context)?.context.findRenderObject();
     final tile = context.findRenderObject();
-    if (!always &&
-        list is RenderBox &&
-        tile is RenderBox &&
-        list.hasSize &&
-        tile.hasSize) {
-      final seen = list.localToGlobal(Offset.zero) & list.size;
-      final middle = tile.localToGlobal(tile.size.center(Offset.zero));
-      if (seen.contains(middle)) return;
+    if (list is! RenderBox ||
+        tile is! RenderBox ||
+        !list.hasSize ||
+        !tile.hasSize) {
+      return null;
     }
-    Scrollable.ensureVisible(
-      context,
-      alignment: 0.5,
-      duration: const Duration(milliseconds: 300),
+    return (
+      seen: list.localToGlobal(Offset.zero) & list.size,
+      at: tile.localToGlobal(Offset.zero) & tile.size,
     );
+  }
+
+  /// Scrolls [context] to [alignment] of the list, marked as the screen's
+  /// own scroll.
+  Future<void> _steer(BuildContext context, double alignment) async {
+    _steers++;
+    try {
+      await Scrollable.ensureVisible(
+        context,
+        alignment: alignment,
+        duration: const Duration(milliseconds: 300),
+      );
+    } finally {
+      _steers--;
+    }
   }
 
   /// The word [by] along from the open one, across the whole sūra.
@@ -435,6 +549,7 @@ class _StudyScreenState extends State<StudyScreen> {
     if (surah == null || from == null) return;
     var step = stepFrom(surah.reading, _words, from, by);
     if (step == null) return;
+    _release();
     if (step.wordId == null) {
       await _readWordsAround(step.ayaIndex, surah.reading);
       if (!mounted) return;
@@ -481,8 +596,9 @@ class _StudyScreenState extends State<StudyScreen> {
   /// a return from another screen is not the reader choosing where to
   /// recite from.
   Future<void> _tapped(StudyWord word) {
+    _release();
     _audio?.touch(word.id);
-    return _open(word);
+    return _open(word, centre: true);
   }
 
   Future<void> _speak(StudyWord word) async {
@@ -497,6 +613,8 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   void _setExpanded(bool expanded) {
+    // The reader is studying the word, and the sūra is behind the open aya.
+    if (expanded) _release();
     setState(() => _expanded = expanded);
     if (!expanded) _sheetToTop();
   }
@@ -620,6 +738,7 @@ class _StudyScreenState extends State<StudyScreen> {
           _visit(Routes.deepDive, (ayahId: ayahId, letters: letters)),
       translations: _prefs.ayaTranslation,
       onAya: (aya) {
+        _release();
         setState(() => _away = aya);
         _sheetToTop();
       },
@@ -773,8 +892,34 @@ class _StudyScreenState extends State<StudyScreen> {
               _drift * (1 - t),
               _openAya(n),
             ),
+          if (t == 0)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: n.space('2'),
+              child: Center(child: _wayBack(n)),
+            ),
         ],
       ),
+    );
+  }
+
+  /// The one way back to the recitation once the reader has taken the list:
+  /// shown only while the recitation plays and the list does not follow it.
+  Widget _wayBack(Nocturne n) {
+    final audio = _audio;
+    if (audio == null) return const SizedBox.shrink();
+    return ListenableBuilder(
+      listenable: Listenable.merge([audio.playing, audio.sounding]),
+      builder: (context, _) {
+        if (_following || !_recital) return const SizedBox.shrink();
+        return ActionChip(
+          key: const Key('back to recitation'),
+          avatar: Icon(Icons.graphic_eq, size: 16, color: n.accent),
+          label: Text(AppLocalizations.of(context)!.study_backToRecitation),
+          onPressed: () => _engage(now: true),
+        );
+      },
     );
   }
 
@@ -795,35 +940,52 @@ class _StudyScreenState extends State<StudyScreen> {
   /// them.
   Widget _list(Nocturne n, StudySet surah) {
     final ayas = surah.reading;
-    final focus = surah.focusIndex;
+    final focus = _hangFrom ?? surah.focusIndex;
+    // Any scroll the screen did not start is the reader's hand, whatever moved
+    // it: a drag, a fling, a wheel, the scrollbar or a screen reader. A finger
+    // put down while the screen scrolls is too, though it only stops it.
+    Widget taken(Widget list) => NotificationListener<ScrollStartNotification>(
+      onNotification: (_) {
+        if (!_steering) _release();
+        return false;
+      },
+      child: Listener(
+        onPointerDown: (_) {
+          if (_steering) _release();
+        },
+        child: list,
+      ),
+    );
     return ValueListenableBuilder<int?>(
       valueListenable: _audio?.currentWordId ?? _silent,
-      builder: (context, recited, _) => CustomScrollView(
-        // Keyed by where it hangs from too: opening another aya of the same
-        // sūra must start from that aya, not from the old scroll offset.
-        key: ValueKey((ayas.first.id, focus)),
-        center: _anchor,
-        slivers: [
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => _ayaTile(n, ayas, focus - 1 - i, recited),
-              childCount: focus,
+      builder: (context, recited, _) => taken(
+        CustomScrollView(
+          // Keyed by where it hangs from too: opening another aya of the same
+          // sūra must start from that aya, not from the old scroll offset.
+          key: ValueKey((ayas.first.id, focus)),
+          center: _anchor,
+          slivers: [
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => _ayaTile(n, ayas, focus - 1 - i, recited),
+                childCount: focus,
+              ),
             ),
-          ),
-          const SliverToBoxAdapter(key: _anchor, child: SizedBox.shrink()),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => _ayaTile(n, ayas, focus + i, recited),
-              childCount: ayas.length - focus,
+            const SliverToBoxAdapter(key: _anchor, child: SizedBox.shrink()),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => _ayaTile(n, ayas, focus + i, recited),
+                childCount: ayas.length - focus,
+              ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: n.space('8')),
-              child: _suraNav(n, ayas.first.surahId),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: n.space('8')),
+                child: _suraNav(n, ayas.first.surahId),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

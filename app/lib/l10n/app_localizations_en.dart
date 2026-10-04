@@ -1470,4 +1470,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prepare_retry => 'Try again';
+
+  @override
+  String get study_backToRecitation => 'Back to recitation';
 }

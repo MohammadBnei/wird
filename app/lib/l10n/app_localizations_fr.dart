@@ -1470,4 +1470,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prepare_retry => 'Réessayer';
+
+  @override
+  String get study_backToRecitation => 'Revenir à la récitation';
 }

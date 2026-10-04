@@ -166,7 +166,6 @@ void main() {
         await tester.drag(ayas, const Offset(0, -80));
         await tester.pumpAndSettle();
       }
-      final scrolledTo = position.pixels;
 
       // Chosen after the scroll: the reader taps what is under their thumb
       // now, not what was there before they moved the aya.
@@ -194,11 +193,17 @@ void main() {
         reason: 'the aya was rebuilt from scratch behind the root panel, which '
             'is the flash the reader sees mid-tap',
       );
+      // The list may move: by default it brings the tapped word to its
+      // middle. What it must not do is drop the word the reader tapped.
+      // Measured once the list has come to rest, as the reader sees it.
+      await tester.pumpAndSettle();
+      final list = tester.getRect(ayas);
+      final word = tester.getRect(tile);
       expect(
-        position.pixels,
-        equals(scrolledTo),
+        list.top <= word.top && word.bottom <= list.bottom,
+        isTrue,
         reason: 'the aya jumped back to the top when the root opened, losing '
-            'the place the reader had scrolled to',
+            'the place the reader had scrolled to (word $word, list $list)',
       );
     },
   );
