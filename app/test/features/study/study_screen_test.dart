@@ -609,6 +609,44 @@ void main() {
     expect(lit, greaterThan(0));
   });
 
+  /// The sūra list, as the scrollable the words sit in.
+  Finder suraList() => find
+      .ancestor(of: tile(96001001), matching: find.byType(Scrollable))
+      .first;
+
+  testWidgets('a tap on a word moves the sūra out from under the reader\'s '
+      'thumb', (tester) async {
+    await openStudy(tester);
+    await tester.drag(suraList(), const Offset(0, -80));
+    await tester.pumpAndSettle();
+    final position = tester.state<ScrollableState>(suraList()).position;
+    final scrolledTo = position.pixels;
+
+    await tester.tap(tile(96002001));
+    await tester.pumpAndSettle();
+
+    expect(position.pixels, scrolledTo);
+  });
+
+  testWidgets('a step that walks the open word out of view leaves it out of '
+      'sight', (tester) async {
+    await openStudy(tester);
+    final seen = tester.getRect(suraList());
+    // Just out of view, not out of the list: a word scrolled far enough away
+    // is not built at all, and centring reaches only built words.
+    while (tester.getRect(tile(96001002)).bottom >= seen.top) {
+      await tester.drag(suraList(), const Offset(0, -40));
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(find.byKey(const Key('next word')));
+    await tester.pumpAndSettle();
+
+    final open = tester.getRect(tile(96001002));
+    expect(open.top, greaterThanOrEqualTo(seen.top));
+    expect(open.bottom, lessThanOrEqualTo(seen.bottom));
+  });
+
   // Nothing in app/lib sets a preferred orientation and the manifest handles
   // the configuration change itself, so the app rotates; the system text size
   // is the reader's and goes to 2x. The bar, the sūra and the sheet share the

@@ -389,7 +389,8 @@ class _StudyScreenState extends State<StudyScreen> {
     }
   }
 
-  /// Puts the open word in the middle of the sūra list.
+  /// Brings the open word back into the sūra list, to its middle, when it is
+  /// out of view.
   ///
   /// ponytail: only a word whose aya has been built. A jump to an aya off the
   /// screen lands it at the list's anchor instead, which is where [_load]
@@ -400,6 +401,18 @@ class _StudyScreenState extends State<StudyScreen> {
     if (word == null) return;
     final context = _keyOf(word.id).currentContext;
     if (context == null) return;
+    // A word the reader can see stays where it is. A tap opens what is under
+    // their thumb, and moving the list under it loses the place they scrolled
+    // to; only a step that walked the open word out of view brings it back,
+    // to the middle. "Can see" is its middle being in view: a word half cut
+    // at the list's edge can still be tapped, and must not jump either.
+    final list = Scrollable.maybeOf(context)?.context.findRenderObject();
+    final tile = context.findRenderObject();
+    if (list is RenderBox && tile is RenderBox && list.hasSize && tile.hasSize) {
+      final seen = list.localToGlobal(Offset.zero) & list.size;
+      final middle = tile.localToGlobal(tile.size.center(Offset.zero));
+      if (seen.contains(middle)) return;
+    }
     Scrollable.ensureVisible(
       context,
       alignment: 0.5,
