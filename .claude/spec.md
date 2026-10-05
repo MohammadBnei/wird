@@ -185,6 +185,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 | Poetic register | ✗ stored, not served; own battery unwritten |
 | Human signing workflow | ✗ deferred |
 | Tafsir licensing, QF gloss one-week rule, QF dev account | ✗ open questions (`data/SOURCES.md`) |
+| Store release (ADR 0028, 0032) | ◐ CI + manifest + privacy ✓; Play account, keys, closed test, ASC key, screenshots ✗. Runbook `docs/guides/releasing-to-stores.md` |
 
 ## Known traps
 - **Stale `wird.db` after corpus rebuild**: `openWird` never replaces existing file; nothing reads `corpus_version`. New-column reads throw. Fix:

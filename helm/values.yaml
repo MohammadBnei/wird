@@ -20,7 +20,7 @@ image:
   # the registry entry in infra-bootstrap belongs after this repo's first CI
   # run has replaced this line, or the first sync is an ImagePullBackOff
   # against a tag that was never built.
-  tag: "b5dd6e41f07f"
+  tag: "777f2a41d4cc"
 
 # API_ADDR defaults to :8080 in server/cmd/api/main.go and nothing overrides it.
 service:
@@ -136,11 +136,11 @@ env:
   # key and a download resumed across a release never mixes two builds.
   # Empty answers 503, which the page reads as "not published yet".
   - name: WIRD_APK_KEY
-    value: "android/wird-f0747c4edecc.apk"
+    value: "android/wird-b671c10c9e8d.apk"
   # The release that key is, as the page prints it beside its button. Written
   # by the same apk.yml step as WIRD_APK_KEY, never by hand.
   - name: WIRD_APK_VERSION
-    value: "0.0.10"
+    value: "0.0.12"
   # Trailing slash deliberate: go-oidc compares the discovery document's
   # `issuer` claim against this string verbatim, and authentik publishes it
   # with the slash. app/lib/data/auth.dart carries the same value.

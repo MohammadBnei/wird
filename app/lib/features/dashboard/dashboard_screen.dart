@@ -63,7 +63,7 @@ Future<Waiting> whatIsWaiting(Database db, ReadingOrder order) async {
 /// It is the way IN. It answers what is waiting, where that sits in the
 /// Qur'an, and what the reader can do about it, then hands them on to the
 /// screens that study the thing. Where the reader stands is one line and one
-/// strip of the 114 sūras (ADR 0032); 1d keeps the ring, the tiles, the sūra
+/// strip of the 114 sūras (ADR 0033); 1d keeps the ring, the tiles, the sūra
 /// rows and the roots.
 ///
 /// A reader who has not started is told what a set is before being asked to

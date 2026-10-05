@@ -283,7 +283,7 @@ The drawer and home catch an aya or a word too, and push the reader with it ([wi
 
 ### Home
 
-Home names the waiting set on a card with its Arabic, says where the walk stands, and lists the sūras the reader is part-way through ([dashboard_screen.dart:283](../../../app/lib/features/dashboard/dashboard_screen.dart#L283)). ADR 0032.
+Home names the waiting set on a card with its Arabic, says where the walk stands, and lists the sūras the reader is part-way through ([dashboard_screen.dart:283](../../../app/lib/features/dashboard/dashboard_screen.dart#L283)). ADR 0033.
 
 - **Welcome.** Shown until an aya is understood or a prayer is recorded. Derived from `ayah_understood` and `set_prayers`, never stored. Opening a sūra does not end it.
 - **Where you are.** The waiting sūra's place among the 114 in the order the reader walks, plus its juz in the muṣḥaf's order only. Under it, a strip with one tick per sūra in the walk's order, lit by how much of each is understood, with the current sūra taller. Tapping it opens 1d.

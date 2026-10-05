@@ -255,7 +255,7 @@ String derivativeWeight(AppLocalizations l, Derivative derivative) =>
 ///
 /// The design also drew it as a star chart of the members around the root.
 /// It said nothing the spine does not, reached only screens
-/// wide enough to read its captions, and was removed (ADR 0032).
+/// wide enough to read its captions, and was removed (ADR 0033).
 class RootFamily extends StatefulWidget {
   const RootFamily({
     super.key,

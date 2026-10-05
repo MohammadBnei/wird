@@ -1,4 +1,4 @@
-# 32. Home says where the reader stands, and the root constellation is gone
+# 33. Home says where the reader stands, and the root constellation is gone
 
 Date: 2026-10-05. Status: accepted.
 

@@ -54,7 +54,7 @@ cd app && fvm flutter run -d macos
 
 The macOS build is the only local target where **voice-follow** really works. A simulator's microphone hears nothing useful. To let the scripts pick a target for you, `scripts/device.sh` prints one device id: a cabled iPhone first, then the iPhone 16 simulator, then macOS.
 
-The app talks to `https://wird.bnei.dev` by default. A compile-time define points it somewhere else ([flush.dart:21-24](../../app/lib/data/flush.dart#L21-L24)):
+The app talks to `https://wird.bnei.dev` by default. A compile-time define points it somewhere else ([flush.dart:21-24](../../app/lib/data/flush.dart#L17-L20)):
 
 ```bash
 fvm flutter run -d macos --dart-define=WIRD_ORIGIN=http://localhost:8080
