@@ -204,7 +204,7 @@ Since [ADR 0014](../../adr/0014-the-reading-screen-reads-a-whole-sura-a-word-at-
 
 [study_screen.dart:249](../../../app/lib/features/study/study_screen.dart#L271-L280).
 
-- A word, from home's "Continue reading": that word.
+- A word, from home's "Continue reading" or the passage's "Reading" rows: that word.
 - An aya, from the index, a root or the walk's set on home: its first word.
 - Nothing: where the reader last stood in any sūra, else the walk's next aya, else 1:1.
 
@@ -269,17 +269,38 @@ stateDiagram-v2
 
 Following turns the page: once the recited word passes two thirds of the way down, it is scrolled to a third from the top ([study_screen.dart:492](../../../app/lib/features/study/study_screen.dart#L514-L525)). Any play the reader asks for, from the reading screen or the player bar on any screen, starts following again; the recitation carrying on by itself after a word heard over it does not ([`Recitation.asked`](../../../app/lib/app.dart#L241)). Only the sūra or an aya playing is followed, never a word heard alone, and while following the reading position moves with the recited word ([study_screen.dart:202](../../../app/lib/features/study/study_screen.dart#L224-L253)). The screen marks its own scrolls, so any other scroll start is the reader's hand, whatever moved the list ([study_screen.dart:532](../../../app/lib/features/study/study_screen.dart#L554-L565), [study_screen.dart:947](../../../app/lib/features/study/study_screen.dart#L969-L980)). A recited word whose aya is not built rebuilds the list hung from that aya ([study_screen.dart:508](../../../app/lib/features/study/study_screen.dart#L530-L534)). While the recitation plays and the list does not follow, a "Back to recitation" chip sits over the list ([study_screen.dart:909](../../../app/lib/features/study/study_screen.dart#L931-L946)).
 
-A drag down on the sheet's top bar folds the sheet to that bar alone, and the sūra takes the screen: a reader who only wants to read has no use for a root under every word. A drag up, or a tap on the folded bar, brings it back; a drag up on an open sheet expands it, and the same long drag up from a folded sheet does both. Going down is a step at a time: a drag down on an expanded sheet stops at its usual height, and only the next one folds it. The choice is kept in `display_prefs.root_open`, so the reader finds the sheet as they left it ([root_sheet.dart:234](../../../app/lib/features/study/root_sheet.dart#L234-L273), [study_screen.dart:708](../../../app/lib/features/study/study_screen.dart#L730-L769)). Folding, opening and expanding all move the same way: the band above the sheet changes height over 350 ms, and a folding sheet keeps its root drawn until it has gone down ([study_screen.dart:661](../../../app/lib/features/study/study_screen.dart#L683-L711)). Expanded, the sūra stays under the open aya instead of being rebuilt: the two cross, each fading and drifting 24px, so the reader comes back to the sūra where they left it ([study_screen.dart:862](../../../app/lib/features/study/study_screen.dart#L884-L927)).
+A drag down on the sheet's top bar folds the sheet to that bar alone, and the sūra takes the screen: a reader who only wants to read has no use for a root under every word. A drag up, or a tap on the folded bar, brings it back; a drag up on an open sheet expands it, and the same long drag up from a folded sheet does both. Going down is a step at a time: a drag down on an expanded sheet stops at its usual height, and only the next one folds it. The choice is kept in `display_prefs.root_open`, so the reader finds the sheet as they left it ([root_sheet.dart:233](../../../app/lib/features/study/root_sheet.dart#L233-L272), [study_screen.dart:708](../../../app/lib/features/study/study_screen.dart#L730-L769)). Folding, opening and expanding all move the same way: the band above the sheet changes height over 350 ms, and a folding sheet keeps its root drawn until it has gone down ([study_screen.dart:661](../../../app/lib/features/study/study_screen.dart#L683-L711)). Expanded, the sūra stays under the open aya instead of being rebuilt: the two cross, each fading and drifting 24px, so the reader comes back to the sūra where they left it ([study_screen.dart:862](../../../app/lib/features/study/study_screen.dart#L884-L927)).
 
 A tap on the sheet's top bar, or on its "Counts, forms, other ayas" row, shrinks the sūra to the open word's aya, whole and with its translation, and brings up the counts, the ring of the root's lemmas and the other ayas; scrolling the sheet never does. Each other aya is shown as a line around the root's word in it, lit, so the word it is listed for is never cut off. An other aya opens in place of the sūra, with a way back to the word the reader was on and a way to read that aya's sūra from there.
 
 The root letters open the root's own screen. A screen that names an aya answers by popping its id back down, and the reader reloads in place rather than stacking a second reader ([study_screen.dart:609](../../../app/lib/features/study/study_screen.dart#L631-L635)):
 
 - the sūra index, reached from the sūra's name in the bar;
-- a root, its spine and the constellation, which call one helper ([family.dart:38](../../../app/lib/features/root/family.dart#L38-L39));
-- Progress (1d), whose "All 114" opens the index and passes its answer on ([progress_screen.dart:49](../../../app/lib/features/progress/progress_screen.dart#L49-L53)).
+- a root, its spine and the deep dive, which call one helper ([family.dart:29](../../../app/lib/features/root/family.dart#L29-L30));
+- Progress (1d), whose "All 114" opens the index and passes its answer on ([progress_screen.dart:50](../../../app/lib/features/progress/progress_screen.dart#L50-L54)), and whose "Reading" rows answer the word the reader last stood on as an `AtWord`.
 
-The drawer and home catch an aya too, and push the reader with it ([wird_shell.dart:247](../../../app/lib/shell/wird_shell.dart#L248-L265)).
+The drawer and home catch an aya or a word too, and push the reader with it ([wird_shell.dart:249](../../../app/lib/shell/wird_shell.dart#L249-L268)).
+
+### Home
+
+Home names the waiting set on a card with its Arabic, says where the walk stands, and lists the sūras the reader is part-way through ([dashboard_screen.dart:283](../../../app/lib/features/dashboard/dashboard_screen.dart#L283)). ADR 0033.
+
+- **Welcome.** Shown until an aya is understood or a prayer is recorded. Derived from `ayah_understood` and `set_prayers`, never stored. Opening a sūra does not end it.
+- **Where you are.** The waiting sūra's place among the 114 in the order the reader walks, plus its juz in the muṣḥaf's order only. Under it, a strip with one tick per sūra in the walk's order, lit by how much of each is understood, with the current sūra taller. Tapping it opens 1d.
+- **Continue reading.** The three sūras last read, leaving out the walk's own sūra, each with "aya n of m". A place, not progress (ADR 0015).
+
+```mermaid
+flowchart TD
+  db[("ayah_understood · set_prayers · reading_positions")] --> waiting["whatIsWaiting"]
+  waiting --> welcome{"started?"}
+  welcome -->|no| hello["Welcome"]
+  waiting --> card["Set card + Arabic"]
+  waiting --> strip["Where you are: line + 114-tick strip"]
+  waiting --> cont["Continue reading"]
+  strip -->|tap| passage["Passage 1d"]
+  passage -->|"aya or AtWord"| reader["Reader 1a"]
+  cont -->|AtWord| reader
+```
 
 ### 8. Marking an aya understood
 
@@ -299,7 +320,7 @@ Future<void> prayTheSet(BuildContext context, StudySet set) async {
 }
 ```
 
-[app.dart:453](../../../app/lib/app.dart#L535-L539). Home also has a "Prepare a prayer" door, which opens the same screen with no set ([dashboard_screen.dart:284](../../../app/lib/features/dashboard/dashboard_screen.dart#L284-L288)).
+[app.dart:453](../../../app/lib/app.dart#L535-L539). Home also has a "Prepare a prayer" door, which opens the same screen with no set ([dashboard_screen.dart:424](../../../app/lib/features/dashboard/dashboard_screen.dart#L424-L428)).
 
 #### The preparation
 
@@ -386,7 +407,7 @@ What stays on disk is the open aya and the [`aheadAyas`](../../../app/lib/data/a
 
 ### 11. What progress counts
 
-Screen 1d replays the walk to count finished sets ([sets.dart:498](../../../app/lib/data/sets.dart#L498-L533)), instead of counting rows in `sets`. A set prayed twice and never marked is not a finished set. The prayer tile counts every recorded prayer, on the walk or not, and is labelled "prayers recorded" for that reason ([passage.dart:160](../../../app/lib/features/progress/passage.dart#L160-L166), [progress_screen.dart:156](../../../app/lib/features/progress/progress_screen.dart#L156-L157)).
+Screen 1d replays the walk to count finished sets ([sets.dart:498](../../../app/lib/data/sets.dart#L498-L533)), instead of counting rows in `sets`. A set prayed twice and never marked is not a finished set. The prayer tile counts every recorded prayer, on the walk or not, and is labelled "prayers recorded" for that reason ([passage.dart:165](../../../app/lib/features/progress/passage.dart#L165-L171), [progress_screen.dart:157](../../../app/lib/features/progress/progress_screen.dart#L157-L158)).
 
 ## Why it is this way
 

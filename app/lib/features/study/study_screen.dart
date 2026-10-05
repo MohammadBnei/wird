@@ -756,7 +756,7 @@ class _StudyScreenState extends State<StudyScreen> {
       },
       onRoot: (letters) => _visit(Routes.root, letters),
       db: widget.db,
-      onConstellation: (ayahId, letters) =>
+      onDeepDive: (ayahId, letters) =>
           _visit(Routes.deepDive, (ayahId: ayahId, letters: letters)),
       translations: _prefs.ayaTranslation,
       onAya: (aya) {

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/kept_repo.dart';
 import 'package:wird/data/root_repo.dart';
-import 'package:wird/features/deepdive/constellation.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/root/root_sections.dart';
 import 'package:wird/l10n/app_localizations.dart';
@@ -85,7 +83,7 @@ void main() {
   /// it in the design's three panes, under it when they stack. Read off the
   /// pane's own heading, which is there whichever way the family is drawn.
   bool besideTheAya(WidgetTester tester) =>
-      tester.getTopLeft(find.text('ROOT CONSTELLATION')).dx >
+      tester.getTopLeft(find.text('ROOT')).dx >
       tester.getBottomRight(find.text('AL-\'ASR · AYA 3')).dx;
 
   testWidgets('the deep dive prints a sense as a bare assertion, so the one '
@@ -120,25 +118,14 @@ void main() {
     expect(find.textContaining('has not fetched'), findsOneWidget);
   });
 
-  testWidgets('a phone opening a constellation is handed the design’s three '
+  testWidgets('a phone opening a deep dive is handed the design’s three '
       'rails side by side, leaving the aya 292 points of a 402 point screen', (
     tester,
   ) async {
     await open(tester, size: phone);
 
-    expect(find.text('ROOT CONSTELLATION'), findsOneWidget);
+    expect(find.text('ROOT'), findsOneWidget);
     expect(besideTheAya(tester), isFalse);
-  });
-
-  testWidgets('the phone is offered a choice between the drawing and the list '
-      'when the drawing is not one of the two things it can have', (
-    tester,
-  ) async {
-    await open(tester, size: phone);
-    expect(find.text('List'), findsNothing);
-
-    await open(tester, size: tablet);
-    expect(find.text('List'), findsOneWidget);
   });
 
   testWidgets('a reader who opens the deep dive is stranded on it — no drawn '
@@ -235,7 +222,7 @@ void main() {
     await open(tester, size: tablet, ayahId: ayaOfTheClot, letters: clot);
 
     expect(find.textContaining('No one has written'), findsNothing);
-    expect(find.byType(Constellation), findsOneWidget);
+    expect(find.byType(KinSpine), findsOneWidget);
   });
 
   testWidgets('the tafsir pane names three commentaries beside prose the '
@@ -249,14 +236,11 @@ void main() {
     expect(find.textContaining('Nothing is downloaded yet'), findsOneWidget);
   });
 
-  testWidgets('the constellation’s five nodes are all the reader is ever '
-      'shown of a root the corpus holds thirty-eight forms of', (tester) async {
+  testWidgets('a tablet is shown five forms of a root the corpus holds '
+      'thirty-eight of', (tester) async {
     await open(tester, size: tablet);
     final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
     expect(reading.derivatives.length, greaterThan(5));
-
-    await tester.tap(find.text('List'));
-    await tester.pumpAndSettle();
 
     expect(find.byType(KinSpine), findsOneWidget);
     final spine = tester.widget<KinSpine>(find.byType(KinSpine));
@@ -331,12 +315,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a French reader is drawn an English constellation: its nodes '
-      'are painted onto a canvas, so the labels reach a screen reader from a '
-      'painter that has no context to read them from', (tester) async {
-    final semantics = tester.ensureSemantics();
-    // The clot, whose four forms are the ring. ṣ-b-r has thirty-eight and
-    // falls back to the spine, which draws no nodes to label.
+  testWidgets('a French reader opens a deep dive headed in English', (
+    tester,
+  ) async {
     await open(
       tester,
       size: tablet,
@@ -344,74 +325,8 @@ void main() {
       letters: clot,
       locale: const Locale('fr'),
     );
-    expect(find.byType(Constellation), findsOneWidget);
 
-    // The pane's own heading, which is a Text, and a node's screen-reader
-    // label, which is not. The second only reaches French if the painter was
-    // handed the strings the way it is handed its theme.
-    expect(find.text('CONSTELLATION DE LA RACINE'), findsOneWidget);
+    expect(find.text('RACINE'), findsOneWidget);
     expect(find.text('Garder ce verset'), findsOneWidget);
-    expect(find.text('Liste'), findsOneWidget);
-
-    // `find.bySemanticsLabel` walks elements, and a node of the constellation
-    // is not one — it is a CustomPainterSemantics the painter publishes. The
-    // semantics tree is the only place it exists, so that is where it is read.
-    final labels = <String>[];
-    void walk(SemanticsNode node) {
-      if (node.label.isNotEmpty) labels.add(node.label);
-      node.visitChildren((child) {
-        walk(child);
-        return true;
-      });
-    }
-
-    walk(tester.semantics.find(find.byType(Constellation)));
-    semantics.dispose();
-
-    expect(
-      labels.where((l) => l.contains('ouvrir')),
-      isNotEmpty,
-      reason:
-          'the constellation nodes are the drawing’s whole screen-reader '
-          'surface, and they are still in English: $labels',
-    );
-    expect(
-      labels.where((l) => l.contains('open ')),
-      isEmpty,
-      reason: 'an English node label survived into a French drawing',
-    );
-  });
-
-  test('the constellation captions a form the aya does not contain as the one '
-      'being recited', () async {
-    db = await testCorpus();
-    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
-    final aya = (await ayaReading(db, ayaOfPatience, patience))!;
-    final lit = [
-      for (final w in aya.words)
-        if (w.lit) w.text,
-    ].last;
-
-    final stars = constellation(reading, lit);
-    final marked = stars.where((s) => s.thisAya).toList();
-
-    expect(marked, hasLength(1));
-    expect(
-      lit.startsWith(marked.single.derivative.text),
-      isTrue,
-      reason: 'the node marked THIS AYA carries a form 103:3 does not spell',
-    );
-    expect(stars, hasLength(5));
-  });
-
-  test('a root opened on an aya that does not contain it is still drawn with '
-      'a node saying the reader is reciting it', () async {
-    db = await testCorpus();
-    final reading = (await rootReading(db, clot, readIn: const Locale('en')))!;
-
-    final stars = constellation(reading, null);
-
-    expect(stars.where((s) => s.thisAya), isEmpty);
-    expect(stars, hasLength(4));
   });
 }

@@ -67,7 +67,7 @@ void main() {
       'words of their own, neither of which the app draws', (tester) async {
     await open(tester);
 
-    // The only control that keeps an aya is the constellation's, so the empty
+    // The only control that keeps an aya is the deep dive's, so the empty
     // list names it in the words the reader will read on it.
     expect(find.textContaining('Keep this aya'), findsOneWidget);
     expect(find.textContaining('bookmark'), findsNothing);

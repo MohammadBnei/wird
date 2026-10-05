@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../data/root_repo.dart' show ayahOfWord;
 import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
 import '../../theme/nocturne.dart';
@@ -224,14 +225,78 @@ class _ProgressScreenState extends State<ProgressScreen> {
           ],
         ),
         const NocturneRule(fade: 30),
+        if (passage.next case final next?) ...[
+          Text(
+            _l10n.progress_next('${next.surahNameEn} ${next.number}'),
+            style: TextStyle(fontSize: 13, color: n.accent),
+          ),
+          SizedBox(height: n.space('3')),
+        ],
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 11,
           children: [for (final sura in passage.suras) _suraRow(n, sura)],
         ),
+        if (passage.reading.isNotEmpty) ...[
+          SizedBox(height: n.space('6')),
+          Text(
+            _l10n.progress_reading,
+            style: TextStyle(
+              fontSize: 10,
+              height: 1.2,
+              letterSpacing: 0.1 * 10,
+              color: n.accent,
+            ),
+          ),
+          for (final place in passage.reading) _readingRow(n, place),
+        ],
         SizedBox(height: n.space('6')),
         _rootsKnown(n, passage),
       ],
+    ),
+  );
+
+  /// A sūra the reader opened outside the walk. It answers the word they
+  /// last stood on down to whoever pushed this screen, which carries it on to
+  /// the one screen that reads one.
+  Widget _readingRow(Nocturne n, ReadingPlace place) => GestureDetector(
+    key: ValueKey('reading ${place.wordId}'),
+    behavior: HitTestBehavior.opaque,
+    onTap: () => Navigator.of(context).pop(AtWord(place.wordId)),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        spacing: 11,
+        children: [
+          SizedBox(
+            width: 74,
+            child: Text(
+              place.nameAr,
+              textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontFamily: Nocturne.arabicFamily,
+                fontSize: 19,
+                color: n.textAt(0.6),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              place.nameEn,
+              style: TextStyle(fontSize: 11, color: n.textAt(0.75)),
+            ),
+          ),
+          Text(
+            _l10n.reading_ayaOf(
+              ayahOfWord(place.wordId) % 1000,
+              place.ayahCount,
+            ),
+            style: TextStyle(fontSize: 11, color: n.textAt(0.55)),
+          ),
+          Icon(Icons.arrow_forward, size: 14, color: n.accent),
+        ],
+      ),
     ),
   );
 

@@ -61,7 +61,7 @@ class RootSheet extends StatelessWidget {
     required this.scroll,
     required this.onRoot,
     required this.db,
-    required this.onConstellation,
+    required this.onDeepDive,
     required this.translations,
     this.previous,
     this.next,
@@ -110,17 +110,16 @@ class RootSheet extends StatelessWidget {
   /// word changes.
   final ScrollController scroll;
 
-  /// Opens the root's own screen: its dial or spine, its constellation and
-  /// its parsing, which the sheet has no room for.
+  /// Opens the root's own screen: its dial or spine and its parsing, which
+  /// the sheet has no room for.
   final void Function(String letters) onRoot;
 
   /// Where the reader's yes or no on the root's sense is queued and
   /// remembered (ADR 0010).
   final Database db;
 
-  /// Opens the deep dive on an aya and a root's whole family, drawn as a
-  /// constellation where the window is wide enough.
-  final void Function(int ayahId, String letters) onConstellation;
+  /// Opens the deep dive on an aya and a root's whole family.
+  final void Function(int ayahId, String letters) onDeepDive;
 
   /// Whether the reader shows translations, which the other ayas follow.
   final bool translations;
@@ -185,7 +184,7 @@ class RootSheet extends StatelessWidget {
           scroll: scroll,
           onRoot: onRoot,
           db: db,
-          onConstellation: onConstellation,
+          onDeepDive: onDeepDive,
           translations: translations,
         )._content(context, Nocturne.of(context), AppLocalizations.of(context)!);
 
@@ -575,10 +574,10 @@ class RootSheet extends StatelessWidget {
             ),
             Center(
               child: TextButton(
-                key: const Key('constellation'),
+                key: const Key('deep dive'),
                 onPressed: () =>
-                    onConstellation(ayahOfWord(sheet.word.id), root.letters),
-                child: Text(l.study_constellation),
+                    onDeepDive(ayahOfWord(sheet.word.id), root.letters),
+                child: Text(l.study_deepDive),
               ),
             ),
           ],

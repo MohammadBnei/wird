@@ -1,57 +1,74 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../app.dart';
 import '../../data/db.dart';
-import '../../data/root_repo.dart' show ayahOfWord, ayahRef;
+import '../../data/root_repo.dart' show ayahOfWord;
 import '../../data/sets.dart';
 import '../../l10n/app_localizations.dart';
 import '../../nav.dart';
 import '../../theme/nocturne.dart';
+import '../progress/passage.dart';
+import '../study/word_row.dart' show arabicDigits;
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_rule.dart';
 
-/// What the walk has ready, the sūras the reader is part-way through, and
-/// nothing the reader has to work out.
+/// What the walk has ready, where it stands in the Qur'an, the sūras the
+/// reader is part-way through, and nothing the reader has to work out.
 typedef Waiting = ({
   StudySet? set,
   int number,
   int prayers,
-  List<({int wordId, String surah})> reading,
-});
+  ReadingOrder order,
 
-/// ponytail: the three sūras last read. Make it a list of its own if readers
-/// keep more than three going at once.
-const _readingShown = 3;
+  /// Whether the reader has understood an aya or recorded a prayer. Opening
+  /// a sūra is not starting: a word tapped out of curiosity marks nothing.
+  bool started,
+  List<SuraPassage> suras,
+  List<ReadingPlace> reading,
+});
 
 Future<Waiting> whatIsWaiting(Database db, ReadingOrder order) async {
   final set = await nextSet(db, order);
-  final positions = await readingPositions(db, limit: _readingShown);
-  final names = {
-    for (final r in await db.query('surahs', columns: ['id', 'name_en']))
-      r['id']! as int: r['name_en']! as String,
-  };
+  final here = set?.ayas.first.surahId;
+  final suras = await suraPassages(db, here);
+  final prayed = Sqflite.firstIntValue(
+    await db.rawQuery('SELECT COUNT(*) FROM set_prayers'),
+  )!;
   return (
-    reading: [
-      for (final p in positions)
-        (wordId: p.wordId, surah: names[p.surah] ?? '${p.surah}'),
-    ],
     set: set,
     // The sets already finished, plus the one being read. It comes from the
     // walk rather than from counting rows, because the rows record sets
     // *prayed* and a set can be prayed without ever being understood.
     number: await setsUnderstood(db, order) + 1,
     prayers: set == null ? 0 : await prayersOnSet(db, set.id),
+    order: order,
+    started: prayed > 0 || suras.any((s) => s.understood > 0),
+    // In the order the reader walks, which is the order the strip is drawn.
+    suras: order == ReadingOrder.nuzul
+        ? (suras.toList()
+            ..sort((a, b) => a.revelationOrder.compareTo(b.revelationOrder)))
+        : suras,
+    // The walk's own sūra is already named by the set; listing it again as a
+    // place to continue would be the same place twice.
+    reading: await readingPlaces(db, limit: 3, except: here),
   );
 }
 
 /// Home.
 ///
-/// Screen 1d already reports on the walk, and this is deliberately not a
-/// second one: it is the way IN. It answers one question — what is waiting and
-/// what can I do about it — and hands the reader on to the screens that study
-/// the thing. 1d keeps the ring, the juz, the sūra rows and the roots.
+/// It is the way IN. It answers what is waiting, where that sits in the
+/// Qur'an, and what the reader can do about it, then hands them on to the
+/// screens that study the thing. Where the reader stands is one line and one
+/// strip of the 114 sūras (ADR 0033); 1d keeps the ring, the tiles, the sūra
+/// rows and the roots.
+///
+/// A reader who has not started is told what a set is before being asked to
+/// pray one. That is derived, never a flag: the welcome goes with the first
+/// aya understood or the first prayer recorded.
 ///
 /// Every figure on it is read from the corpus at the moment it is drawn. There
 /// is no streak, no daily target and no plausible-looking number that nobody
@@ -105,12 +122,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) await _load();
   }
 
-  /// The index answers with an aya rather than by staying open, so home
-  /// carries it on to the one screen that reads one.
+  /// The index answers with an aya, and the passage with an aya or a word,
+  /// rather than by staying open, so home carries it on to the one screen
+  /// that reads one.
   Future<void> _open(String route) async {
     final nav = Navigator.of(context);
     final chosen = await nav.pushNamed(route);
-    if (chosen is int) await nav.pushNamed(Routes.study, arguments: chosen);
+    if (chosen is int || chosen is AtWord) {
+      await nav.pushNamed(Routes.study, arguments: chosen);
+    }
     // A prayer prepared from a door may have answered for the waiting set.
     if (mounted) await _load();
   }
@@ -133,9 +153,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (waiting.set case final set?)
-                    _next(n, set, waiting)
-                  else
+                  if (!waiting.started) ...[
+                    _welcome(n),
+                    SizedBox(height: n.space('6')),
+                  ],
+                  if (waiting.set case final set?) ...[
+                    _next(n, set, waiting),
+                    SizedBox(height: n.space('8')),
+                    _whereYouAre(n, set, waiting),
+                  ] else
                     _finished(n),
                   if (waiting.reading.isNotEmpty) ...[
                     SizedBox(height: n.space('8')),
@@ -149,55 +175,166 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _next(Nocturne n, StudySet set, Waiting waiting) {
+  Widget _welcome(Nocturne n) {
     final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NocturneKicker(
-          l10n.dashboard_setWaiting(waiting.number),
-          tone: KickerTone.accent,
-        ),
+        NocturneKicker(l10n.dashboard_welcomeKicker, tone: KickerTone.accent),
         SizedBox(height: n.space('2')),
-        Text(set.title, style: Theme.of(context).textTheme.displaySmall),
-        SizedBox(height: n.space('1')),
         Text(
-          set.ayas.first.surahNameAr,
-          textDirection: TextDirection.rtl,
-          style: TextStyle(
-            fontFamily: Nocturne.arabicFamily,
-            fontSize: 15,
-            color: n.textAt(0.55),
-          ),
-        ),
-        SizedBox(height: n.space('3')),
-        Text(
-          '${l10n.dashboard_ayaCount(set.ayas.length)} · '
-          '${l10n.dashboard_prayerCount(waiting.prayers)}',
-          style: TextStyle(fontSize: 11.5, height: 1.45, color: n.textAt(0.55)),
-        ),
-        SizedBox(height: n.space('4')),
-        // Praying the portion is what the app is for, so it is the one action
-        // drawn at the top of the app's first screen. It used to be a button in
-        // the reading screen's settings panel.
-        NocturneButton(
-          key: const Key('pray the set'),
-          block: true,
-          variant: NocturneButtonVariant.primary,
-          onPressed: () => _pray(set),
-          child: Text(l10n.dashboard_praySet),
-        ),
-        NocturneButton(
-          key: const Key('read the set'),
-          block: true,
-          // The set itself, named by its first aya: opened with no aya, the
-          // reader goes where it last stood, which need not be this set.
-          onPressed: () =>
-              Navigator.of(context)
-                  .pushNamed(Routes.study, arguments: set.ayas.first.id),
-          child: Text(l10n.dashboard_readFirst),
+          l10n.dashboard_welcome,
+          style: TextStyle(fontSize: 13.5, height: 1.5, color: n.textAt(0.8)),
         ),
       ],
+    );
+  }
+
+  /// The waiting set, on a card of its own, with its Arabic: a set is at most
+  /// a few dozen words, so the whole of it fits and none is cut off.
+  Widget _next(Nocturne n, StudySet set, Waiting waiting) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      padding: EdgeInsets.all(n.space('4')),
+      decoration: BoxDecoration(
+        color: n.surface,
+        borderRadius: BorderRadius.circular(n.radius('md')),
+        boxShadow: n.shadow('sm'),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          NocturneKicker(
+            l10n.dashboard_setWaiting(waiting.number),
+            tone: KickerTone.accent,
+          ),
+          SizedBox(height: n.space('2')),
+          Text(set.title, style: Theme.of(context).textTheme.displaySmall),
+          SizedBox(height: n.space('1')),
+          Text(
+            set.ayas.first.surahNameAr,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: Nocturne.arabicFamily,
+              fontSize: 15,
+              color: n.textAt(0.55),
+            ),
+          ),
+          SizedBox(height: n.space('3')),
+          Text(
+            [
+              // The bundled face does not draw the end-of-aya sign around a
+              // number, and a ringed number drawn as a widget is reordered
+              // where right-to-left lines wrap; the ornate brackets are text,
+              // so they stay with the aya they close.
+              for (final aya in set.ayas)
+                '${aya.words.map((w) => w.text).join(' ')} '
+                    '\uFD3F${arabicDigits(aya.number)}\uFD3E',
+            ].join(' '),
+            key: const Key('set text'),
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: Nocturne.arabicFamily,
+              fontSize: 22,
+              height: 1.9,
+              color: n.text,
+            ),
+          ),
+          SizedBox(height: n.space('3')),
+          Text(
+            '${l10n.dashboard_ayaCount(set.ayas.length)} · '
+            '${l10n.dashboard_prayerCount(waiting.prayers)}',
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.45,
+              color: n.textAt(0.55),
+            ),
+          ),
+          SizedBox(height: n.space('4')),
+          // Praying the portion is what the app is for, so it is the one
+          // action drawn at the top of the app's first screen. It used to be a
+          // button in the reading screen's settings panel.
+          NocturneButton(
+            key: const Key('pray the set'),
+            block: true,
+            variant: NocturneButtonVariant.primary,
+            onPressed: () => _pray(set),
+            child: Text(l10n.dashboard_praySet),
+          ),
+          NocturneButton(
+            key: const Key('read the set'),
+            block: true,
+            // The set itself, named by its first aya: opened with no aya, the
+            // reader goes where it last stood, which need not be this set.
+            onPressed: () =>
+                Navigator.of(context)
+                    .pushNamed(Routes.study, arguments: set.ayas.first.id),
+            child: Text(l10n.dashboard_readFirst),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Where the waiting set sits: its sūra's place in the order the reader
+  /// walks, and a strip of all 114 lit by how much of each is understood.
+  /// The juz is named only in the muṣḥaf's order; in the order of revelation
+  /// the walk opens in juz 30, which would read as nearly done.
+  Widget _whereYouAre(Nocturne n, StudySet set, Waiting waiting) {
+    final l10n = AppLocalizations.of(context)!;
+    final first = set.ayas.first;
+    final place = waiting.order == ReadingOrder.nuzul
+        ? l10n.dashboard_suraNuzul(first.revelationOrder)
+        : l10n.dashboard_suraMushaf(first.surahId, juzOf(first.id));
+    final understood = waiting.suras.fold(0, (sum, s) => sum + s.understood);
+    final caption = understood == 0
+        ? null
+        : l10n.dashboard_ayasUnderstood(understood, ayasInTheQuran);
+    return Semantics(
+      button: true,
+      label: [place, ?caption].join('. '),
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: const Key('where you are'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _open(Routes.progress),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: NocturneKicker(
+                    l10n.dashboard_whereYouAre,
+                    tone: KickerTone.accent,
+                  ),
+                ),
+                Icon(Icons.arrow_forward, size: 16, color: n.accent),
+              ],
+            ),
+            SizedBox(height: n.space('2')),
+            Text(place, style: Theme.of(context).textTheme.headlineSmall),
+            SizedBox(height: n.space('3')),
+            SizedBox(
+              height: 18,
+              child: CustomPaint(
+                painter: _Strip(
+                  suras: waiting.suras,
+                  accent: n.accent,
+                  spent: n.color('neutral-800'),
+                ),
+              ),
+            ),
+            if (caption != null) ...[
+              SizedBox(height: n.space('2')),
+              Text(
+                caption,
+                style: TextStyle(fontSize: 11.5, color: n.textAt(0.55)),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -223,12 +360,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      place.surah,
+                      place.nameEn,
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
                   Text(
-                    ayahRef(ayahOfWord(place.wordId)),
+                    l10n.reading_ayaOf(
+                      ayahOfWord(place.wordId) % 1000,
+                      place.ayahCount,
+                    ),
                     style: TextStyle(fontSize: 12, color: n.textAt(0.55)),
                   ),
                   SizedBox(width: n.space('2')),
@@ -319,4 +459,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ],
     );
   }
+}
+
+/// The 114 sūras as ticks, in the order the reader walks, each lit by how
+/// much of it is understood. The sūra the walk is in stands taller, so it is
+/// found by its shape and not by its colour alone.
+class _Strip extends CustomPainter {
+  const _Strip({
+    required this.suras,
+    required this.accent,
+    required this.spent,
+  });
+
+  final List<SuraPassage> suras;
+  final Color accent;
+  final Color spent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final pitch = size.width / suras.length;
+    final width = math.max(1.0, pitch * 0.6);
+    for (var i = 0; i < suras.length; i++) {
+      final sura = suras[i];
+      final done = sura.fraction;
+      final height = sura.current ? size.height : size.height * 0.5;
+      // The same light as the ring on 1d: a sūra never opened stays the
+      // colour of the track, one only partly understood is the accent held
+      // back to how far it got.
+      final paint = Paint()
+        ..color = sura.current
+            ? accent
+            : done == 0
+            ? spent
+            : accent.withValues(alpha: done >= 1 ? 1 : 0.35 + 0.5 * done);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(i * pitch, size.height - height, width, height),
+          Radius.circular(width / 2),
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Strip old) => old.suras != suras;
 }

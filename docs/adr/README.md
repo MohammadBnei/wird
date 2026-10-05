@@ -63,3 +63,4 @@ flowchart LR
 | [0030-play-carries-on-from-what-the-reader-touched-last.md](0030-play-carries-on-from-what-the-reader-touched-last.md) | Play carries on from what the reader touched last | accepted |
 | [0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md](0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md) | The reading list follows the recitation until the reader takes it | accepted |
 | [0032-account-deletion-removes-wird-data-and-keeps-the-shared-sign-in.md](0032-account-deletion-removes-wird-data-and-keeps-the-shared-sign-in.md) | Account deletion removes Wird's data and keeps the shared sign-in | accepted |
+| [0033-home-says-where-the-reader-stands.md](0033-home-says-where-the-reader-stands.md) | Home says where the reader stands, and the root constellation is gone | accepted |

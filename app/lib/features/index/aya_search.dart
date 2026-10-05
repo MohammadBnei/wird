@@ -141,8 +141,8 @@ class AyaSearch {
   /// The roots [query] names, by their letters — كتب, or ك ت ب — or by their
   /// transliteration, with or without its marks: ḥ-m-d, h-m-d or hmd. Each
   /// comes with the first [limit] ayas a word of it stands in, outside the
-  /// sūras in [exclude], read from the same `words.root_letters` the
-  /// constellation reads a root's family from.
+  /// sūras in [exclude], read from the same `words.root_letters` a
+  /// root's family is read from.
   Future<List<RootHit>> roots(
     String query, {
     int limit = 6,

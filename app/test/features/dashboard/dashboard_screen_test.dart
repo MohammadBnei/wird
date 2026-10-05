@@ -56,4 +56,66 @@ void main() {
       startsWith('2:255 · word '),
     );
   });
+
+  testWidgets('a fresh install asks for a prayer before saying what a set is', (
+    tester,
+  ) async {
+    await openHome(tester);
+
+    expect(find.text('WELCOME'), findsOneWidget);
+    expect(find.textContaining('a few ayas at a time'), findsOneWidget);
+  });
+
+  // The failure: the welcome keyed on anything the reader touched, so one word
+  // tapped out of curiosity took it away before a set was ever understood.
+  testWidgets('a word tapped out of curiosity ends the welcome', (
+    tester,
+  ) async {
+    await movePosition(db, 2255003);
+    await openHome(tester);
+
+    expect(find.text('WELCOME'), findsOneWidget);
+  });
+
+  testWidgets('the welcome outlives a prayer recorded off the walk', (
+    tester,
+  ) async {
+    final visited = (await ayaSet(db, ReadingOrder.nuzul, 2255))!;
+    await recordSetPrayed(db, visited);
+    await openHome(tester);
+
+    expect(find.text('WELCOME'), findsNothing);
+  });
+
+  // The failure: in the order of revelation the walk opens on Al-'Alaq, which
+  // sits in juz 30, so a newcomer was told they were at the last juz of 30.
+  testWidgets('under revelation order home tells a newcomer they are in juz 30',
+      (tester) async {
+    await openHome(tester);
+
+    expect(
+      find.text('Sūra 1 of 114 in the order of revelation'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Juzʾ'), findsNothing);
+
+    await goTo(tester, 'Settings');
+    await tester.tap(find.text('Muṣḥaf'));
+    await tester.pumpAndSettle();
+    await closeSettings(tester);
+
+    expect(find.text('Sūra 1 of 114 · Juzʾ 1'), findsOneWidget);
+  });
+
+  testWidgets('home lists the sūra the walk is in twice, once as the set and '
+      'once as a place to continue', (tester) async {
+    final set = (await nextSet(db, ReadingOrder.nuzul))!;
+    final inTheSet = set.ayas.first.id * 1000 + 1;
+    await movePosition(db, inTheSet);
+    await movePosition(db, 2255003);
+    await openHome(tester);
+
+    expect(find.byKey(ValueKey('continue $inTheSet')), findsNothing);
+    expect(find.byKey(const ValueKey('continue 2255003')), findsOneWidget);
+  });
 }

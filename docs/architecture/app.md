@@ -142,7 +142,7 @@ The copy only happens when `wird.db` is missing. A later app update with a newer
 
 Every screen is registered by name in one map. The drawer lists the destinations. A destination is drawn inside `WirdShell`, which carries the bar, the drawer and the audio transport. A screen you push into, such as a root or the prayer, carries its own way back and gets no shell. That is how screen 1b is kept free of anything drawn over the aya.
 
-Settings is the one drawer row that is not a route. It opens as a sheet over whatever screen is open, so a change to the display is seen behind it as it is made, and closing it leaves you where you stood ([showSettings, settings_screen.dart:411](../../app/lib/features/settings/settings_screen.dart#L411-L423), [the drawer, wird_shell.dart:254](../../app/lib/shell/wird_shell.dart#L254)).
+Settings is the one drawer row that is not a route. It opens as a sheet over whatever screen is open, so a change to the display is seen behind it as it is made, and closing it leaves you where you stood ([showSettings, settings_screen.dart:411](../../app/lib/features/settings/settings_screen.dart#L411-L423), [the drawer, wird_shell.dart:255](../../app/lib/shell/wird_shell.dart#L255)).
 
 ```dart
     builder: (_) {

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/data/root_repo.dart';
-import 'package:wird/features/deepdive/constellation.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/root/family.dart';
 import 'package:wird/features/root/root_dial.dart';
@@ -89,31 +88,7 @@ void main() {
     expect(find.byType(RootScreen), findsNothing);
   });
 
-  testWidgets('a constellation node is a drawing of a word: tapping the form '
-      'the reader wants leads nowhere', (tester) async {
-    final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
-    await open(
-      tester,
-      DeepDiveScreen(db: db, ayahId: ayaOfPatience, letters: patience),
-      at: tablet,
-    );
-
-    final star = tester
-        .widget<Constellation>(find.byType(Constellation))
-        .stars
-        .first;
-    final box = tester.getRect(find.byType(Constellation));
-    final fit = constellationFit(box.size);
-    await tester.tapAt(box.topLeft + fit.origin + star.at * fit.scale);
-    await tester.pumpAndSettle();
-
-    expect(reading.derivatives, contains(star.derivative));
-    expectAnswered(tester, star.derivative.ayahId);
-    expect(find.byType(DeepDiveScreen), findsNothing);
-  });
-
-  testWidgets('the phone is handed the tablet drawing shrunk: five of the '
-      "root's thirty-eight forms, at a size no caption survives", (
+  testWidgets("the phone is handed five of the root's thirty-eight forms", (
     tester,
   ) async {
     final reading = (await rootReading(db, patience, readIn: const Locale('en')))!;
@@ -125,7 +100,6 @@ void main() {
       at: phone,
     );
 
-    expect(find.byType(Constellation), findsNothing);
     final rows = tester.widget<KinSpine>(find.byType(KinSpine));
     expect(rows.derivatives, reading.derivatives);
   });
@@ -191,21 +165,13 @@ void main() {
     expect(find.text(derivativeWeight(l, first)), findsWidgets);
   });
 
-  test('the panel under the aya and the drawing beside it are built by '
-      'queries of their own, so one root reads three ways', () async {
+  test('the panel under the aya and the family beside it are built by '
+      'queries of their own, so one root reads two ways', () async {
     for (final letters in ['قرأ', onTheDial, 'عصر', patience]) {
       final family = (await rootReading(db, letters, readIn: const Locale('en')))!;
       final panel = (await rootReading(db, letters, readIn: const Locale('en')))!.kin;
-      final drawn = [
-        for (final star in constellation(family, null)) star.derivative,
-      ];
 
       expect(panel, family.derivatives.take(panel.length), reason: letters);
-      expect(
-        drawn.every(family.derivatives.contains),
-        isTrue,
-        reason: letters,
-      );
     }
   });
 }

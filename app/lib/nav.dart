@@ -55,7 +55,7 @@ typedef ScreenBuilder = Widget Function(Database db, Object? arguments);
 // study (1a): the set, reached from the dashboard or the drawer.
 //   an underlined word                -> swaps 1a's own root panel, no push
 //   the root panel's identity row     -> root (3a), the root of the word just tapped
-//   "Constellation"                   -> deepDive (1c), on that aya and that root
+//   "Deep dive"                       -> deepDive (1c), on that aya and that root
 //   "Mark set understood"             -> stays on 1a
 //   "Pray this set"                   -> prepare, which opens the prayer (1b) and
 //                                        records it on the way back
@@ -160,7 +160,7 @@ final class AStepFrom {
 /// A destination is drawn inside the shell; a screen the reader pushed into is
 /// not.
 ///
-/// The prayer, a root and a constellation carry their own way back and must
+/// The prayer, a root and a deep dive carry their own way back and must
 /// not offer a drawer. Screen 1b especially: it runs inside the prayer, where
 /// there is nothing to navigate to and nothing may be drawn over the aya —
 /// which is also why the shell, and only the shell, carries the audio

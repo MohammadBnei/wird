@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/db.dart';
 import 'package:wird/data/root_repo.dart';
 import 'package:wird/features/root/family.dart';
 import 'package:wird/data/sets.dart';
@@ -215,6 +216,34 @@ void main() {
     expect(position(tester), startsWith('1:5 '));
   });
 
+  // The failure: home and the drawer carried only an aya on from a screen
+  // they pushed, so a word answered by the passage was dropped on the floor.
+  testWidgets('a sūra picked from the passage’s reading rows is dropped on '
+      'the way back, from home and from the drawer', (tester) async {
+    await movePosition(db, 2255003);
+    await openApp(tester);
+    final row = find.byKey(const ValueKey('reading 2255003'));
+
+    Future<void> pick() async {
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.byType(StudyScreen), findsOneWidget);
+      expect(find.byType(ProgressScreen), findsNothing);
+      expect(position(tester), startsWith('2:255 '));
+      navigatorIn(tester).popUntil((r) => r.isFirst);
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(find.byKey(const Key('where you are')));
+    await tester.pumpAndSettle();
+    await pick();
+
+    await goTo(tester, 'Your passage');
+    await pick();
+  });
+
   testWidgets('the app goes down on the frame the corpus finishes opening, so '
       'the reader never reaches the app at all', (tester) async {
     final opening = Completer<Database>();
@@ -227,7 +256,7 @@ void main() {
     expect(find.byType(DashboardScreen), findsOneWidget);
   });
 
-  testWidgets('a reader on a tablet opening a constellation lands on a page '
+  testWidgets('a reader on a tablet opening a deep dive lands on a page '
       'that admits the screen behind it was never built', (tester) async {
     await openTheSet(tester);
     // The iPad Pro 11-inch in landscape, which is where the three-pane
@@ -237,10 +266,10 @@ void main() {
         .pushNamed(Routes.deepDive, arguments: (ayahId: 96002, letters: 'علق'));
     await tester.pumpAndSettle();
 
-    expect(find.text('ROOT CONSTELLATION'), findsOneWidget);
+    expect(find.text('ROOT'), findsOneWidget);
   });
 
-  testWidgets('a reader on a phone opening a constellation is handed the '
+  testWidgets('a reader on a phone opening a deep dive is handed the '
       'tablet’s three rails, which do not fit a phone', (tester) async {
     await openTheSet(tester);
     navigatorIn(tester)

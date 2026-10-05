@@ -36,11 +36,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('more row')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('constellation')));
+    await tester.ensureVisible(find.byKey(const Key('deep dive')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('constellation')));
+    await tester.tap(find.byKey(const Key('deep dive')));
     await tester.pumpAndSettle();
-    await shot(tester, '04-constellation');
+    await shot(tester, '04-deep-dive');
 
     // The deep dive is pushed over the set and has no drawer of its own.
     tester

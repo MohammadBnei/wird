@@ -34,9 +34,9 @@
   "@index_go_to_hint": {
     "description": "Under 'Go to …' in the index, when the search is a reference like 2:255: choosing it opens the reader on that aya."
   },
-  "kept_empty_ayas": "No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.",
+  "kept_empty_ayas": "No ayas kept yet. Tap a word, open its Deep dive, and “Keep this aya” keeps one here.",
   "@kept_empty_ayas": {
-    "description": "Shown on the kept list in place of the cards when the reader has kept no aya; it names the control on the constellation screen that keeps one."
+    "description": "Shown on the kept list in place of the cards when the reader has kept no aya; it names the way to the deep dive and the control there that keeps one."
   },
   "kept_empty_notes": "No notes yet. Nothing in the app writes one yet; an aya and a root are kept without words.",
   "@kept_empty_notes": {
@@ -99,7 +99,7 @@
   },
   "kept_meta_flagged": "flagged for {letters}",
   "@kept_meta_flagged": {
-    "description": "Right of a kept card's kicker: the root whose constellation surfaced the aya the reader flagged.",
+    "description": "Right of a kept card's kicker: the root whose deep dive surfaced the aya the reader flagged.",
     "placeholders": {
       "letters": {
         "type": "String"
@@ -552,15 +552,6 @@
   "@deepdive_back": {
     "description": "Screen-reader label on the deep dive's back arrow, at the head of its first column."
   },
-  "deepdive_form": "form {form}",
-  "@deepdive_form": {
-    "description": "Caption under a constellation node when the corpus glossed no occurrence of that form, so only its morphological form number is known. Shown inside the drawn constellation.",
-    "placeholders": {
-      "form": {
-        "type": "String"
-      }
-    }
-  },
   "deepdive_keep": "Keep this aya",
   "@deepdive_keep": {
     "description": "The deep dive's one action button, before the aya has been kept."
@@ -590,30 +581,9 @@
       }
     }
   },
-  "deepdive_root_heading": "ROOT CONSTELLATION",
+  "deepdive_root_heading": "ROOT",
   "@deepdive_root_heading": {
-    "description": "Heading over the root's spelling in the deep dive's centre pane, above the constellation or the list of its family."
-  },
-  "deepdive_star": "{form} · open {ref}",
-  "@deepdive_star": {
-    "description": "Screen-reader label on one node of the drawn constellation, which behaves as a button opening the aya it names. The nodes are painted onto a canvas, so this label is the whole screen-reader surface of the drawing.",
-    "placeholders": {
-      "form": {
-        "type": "String"
-      },
-      "ref": {
-        "type": "String"
-      }
-    }
-  },
-  "deepdive_this_aya": "THIS AYA · {ref}",
-  "@deepdive_this_aya": {
-    "description": "Caption under the one constellation node that marks the form the reader has open, drawn inside the constellation.",
-    "placeholders": {
-      "ref": {
-        "type": "String"
-      }
-    }
+    "description": "Heading over the root's spelling in the deep dive's centre pane, above its sense and its family."
   },
   "deepdive_unknown": "The corpus carries no aya {ref} with a root spelled {letters}.",
   "@deepdive_unknown": {
@@ -626,14 +596,6 @@
         "type": "String"
       }
     }
-  },
-  "deepdive_view_constellation": "Constellation",
-  "@deepdive_view_constellation": {
-    "description": "The drawing, as the deep dive's segmented control names it — offered only where the centre pane is wide enough to draw it."
-  },
-  "deepdive_view_list": "List",
-  "@deepdive_view_list": {
-    "description": "The root's family read as a list, the other option of the deep dive's segmented control."
   },
   "dashboard_setWaiting": "SET {number} · WAITING",
   "@dashboard_setWaiting": {
@@ -790,8 +752,8 @@
   "@report_write_another": {
     "description": "Button on the report screen after a send, which empties the form for a second report."
   },
-  "study_constellation": "Constellation",
-  "@study_constellation": {
+  "study_deepDive": "Deep dive",
+  "@study_deepDive": {
     "description": "Reading screen, the unfolded root panel: opens the deep dive on this aya and this root."
   },
   "study_nextWord": "Next word",
@@ -812,7 +774,7 @@
   },
   "root_openAya": "Open {ref}",
   "@root_openAya": {
-    "description": "Screen-reader label on an aya reference in a root's family — the panel under screen 1a's aya, screen 3a's spine and screen 1c's constellation all draw it.",
+    "description": "Screen-reader label on an aya reference in a root's family — the panel under screen 1a's aya, screen 3a's spine and screen 1c's spine all draw it.",
     "placeholders": {
       "ref": {
         "type": "String",
@@ -1916,5 +1878,78 @@
   "root_lookUpShort": "Source",
   "@root_lookUpShort": {
     "description": "The way to the dictionaries, as the one word Source, on the row of the sense verdict's thumbs in the reading screen's sheet. Its tooltip is root_lookUp."
+  },
+  "dashboard_welcomeKicker": "WELCOME",
+  "@dashboard_welcomeKicker": {
+    "description": "Over the welcome on home, shown until the reader has understood an aya or recorded a prayer."
+  },
+  "dashboard_welcome": "Wird serves the Qur’an a few ayas at a time, in order. Read each set, understand it word by word, then pray it.",
+  "@dashboard_welcome": {
+    "description": "The welcome on home for a reader who has not started: what a set is and what is done with it."
+  },
+  "dashboard_whereYouAre": "WHERE YOU ARE",
+  "@dashboard_whereYouAre": {
+    "description": "Kicker over the reader's place in the walk on home."
+  },
+  "dashboard_suraNuzul": "Sūra {k} of 114 in the order of revelation",
+  "@dashboard_suraNuzul": {
+    "description": "Where the waiting set's sūra stands in the revelation order the reader walks in. No juz is named: in this order juz 30 comes first.",
+    "placeholders": {
+      "k": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboard_suraMushaf": "Sūra {k} of 114 · Juzʾ {juz}",
+  "@dashboard_suraMushaf": {
+    "description": "Where the waiting set's sūra stands in the muṣḥaf order the reader walks in, and the juz it opens in.",
+    "placeholders": {
+      "k": {
+        "type": "int"
+      },
+      "juz": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboard_ayasUnderstood": "{count} of {total} ayas understood",
+  "@dashboard_ayasUnderstood": {
+    "description": "Under the walk's strip on home, once the reader has understood at least one aya.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "total": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "reading_ayaOf": "aya {n} of {m}",
+  "@reading_ayaOf": {
+    "description": "Beside a sūra the reader is part-way through: the aya they last stood on and how many the sūra has. A place, not progress.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "progress_next": "Next: {place}",
+  "@progress_next": {
+    "description": "First line of the passage screen's 'where you are': the aya the walk serves next, as 'Al-'Alaq 1'.",
+    "placeholders": {
+      "place": {
+        "type": "String",
+        "example": "Al-'Alaq 1"
+      }
+    }
+  },
+  "progress_reading": "READING",
+  "@progress_reading": {
+    "description": "Over the sūras the reader opened outside the walk, on the passage screen."
   }
 }

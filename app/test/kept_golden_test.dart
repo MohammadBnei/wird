@@ -45,8 +45,7 @@ void main() {
       ayahId: 2153,
       rootLetters: 'صبر',
       body:
-          'Same root, read 209 sets ago. Flagged when the constellation '
-          'surfaced it.',
+          'Same root, read 209 sets ago. Flagged from the deep dive.',
       tags: ['revisit'],
     );
     await keep(
