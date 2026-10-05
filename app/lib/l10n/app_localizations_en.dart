@@ -31,7 +31,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get index_go_to_hint => 'Opens at this aya';
 
   @override
-  String get kept_empty_ayas => 'No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.';
+  String get kept_empty_ayas => 'No ayas kept yet. Tap a word, open its Deep dive, and “Keep this aya” keeps one here.';
 
   @override
   String get kept_empty_notes => 'No notes yet. Nothing in the app writes one yet; an aya and a root are kept without words.';
@@ -561,11 +561,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deepdive_back => 'Back';
 
   @override
-  String deepdive_form(String form) {
-    return 'form $form';
-  }
-
-  @override
   String get deepdive_keep => 'Keep this aya';
 
   @override
@@ -582,28 +577,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get deepdive_root_heading => 'ROOT CONSTELLATION';
-
-  @override
-  String deepdive_star(String form, String ref) {
-    return '$form · open $ref';
-  }
-
-  @override
-  String deepdive_this_aya(String ref) {
-    return 'THIS AYA · $ref';
-  }
+  String get deepdive_root_heading => 'ROOT';
 
   @override
   String deepdive_unknown(String ref, String letters) {
     return 'The corpus carries no aya $ref with a root spelled $letters.';
   }
-
-  @override
-  String get deepdive_view_constellation => 'Constellation';
-
-  @override
-  String get deepdive_view_list => 'List';
 
   @override
   String dashboard_setWaiting(int number) {
@@ -730,7 +709,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_write_another => 'Write another';
 
   @override
-  String get study_constellation => 'Constellation';
+  String get study_deepDive => 'Deep dive';
 
   @override
   String get study_nextWord => 'Next word';
@@ -1476,4 +1455,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get root_lookUpShort => 'Source';
+
+  @override
+  String get dashboard_welcomeKicker => 'WELCOME';
+
+  @override
+  String get dashboard_welcome => 'Wird serves the Qur’an a few ayas at a time, in order. Read each set, understand it word by word, then pray it.';
+
+  @override
+  String get dashboard_whereYouAre => 'WHERE YOU ARE';
+
+  @override
+  String dashboard_suraNuzul(int k) {
+    return 'Sūra $k of 114 in the order of revelation';
+  }
+
+  @override
+  String dashboard_suraMushaf(int k, int juz) {
+    return 'Sūra $k of 114 · Juzʾ $juz';
+  }
+
+  @override
+  String dashboard_ayasUnderstood(int count, int total) {
+    final intl.NumberFormat countNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+    final intl.NumberFormat totalNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String totalString = totalNumberFormat.format(total);
+
+    return '$countString of $totalString ayas understood';
+  }
+
+  @override
+  String reading_ayaOf(int n, int m) {
+    return 'aya $n of $m';
+  }
+
+  @override
+  String progress_next(String place) {
+    return 'Next: $place';
+  }
+
+  @override
+  String get progress_reading => 'READING';
 }

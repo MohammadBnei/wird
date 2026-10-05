@@ -10,16 +10,14 @@ import '../../widgets/lit_aya.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../../widgets/nocturne_rule.dart';
-import '../../widgets/nocturne_segmented.dart';
 import '../report/report.dart';
 import '../root/root_sections.dart';
 import '../study/root_sheet.dart' show JudgeSense;
 
 /// The width the design's own grid needs: the 292 and 336 point rails it
 /// fixes, and a centre at least as wide as the wider of them. Narrower than
-/// this and the constellation — the reason the screen exists — would be the
-/// thinnest of the three panes, so the same three panes stack into one
-/// column instead.
+/// this and the root's own pane would be the thinnest of the three, so the
+/// same three panes stack into one column instead.
 const threePaneWidth = 964.0;
 
 /// Screen 1c — one aya, its sources side by side, on a tablet.
@@ -68,7 +66,6 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
   /// both read `_keptId` as null and both write: the latch this replaced was
   /// also the only thing stopping that.
   bool _busy = false;
-  int _view = 0;
 
   AppLocalizations get _l10n => AppLocalizations.of(context)!;
 
@@ -144,7 +141,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
             : LayoutBuilder(
                 builder: (context, constraints) =>
                     constraints.maxWidth < threePaneWidth
-                    ? _oneColumn(n, reading, aya, constraints.maxWidth)
+                    ? _oneColumn(n, reading, aya)
                     : _threePanes(n, reading, aya),
               ),
       ),
@@ -189,9 +186,6 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
           n,
           reading,
           aya,
-          // The centre pane of the design's own grid is wide enough for the
-          // drawing, so the reader gets the choice between it and the list.
-          drawn: true,
           view: Expanded(child: _family(n, reading, aya)),
         ),
       ),
@@ -215,7 +209,6 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     Nocturne n,
     RootReading reading,
     AyaReading aya,
-    double width,
   ) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -246,8 +239,6 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
               n,
               reading,
               aya,
-              // 20 points of list gutter and 26 of pane padding on each side.
-              drawn: width - 92 >= constellationFloor,
               view: _family(n, reading, aya),
             ),
             SizedBox(height: n.space('6')),
@@ -333,15 +324,11 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     child: Text(_keptId == null ? _l10n.deepdive_keep : _l10n.deepdive_kept),
   );
 
-  /// [drawn] is whether this pane is wide enough for the design's
-  /// constellation. Where it is not, the family is read as a ring and a spine
-  /// — which is the list already — so the choice between them is not offered.
   Widget _centrePane(
     Nocturne n,
     RootReading reading,
     AyaReading aya, {
     required Widget view,
-    required bool drawn,
   }) {
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -360,21 +347,7 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _rootName(n, reading)),
-                if (drawn)
-                  NocturneSegmented(
-                    options: [
-                      _l10n.deepdive_view_constellation,
-                      _l10n.deepdive_view_list,
-                    ],
-                    selected: _view,
-                    onChanged: (i) => setState(() => _view = i),
-                  ),
-              ],
-            ),
+            _rootName(n, reading),
             const SizedBox(height: 14),
             CoreSense(
               reading: reading,
@@ -397,20 +370,12 @@ class _DeepDiveScreenState extends State<DeepDiveScreen> {
     );
   }
 
-  /// The root's family, however this screen has room to draw it.
-  Widget _family(Nocturne n, RootReading reading, AyaReading aya) {
-    final here = _litWord(aya)?.text;
-    if (_view == 1) {
-      return SingleChildScrollView(
-        padding: EdgeInsets.only(top: n.space('4')),
-        child: KinSpine(
-          derivatives: reading.derivatives,
-          here: reading.spelled(here),
-        ),
-      );
-    }
-    return RootFamily(reading: reading, ayahId: widget.ayahId, wordInAya: here);
-  }
+  /// The root's family, as the ring with the spine under it.
+  Widget _family(Nocturne n, RootReading reading, AyaReading aya) => RootFamily(
+    reading: reading,
+    ayahId: widget.ayahId,
+    wordInAya: _litWord(aya)?.text,
+  );
 
   /// How this aya spells the root, or null where it does not carry it.
   AyaWord? _litWord(AyaReading aya) {

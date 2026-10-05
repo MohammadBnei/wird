@@ -37,7 +37,7 @@ void main() {
   });
 
   testWidgets('screen 1c drifts away from the design in a way no behaviour '
-      'test can see: the aya beside its iʿrāb, the constellation between the '
+      'test can see: the aya beside its iʿrāb, the root between the '
       'rails, or the sources down the right', (tester) async {
     // The design's own frame, which the iPad Pro 11-inch in landscape is the
     // nearest real device to.

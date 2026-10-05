@@ -3,31 +3,22 @@ import 'package:flutter/material.dart';
 import '../../data/root_repo.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
-import '../deepdive/constellation.dart';
 import 'root_dial.dart';
 
 /// A root's family: its derivatives, drawn as ways to move rather than as a
 /// picture of themselves.
 ///
-/// The app draws a family in three places — the panel under screen 1a's aya,
-/// the ring and spine of screen 3a, and screen 1c's constellation. They are
-/// three arrangements of one thing, so what a member IS ([Derivative]), what
+/// The app draws a family in two places — the ring and spine of screen 3a,
+/// and the same ring and spine on screen 1c. They are arrangements of one
+/// thing, so what a member IS ([Derivative]), what
 /// it opens ([openAya]) and how a row of one reads ([KinSpine]) are decided
 /// here, once, instead of at each drawing.
-
-/// The width a family needs before the design's constellation is worth
-/// drawing. The drawing is a fixed 620×420 viewBox scaled to fit, so a narrow
-/// box shrinks its 11px captions along with everything else; below this they
-/// land under 9px, which is a caption nobody reads on a phone held at arm's
-/// length. A family with less room than this is read as a ring and a spine
-/// instead — the same members, laid out for the column they are in.
-const constellationFloor = 500.0;
 
 /// Opens the aya a member of the family names.
 ///
 /// This is the whole of what navigation from a family means, and every
-/// drawing calls it: a kin row's reference, the card under the dial, a node of
-/// the constellation. A reference the reader can see is a reference the reader
+/// drawing calls it: a kin row's reference, the card under the dial. A
+/// reference the reader can see is a reference the reader
 /// can follow.
 ///
 /// A family is only ever drawn on a screen pushed from the one reading screen,
@@ -260,13 +251,11 @@ String derivativeWeight(AppLocalizations l, Derivative derivative) =>
     ? '${derivative.occurrences}×'
     : l.root_weightWithForm(derivative.form!, derivative.occurrences);
 
-/// A root's family drawn for the space it is given: the design's
-/// constellation where that fits, and the ring with the spine under it where
-/// it does not.
+/// A root's family as the ring with the spine under it, at any width.
 ///
-/// Both are the same members and both open the same ayas. The phone gets the
-/// second — not the first shrunk, which is what made the constellation a
-/// picture of a family too small to read and impossible to move through.
+/// The design also drew it as a star chart of the members around the root.
+/// It said nothing the spine does not, reached only screens
+/// wide enough to read its captions, and was removed (ADR 0032).
 class RootFamily extends StatefulWidget {
   const RootFamily({
     super.key,
@@ -299,21 +288,6 @@ class _RootFamilyState extends State<RootFamily> {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      if (constraints.maxWidth >= constellationFloor) {
-        final drawing = Constellation(
-          display: widget.reading.display,
-          ayahId: widget.ayahId,
-          stars: constellation(widget.reading, widget.wordInAya),
-        );
-        // In a pane it fills the height it is given; in a scrolling column
-        // there is no height to fill, so it keeps the design's proportions.
-        return constraints.hasBoundedHeight
-            ? drawing
-            : AspectRatio(
-                aspectRatio: constellationBox.aspectRatio,
-                child: drawing,
-              );
-      }
       final n = Nocturne.of(context);
       final ring = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

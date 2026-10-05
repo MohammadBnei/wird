@@ -31,7 +31,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get index_go_to_hint => 'S’ouvre à ce verset';
 
   @override
-  String get kept_empty_ayas => 'Aucun verset gardé pour l’instant. « Garder ce verset », sur la constellation de la racine d’un mot, en garde un ici.';
+  String get kept_empty_ayas => 'Aucun verset gardé pour l’instant. Touchez un mot, ouvrez « Explorer », et « Garder ce verset » en garde un ici.';
 
   @override
   String get kept_empty_notes => 'Aucune note pour l’instant. Rien dans l’application n’en écrit encore ; un verset et une racine se gardent sans mots.';
@@ -561,11 +561,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get deepdive_back => 'Retour';
 
   @override
-  String deepdive_form(String form) {
-    return 'forme $form';
-  }
-
-  @override
   String get deepdive_keep => 'Garder ce verset';
 
   @override
@@ -582,28 +577,12 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get deepdive_root_heading => 'CONSTELLATION DE LA RACINE';
-
-  @override
-  String deepdive_star(String form, String ref) {
-    return '$form · ouvrir $ref';
-  }
-
-  @override
-  String deepdive_this_aya(String ref) {
-    return 'CE VERSET · $ref';
-  }
+  String get deepdive_root_heading => 'RACINE';
 
   @override
   String deepdive_unknown(String ref, String letters) {
     return 'Le corpus ne contient aucun verset $ref dont un mot vienne de la racine épelée $letters.';
   }
-
-  @override
-  String get deepdive_view_constellation => 'Constellation';
-
-  @override
-  String get deepdive_view_list => 'Liste';
 
   @override
   String dashboard_setWaiting(int number) {
@@ -730,7 +709,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get report_write_another => 'En écrire un autre';
 
   @override
-  String get study_constellation => 'Constellation';
+  String get study_deepDive => 'Explorer';
 
   @override
   String get study_nextWord => 'Mot suivant';
@@ -1476,4 +1455,46 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get root_lookUpShort => 'Source';
+
+  @override
+  String get dashboard_welcomeKicker => 'BIENVENUE';
+
+  @override
+  String get dashboard_welcome => 'Wird sert le Coran quelques versets à la fois, dans l’ordre. Lisez chaque passage, comprenez-le mot à mot, puis priez-le.';
+
+  @override
+  String get dashboard_whereYouAre => 'OÙ VOUS EN ÊTES';
+
+  @override
+  String dashboard_suraNuzul(int k) {
+    return 'Sourate $k sur 114 dans l’ordre de la révélation';
+  }
+
+  @override
+  String dashboard_suraMushaf(int k, int juz) {
+    return 'Sourate $k sur 114 · Juzʾ $juz';
+  }
+
+  @override
+  String dashboard_ayasUnderstood(int count, int total) {
+    final intl.NumberFormat countNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+    final intl.NumberFormat totalNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String totalString = totalNumberFormat.format(total);
+
+    return '$countString versets compris sur $totalString';
+  }
+
+  @override
+  String reading_ayaOf(int n, int m) {
+    return 'verset $n sur $m';
+  }
+
+  @override
+  String progress_next(String place) {
+    return 'Ensuite : $place';
+  }
+
+  @override
+  String get progress_reading => 'EN LECTURE';
 }

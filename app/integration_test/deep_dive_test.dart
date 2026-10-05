@@ -8,7 +8,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   journey(
-    'opens a word’s constellation on a tablet',
+    'opens a word’s deep dive on a tablet',
     body: (tester) async {
       // The iPad Pro 11-inch (M4) in landscape, which is the real device
       // nearest the design's 1180×794 frame. It is pinned here rather than
@@ -22,7 +22,7 @@ void main() {
       final corpus = await openCorpusBeside();
 
       // The root panel on screen 1a opens on the first word of the set that
-      // carries a root, and "Constellation" opens that root.
+      // carries a root, and "Deep dive" opens that root.
       String? root;
       for (final id in wordsOnScreen(tester).toList()..sort()) {
         root = await rootDisplayOf(corpus, id);
@@ -38,13 +38,13 @@ void main() {
       // opens when the reader asks for the counts.
       await tester.tap(find.byKey(const Key('more row')));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(const Key('constellation')));
+      await tester.ensureVisible(find.byKey(const Key('deep dive')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('constellation')));
+      await tester.tap(find.byKey(const Key('deep dive')));
       await tester.pumpAndSettle();
 
       expect(
-        find.text('ROOT CONSTELLATION'),
+        find.text('ROOT'),
         findsOneWidget,
         reason:
             'a tablet-sized window opened the phone reading instead of the '
@@ -54,7 +54,7 @@ void main() {
         find.text(root!),
         findsOneWidget,
         reason:
-            'the constellation opened on a root other than the one the '
+            'the deep dive opened on a root other than the one the '
             'reader was looking at',
       );
       expectNoSpinnerAndNoApology(tester, 'on the deep dive');

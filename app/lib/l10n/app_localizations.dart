@@ -131,10 +131,10 @@ abstract class AppLocalizations {
   /// **'Opens at this aya'**
   String get index_go_to_hint;
 
-  /// Shown on the kept list in place of the cards when the reader has kept no aya; it names the control on the constellation screen that keeps one.
+  /// Shown on the kept list in place of the cards when the reader has kept no aya; it names the way to the deep dive and the control there that keeps one.
   ///
   /// In en, this message translates to:
-  /// **'No ayas kept yet. “Keep this aya”, on the constellation of a word’s root, keeps one here.'**
+  /// **'No ayas kept yet. Tap a word, open its Deep dive, and “Keep this aya” keeps one here.'**
   String get kept_empty_ayas;
 
   /// Shown on the kept list in place of the cards when the reader has no note.
@@ -203,7 +203,7 @@ abstract class AppLocalizations {
   /// **'{days} days ago'**
   String kept_meta_days_ago(int days);
 
-  /// Right of a kept card's kicker: the root whose constellation surfaced the aya the reader flagged.
+  /// Right of a kept card's kicker: the root whose deep dive surfaced the aya the reader flagged.
   ///
   /// In en, this message translates to:
   /// **'flagged for {letters}'**
@@ -995,12 +995,6 @@ abstract class AppLocalizations {
   /// **'Back'**
   String get deepdive_back;
 
-  /// Caption under a constellation node when the corpus glossed no occurrence of that form, so only its morphological form number is known. Shown inside the drawn constellation.
-  ///
-  /// In en, this message translates to:
-  /// **'form {form}'**
-  String deepdive_form(String form);
-
   /// The deep dive's one action button, before the aya has been kept.
   ///
   /// In en, this message translates to:
@@ -1025,41 +1019,17 @@ abstract class AppLocalizations {
   /// **'{translit} · {count} occurrences'**
   String deepdive_occurrences(String translit, int count);
 
-  /// Heading over the root's spelling in the deep dive's centre pane, above the constellation or the list of its family.
+  /// Heading over the root's spelling in the deep dive's centre pane, above its sense and its family.
   ///
   /// In en, this message translates to:
-  /// **'ROOT CONSTELLATION'**
+  /// **'ROOT'**
   String get deepdive_root_heading;
-
-  /// Screen-reader label on one node of the drawn constellation, which behaves as a button opening the aya it names. The nodes are painted onto a canvas, so this label is the whole screen-reader surface of the drawing.
-  ///
-  /// In en, this message translates to:
-  /// **'{form} · open {ref}'**
-  String deepdive_star(String form, String ref);
-
-  /// Caption under the one constellation node that marks the form the reader has open, drawn inside the constellation.
-  ///
-  /// In en, this message translates to:
-  /// **'THIS AYA · {ref}'**
-  String deepdive_this_aya(String ref);
 
   /// Shown in place of the whole deep dive when the corpus holds no such aya, or the aya holds no such root.
   ///
   /// In en, this message translates to:
   /// **'The corpus carries no aya {ref} with a root spelled {letters}.'**
   String deepdive_unknown(String ref, String letters);
-
-  /// The drawing, as the deep dive's segmented control names it — offered only where the centre pane is wide enough to draw it.
-  ///
-  /// In en, this message translates to:
-  /// **'Constellation'**
-  String get deepdive_view_constellation;
-
-  /// The root's family read as a list, the other option of the deep dive's segmented control.
-  ///
-  /// In en, this message translates to:
-  /// **'List'**
-  String get deepdive_view_list;
 
   /// Kicker over the waiting set on home, above its title. The number is how far along the walk the reader has come.
   ///
@@ -1268,8 +1238,8 @@ abstract class AppLocalizations {
   /// Reading screen, the unfolded root panel: opens the deep dive on this aya and this root.
   ///
   /// In en, this message translates to:
-  /// **'Constellation'**
-  String get study_constellation;
+  /// **'Deep dive'**
+  String get study_deepDive;
 
   /// Reading screen, the right chevron in the root panel: it opens the word after the one the panel is showing. Screen-reader label.
   ///
@@ -1295,7 +1265,7 @@ abstract class AppLocalizations {
   /// **'No root'**
   String get study_wordHasNoRoot;
 
-  /// Screen-reader label on an aya reference in a root's family — the panel under screen 1a's aya, screen 3a's spine and screen 1c's constellation all draw it.
+  /// Screen-reader label on an aya reference in a root's family — the panel under screen 1a's aya, screen 3a's spine and screen 1c's spine all draw it.
   ///
   /// In en, this message translates to:
   /// **'Open {ref}'**
@@ -2572,6 +2542,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Source'**
   String get root_lookUpShort;
+
+  /// Over the welcome on home, shown until the reader has understood an aya or recorded a prayer.
+  ///
+  /// In en, this message translates to:
+  /// **'WELCOME'**
+  String get dashboard_welcomeKicker;
+
+  /// The welcome on home for a reader who has not started: what a set is and what is done with it.
+  ///
+  /// In en, this message translates to:
+  /// **'Wird serves the Qur’an a few ayas at a time, in order. Read each set, understand it word by word, then pray it.'**
+  String get dashboard_welcome;
+
+  /// Kicker over the reader's place in the walk on home.
+  ///
+  /// In en, this message translates to:
+  /// **'WHERE YOU ARE'**
+  String get dashboard_whereYouAre;
+
+  /// Where the waiting set's sūra stands in the revelation order the reader walks in. No juz is named: in this order juz 30 comes first.
+  ///
+  /// In en, this message translates to:
+  /// **'Sūra {k} of 114 in the order of revelation'**
+  String dashboard_suraNuzul(int k);
+
+  /// Where the waiting set's sūra stands in the muṣḥaf order the reader walks in, and the juz it opens in.
+  ///
+  /// In en, this message translates to:
+  /// **'Sūra {k} of 114 · Juzʾ {juz}'**
+  String dashboard_suraMushaf(int k, int juz);
+
+  /// Under the walk's strip on home, once the reader has understood at least one aya.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} ayas understood'**
+  String dashboard_ayasUnderstood(int count, int total);
+
+  /// Beside a sūra the reader is part-way through: the aya they last stood on and how many the sūra has. A place, not progress.
+  ///
+  /// In en, this message translates to:
+  /// **'aya {n} of {m}'**
+  String reading_ayaOf(int n, int m);
+
+  /// First line of the passage screen's 'where you are': the aya the walk serves next, as 'Al-'Alaq 1'.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {place}'**
+  String progress_next(String place);
+
+  /// Over the sūras the reader opened outside the walk, on the passage screen.
+  ///
+  /// In en, this message translates to:
+  /// **'READING'**
+  String get progress_reading;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

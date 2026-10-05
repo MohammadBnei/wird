@@ -103,7 +103,7 @@ These words mean one thing each, everywhere in these docs.
 | **Passage** | What the reader screen shows: a set, or a place in a sūra you opened ([ADR 0006](adr/0006-a-passage-is-read-a-set-is-answered-for.md)). |
 | **Understood** | The mark you put on an aya once you understand it. Progress counts these. |
 | **Kept** | An aya, a root or a note you saved. |
-| **Screen codes** | Names from the design: 1a reader, 1b prayer, 1c constellation, 1d progress, 1e kept, 2b and 3a root screens. |
+| **Screen codes** | Names from the design: 1a reader, 1b prayer, 1c deep dive, 1d progress, 1e kept, 2b and 3a root screens. |
 
 ### Words and meanings
 

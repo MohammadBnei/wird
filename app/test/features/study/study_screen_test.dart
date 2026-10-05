@@ -515,7 +515,7 @@ void main() {
     expect(tester.element(tile(96002001)), same(before));
   });
 
-  // The failure: the root sheet's ring is the only constellation left on the
+  // The failure: the root sheet's ring is the only family left on the
   // reading screen, and the deep dive with the whole family is out of reach.
   testWidgets('the deep dive cannot be reached from the reading screen', (
     tester,
@@ -523,10 +523,10 @@ void main() {
     await openStudy(tester);
     await tester.tap(find.byKey(const Key('more row')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('constellation')));
+    await tester.ensureVisible(find.byKey(const Key('deep dive')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('constellation')));
+    await tester.tap(find.byKey(const Key('deep dive')));
     await tester.pumpAndSettle();
 
     expect(find.byType(DeepDiveScreen), findsOneWidget);

@@ -19,7 +19,7 @@ import '../widgets/nocturne_rule.dart';
 /// the bar's rule fading out at both ends.
 ///
 /// Only a destination gets one. A screen the reader pushed into — a root, a
-/// constellation, the prayer — carries its own way back, and 1b must be
+/// deep dive, the prayer — carries its own way back, and 1b must be
 /// incapable of drawing anything over the aya.
 class WirdShell extends StatelessWidget {
   const WirdShell({
@@ -242,9 +242,10 @@ class WirdDrawer extends StatelessWidget {
   /// four screens to press back through. Home is the one at the bottom, so
   /// reaching it is a pop rather than a push.
   ///
-  /// The index answers with an aya rather than by staying open: it pops the
-  /// aya down to whoever pushed it, and here that is the drawer, so the aya is
-  /// carried on to the one screen that reads one.
+  /// The index answers with an aya, and the passage with an aya or a word,
+  /// rather than by staying open: each pops its answer down to whoever pushed
+  /// it, and here that is the drawer, so the answer is carried on to the one
+  /// screen that reads one.
   Future<void> _go(BuildContext context, String route) async {
     final nav = Navigator.of(context);
     nav.pop();
@@ -261,7 +262,9 @@ class WirdDrawer extends StatelessWidget {
       route,
       arguments: route == Routes.report ? current : null,
     );
-    if (chosen is int) await nav.pushNamed(Routes.study, arguments: chosen);
+    if (chosen is int || chosen is AtWord) {
+      await nav.pushNamed(Routes.study, arguments: chosen);
+    }
   }
 
   @override

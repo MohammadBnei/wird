@@ -24,6 +24,7 @@ class SuraPassage {
     required this.nameAr,
     required this.understood,
     required this.ayahCount,
+    required this.revelationOrder,
     required this.current,
   });
 
@@ -32,6 +33,7 @@ class SuraPassage {
   final String nameAr;
   final int understood;
   final int ayahCount;
+  final int revelationOrder;
 
   /// The sūra the next set comes from, which the design draws lit while the
   /// rest are dimmed.
@@ -57,6 +59,8 @@ class Passage {
     required this.currentJuz,
     required this.currentSet,
     required this.prayersOnCurrentSet,
+    required this.next,
+    required this.reading,
   });
 
   final int understood;
@@ -90,6 +94,13 @@ class Passage {
   /// How many prayers the set being read has already carried, so the screen
   /// can say which one the next prayer will be.
   final int prayersOnCurrentSet;
+
+  /// The first aya of the set the walk serves next, or null once every aya
+  /// is understood.
+  final StudyAya? next;
+
+  /// The sūras the reader opened outside the walk, the most recent first.
+  final List<ReadingPlace> reading;
 
   double get fraction => understood / ayasInTheQuran;
 
@@ -128,14 +139,8 @@ Future<Passage> readPassage(Database db) async {
     }
   }
 
-  final suras = await db.rawQuery('''
-    SELECT s.id, s.name_en, s.name_ar, s.ayah_count,
-           COUNT(u.ayah_id) AS understood
-      FROM surahs s
-      LEFT JOIN ayahs a ON a.surah_id = s.id
-      LEFT JOIN ayah_understood u ON u.ayah_id = a.id
-     GROUP BY s.id''');
   final currentSura = next?.ayas.first.surahId;
+  final suras = await suraPassages(db, currentSura);
 
   final roots = await db.rawQuery('''
     SELECT r.display, COUNT(*) AS met
@@ -168,7 +173,7 @@ Future<Passage> readPassage(Database db) async {
       for (var i = 0; i < total.length; i++)
         total[i] == 0 ? 0 : done[i] / total[i],
     ],
-    suras: _rows(suras, currentSura),
+    suras: _rows(suras),
     rootsKnown: [for (final r in roots.take(3)) r['display']! as String],
     rootsKnownCount: roots.length,
     wordsAhead: ahead.first['ahead']! as int,
@@ -176,23 +181,78 @@ Future<Passage> readPassage(Database db) async {
     currentJuz: next == null ? juzStarts.length : juzOf(next.ayas.first.id),
     currentSet: finished + 1,
     prayersOnCurrentSet: next == null ? 0 : await prayersOnSet(db, next.id),
+    next: next?.ayas.first,
+    reading: await readingPlaces(db, limit: _readingShown, except: currentSura),
   );
+}
+
+/// ponytail: the three sūras last read, on home and here alike. Make it a
+/// list of its own if readers keep more than three going at once.
+const _readingShown = 3;
+
+/// Every sūra, with how much of it is understood. [current] is the one the
+/// walk serves next.
+Future<List<SuraPassage>> suraPassages(Database db, int? current) async => [
+  for (final row in await db.rawQuery('''
+    SELECT s.id, s.name_en, s.name_ar, s.ayah_count, s.revelation_order,
+           COUNT(u.ayah_id) AS understood
+      FROM surahs s
+      LEFT JOIN ayahs a ON a.surah_id = s.id
+      LEFT JOIN ayah_understood u ON u.ayah_id = a.id
+     GROUP BY s.id
+     ORDER BY s.id'''))
+    SuraPassage(
+      id: row['id']! as int,
+      nameEn: row['name_en']! as String,
+      nameAr: row['name_ar']! as String,
+      understood: row['understood']! as int,
+      ayahCount: row['ayah_count']! as int,
+      revelationOrder: row['revelation_order']! as int,
+      current: row['id'] == current,
+    ),
+];
+
+/// A sūra the reader opened and the word they last stood on in it.
+typedef ReadingPlace = ({
+  int wordId,
+  String nameEn,
+  String nameAr,
+  int ayahCount,
+});
+
+/// The sūras the reader last stood in, the most recent first, leaving out
+/// [except] — the walk's own sūra, which is already named as the place the
+/// walk goes on from.
+Future<List<ReadingPlace>> readingPlaces(
+  Database db, {
+  required int limit,
+  int? except,
+}) async {
+  final positions = [
+    for (final p in await readingPositions(db, limit: limit + 1))
+      if (p.surah != except) p,
+  ].take(limit);
+  final suras = {
+    for (final r in await db.query(
+      'surahs',
+      columns: ['id', 'name_en', 'name_ar', 'ayah_count'],
+    ))
+      r['id']! as int: r,
+  };
+  return [
+    for (final p in positions)
+      (
+        wordId: p.wordId,
+        nameEn: suras[p.surah]!['name_en']! as String,
+        nameAr: suras[p.surah]!['name_ar']! as String,
+        ayahCount: suras[p.surah]!['ayah_count']! as int,
+      ),
+  ];
 }
 
 /// The four rows the design draws: the sūra the reader is in, then the ones
 /// they have got furthest through.
-List<SuraPassage> _rows(List<Map<String, Object?>> rows, int? currentSura) {
-  final all = [
-    for (final row in rows)
-      SuraPassage(
-        id: row['id']! as int,
-        nameEn: row['name_en']! as String,
-        nameAr: row['name_ar']! as String,
-        understood: row['understood']! as int,
-        ayahCount: row['ayah_count']! as int,
-        current: row['id'] == currentSura,
-      ),
-  ];
+List<SuraPassage> _rows(List<SuraPassage> all) {
   final current = all.where((s) => s.current);
   final rest = all.where((s) => !s.current && s.understood > 0).toList()
     ..sort((a, b) => b.understood.compareTo(a.understood));
