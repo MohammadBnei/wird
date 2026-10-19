@@ -13,11 +13,21 @@ void main() => runApp(const WirdApp());
 /// What the app needs before it can route anywhere: the corpus, what the
 /// reader has already chosen, and the thing that carries their queue to the
 /// server when the app comes back to the foreground.
-typedef Bootstrap = ({Database db, Prefs prefs, Flusher flusher});
+typedef Bootstrap = ({
+  Database db,
+  Prefs prefs,
+  Flusher flusher,
+  bool setupDone,
+});
 
 Future<Bootstrap> _open(Future<Database> corpus) async {
   final db = await corpus;
-  return (db: db, prefs: await Prefs.read(db), flusher: flusherFor(db));
+  return (
+    db: db,
+    prefs: await Prefs.read(db),
+    flusher: flusherFor(db),
+    setupDone: await setupDone(db),
+  );
 }
 
 class WirdApp extends StatefulWidget {
@@ -45,6 +55,7 @@ class _WirdAppState extends State<WirdApp> {
         data.db,
         prefs: data.prefs,
         flusher: data.flusher,
+        setupDone: data.setupDone,
       ),
       AsyncSnapshot(hasError: true, :final error?) => _beforeTheCorpus(
         Builder(

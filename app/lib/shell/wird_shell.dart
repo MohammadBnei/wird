@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../data/auth.dart';
 import '../features/settings/settings_screen.dart' show showSettings;
 import '../l10n/app_localizations.dart';
 import '../nav.dart';
@@ -300,13 +301,9 @@ class WirdDrawer extends StatelessWidget {
     );
   }
 
-  /// The account, which there is not one of yet.
-  ///
-  /// Sign-in waits on the identity server, so this says so in the reader's
-  /// words instead of drawing a name and an avatar that belong to nobody. The
-  /// space is here now because the head of the drawer is where an account
-  /// lives, and moving the destinations down later to make room for it is a
-  /// change the reader would feel.
+  /// Who is signed in, in the words the account panel in settings uses, or
+  /// that nobody is. Read each time the drawer opens, so a sign-in or a
+  /// sign-out made in settings shows on the next open.
   Widget _account(BuildContext context, Nocturne n, AppLocalizations l10n) =>
       Padding(
         padding: EdgeInsets.fromLTRB(
@@ -318,13 +315,19 @@ class WirdDrawer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.shell_notSignedIn,
-              style: TextStyle(
-                fontSize: 10,
-                height: 1.2,
-                letterSpacing: 0.11 * 10,
-                color: n.accent,
+            FutureBuilder<Tokens?>(
+              future: Account(Wird.of(context).db).current(),
+              builder: (context, reader) => Text(
+                switch (reader.data) {
+                  final r? => l10n.settingsSignedInAs(r.subject),
+                  null => l10n.shell_notSignedIn,
+                },
+                style: TextStyle(
+                  fontSize: 10,
+                  height: 1.2,
+                  letterSpacing: 0.11 * 10,
+                  color: n.accent,
+                ),
               ),
             ),
             SizedBox(height: n.space('2')),

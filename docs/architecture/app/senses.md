@@ -116,7 +116,7 @@ The `Flusher` runs on launch and every time the app returns to the foreground. B
 
 The fetch itself is the same two calls Settings makes: a HEAD first, then a GET only when a pack is on offer ([flush.dart:156](../../../app/lib/data/flush.dart#L152-L155)).
 
-Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:407](../../../app/lib/features/settings/settings_screen.dart#L466-L491)).
+Every later pack goes through Settings. `SensePanel` asks when it opens, shows a Download button when a new version is on offer, and an Ask again button when the server could not be reached ([settings_screen.dart:456](../../../app/lib/features/settings/settings_screen.dart#L456-L470)).
 
 ### 2. HEAD asks, and moves no bytes
 
@@ -215,7 +215,7 @@ Before it records the version, the transaction counts the new senses whose root 
 ```
 [senses.dart:142](../../../app/lib/data/senses.dart#L143-L156)
 
-`sense_pack` holds at most one row ([db.dart:255](../../../app/lib/data/db.dart#L265-L274)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
+`sense_pack` holds at most one row ([db.dart:255](../../../app/lib/data/db.dart#L278-L287)). Its presence alone means "this phone has fetched senses", which is a different fact from "this root has a sense".
 
 ### 6. The root screen reads it back
 
@@ -298,7 +298,7 @@ sentence where they stand, not on the next visit.
 
 ### 8. The reader's verdict on a sense
 
-Wherever a sense is drawn, its heading carries two thumbs: the reading screen's sheet, the root screen, its spine view, and the deep dive. Each screen hands `CoreSense` a `JudgeSense` with the database, the reading and its own screen name ([root_screen.dart:145](../../../app/lib/features/root/root_screen.dart#L145-L149), [deep_dive_screen.dart:355](../../../app/lib/features/deepdive/deep_dive_screen.dart#L355-L359), [root_sheet.dart:408](../../../app/lib/features/study/root_sheet.dart#L408-L412)).
+Wherever a sense is drawn, its heading carries two thumbs: the reading screen's sheet, the root screen, its spine view, and the deep dive. Each screen hands `CoreSense` a `JudgeSense` with the database, the reading and its own screen name ([root_screen.dart:145](../../../app/lib/features/root/root_screen.dart#L145-L149), [deep_dive_screen.dart:355](../../../app/lib/features/deepdive/deep_dive_screen.dart#L355-L359), [root_sheet.dart:415](../../../app/lib/features/study/root_sheet.dart#L415-L419)).
 
 ```mermaid
 stateDiagram-v2
@@ -334,9 +334,9 @@ A verdict is a report whose body is `sense good: <root>` or `sense bad: <root>`.
 ```
 [report.dart:153](../../../app/lib/features/report/report.dart#L153-L168)
 
-`sense_verdicts` is keyed by root, language and hash ([db.dart:304](../../../app/lib/data/db.dart#L314-L321)). Reopening a judged root shows the thanks, not the thumbs ([report.dart:173](../../../app/lib/features/report/report.dart#L173-L183)). A redraft or the other language is a new hash, so the reader is asked again. The language comes from the same read that chose the sentence, `RootReading.locale`, so a verdict cannot be filed under one language while judging the other's text.
+`sense_verdicts` is keyed by root, language and hash ([db.dart:304](../../../app/lib/data/db.dart#L327-L334)). Reopening a judged root shows the thanks, not the thumbs ([report.dart:173](../../../app/lib/features/report/report.dart#L173-L183)). A redraft or the other language is a new hash, so the reader is asked again. The language comes from the same read that chose the sentence, `RootReading.locale`, so a verdict cannot be filed under one language while judging the other's text.
 
-The thanks is drawn only after the write succeeds. If it fails, the thumbs come back with a short "not saved" line, rather than thanking the reader for something nobody will receive ([root_sheet.dart:769](../../../app/lib/features/study/root_sheet.dart#L769-L805)). With nobody signed in, the thanks right after a vote is saved says the verdict goes once the reader signs in, since every flush is refused until then ([root_sheet.dart:792](../../../app/lib/features/study/root_sheet.dart#L792)). A judged sense reopened later gets the plain thanks, because its verdict may have been sent before a sign-out. A write or a recall that finishes after the reader has moved to another root or language is ignored, so its answer is never drawn against the new sentence ([root_sheet.dart:728](../../../app/lib/features/study/root_sheet.dart#L728-L731)). When a different reader signs in on the same phone, the record of judged senses is cleared with the rest of the first reader's tables ([Auth](../api/auth.md)). Where verdicts go after the server is on the [Admin web](../adminweb.md#5-sense-verdicts-are-counted-not-listed) page.
+The thanks is drawn only after the write succeeds. If it fails, the thumbs come back with a short "not saved" line, rather than thanking the reader for something nobody will receive ([root_sheet.dart:761](../../../app/lib/features/study/root_sheet.dart#L761-L797)). With nobody signed in, the thanks right after a vote is saved says the verdict goes once the reader signs in, since every flush is refused until then ([root_sheet.dart:784](../../../app/lib/features/study/root_sheet.dart#L784)). A judged sense reopened later gets the plain thanks, because its verdict may have been sent before a sign-out. A write or a recall that finishes after the reader has moved to another root or language is ignored, so its answer is never drawn against the new sentence ([root_sheet.dart:720](../../../app/lib/features/study/root_sheet.dart#L720-L723)). When a different reader signs in on the same phone, the record of judged senses is cleared with the rest of the first reader's tables ([Auth](../api/auth.md)). Where verdicts go after the server is on the [Admin web](../adminweb.md#5-sense-verdicts-are-counted-not-listed) page.
 
 ## Why it is this way
 

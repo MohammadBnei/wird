@@ -82,25 +82,28 @@ flowchart TB
 | Folder | What is in it |
 |---|---|
 | `data/` | Everything that touches the database or the network. Screens call into it; it never draws. |
-| `features/` | One folder per screen: `dashboard`, `study` (1a), `prayer` (the preparation and 1b), `root` (3a, 2b), `deepdive` (1c), `progress` (1d), `kept` (1e), `index`, `settings`, `report`, `about`. |
+| `features/` | One folder per screen: `setup`, `dashboard`, `study` (1a), `prayer` (the preparation and 1b), `root` (3a, 2b), `deepdive` (1c), `progress` (1d), `kept` (1e), `index`, `settings`, `report`, `about`. |
 | `shell/` | The bar and drawer drawn around each destination screen. |
 | `theme/`, `widgets/` | The Nocturne tokens and the few shared controls built on them. Dark only. |
 | `l10n/` | English and French strings. The reader's choice decides, and their phone's until they make one. |
 
 ### 1. Startup opens the corpus before anything routes
 
-`main` builds `WirdApp`, which waits on one future: open the database, read the reader's preferences, and build the thing that flushes the queue. Until that resolves there is nothing to route to, so the app shows a bare frame. The first launch waits on a file copy, not on a network call.
+`main` builds `WirdApp`, which waits on one future: open the database, read the reader's preferences, build the thing that flushes the queue, and ask whether this install has been through setup. Until that resolves there is nothing to route to, so the app shows a bare frame. The first launch waits on a file copy, not on a network call. A new install then opens on the setup screen, pushed over home, so closing it lands where every later launch begins ([ADR 0034](../adr/0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md)).
 
 ```dart
-typedef Bootstrap = ({Database db, Prefs prefs, Flusher flusher});
-
 Future<Bootstrap> _open(Future<Database> corpus) async {
   final db = await corpus;
-  return (db: db, prefs: await Prefs.read(db), flusher: flusherFor(db));
+  return (
+    db: db,
+    prefs: await Prefs.read(db),
+    flusher: flusherFor(db),
+    setupDone: await setupDone(db),
+  );
 }
 ```
 
-[main.dart:16](../../app/lib/main.dart#L16-L21) · the bare frames: [main.dart:41](../../app/lib/main.dart#L41-L58)
+[main.dart:16](../../app/lib/main.dart#L16-L31) · the bare frames: [main.dart:51](../../app/lib/main.dart#L51-L69)
 
 ### 2. The bundled corpus becomes the one database
 
@@ -119,7 +122,7 @@ Future<void> installCorpus(File target, Uint8List bytes) async {
 
 A phone that already holds an older corpus is upgraded on launch. When the app's `bundledCorpusVersion` is above the installed `corpus_meta.corpus_version`, [`upgradeCorpus`](../../app/lib/data/db.dart#L84-L106) fills the new corpus in `wird.db.next`, copies across every table the corpus does not ship and the senses fetched into `root_notes`, then swaps the files by rename. If anything fails before the swap, the old file is kept and the next launch tries again.
 
-Then [openWirdAt](../../app/lib/data/db.dart#L173) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, how the last prayer was prepared, the passages recited, the senses pack and the **outbox**. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
+Then [openWirdAt](../../app/lib/data/db.dart#L173) creates the user tables inside that same file: understood ayas, preferences, sets, prayers, how the last prayer was prepared, the passages recited, the senses pack, the **outbox**, and whether setup is done. An install from before setup has the reader's tables but no `setup_done`, so it is marked done there and never sees setup. Progress is a join between your rows and corpus rows, which is why there is one file and no ATTACH.
 
 The copy only happens when `wird.db` is missing. A later app update with a newer corpus does not replace it.
 
@@ -136,13 +139,13 @@ The copy only happens when `wird.db` is missing. A later app update with a newer
     flusher: flusher,
 ```
 
-[nav.dart:202](../../app/lib/nav.dart#L202-L236) · [Wird, app.dart:20](../../app/lib/app.dart#L22-L46) · [Prefs, app.dart:273](../../app/lib/app.dart#L332)
+[nav.dart:208](../../app/lib/nav.dart#L208-L246) · [Wird, app.dart:20](../../app/lib/app.dart#L22-L46) · [Prefs, app.dart:273](../../app/lib/app.dart#L332)
 
 ### 4. Routes: destinations get the shell, pushed screens do not
 
 Every screen is registered by name in one map. The drawer lists the destinations. A destination is drawn inside `WirdShell`, which carries the bar, the drawer and the audio transport. A screen you push into, such as a root or the prayer, carries its own way back and gets no shell. That is how screen 1b is kept free of anything drawn over the aya.
 
-Settings is the one drawer row that is not a route. It opens as a sheet over whatever screen is open, so a change to the display is seen behind it as it is made, and closing it leaves you where you stood ([showSettings, settings_screen.dart:411](../../app/lib/features/settings/settings_screen.dart#L411-L423), [the drawer, wird_shell.dart:255](../../app/lib/shell/wird_shell.dart#L255)).
+Settings is the one drawer row that is not a route. It opens as a sheet over whatever screen is open, so a change to the display is seen behind it as it is made, and closing it leaves you where you stood ([showSettings, settings_screen.dart:412](../../app/lib/features/settings/settings_screen.dart#L412-L424), [the drawer, wird_shell.dart:256](../../app/lib/shell/wird_shell.dart#L256)).
 
 ```dart
     builder: (_) {
@@ -158,11 +161,11 @@ Settings is the one drawer row that is not a route. It opens as a sheet over wha
     },
 ```
 
-[nav.dart:168](../../app/lib/nav.dart#L168-L195) · [the route map, nav.dart:75](../../app/lib/nav.dart#L76-L105) · [the drawer list, nav.dart:115](../../app/lib/nav.dart#L115-L124) · [WirdShell](../../app/lib/shell/wird_shell.dart#L24)
+[nav.dart:174](../../app/lib/nav.dart#L174-L201) · [the route map, nav.dart:75](../../app/lib/nav.dart#L81-L111) · [the drawer list, nav.dart:121](../../app/lib/nav.dart#L121-L130) · [WirdShell](../../app/lib/shell/wird_shell.dart#L25)
 
 ### 5. A prayer is prepared, then recorded on the way back from it
 
-A prayer starts on the preparation screen. "Pray this set" opens it on that set, through `prayTheSet` ([app.dart:453](../../app/lib/app.dart#L540-L544)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
+A prayer starts on the preparation screen. "Pray from this set" opens it on that set, through `prayTheSet` ([app.dart:453](../../app/lib/app.dart#L540-L544)), and home's "Prepare a prayer" door opens it with no set. The preparation screen pushes screen 1b, which writes nothing. When the reader comes back, however they left, the preparation screen writes what the prayer reached, then closes. A prayer the reader never returns from is not counted: the count may be short, never invented.
 
 ```mermaid
 sequenceDiagram
@@ -171,7 +174,7 @@ sequenceDiagram
   participant P as Prepare
   participant B as Prayer 1b
   participant D as wird.db
-  R->>A: Pray this set, or Prepare a prayer
+  R->>A: Pray from this set, or Prepare a prayer
   A->>P: push /prepare, with the set or nothing
   R->>P: Begin
   P->>D: prayer_prefs
@@ -195,7 +198,7 @@ sequenceDiagram
     }
 ```
 
-[prepare_screen.dart:299](../../app/lib/features/prayer/prepare_screen.dart#L299-L314)
+[prepare_screen.dart:318](../../app/lib/features/prayer/prepare_screen.dart#L318-L333)
 
 `prayer_prefs` and `prayer_history` stay on the phone. Only `recordSetPrayed` queues an op. [Sets and reader](app/sets-and-reader.md#9-praying-a-set) says which set is credited.
 

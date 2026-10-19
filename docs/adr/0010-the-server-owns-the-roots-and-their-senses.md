@@ -1,6 +1,6 @@
 # 10. The server owns the roots and their senses
 
-Date: 2026-09-28. Status: accepted. Leaves ADR 0008 (how the recogniser is
+Date: 2026-09-28. Status: accepted, amended by ADR 0034. Leaves ADR 0008 (how the recogniser is
 served) standing, and deliberately does not copy it.
 
 Numbering: the next free integer, one ADR per file. 0002 and 0005 each carry

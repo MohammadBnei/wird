@@ -206,9 +206,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prepare_add_passage => 'Ajouter un passage';
 
   @override
-  String get prepare_fatiha_only_hint => 'Ou réciter Al-Fātiḥa seule';
-
-  @override
   String prepare_ayas(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -236,18 +233,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prepare_kicker_moves => 'Comment le texte avance';
 
   @override
-  String get prepare_follow_voice => 'Suivre ma voix';
-
-  @override
-  String get prepare_voice_ready => 'Reconnaissance prête sur ce téléphone';
-
-  @override
-  String get prepare_voice_setup => 'Autorisez le micro et téléchargez la reconnaissance, ci-dessous';
-
-  @override
-  String get prepare_steady_pace => 'Garder un rythme régulier';
-
-  @override
   String prepare_wpm(int wpm) {
     return '$wpm mots par minute';
   }
@@ -264,15 +249,12 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get prepare_note_voice => 'Le texte attend votre voix. Chaque rakʿa commence quand vous récitez.';
-
-  @override
   String prepare_note_pace(int wpm) {
     return 'Le texte avance à $wpm mots par minute. Chaque rakʿa commence d’un toucher.';
   }
 
   @override
-  String get prepare_note_neither => 'Ni l’un ni l’autre : touchez l’écran pour passer au mot suivant.';
+  String get prepare_note_neither => 'Touchez l’écran pour passer au mot suivant. Chaque rakʿa commence d’un toucher.';
 
   @override
   String get prepare_kicker_screen => 'À l’écran';
@@ -489,10 +471,26 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get progress_setsUnderstood => 'passages compris';
+  String progress_setsUnderstood(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'passages compris',
+      one: 'passage compris',
+    );
+    return '$_temp0';
+  }
 
   @override
-  String get progress_prayersRecorded => 'prières enregistrées';
+  String progress_prayersRecorded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'prières enregistrées',
+      one: 'prière enregistrée',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get progress_whereYouAre => 'OÙ VOUS EN ÊTES';
@@ -614,10 +612,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get dashboard_praySet => 'Prier ce passage';
-
-  @override
-  String get dashboard_readFirst => 'Le lire d\'abord';
+  String get dashboard_praySet => 'Prier à partir de ce passage';
 
   @override
   String get dashboard_allUnderstood => 'Chaque verset est compris.';
@@ -635,22 +630,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboard_doorIndexWhy => 'Ouvrir le verset que vous voulez';
 
   @override
-  String get dashboard_doorProgress => 'Votre parcours';
-
-  @override
-  String get dashboard_doorProgressWhy => 'Ce que vous avez compris';
-
-  @override
-  String get dashboard_doorKept => 'Gardés';
-
-  @override
   String get dashboard_doorPray => 'Préparer une prière';
 
   @override
   String get dashboard_doorPrayWhy => 'N’importe quel passage, autant de rakʿas que voulu';
-
-  @override
-  String get dashboard_doorKeptWhy => 'Les versets et les racines que vous avez gardés';
 
   @override
   String get report_title => 'Signaler quelque chose';
@@ -1439,9 +1422,6 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get dashboard_continueReading => 'REPRENDRE LA LECTURE';
-
-  @override
   String get study_form => 'Forme';
 
   @override
@@ -1457,35 +1437,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get root_lookUpShort => 'Source';
 
   @override
-  String get dashboard_welcomeKicker => 'BIENVENUE';
-
-  @override
-  String get dashboard_welcome => 'Wird sert le Coran quelques versets à la fois, dans l’ordre. Lisez chaque passage, comprenez-le mot à mot, puis priez-le.';
-
-  @override
-  String get dashboard_whereYouAre => 'OÙ VOUS EN ÊTES';
-
-  @override
-  String dashboard_suraNuzul(int k) {
-    return 'Sourate $k sur 114 dans l’ordre de la révélation';
-  }
-
-  @override
-  String dashboard_suraMushaf(int k, int juz) {
-    return 'Sourate $k sur 114 · Juzʾ $juz';
-  }
-
-  @override
-  String dashboard_ayasUnderstood(int count, int total) {
-    final intl.NumberFormat countNumberFormat = intl.NumberFormat.decimalPattern(localeName);
-    final String countString = countNumberFormat.format(count);
-    final intl.NumberFormat totalNumberFormat = intl.NumberFormat.decimalPattern(localeName);
-    final String totalString = totalNumberFormat.format(total);
-
-    return '$countString versets compris sur $totalString';
-  }
-
-  @override
   String reading_ayaOf(int n, int m) {
     return 'verset $n sur $m';
   }
@@ -1497,4 +1448,55 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get progress_reading => 'EN LECTURE';
+
+  @override
+  String get setup_intro => 'Wird vous donne le Coran quelques versets à la fois. Lisez-les, comprenez-les mot à mot, puis priez-les.';
+
+  @override
+  String get setup_order => 'ORDRE';
+
+  @override
+  String get setup_orderChronological => 'Commence par Al-ʿAlaq, la première révélation.';
+
+  @override
+  String get setup_orderMushaf => 'Commence par al-Fātiḥa, dans l’ordre du muṣḥaf.';
+
+  @override
+  String get setup_reciter => 'RÉCITATEUR';
+
+  @override
+  String get setup_start => 'Commencer';
+
+  @override
+  String get dashboard_readSet => 'Lire ce passage';
+
+  @override
+  String dashboard_continue(String sura, String ref) {
+    return 'Reprendre $sura · $ref';
+  }
+
+  @override
+  String study_moreSenses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count autres sens',
+      one: '1 autre sens',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get prepare_move_voice => 'Voix';
+
+  @override
+  String get prepare_move_steady => 'Régulier';
+
+  @override
+  String get prepare_move_tap => 'Toucher';
+
+  @override
+  String prepare_voice_waiting(int wpm) {
+    return 'La voix est choisie, mais ce téléphone ne peut pas encore la suivre. D’ici là, le texte avance à $wpm mots par minute.';
+  }
 }

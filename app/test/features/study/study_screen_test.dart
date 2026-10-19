@@ -559,19 +559,28 @@ void main() {
     expect(find.byKey(const Key('open aya')), findsNothing);
   });
 
-  testWidgets('the thumbs are not on the senses row, and the form is read '
-      'before the senses', (tester) async {
-    await seedSenses(db, {'قرأ': 'a recitation, the quran; to recite'});
+  // The failure: the sheet a word tap opens led with the dictionary link,
+  // the verdict, every sense and the grammar, before the reader had read a
+  // word of the meaning (ADR 0034).
+  testWidgets('a word tap opens every sense, the verdict and the grammar at '
+      'once', (tester) async {
+    await seedSenses(db, {'قرأ': 'to gather; to recite; to study'});
     await openStudy(tester);
 
-    final senses = tester.getCenter(find.text('SENSES')).dy;
-    final thumb = tester
-        .getCenter(find.bySemanticsLabel('This sense is right'))
-        .dy;
-    expect((thumb - senses).abs(), lessThan(16));
+    expect(find.text('to recite'), findsOneWidget);
+    expect(find.text('to study'), findsNothing);
+    await tester.tap(find.byKey(const Key('more senses')));
+    await tester.pumpAndSettle();
+    expect(find.text('to study'), findsOneWidget);
+
+    final more = tester.getTopLeft(find.byKey(const Key('more row'))).dy;
+    expect(
+      tester.getTopLeft(find.byKey(const Key('verdict row'))).dy,
+      greaterThan(more),
+    );
     expect(
       tester.getTopLeft(find.byKey(const Key('form'))).dy,
-      greaterThan(tester.getTopLeft(find.text('to recite')).dy),
+      greaterThan(more),
     );
   });
 

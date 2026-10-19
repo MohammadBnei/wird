@@ -188,8 +188,8 @@ class RootSheet extends StatelessWidget {
           translations: translations,
         )._content(context, Nocturne.of(context), AppLocalizations.of(context)!);
 
-  /// The word, its root's senses, its form, and below them the counts, the
-  /// forms and the other ayas.
+  /// The word and its root's first senses, and below the fold the verdict,
+  /// its form, the counts, the forms and the other ayas.
   Widget _content(BuildContext context, Nocturne n, AppLocalizations l) {
     final root = sheet.root;
     return Column(
@@ -207,14 +207,17 @@ class RootSheet extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (root != null) ..._senses(n, l, root),
-              _form(n, l),
             ],
           ),
         ),
         if (!expanded) _moreRow(n, l),
         if (root != null)
           _secondary(n, l, root)
-        else
+        else ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: _form(n, l),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
             child: Text(
@@ -226,6 +229,7 @@ class RootSheet extends StatelessWidget {
               ),
             ),
           ),
+        ],
       ],
     );
   }
@@ -411,51 +415,33 @@ class RootSheet extends StatelessWidget {
         ),
       ];
     }
+    // The first senses only, with the rest one tap away in place: the sheet
+    // a word tap opens is the light one (ADR 0034). The source and the
+    // verdict on these senses sit below the fold, in [_secondary].
     return [
       const SizedBox(height: 14),
-      Row(
-        children: [
-          NocturneKicker(l.study_senses),
-          const Spacer(),
-          RootLookUp(letters: root.letters, compact: true),
-          JudgeSense(
-            key: ValueKey('judge ${root.letters}'),
-            db: db,
-            reading: root,
-            screen: screenName(Routes.study),
-          ),
-        ],
-      ),
+      NocturneKicker(l.study_senses),
       const SizedBox(height: 2),
-      for (final (i, sense) in senses.indexed)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              SizedBox(
-                width: 18,
-                child: Text(
-                  '${i + 1}',
-                  style: TextStyle(fontSize: 11, color: n.textAt(0.4)),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  sense,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    height: 1.4,
-                    color: n.textAt(0.7),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      _Senses(key: ValueKey('senses ${root.letters}'), senses: senses),
     ];
   }
+
+  /// Where the senses came from and the reader's verdict on them, at the head
+  /// of the lower half. A root with no sense written keeps its way to the
+  /// dictionaries up top instead, and has nothing to judge.
+  Widget _verdict(RootReading root) => Row(
+    key: const Key('verdict row'),
+    mainAxisAlignment: MainAxisAlignment.end,
+    children: [
+      RootLookUp(letters: root.letters, compact: true),
+      JudgeSense(
+        key: ValueKey('judge ${root.letters}'),
+        db: db,
+        reading: root,
+        screen: screenName(Routes.study),
+      ),
+    ],
+  );
 
   /// How the corpus parses this occurrence of the word, with its attribution.
   Widget _form(Nocturne n, AppLocalizations l) {
@@ -531,6 +517,9 @@ class RootSheet extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (root.coreSense?.trim().isNotEmpty ?? false) _verdict(root),
+          _form(n, l),
+          const SizedBox(height: 14),
           NocturneKicker(l.study_acrossQuran),
           const SizedBox(height: 8),
           Row(
@@ -907,6 +896,74 @@ class _HandleState extends State<_Handle> {
           ? null
           : (d) => drag(d.primaryDelta ?? 0, fromExpanded: _fromExpanded),
       child: widget.child,
+    );
+  }
+}
+
+/// The senses, numbered, two at first and the rest on a tap. Keyed by root
+/// where it is built, so the next word's root starts short again.
+class _Senses extends StatefulWidget {
+  const _Senses({super.key, required this.senses});
+
+  final List<String> senses;
+
+  @override
+  State<_Senses> createState() => _SensesState();
+}
+
+class _SensesState extends State<_Senses> {
+  /// ponytail: two, because the first sense leads and the second usually
+  /// tells its family apart. Revisit if readers open the rest on most words.
+  static const _shown = 2;
+  bool _all = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Nocturne.of(context);
+    final l = AppLocalizations.of(context)!;
+    final senses = widget.senses;
+    final hidden = _all ? 0 : senses.length - _shown;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (i, sense)
+            in senses.take(_all ? senses.length : _shown).indexed)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                SizedBox(
+                  width: 18,
+                  child: Text(
+                    '${i + 1}',
+                    style: TextStyle(fontSize: 11, color: n.textAt(0.4)),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    sense,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.4,
+                      color: n.textAt(0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (hidden > 0)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              key: const Key('more senses'),
+              onPressed: () => setState(() => _all = true),
+              child: Text(l.study_moreSenses(hidden)),
+            ),
+          ),
+      ],
     );
   }
 }

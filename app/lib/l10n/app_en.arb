@@ -241,8 +241,6 @@
   "@prepare_fatiha": {"description": "The line at the head of every rakʿah in the timeline: Al-Fātiḥa is always recited."},
   "prepare_add_passage": "Add a passage",
   "@prepare_add_passage": {"description": "The empty passage card of the first or second rakʿah."},
-  "prepare_fatiha_only_hint": "Or recite Al-Fātiḥa only",
-  "@prepare_fatiha_only_hint": {"description": "Under 'Add a passage': leaving it empty is a choice too."},
   "prepare_ayas": "{count, plural, one{{count} aya} other{{count} ayas}}",
   "@prepare_ayas": {"description": "A number of ayas, as in a passage card's meta line.", "placeholders": {"count": {"type": "int"}}},
   "prepare_about_seconds": "about {seconds} s",
@@ -253,14 +251,6 @@
   "@prepare_same_as_first": {"description": "Appended to the second rakʿah's meta line when it repeats the first's passage."},
   "prepare_kicker_moves": "How the text moves",
   "@prepare_kicker_moves": {"description": "Kicker above the voice and pace options, drawn in capitals."},
-  "prepare_follow_voice": "Follow my voice",
-  "@prepare_follow_voice": {"description": "Checkbox: the prayer follows the reader's recitation."},
-  "prepare_voice_ready": "Recogniser ready on this phone",
-  "@prepare_voice_ready": {"description": "Under 'Follow my voice' when the microphone is allowed and the model downloaded."},
-  "prepare_voice_setup": "Allow the microphone and download the recogniser, below",
-  "@prepare_voice_setup": {"description": "Under 'Follow my voice' when it cannot run yet; the checkbox is off and dark."},
-  "prepare_steady_pace": "Keep a steady pace",
-  "@prepare_steady_pace": {"description": "Checkbox: the text moves on by itself at a set number of words a minute."},
   "prepare_wpm": "{wpm} words a minute",
   "@prepare_wpm": {"description": "Under 'Keep a steady pace': the pace.", "placeholders": {"wpm": {"type": "int"}}},
   "prepare_slower": "Slower",
@@ -269,11 +259,9 @@
   "@prepare_faster": {"description": "Screen-reader label for the pace's plus."},
   "prepare_note_both": "Your voice leads. If the recogniser loses you, the text moves on at {wpm} words a minute until it finds you again.",
   "@prepare_note_both": {"description": "Note under the movement options when both are on.", "placeholders": {"wpm": {"type": "int"}}},
-  "prepare_note_voice": "The text waits for your voice. Each rakʿah begins when you start reciting.",
-  "@prepare_note_voice": {"description": "Note under the movement options when only the voice is on."},
   "prepare_note_pace": "The text moves at {wpm} words a minute. Each rakʿah begins on a tap.",
   "@prepare_note_pace": {"description": "Note under the movement options when only the pace is on.", "placeholders": {"wpm": {"type": "int"}}},
-  "prepare_note_neither": "Neither is on: tap the screen to move to the next word.",
+  "prepare_note_neither": "Tap the screen to move to the next word. Each rakʿah begins on a tap.",
   "@prepare_note_neither": {"description": "Note under the movement options when both are off."},
   "prepare_kicker_screen": "On screen",
   "@prepare_kicker_screen": {"description": "Kicker above the display options, drawn in capitals."},
@@ -441,13 +429,15 @@
       }
     }
   },
-  "progress_setsUnderstood": "sets understood",
+  "progress_setsUnderstood": "{count, plural, one{set understood} other{sets understood}}",
   "@progress_setsUnderstood": {
-    "description": "The label under the first count tile on the passage screen (1d)."
+    "description": "The label under the first count tile on the passage screen (1d). The count itself is drawn above it.",
+    "placeholders": {"count": {"type": "int"}}
   },
-  "progress_prayersRecorded": "prayers recorded",
+  "progress_prayersRecorded": "{count, plural, one{prayer recorded} other{prayers recorded}}",
   "@progress_prayersRecorded": {
-    "description": "The label under the second count tile on the passage screen (1d)."
+    "description": "The label under the second count tile on the passage screen (1d). The count itself is drawn above it.",
+    "placeholders": {"count": {"type": "int"}}
   },
   "progress_whereYouAre": "WHERE YOU ARE",
   "@progress_whereYouAre": {
@@ -624,13 +614,9 @@
       }
     }
   },
-  "dashboard_praySet": "Pray this set",
+  "dashboard_praySet": "Pray from this set",
   "@dashboard_praySet": {
-    "description": "Home's primary button: it opens the prayer on the waiting set."
-  },
-  "dashboard_readFirst": "Read it first",
-  "@dashboard_readFirst": {
-    "description": "Home's second button, under the prayer one: it opens the reading screen on the waiting set."
+    "description": "Home's second button: it prepares a prayer whose first rakʿah is the waiting set and whose second carries on after it."
   },
   "dashboard_allUnderstood": "Every aya is understood.",
   "@dashboard_allUnderstood": {
@@ -652,26 +638,10 @@
   "@dashboard_doorIndexWhy": {
     "description": "The subtitle under the sūra index row on home."
   },
-  "dashboard_doorProgress": "Your passage",
-  "@dashboard_doorProgress": {
-    "description": "Home's destination row for the progress screen."
-  },
-  "dashboard_doorProgressWhy": "How much you have understood",
-  "@dashboard_doorProgressWhy": {
-    "description": "The subtitle under the progress row on home."
-  },
-  "dashboard_doorKept": "Kept",
-  "@dashboard_doorKept": {
-    "description": "Home's destination row for the ayas and roots the reader saved."
-  },
   "dashboard_doorPray": "Prepare a prayer",
   "@dashboard_doorPray": {"description": "A door on the dashboard to the prayer's preparation, without a set in hand."},
   "dashboard_doorPrayWhy": "Any passage, any number of rakʿahs",
   "@dashboard_doorPrayWhy": {"description": "Under 'Prepare a prayer'."},
-  "dashboard_doorKeptWhy": "The ayas and roots you saved",
-  "@dashboard_doorKeptWhy": {
-    "description": "The subtitle under the kept row on home."
-  },
   "report_title": "Report something",
   "@report_title": {
     "description": "The heading of the report screen, where a reader says what went wrong, what is missing, or what could be better."
@@ -1859,10 +1829,6 @@
       }
     }
   },
-  "dashboard_continueReading": "CONTINUE READING",
-  "@dashboard_continueReading": {
-    "description": "Home: heading over the sūras the reader is part-way through, each opening where they stopped."
-  },
   "study_form": "Form",
   "@study_form": {
     "description": "Small heading in the reading screen's sheet over the word's parsing: its part of speech and features, as the corpus reads this occurrence."
@@ -1878,53 +1844,6 @@
   "root_lookUpShort": "Source",
   "@root_lookUpShort": {
     "description": "The way to the dictionaries, as the one word Source, on the row of the sense verdict's thumbs in the reading screen's sheet. Its tooltip is root_lookUp."
-  },
-  "dashboard_welcomeKicker": "WELCOME",
-  "@dashboard_welcomeKicker": {
-    "description": "Over the welcome on home, shown until the reader has understood an aya or recorded a prayer."
-  },
-  "dashboard_welcome": "Wird serves the Qur’an a few ayas at a time, in order. Read each set, understand it word by word, then pray it.",
-  "@dashboard_welcome": {
-    "description": "The welcome on home for a reader who has not started: what a set is and what is done with it."
-  },
-  "dashboard_whereYouAre": "WHERE YOU ARE",
-  "@dashboard_whereYouAre": {
-    "description": "Kicker over the reader's place in the walk on home."
-  },
-  "dashboard_suraNuzul": "Sūra {k} of 114 in the order of revelation",
-  "@dashboard_suraNuzul": {
-    "description": "Where the waiting set's sūra stands in the revelation order the reader walks in. No juz is named: in this order juz 30 comes first.",
-    "placeholders": {
-      "k": {
-        "type": "int"
-      }
-    }
-  },
-  "dashboard_suraMushaf": "Sūra {k} of 114 · Juzʾ {juz}",
-  "@dashboard_suraMushaf": {
-    "description": "Where the waiting set's sūra stands in the muṣḥaf order the reader walks in, and the juz it opens in.",
-    "placeholders": {
-      "k": {
-        "type": "int"
-      },
-      "juz": {
-        "type": "int"
-      }
-    }
-  },
-  "dashboard_ayasUnderstood": "{count} of {total} ayas understood",
-  "@dashboard_ayasUnderstood": {
-    "description": "Under the walk's strip on home, once the reader has understood at least one aya.",
-    "placeholders": {
-      "count": {
-        "type": "int",
-        "format": "decimalPattern"
-      },
-      "total": {
-        "type": "int",
-        "format": "decimalPattern"
-      }
-    }
   },
   "reading_ayaOf": "aya {n} of {m}",
   "@reading_ayaOf": {
@@ -1951,5 +1870,67 @@
   "progress_reading": "READING",
   "@progress_reading": {
     "description": "Over the sūras the reader opened outside the walk, on the passage screen."
+  },
+  "setup_intro": "Wird gives you the Qur’an a few ayas at a time. Read them, understand them word by word, then pray them.",
+  "@setup_intro": {
+    "description": "The one sentence at the top of the first-launch setup: what Wird does."
+  },
+  "setup_order": "ORDER",
+  "@setup_order": {
+    "description": "Kicker over the reading-order choice on the first-launch setup."
+  },
+  "setup_orderChronological": "Starts at Al-ʿAlaq, the first revelation.",
+  "@setup_orderChronological": {
+    "description": "Under the order choice on setup when the chronological order is picked: where the walk begins."
+  },
+  "setup_orderMushaf": "Starts at al-Fātiḥa, as the muṣḥaf is printed.",
+  "@setup_orderMushaf": {
+    "description": "Under the order choice on setup when the muṣḥaf order is picked: where the walk begins."
+  },
+  "setup_reciter": "RECITER",
+  "@setup_reciter": {
+    "description": "Kicker over the reciter list on the first-launch setup."
+  },
+  "setup_start": "Start",
+  "@setup_start": {
+    "description": "The one button of the first-launch setup. Keeps the choices shown and opens home."
+  },
+  "dashboard_readSet": "Read the set",
+  "@dashboard_readSet": {
+    "description": "Home's primary button on the waiting set's card: opens the set on the reading screen."
+  },
+  "dashboard_continue": "Continue {sura} · {ref}",
+  "@dashboard_continue": {
+    "description": "Home's one line for a sūra the reader is reading outside the walk: its name and the aya they last stood on, as in 'Continue Al-Baqarah · 2:255'.",
+    "placeholders": {
+      "sura": {"type": "String"},
+      "ref": {"type": "String"}
+    }
+  },
+  "study_moreSenses": "{count, plural, =1{1 more sense} other{{count} more senses}}",
+  "@study_moreSenses": {
+    "description": "Under the first two senses of a root in the reading screen's sheet: opens the rest of them in place.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "prepare_move_voice": "Voice",
+  "@prepare_move_voice": {
+    "description": "The first of the three ways the text moves on the prayer preparation: it follows the reader's recitation, with the steady pace as its fallback."
+  },
+  "prepare_move_steady": "Steady",
+  "@prepare_move_steady": {
+    "description": "The second way the text moves on the prayer preparation: at a steady number of words a minute."
+  },
+  "prepare_move_tap": "Tap",
+  "@prepare_move_tap": {
+    "description": "The third way the text moves on the prayer preparation: a tap on the screen moves it on a word."
+  },
+  "prepare_voice_waiting": "Voice is chosen, but this phone cannot follow it yet. Until it can, the text moves at {wpm} words a minute.",
+  "@prepare_voice_waiting": {
+    "description": "Under the how-the-text-moves choice when Voice is picked and the microphone or the recogniser is missing.",
+    "placeholders": {
+      "wpm": {"type": "int"}
+    }
   }
 }

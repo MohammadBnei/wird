@@ -19,6 +19,8 @@ paths:
 - Android trail: `adb shell run-as dev.bnei.wird cat /data/data/dev.bnei.wird/databases/prayer-trail.log`.
 - Debug builds also write `prayer-audio.f32` beside trail: raw f32 @16 kHz, every sample handed to recogniser → replay off device.
 - Tree not `dart format`-clean (SDK formatter ≠ committed style). Never `dart format lib`/`test` whole → format only files you touched, or diff explodes.
+- First launch → `SetupScreen` over dashboard (`initialRoute` `/setup`), once. Flag `setup_done` row. Install w/ `ayah_understood` but no `setup_done` table = pre-setup → marked done + `root_open=1` in `openWirdAt`. ADR 0034.
+- Tests: `wholeApp(setupDone: false)` = new install. `testCorpus()` seeds `display_prefs.root_open=1` (sheet open) → fold tests delete that row first. Integration `launchFresh` taps Start.
 - Two Wird builds on one Mac share container `dev.bnei.wird` → same `wird.db` → `disk I/O error` (6922) in the other. Stop one by PID, never `pkill -f wird.app`.
 - Release = Actions → `release-app` → patch/minor/major, on main. Only path. Never hand-edit `version:` in `pubspec.yaml`, never push `v*` tag (apk.yml ignores tag push). Version single source = pubspec line → `--dart-define=WIRD_VERSION`; non-release builds report `dev`. ADR 0022, `docs/guides/releasing-the-apk.md`. Same button → `aab` job (Play closed track, versionCode 2000+N, upload key) if var `PLAY_RELEASE_ENABLED`, `ipa.yml` (TestFlight, xcodebuild + ASC Admin key, never `flutter build ipa`) if var `IOS_RELEASE_ENABLED`. ADR 0028, `docs/guides/releasing-to-stores.md`.
 - Behaviour change in what app sends → update `server/internal/site/static/privacy.html` + `PrivacyInfo.xcprivacy` same PR.

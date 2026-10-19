@@ -61,6 +61,16 @@ void main() {
     expect(find.text('1.5'), findsNothing);
   });
 
+  // The failure: one prayer reads "1 prayers recorded".
+  testWidgets('a single prayer is not labelled in the plural', (tester) async {
+    final set = (await nextSet(db, await readingOrder(db)))!;
+    await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
+    await recordSetPrayed(db, set);
+    await open(tester);
+    expect(find.text('set understood'), findsOneWidget);
+    expect(find.text('prayer recorded'), findsOneWidget);
+  });
+
   testWidgets('the passage is counted against something other than the 6,236 '
       'ayas of the Ḥafṣ muṣḥaf', (tester) async {
     final semantics = tester.ensureSemantics();

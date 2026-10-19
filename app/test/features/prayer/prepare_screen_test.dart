@@ -74,7 +74,7 @@ void main() {
     await pumpPrepare(tester, db: db, from: asr);
     // In the first rakʿah; the second goes on from it rather than repeating
     // it, into the next sūra since al-ʿAṣr ends where the first stops.
-    expect(find.text("Al-'Asr"), findsOneWidget);
+    expect(find.textContaining("· Al-'Asr"), findsOneWidget);
     expect(find.textContaining('Al-Humazah'), findsOneWidget);
     expect(find.textContaining('same as rakʿah 1'), findsNothing);
     expect(find.text('Begin Maghrib'), findsOneWidget);
@@ -154,7 +154,7 @@ void main() {
     await tester.tap(find.text('Recite Al-Ikhlas'));
     await tester.pumpAndSettle();
     // The first rakʿah's choice is its own: the second keeps its passage.
-    expect(find.text('Al-Ikhlas'), findsOneWidget);
+    expect(find.textContaining('· Al-Ikhlas'), findsOneWidget);
     expect(find.textContaining('Al-Humazah'), findsOneWidget);
     await prayAndLeave(tester);
     expect(await db.query('set_prayers'), isEmpty);
@@ -192,20 +192,46 @@ void main() {
   testWidgets('a phone with no recogniser is offered voice-follow it cannot '
       'run', (tester) async {
     await pumpPrepare(tester, db: db, from: asr);
-    expect(
-      find.text('Allow the microphone and download the recogniser, below'),
-      findsOneWidget,
-    );
     // And it can be set up from here: nobody has to leave the prayer for
     // Settings to find the button.
     expect(find.text('Allow microphone'), findsOneWidget);
-    // The pace alone, then: the note says so.
+    // The pace until then: the note says so.
     expect(
       find.text(
-        'The text moves at 40 words a minute. Each rakʿah begins on a tap.',
+        'Voice is chosen, but this phone cannot follow it yet. Until it can, '
+        'the text moves at 40 words a minute.',
       ),
       findsOneWidget,
     );
+  });
+
+  // The failure: a reader who chose the voice alone, before Voice carried the
+  // pace, was shown Voice but prayed with neither — tapping word by word.
+  testWidgets('a voice-only reader without the recogniser is left tapping '
+      'word by word', (tester) async {
+    await setPrayerPrefs(db, (
+      preset: 'maghrib',
+      rakahs: 3,
+      voice: true,
+      pace: false,
+      wpm: 40,
+      gloss: true,
+      around: true,
+      arabicSize: 52,
+    ));
+    await pumpPrepare(tester, db: db, from: asr);
+    expect(find.textContaining('Until it can, the text moves'), findsOneWidget);
+    await prayAndLeave(tester);
+    final kept = await prayerPrefs(db);
+    expect((kept.voice, kept.pace), (true, true));
+  });
+
+  // The failure: every plan line opened the chooser, and a later rakʿah's
+  // choice landed on rakʿah 2, which is the only other passage a plan holds.
+  testWidgets('tapping rakʿah 3 replaces rakʿah 2’s passage', (tester) async {
+    await pumpPrepare(tester, db: db, from: asr);
+    expect(find.byKey(const Key('passage 2')), findsOneWidget);
+    expect(find.byKey(const Key('passage 3')), findsNothing);
   });
 
   testWidgets('the preview makes the reader sit through Al-Fātiḥa, or counts '

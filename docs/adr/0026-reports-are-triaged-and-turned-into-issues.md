@@ -1,6 +1,6 @@
 # 26. Reports are triaged on the operations view, exported to the agent, and turned into paraphrased issues
 
-Date: 2026-10-03. Status: accepted. Amends ADR 0004: reports are no longer one-way on the operations view, and the page may write a report's triage. Amends ADR 0005: the operations view is a second image.
+Date: 2026-10-03. Status: accepted, amended by ADR 0034. Amends ADR 0004: reports are no longer one-way on the operations view, and the page may write a report's triage. Amends ADR 0005: the operations view is a second image.
 
 ## Context
 

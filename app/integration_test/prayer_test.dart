@@ -154,6 +154,9 @@ void main() {
     body: (tester) async {
       await launchFresh(tester);
       corpus = await openCorpusBeside();
+      // The panel open first: this journey is about a word swapping the root
+      // it shows, not about the tap that unfolds it.
+      await unfoldTheSheet(tester);
 
       // The scrollable the words are IN, rather than whichever widget class
       // the screen currently scrolls with. It was found through

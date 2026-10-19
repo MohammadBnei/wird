@@ -103,16 +103,16 @@ Future<void> enqueue(
 }, conflictAlgorithm: ConflictAlgorithm.ignore);
 ```
 
-[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:316](../../../app/lib/data/db.dart#L326-L332)
+[outbox.dart:105](../../../app/lib/data/outbox.dart#L105-L115) · the table: [db.dart:316](../../../app/lib/data/db.dart#L339-L345)
 
 The callers, one per op kind:
 
 | Op kind | Written by |
 |---|---|
-| `ayah_understood` | [markSetUnderstood, db.dart:347](../../../app/lib/data/db.dart#L357-L385) |
-| `set_prayed` | [recordSetPrayed, db.dart:388](../../../app/lib/data/db.dart#L398) |
-| `position_moved` | [movePosition, db.dart:487](../../../app/lib/data/db.dart#L497-L516) |
-| `prefs_set` | [setReadingOrder, db.dart:464](../../../app/lib/data/db.dart#L474-L488) |
+| `ayah_understood` | [markSetUnderstood, db.dart:347](../../../app/lib/data/db.dart#L404-L432) |
+| `set_prayed` | [recordSetPrayed, db.dart:388](../../../app/lib/data/db.dart#L445) |
+| `position_moved` | [movePosition, db.dart:487](../../../app/lib/data/db.dart#L544-L563) |
+| `prefs_set` | [setReadingOrder, db.dart:464](../../../app/lib/data/db.dart#L521-L535) |
 | `kept_upsert` | [kept_repo.dart:99](../../../app/lib/data/kept_repo.dart#L99-L109) |
 | `kept_delete` | [kept_repo.dart:128](../../../app/lib/data/kept_repo.dart#L128-L133) |
 | `report_written` | [report.dart:104](../../../app/lib/features/report/report.dart#L104-L114) |
@@ -334,7 +334,7 @@ Future<void> discard(Database db, String opId) =>
     db.delete('outbox', where: 'client_op_id = ?', whereArgs: [opId]);
 ```
 
-[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:268](../../../app/lib/features/settings/settings_screen.dart#L307)
+[outbox.dart:201](../../../app/lib/data/outbox.dart#L201-L210) · the list: [deadLettered, outbox.dart:139](../../../app/lib/data/outbox.dart#L139-L147) · the widget: [parked_writes.dart:19](../../../app/lib/features/settings/parked_writes.dart#L19) · where Settings places it: [settings_screen.dart:268](../../../app/lib/features/settings/settings_screen.dart#L308)
 
 ### 10. The contract both sides answer to
 

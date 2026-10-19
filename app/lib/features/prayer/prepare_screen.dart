@@ -9,6 +9,7 @@ import '../../data/sets.dart';
 import '../../data/speech.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/nocturne.dart';
+import '../../widgets/nocturne_segmented.dart';
 import '../../widgets/nocturne_button.dart';
 import '../../widgets/nocturne_kicker.dart';
 import '../index/index_screen.dart';
@@ -64,7 +65,6 @@ class _PrepareScreenState extends State<PrepareScreen> {
   StudySet? _first;
   StudySet? _second;
   var _sameAsFirst = false;
-  var _voice = defaultPrayerPrefs.voice;
 
   /// What voice-follow needs and whether the phone has it: the microphone
   /// allowed, and the recogniser on disk. Both are settled right here, before
@@ -77,6 +77,23 @@ class _PrepareScreenState extends State<PrepareScreen> {
   /// cannot follow it: a recogniser not yet downloaded must not cost them the
   /// choice for the day it is.
   var _voiceWanted = defaultPrayerPrefs.voice;
+
+  /// Followed only where the phone can follow: the voice, as the prayer runs.
+  bool get _voice => _voiceWanted && _voiceReady;
+
+  /// The one choice the reader makes about how the text moves (ADR 0034).
+  /// Voice carries the pace as its fallback, so the old voice-alone reads as
+  /// Voice, and a phone that cannot follow yet still moves at the pace.
+  _Moves get _moving => _voiceWanted
+      ? _Moves.voice
+      : _pace
+      ? _Moves.steady
+      : _Moves.tap;
+
+  void _move(_Moves to) => setState(() {
+    _voiceWanted = to == _Moves.voice;
+    _pace = to != _Moves.tap;
+  });
   var _pace = defaultPrayerPrefs.pace;
   var _wpm = defaultPrayerPrefs.wpm;
   var _gloss = defaultPrayerPrefs.gloss;
@@ -149,8 +166,10 @@ class _PrepareScreenState extends State<PrepareScreen> {
       _second = second;
       _sameAsFirst = false;
       _voiceWanted = prefs.voice;
-      _voice = prefs.voice && _voiceReady;
-      _pace = prefs.pace;
+      // A reader who chose the voice alone, before Voice carried the pace,
+      // would otherwise be left tapping word by word until the recogniser
+      // arrives.
+      _pace = prefs.pace || prefs.voice;
       _wpm = prefs.wpm;
       _gloss = prefs.gloss;
       _around = prefs.around;
@@ -170,7 +189,7 @@ class _PrepareScreenState extends State<PrepareScreen> {
   PrayerPrefs get _prefs => (
     preset: _preset?.name,
     rakahs: _rakahs,
-    voice: _voiceReady ? _voice : _voiceWanted,
+    voice: _voiceWanted,
     pace: _pace,
     wpm: _wpm,
     gloss: _gloss,
@@ -421,14 +440,12 @@ class _PrepareScreenState extends State<PrepareScreen> {
                       children: [
                         NocturneKicker(l.prepare_kicker_prayer),
                         const SizedBox(height: 8),
-                        _presets(n, l),
-                        const SizedBox(height: 6),
-                        _rakahStepper(n, l),
+                        _prayerCard(n, l),
                         const SizedBox(height: 22),
                         NocturneKicker(l.prepare_kicker_recite),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _timeline(n, l, loaded),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 18),
                         NocturneKicker(l.prepare_kicker_moves),
                         const SizedBox(height: 4),
                         _moves(n, l, loaded),
@@ -478,13 +495,29 @@ class _PrepareScreenState extends State<PrepareScreen> {
     );
   }
 
-  Widget _presets(Nocturne n, AppLocalizations l) => Container(
+  /// The prayer and its rakʿahs as one thing: the count follows the prayer,
+  /// so it sits under it on the same card.
+  Widget _prayerCard(Nocturne n, AppLocalizations l) => Container(
     padding: const EdgeInsets.all(3),
     decoration: BoxDecoration(
       color: n.surface,
       borderRadius: BorderRadius.circular(n.radius('lg')),
     ),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _presets(n, l),
+        Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          color: n.divider,
+        ),
+        _rakahStepper(n, l),
+      ],
+    ),
+  );
+
+  Widget _presets(Nocturne n, AppLocalizations l) => Row(
       spacing: 3,
       children: [
         for (final preset in PrayerPreset.values)
@@ -519,7 +552,6 @@ class _PrepareScreenState extends State<PrepareScreen> {
             ),
           ),
       ],
-    ),
   );
 
   Widget _rakahStepper(Nocturne n, AppLocalizations l) {
@@ -529,12 +561,8 @@ class _PrepareScreenState extends State<PrepareScreen> {
         : _rakahs == preset.rakahs
         ? l.prepare_rakahs_set_by(prayerName(l, preset))
         : l.prepare_rakahs_usually(prayerName(l, preset), preset.rakahs);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 0, 8, 0),
-      decoration: BoxDecoration(
-        color: n.surface,
-        borderRadius: BorderRadius.circular(n.radius('lg')),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(11, 0, 5, 0),
       child: PrayerStepper(
         label: l.prepare_rakahs,
         hint: hint,
@@ -547,154 +575,101 @@ class _PrepareScreenState extends State<PrepareScreen> {
     );
   }
 
-  /// One row per rakʿah: Al-Fātiḥa in all of them, and a passage card in the
-  /// first two.
+  /// One line per rakʿah: Al-Fātiḥa in all of them, and in the first two the
+  /// passage after it, which is where a tap changes it. Only those two: the
+  /// plan carries a passage for two rakʿahs and no more (ADR 0020).
   Widget _timeline(Nocturne n, AppLocalizations l, _Loaded loaded) => Column(
     children: [
       for (var r = 1; r <= _rakahs; r++)
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 12,
-            children: [
-              SizedBox(
-                width: 26,
-                child: Column(
-                  children: [
-                    Container(
-                      width: 26,
-                      height: 26,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: r <= 2
-                              ? n.color('accent-700')
-                              : n.color('neutral-700'),
-                        ),
-                      ),
-                      child: Text(
-                        '$r',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: r <= 2
-                              ? n.color('accent-300')
-                              : n.textAt(0.45),
-                        ),
-                      ),
-                    ),
-                    if (r < _rakahs)
-                      Expanded(
-                        child: Container(
-                          width: 1,
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          color: n.divider,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 4, 0, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l.prepare_fatiha,
-                        style: TextStyle(fontSize: 12.5, color: n.textAt(0.62)),
-                      ),
-                      if (r <= 2) ...[
-                        const SizedBox(height: 6),
-                        _passageCard(n, l, loaded, r),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        r <= 2 ? _passageLine(n, l, loaded, r) : _line(n, l, r),
     ],
   );
 
-  Widget _passageCard(Nocturne n, AppLocalizations l, _Loaded loaded, int r) {
+  Widget _line(
+    Nocturne n,
+    AppLocalizations l,
+    int r, {
+    String? passage,
+    String? meta,
+    bool empty = false,
+    bool open = false,
+  }) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 11),
+    decoration: BoxDecoration(
+      border: Border(bottom: BorderSide(color: n.divider)),
+    ),
+    child: Row(
+      spacing: 10,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: open ? n.color('accent-700') : n.color('neutral-700'),
+            ),
+          ),
+          child: Text(
+            '$r',
+            style: TextStyle(
+              fontSize: 11,
+              color: open ? n.color('accent-300') : n.textAt(0.45),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: l.prepare_fatiha,
+                  style: TextStyle(color: n.textAt(0.62)),
+                ),
+                if (passage != null)
+                  TextSpan(
+                    text: ' · $passage',
+                    style: TextStyle(
+                      color: empty ? n.color('accent-300') : n.text,
+                    ),
+                  ),
+              ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 14),
+          ),
+        ),
+        if (meta != null)
+          Text(meta, style: TextStyle(fontSize: 11.5, color: n.textAt(0.55))),
+        if (open) Icon(Icons.chevron_right, size: 16, color: n.textAt(0.5)),
+      ],
+    ),
+  );
+
+  Widget _passageLine(Nocturne n, AppLocalizations l, _Loaded loaded, int r) {
     final set = _plan.passageFor(r);
     final same = r == 2 && _sameAsFirst && set != null;
-    String meta() {
-      final words = [for (final a in set!.ayas) ...a.words].length;
-      return [
-        l.prepare_ayas(set.ayas.length),
-        aboutTime(l, words, _wpm),
-        if (same) l.prepare_same_as_first,
-      ].join(' · ');
-    }
-
+    final words = set == null ? 0 : [for (final a in set.ayas) ...a.words].length;
     return Semantics(
       button: true,
       child: GestureDetector(
         key: Key('passage $r'),
+        behavior: HitTestBehavior.opaque,
         onTap: () => _choose(r),
-        child: CustomPaint(
-          // The empty card is drawn dashed in the design: a place for a
-          // passage rather than a passage.
-          foregroundPainter: set == null
-              ? _DashedBorder(n.color('neutral-600'), n.radius('lg'))
-              : null,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: set == null ? null : n.surface,
-              border: set == null
-                  ? null
-                  : Border.all(color: n.color('accent-700')),
-              borderRadius: BorderRadius.circular(n.radius('lg')),
-            ),
-            child: Row(
-              spacing: 10,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        set == null
-                            ? l.prepare_add_passage
-                            : passageTitle(set, loaded.suras),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: set == null ? n.color('accent-300') : n.text,
-                        ),
-                      ),
-                      if (set != null)
-                        SizedBox(
-                          width: double.infinity,
-                          child: Text(
-                            [for (final w in set.ayas.first.words) w.text]
-                                .join(' '),
-                            textDirection: TextDirection.rtl,
-                            maxLines: 1,
-                            softWrap: false,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontFamily: Nocturne.arabicFamily,
-                              fontSize: 18,
-                              height: 1.6,
-                              color: n.textAt(0.72),
-                            ),
-                          ),
-                        ),
-                      Text(
-                        set == null ? l.prepare_fatiha_only_hint : meta(),
-                        style: TextStyle(fontSize: 11.5, color: n.textAt(0.58)),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right, size: 16, color: n.textAt(0.5)),
-              ],
-            ),
-          ),
+        child: _line(
+          n,
+          l,
+          r,
+          open: true,
+          empty: set == null,
+          passage: set == null
+              ? l.prepare_add_passage
+              : same
+              ? l.prepare_same_as_first
+              : passageTitle(set, loaded.suras),
+          meta: set == null ? null : aboutTime(l, words, _wpm),
         ),
       ),
     );
@@ -717,36 +692,36 @@ class _PrepareScreenState extends State<PrepareScreen> {
   );
 
   /// The phone has gained what voice-follow needs; once it has all of it, the
-  /// reader who set it up is followed without a second tap.
+  /// reader who chose Voice is followed without a second tap. A reader who
+  /// chose Steady or Tap keeps their choice.
   void _ready({MicPermission? mic, bool? model}) {
     _mic = mic ?? _mic;
     _model = model ?? _model;
-    if (_voiceReady) _voice = true;
   }
 
   Widget _moves(Nocturne n, AppLocalizations l, _Loaded loaded) {
-    final note = _voice && _pace
-        ? l.prepare_note_both(_wpm)
-        : _voice
-        ? l.prepare_note_voice
-        : _pace
-        ? l.prepare_note_pace(_wpm)
-        : l.prepare_note_neither;
+    final moving = _moving;
+    final note = switch (moving) {
+      _Moves.voice when !_voiceReady => l.prepare_voice_waiting(_wpm),
+      _Moves.voice => l.prepare_note_both(_wpm),
+      _Moves.steady => l.prepare_note_pace(_wpm),
+      _Moves.tap => l.prepare_note_neither,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _row(
-          n,
-          leading: _Check(on: _voice, enabled: _voiceReady),
-          title: l.prepare_follow_voice,
-          sub: _voiceReady ? l.prepare_voice_ready : l.prepare_voice_setup,
-          onTap: _voiceReady ? () => setState(() => _voice = !_voice) : null,
+        const SizedBox(height: 6),
+        NocturneSegmented(
+          key: const Key('moves'),
+          options: [l.prepare_move_voice, l.prepare_move_steady, l.prepare_move_tap],
+          selected: moving.index,
+          onChanged: (i) => _move(_Moves.values[i]),
         ),
-        // Under the row's own words rather than its checkbox: it is how this
-        // row is switched on.
-        if (_mic != MicPermission.granted)
+        // What the phone still needs before it can follow, under the choice
+        // that needs it.
+        if (moving == _Moves.voice && _mic != MicPermission.granted)
           Padding(
-            padding: const EdgeInsets.only(left: 32, bottom: 8),
+            padding: const EdgeInsets.only(top: 8),
             child: NocturneButton(
               onPressed: () async {
                 final mic = await askForMic(widget.db);
@@ -755,22 +730,19 @@ class _PrepareScreenState extends State<PrepareScreen> {
               child: Text(l.settingsAllowMicrophone),
             ),
           )
-        else if (!_model)
+        else if (moving == _Moves.voice && !_model)
           Padding(
-            padding: const EdgeInsets.only(left: 32, bottom: 8),
+            padding: const EdgeInsets.only(top: 8),
             child: VoiceModelPanel(
               onReady: () => setState(() => _ready(model: true)),
             ),
           ),
-        _row(
-          n,
-          leading: _Check(on: _pace),
-          title: l.prepare_steady_pace,
-          sub: l.prepare_wpm(_wpm),
-          onTap: () => setState(() => _pace = !_pace),
-          trailing: Opacity(
-            opacity: _pace ? 1 : 0.4,
-            child: Row(
+        if (moving != _Moves.tap)
+          _row(
+            n,
+            title: l.prepare_wpm(_wpm),
+            divided: false,
+            trailing: Row(
               spacing: 6,
               children: [
                 _small(l.prepare_slower, '−', () {
@@ -782,9 +754,8 @@ class _PrepareScreenState extends State<PrepareScreen> {
               ],
             ),
           ),
-        ),
         Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.only(top: 4),
           child: Text(
             note,
             style: TextStyle(fontSize: 12, height: 1.5, color: n.textAt(0.66)),
@@ -885,37 +856,6 @@ class _PrepareScreenState extends State<PrepareScreen> {
   );
 }
 
-/// The design's checkbox: a rounded square, filled and ticked when on.
-class _Check extends StatelessWidget {
-  const _Check({required this.on, this.enabled = true});
-
-  final bool on;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final n = Nocturne.of(context);
-    return Opacity(
-      opacity: enabled ? 1 : 0.4,
-      child: Container(
-        width: 20,
-        height: 20,
-        decoration: BoxDecoration(
-          color: on ? n.color('accent-700') : Colors.transparent,
-          border: Border.all(
-            color: on ? n.accent : n.color('neutral-600'),
-            width: 1.5,
-          ),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: on
-            ? Icon(Icons.check, size: 13, color: n.color('accent-100'))
-            : null,
-      ),
-    );
-  }
-}
-
 /// The design's switch, which is drawn rather than Material's.
 class _Switch extends StatelessWidget {
   const _Switch({required this.on});
@@ -952,28 +892,5 @@ class _Switch extends StatelessWidget {
   }
 }
 
-class _DashedBorder extends CustomPainter {
-  const _DashedBorder(this.color, this.radius);
-
-  final Color color;
-  final double radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke;
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
-      );
-    for (final metric in path.computeMetrics()) {
-      for (var d = 0.0; d < metric.length; d += 8) {
-        canvas.drawPath(metric.extractPath(d, d + 4), paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashedBorder old) => old.color != color;
-}
+/// How the text moves through the prayer: one of three, never a mix.
+enum _Moves { voice, steady, tap }
