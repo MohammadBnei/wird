@@ -2,7 +2,7 @@ name: wird
 description: "Read a set of ayas, recite it in prayer, open any word's root."
 publish_to: 'none'
 
-version: 0.0.13+14
+version: 0.0.14+15
 
 environment:
   sdk: ^3.13.4
