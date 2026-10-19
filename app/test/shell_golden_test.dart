@@ -9,6 +9,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/dashboard/dashboard_screen.dart';
+import 'package:wird/features/setup/setup_screen.dart';
 import 'package:wird/nav.dart';
 import 'package:wird/shell/wird_shell.dart';
 
@@ -50,6 +51,18 @@ void main() {
     await expectLater(
       find.byType(DashboardScreen),
       matchesGoldenFile('goldens/dashboard.png'),
+    );
+  });
+
+  testWidgets('the setup a new install opens on drifts out of Nocturne: the '
+      'three answered choices, or Start off the bottom of the phone', (
+    tester,
+  ) async {
+    await pumpPhone(tester, await wholeApp(db, cache: silent, setupDone: false));
+
+    await expectLater(
+      find.byType(SetupScreen),
+      matchesGoldenFile('goldens/setup.png'),
     );
   });
 

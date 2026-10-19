@@ -617,9 +617,13 @@ class _StudyScreenState extends State<StudyScreen> {
   /// press of play starts. Only the tap: a word opened by a step, a load or
   /// a return from another screen is not the reader choosing where to
   /// recite from.
+  ///
+  /// A tap is also the reader asking what the word means, so it unfolds a
+  /// folded panel: it arrives folded (ADR 0034), and the word is how it opens.
   Future<void> _tapped(StudyWord word) {
     _release();
     _audio?.touch(word.id);
+    if (!_prefs.rootOpen) _prefs.setRootOpen(true);
     return _open(word, centre: true);
   }
 

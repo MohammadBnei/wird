@@ -146,4 +146,22 @@ void main() {
     expect(find.byKey(const Key('next word')), findsOneWidget);
     expect(surahHeight(tester), open);
   });
+
+  // The failure: a sheet unfolded by its handle, rather than by a word tap,
+  // is stepped with the arrow and leaves the neighbour it slid in still drawn
+  // beside it, so the reader sees two words and two pairs of arrows.
+  testWidgets('a sheet unfolded by its handle steps one word at a time and '
+      'comes to rest on one word', (tester) async {
+    await db.delete('display_prefs');
+    await openStudy(tester);
+    expect(find.byKey(const Key('next word')), findsNothing);
+
+    await tester.tap(sheetHandle());
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(find.byKey(const Key('next word')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('next word')), findsOneWidget);
+    }
+  });
 }

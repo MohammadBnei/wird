@@ -206,9 +206,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prepare_add_passage => 'Add a passage';
 
   @override
-  String get prepare_fatiha_only_hint => 'Or recite Al-Fātiḥa only';
-
-  @override
   String prepare_ayas(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -236,18 +233,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prepare_kicker_moves => 'How the text moves';
 
   @override
-  String get prepare_follow_voice => 'Follow my voice';
-
-  @override
-  String get prepare_voice_ready => 'Recogniser ready on this phone';
-
-  @override
-  String get prepare_voice_setup => 'Allow the microphone and download the recogniser, below';
-
-  @override
-  String get prepare_steady_pace => 'Keep a steady pace';
-
-  @override
   String prepare_wpm(int wpm) {
     return '$wpm words a minute';
   }
@@ -264,15 +249,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get prepare_note_voice => 'The text waits for your voice. Each rakʿah begins when you start reciting.';
-
-  @override
   String prepare_note_pace(int wpm) {
     return 'The text moves at $wpm words a minute. Each rakʿah begins on a tap.';
   }
 
   @override
-  String get prepare_note_neither => 'Neither is on: tap the screen to move to the next word.';
+  String get prepare_note_neither => 'Tap the screen to move to the next word. Each rakʿah begins on a tap.';
 
   @override
   String get prepare_kicker_screen => 'On screen';
@@ -489,10 +471,26 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get progress_setsUnderstood => 'sets understood';
+  String progress_setsUnderstood(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'sets understood',
+      one: 'set understood',
+    );
+    return '$_temp0';
+  }
 
   @override
-  String get progress_prayersRecorded => 'prayers recorded';
+  String progress_prayersRecorded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'prayers recorded',
+      one: 'prayer recorded',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get progress_whereYouAre => 'WHERE YOU ARE';
@@ -614,10 +612,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get dashboard_praySet => 'Pray this set';
-
-  @override
-  String get dashboard_readFirst => 'Read it first';
+  String get dashboard_praySet => 'Pray from this set';
 
   @override
   String get dashboard_allUnderstood => 'Every aya is understood.';
@@ -635,22 +630,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboard_doorIndexWhy => 'Open any aya you want';
 
   @override
-  String get dashboard_doorProgress => 'Your passage';
-
-  @override
-  String get dashboard_doorProgressWhy => 'How much you have understood';
-
-  @override
-  String get dashboard_doorKept => 'Kept';
-
-  @override
   String get dashboard_doorPray => 'Prepare a prayer';
 
   @override
   String get dashboard_doorPrayWhy => 'Any passage, any number of rakʿahs';
-
-  @override
-  String get dashboard_doorKeptWhy => 'The ayas and roots you saved';
 
   @override
   String get report_title => 'Report something';
@@ -1439,9 +1422,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get dashboard_continueReading => 'CONTINUE READING';
-
-  @override
   String get study_form => 'Form';
 
   @override
@@ -1457,35 +1437,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get root_lookUpShort => 'Source';
 
   @override
-  String get dashboard_welcomeKicker => 'WELCOME';
-
-  @override
-  String get dashboard_welcome => 'Wird serves the Qur’an a few ayas at a time, in order. Read each set, understand it word by word, then pray it.';
-
-  @override
-  String get dashboard_whereYouAre => 'WHERE YOU ARE';
-
-  @override
-  String dashboard_suraNuzul(int k) {
-    return 'Sūra $k of 114 in the order of revelation';
-  }
-
-  @override
-  String dashboard_suraMushaf(int k, int juz) {
-    return 'Sūra $k of 114 · Juzʾ $juz';
-  }
-
-  @override
-  String dashboard_ayasUnderstood(int count, int total) {
-    final intl.NumberFormat countNumberFormat = intl.NumberFormat.decimalPattern(localeName);
-    final String countString = countNumberFormat.format(count);
-    final intl.NumberFormat totalNumberFormat = intl.NumberFormat.decimalPattern(localeName);
-    final String totalString = totalNumberFormat.format(total);
-
-    return '$countString of $totalString ayas understood';
-  }
-
-  @override
   String reading_ayaOf(int n, int m) {
     return 'aya $n of $m';
   }
@@ -1497,4 +1448,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get progress_reading => 'READING';
+
+  @override
+  String get setup_intro => 'Wird gives you the Qur’an a few ayas at a time. Read them, understand them word by word, then pray them.';
+
+  @override
+  String get setup_order => 'ORDER';
+
+  @override
+  String get setup_orderChronological => 'Starts at Al-ʿAlaq, the first revelation.';
+
+  @override
+  String get setup_orderMushaf => 'Starts at al-Fātiḥa, as the muṣḥaf is printed.';
+
+  @override
+  String get setup_reciter => 'RECITER';
+
+  @override
+  String get setup_start => 'Start';
+
+  @override
+  String get dashboard_readSet => 'Read the set';
+
+  @override
+  String dashboard_continue(String sura, String ref) {
+    return 'Continue $sura · $ref';
+  }
+
+  @override
+  String study_moreSenses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more senses',
+      one: '1 more sense',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get prepare_move_voice => 'Voice';
+
+  @override
+  String get prepare_move_steady => 'Steady';
+
+  @override
+  String get prepare_move_tap => 'Tap';
+
+  @override
+  String prepare_voice_waiting(int wpm) {
+    return 'Voice is chosen, but this phone cannot follow it yet. Until it can, the text moves at $wpm words a minute.';
+  }
 }

@@ -11,6 +11,7 @@ import 'package:wird/features/root/family.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/about/about_screen.dart';
 import 'package:wird/features/dashboard/dashboard_screen.dart';
+import 'package:wird/features/setup/setup_screen.dart';
 import 'package:wird/features/deepdive/deep_dive_screen.dart';
 import 'package:wird/features/index/index_screen.dart';
 import 'package:wird/features/kept/kept_screen.dart';
@@ -85,6 +86,7 @@ void main() {
     // What each screen is opened on. Declared here so a route added with no
     // caller able to open it fails this test instead of crashing in a hand.
     final destinations = <String, ({Object? arguments, Type screen})>{
+      Routes.setup: (arguments: null, screen: SetupScreen),
       Routes.dashboard: (arguments: null, screen: DashboardScreen),
       // The argument is the aya screen 1a opens on, rather than the set the
       // walk would have handed the reader.
@@ -216,10 +218,10 @@ void main() {
     expect(position(tester), startsWith('1:5 '));
   });
 
-  // The failure: home and the drawer carried only an aya on from a screen
-  // they pushed, so a word answered by the passage was dropped on the floor.
+  // The failure: the drawer carried only an aya on from a screen it pushed,
+  // so a word answered by the passage was dropped on the floor.
   testWidgets('a sūra picked from the passage’s reading rows is dropped on '
-      'the way back, from home and from the drawer', (tester) async {
+      'the way back from the drawer', (tester) async {
     await movePosition(db, 2255003);
     await openApp(tester);
     final row = find.byKey(const ValueKey('reading 2255003'));
@@ -236,16 +238,14 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    await tester.tap(find.byKey(const Key('where you are')));
-    await tester.pumpAndSettle();
-    await pick();
-
     await goTo(tester, 'Your passage');
     await pick();
   });
 
   testWidgets('the app goes down on the frame the corpus finishes opening, so '
       'the reader never reaches the app at all', (tester) async {
+    // An install that has been through setup, so the app lands on home.
+    await markSetupDone(db);
     final opening = Completer<Database>();
     await tester.pumpWidget(WirdApp(corpus: opening.future));
     await tester.pump();

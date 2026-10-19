@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
+import 'package:wird/widgets/nocturne_button.dart';
 
 import '../../corpus.dart';
 import '../../fonts.dart';
@@ -57,58 +58,77 @@ void main() {
     );
   });
 
-  testWidgets('a fresh install asks for a prayer before saying what a set is', (
+  // The failure: the set's two buttons weighed the same, with Pray on top, so
+  // a newcomer was asked to pray a set before being offered to read it.
+  testWidgets('home offers reading the set before praying it', (tester) async {
+    await openHome(tester);
+
+    final read = find.byKey(const Key('read the set'));
+    final pray = find.byKey(const Key('pray the set'));
+    expect(tester.getTopLeft(read).dy, lessThan(tester.getTopLeft(pray).dy));
+    expect(
+      tester.widget<NocturneButton>(read).variant,
+      NocturneButtonVariant.primary,
+    );
+    expect(
+      tester.widget<NocturneButton>(pray).variant,
+      isNot(NocturneButtonVariant.primary),
+    );
+  });
+
+  // The failure: home repeated every drawer row as a door, so the screen a
+  // reader lands on had six ways out and no first step.
+  testWidgets('home has only two doors, any sūra and a prayer of one\'s own', (
     tester,
   ) async {
     await openHome(tester);
 
-    expect(find.text('WELCOME'), findsOneWidget);
-    expect(find.textContaining('a few ayas at a time'), findsOneWidget);
+    expect(find.byKey(const ValueKey('door/index')), findsOneWidget);
+    expect(find.byKey(const ValueKey('door/prepare')), findsOneWidget);
+    expect(find.byKey(const ValueKey('door/progress')), findsNothing);
+    expect(find.byKey(const ValueKey('door/kept')), findsNothing);
   });
 
-  // The failure: the welcome keyed on anything the reader touched, so one word
-  // tapped out of curiosity took it away before a set was ever understood.
-  testWidgets('a word tapped out of curiosity ends the welcome', (
-    tester,
-  ) async {
+  // The failure: the one continue line pointed at a sūra already understood
+  // to its end, rather than at one the reader is still partway through.
+  testWidgets('home never offers a sūra understood to its end as the place '
+      'to continue, but still offers one half understood', (tester) async {
+    await markSetUnderstood(db, newOpId(), [
+      for (var a = 1; a <= 7; a++) 1000 + a,
+    ]);
     await movePosition(db, 2255003);
+    // The last place stood in, but a sūra already understood to its end.
+    await movePosition(db, 1007001);
     await openHome(tester);
 
-    expect(find.text('WELCOME'), findsOneWidget);
+    expect(find.byKey(const ValueKey('continue 1007001')), findsNothing);
+    expect(find.byKey(const ValueKey('continue 2255003')), findsOneWidget);
   });
 
-  testWidgets('the welcome outlives a prayer recorded off the walk', (
-    tester,
-  ) async {
-    final visited = (await ayaSet(db, ReadingOrder.nuzul, 2255))!;
-    await recordSetPrayed(db, visited);
-    await openHome(tester);
-
-    expect(find.text('WELCOME'), findsNothing);
-  });
-
-  // The failure: in the order of revelation the walk opens on Al-'Alaq, which
-  // sits in juz 30, so a newcomer was told they were at the last juz of 30.
-  testWidgets('under revelation order home tells a newcomer they are in juz 30',
-      (tester) async {
+  // The failure: with every place stood in already understood, home still
+  // drew a continue line pointing back into a finished sūra.
+  testWidgets('home draws no continue line when every place read is a '
+      'finished sūra', (tester) async {
+    await markSetUnderstood(db, newOpId(), [
+      for (var a = 1; a <= 7; a++) 1000 + a,
+    ]);
+    await movePosition(db, 1007001);
     await openHome(tester);
 
     expect(
-      find.text('Sūra 1 of 114 in the order of revelation'),
-      findsOneWidget,
+      find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith('continue '),
+      ),
+      findsNothing,
     );
-    expect(find.textContaining('Juzʾ'), findsNothing);
-
-    await goTo(tester, 'Settings');
-    await tester.tap(find.text('Muṣḥaf'));
-    await tester.pumpAndSettle();
-    await closeSettings(tester);
-
-    expect(find.text('Sūra 1 of 114 · Juzʾ 1'), findsOneWidget);
   });
 
-  testWidgets('home lists the sūra the walk is in twice, once as the set and '
-      'once as a place to continue', (tester) async {
+  // The failure: the sūra the walk is in showed twice, once as the set and
+  // once more as a place to continue.
+  testWidgets('home does not offer the sūra the walk is in as a place to '
+      'continue', (tester) async {
     final set = (await nextSet(db, ReadingOrder.nuzul))!;
     final inTheSet = set.ayas.first.id * 1000 + 1;
     await movePosition(db, inTheSet);

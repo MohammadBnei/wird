@@ -425,12 +425,6 @@ abstract class AppLocalizations {
   /// **'Add a passage'**
   String get prepare_add_passage;
 
-  /// Under 'Add a passage': leaving it empty is a choice too.
-  ///
-  /// In en, this message translates to:
-  /// **'Or recite Al-Fātiḥa only'**
-  String get prepare_fatiha_only_hint;
-
   /// A number of ayas, as in a passage card's meta line.
   ///
   /// In en, this message translates to:
@@ -461,30 +455,6 @@ abstract class AppLocalizations {
   /// **'How the text moves'**
   String get prepare_kicker_moves;
 
-  /// Checkbox: the prayer follows the reader's recitation.
-  ///
-  /// In en, this message translates to:
-  /// **'Follow my voice'**
-  String get prepare_follow_voice;
-
-  /// Under 'Follow my voice' when the microphone is allowed and the model downloaded.
-  ///
-  /// In en, this message translates to:
-  /// **'Recogniser ready on this phone'**
-  String get prepare_voice_ready;
-
-  /// Under 'Follow my voice' when it cannot run yet; the checkbox is off and dark.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow the microphone and download the recogniser, below'**
-  String get prepare_voice_setup;
-
-  /// Checkbox: the text moves on by itself at a set number of words a minute.
-  ///
-  /// In en, this message translates to:
-  /// **'Keep a steady pace'**
-  String get prepare_steady_pace;
-
   /// Under 'Keep a steady pace': the pace.
   ///
   /// In en, this message translates to:
@@ -509,12 +479,6 @@ abstract class AppLocalizations {
   /// **'Your voice leads. If the recogniser loses you, the text moves on at {wpm} words a minute until it finds you again.'**
   String prepare_note_both(int wpm);
 
-  /// Note under the movement options when only the voice is on.
-  ///
-  /// In en, this message translates to:
-  /// **'The text waits for your voice. Each rakʿah begins when you start reciting.'**
-  String get prepare_note_voice;
-
   /// Note under the movement options when only the pace is on.
   ///
   /// In en, this message translates to:
@@ -524,7 +488,7 @@ abstract class AppLocalizations {
   /// Note under the movement options when both are off.
   ///
   /// In en, this message translates to:
-  /// **'Neither is on: tap the screen to move to the next word.'**
+  /// **'Tap the screen to move to the next word. Each rakʿah begins on a tap.'**
   String get prepare_note_neither;
 
   /// Kicker above the display options, drawn in capitals.
@@ -863,17 +827,17 @@ abstract class AppLocalizations {
   /// **'JUZ {juz} · SET {set}'**
   String progress_here(int juz, int set);
 
-  /// The label under the first count tile on the passage screen (1d).
+  /// The label under the first count tile on the passage screen (1d). The count itself is drawn above it.
   ///
   /// In en, this message translates to:
-  /// **'sets understood'**
-  String get progress_setsUnderstood;
+  /// **'{count, plural, one{set understood} other{sets understood}}'**
+  String progress_setsUnderstood(int count);
 
-  /// The label under the second count tile on the passage screen (1d).
+  /// The label under the second count tile on the passage screen (1d). The count itself is drawn above it.
   ///
   /// In en, this message translates to:
-  /// **'prayers recorded'**
-  String get progress_prayersRecorded;
+  /// **'{count, plural, one{prayer recorded} other{prayers recorded}}'**
+  String progress_prayersRecorded(int count);
 
   /// The heading over the sūra rows on the passage screen (1d).
   ///
@@ -1049,17 +1013,11 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{no prayer on it yet} =1{prayed once} =2{prayed twice} other{prayed {count} times}}'**
   String dashboard_prayerCount(int count);
 
-  /// Home's primary button: it opens the prayer on the waiting set.
+  /// Home's second button: it prepares a prayer whose first rakʿah is the waiting set and whose second carries on after it.
   ///
   /// In en, this message translates to:
-  /// **'Pray this set'**
+  /// **'Pray from this set'**
   String get dashboard_praySet;
-
-  /// Home's second button, under the prayer one: it opens the reading screen on the waiting set.
-  ///
-  /// In en, this message translates to:
-  /// **'Read it first'**
-  String get dashboard_readFirst;
 
   /// What home says in place of a waiting set once the reader has finished the whole walk.
   ///
@@ -1091,24 +1049,6 @@ abstract class AppLocalizations {
   /// **'Open any aya you want'**
   String get dashboard_doorIndexWhy;
 
-  /// Home's destination row for the progress screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Your passage'**
-  String get dashboard_doorProgress;
-
-  /// The subtitle under the progress row on home.
-  ///
-  /// In en, this message translates to:
-  /// **'How much you have understood'**
-  String get dashboard_doorProgressWhy;
-
-  /// Home's destination row for the ayas and roots the reader saved.
-  ///
-  /// In en, this message translates to:
-  /// **'Kept'**
-  String get dashboard_doorKept;
-
   /// A door on the dashboard to the prayer's preparation, without a set in hand.
   ///
   /// In en, this message translates to:
@@ -1120,12 +1060,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Any passage, any number of rakʿahs'**
   String get dashboard_doorPrayWhy;
-
-  /// The subtitle under the kept row on home.
-  ///
-  /// In en, this message translates to:
-  /// **'The ayas and roots you saved'**
-  String get dashboard_doorKeptWhy;
 
   /// The heading of the report screen, where a reader says what went wrong, what is missing, or what could be better.
   ///
@@ -2507,12 +2441,6 @@ abstract class AppLocalizations {
   /// **'Open the root {root}'**
   String study_openRoot(String root);
 
-  /// Home: heading over the sūras the reader is part-way through, each opening where they stopped.
-  ///
-  /// In en, this message translates to:
-  /// **'CONTINUE READING'**
-  String get dashboard_continueReading;
-
   /// Small heading in the reading screen's sheet over the word's parsing: its part of speech and features, as the corpus reads this occurrence.
   ///
   /// In en, this message translates to:
@@ -2543,42 +2471,6 @@ abstract class AppLocalizations {
   /// **'Source'**
   String get root_lookUpShort;
 
-  /// Over the welcome on home, shown until the reader has understood an aya or recorded a prayer.
-  ///
-  /// In en, this message translates to:
-  /// **'WELCOME'**
-  String get dashboard_welcomeKicker;
-
-  /// The welcome on home for a reader who has not started: what a set is and what is done with it.
-  ///
-  /// In en, this message translates to:
-  /// **'Wird serves the Qur’an a few ayas at a time, in order. Read each set, understand it word by word, then pray it.'**
-  String get dashboard_welcome;
-
-  /// Kicker over the reader's place in the walk on home.
-  ///
-  /// In en, this message translates to:
-  /// **'WHERE YOU ARE'**
-  String get dashboard_whereYouAre;
-
-  /// Where the waiting set's sūra stands in the revelation order the reader walks in. No juz is named: in this order juz 30 comes first.
-  ///
-  /// In en, this message translates to:
-  /// **'Sūra {k} of 114 in the order of revelation'**
-  String dashboard_suraNuzul(int k);
-
-  /// Where the waiting set's sūra stands in the muṣḥaf order the reader walks in, and the juz it opens in.
-  ///
-  /// In en, this message translates to:
-  /// **'Sūra {k} of 114 · Juzʾ {juz}'**
-  String dashboard_suraMushaf(int k, int juz);
-
-  /// Under the walk's strip on home, once the reader has understood at least one aya.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} of {total} ayas understood'**
-  String dashboard_ayasUnderstood(int count, int total);
-
   /// Beside a sūra the reader is part-way through: the aya they last stood on and how many the sūra has. A place, not progress.
   ///
   /// In en, this message translates to:
@@ -2596,6 +2488,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'READING'**
   String get progress_reading;
+
+  /// The one sentence at the top of the first-launch setup: what Wird does.
+  ///
+  /// In en, this message translates to:
+  /// **'Wird gives you the Qur’an a few ayas at a time. Read them, understand them word by word, then pray them.'**
+  String get setup_intro;
+
+  /// Kicker over the reading-order choice on the first-launch setup.
+  ///
+  /// In en, this message translates to:
+  /// **'ORDER'**
+  String get setup_order;
+
+  /// Under the order choice on setup when the chronological order is picked: where the walk begins.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts at Al-ʿAlaq, the first revelation.'**
+  String get setup_orderChronological;
+
+  /// Under the order choice on setup when the muṣḥaf order is picked: where the walk begins.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts at al-Fātiḥa, as the muṣḥaf is printed.'**
+  String get setup_orderMushaf;
+
+  /// Kicker over the reciter list on the first-launch setup.
+  ///
+  /// In en, this message translates to:
+  /// **'RECITER'**
+  String get setup_reciter;
+
+  /// The one button of the first-launch setup. Keeps the choices shown and opens home.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get setup_start;
+
+  /// Home's primary button on the waiting set's card: opens the set on the reading screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the set'**
+  String get dashboard_readSet;
+
+  /// Home's one line for a sūra the reader is reading outside the walk: its name and the aya they last stood on, as in 'Continue Al-Baqarah · 2:255'.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue {sura} · {ref}'**
+  String dashboard_continue(String sura, String ref);
+
+  /// Under the first two senses of a root in the reading screen's sheet: opens the rest of them in place.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more sense} other{{count} more senses}}'**
+  String study_moreSenses(int count);
+
+  /// The first of the three ways the text moves on the prayer preparation: it follows the reader's recitation, with the steady pace as its fallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get prepare_move_voice;
+
+  /// The second way the text moves on the prayer preparation: at a steady number of words a minute.
+  ///
+  /// In en, this message translates to:
+  /// **'Steady'**
+  String get prepare_move_steady;
+
+  /// The third way the text moves on the prayer preparation: a tap on the screen moves it on a word.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap'**
+  String get prepare_move_tap;
+
+  /// Under the how-the-text-moves choice when Voice is picked and the microphone or the recogniser is missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice is chosen, but this phone cannot follow it yet. Until it can, the text moves at {wpm} words a minute.'**
+  String prepare_voice_waiting(int wpm);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

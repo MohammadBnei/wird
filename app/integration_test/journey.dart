@@ -61,21 +61,39 @@ void journey(
       return;
     }
     _report(name, 'pass', '');
-  });
+    // A healthy journey takes seconds. Without a bound, a pumpAndSettle that
+    // never settles holds the gate for hours instead of failing.
+  }, timeout: const Timeout(Duration(minutes: 5)));
 }
 
 Future<String> get _dbPath async => '${await getDatabasesPath()}/wird.db';
 
 /// Starts the app the way a fresh install does: no database file, so this
-/// launch is the one that copies the bundled corpus out and the walk starts
-/// at the first aya of the revelation order.
+/// launch is the one that copies the bundled corpus out, shows the setup
+/// screen, and the walk starts at the first aya of the revelation order.
 Future<void> launchFresh(WidgetTester tester) async {
   await deleteDatabase(await _dbPath);
   app.main();
   // runApp locks pointer events until its warm-up frame lands, so settling
   // first is what makes the taps below reach the screen at all.
   await tester.pumpAndSettle();
+  await waitFor(
+    tester,
+    () => find.byKey(const Key('start')).evaluate().isNotEmpty,
+    'the setup a new install opens on',
+  );
+  await tester.tap(find.byKey(const Key('start')));
+  await tester.pumpAndSettle();
   await openTheSet(tester, 'the first set');
+}
+
+/// A new install's root panel arrives folded (ADR 0034). Opened by its
+/// handle rather than a word, so the open word stays where it was and no
+/// word is sounded.
+Future<void> unfoldTheSheet(WidgetTester tester) async {
+  if (find.byKey(const Key('next word')).evaluate().isNotEmpty) return;
+  await tester.tap(find.byKey(const Key('sheet handle')));
+  await tester.pumpAndSettle();
 }
 
 /// Starts the app again over the database the previous launch left behind.
@@ -281,10 +299,17 @@ Future<Set<int>> finishSet(WidgetTester tester) async {
     await tester.pumpAndSettle();
   }
   final last = ayas.reduce((a, b) => a > b ? a : b);
+  // The panel arrives folded on a new install; a word tap opens it, on the
+  // first word drawn so the walk below starts at the top of the set.
+  if (find.byKey(const Key('next word')).evaluate().isEmpty) {
+    final first = (wordsOnScreen(tester).toList()..sort()).first;
+    await tester.tap(find.byKey(WordKey(first)));
+    await tester.pumpAndSettle();
+  }
   // ponytail: a step per word, bounded by the longest aya run a phone draws.
   for (var steps = 0; openAya(tester) <= last; steps++) {
     if (steps > 600) fail('the next-word arrow never left $last');
-    await tester.tap(find.byKey(const Key('next word')));
+    await tester.tap(find.byKey(const Key('next word')).hitTestable().first);
     await tester.pumpAndSettle();
   }
   return ayas;

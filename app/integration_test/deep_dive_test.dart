@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:wird/features/deepdive/deep_dive_screen.dart';
+import 'package:wird/features/study/word_row.dart';
 
 import 'journey.dart';
 
@@ -24,8 +26,10 @@ void main() {
       // The root panel on screen 1a opens on the first word of the set that
       // carries a root, and "Deep dive" opens that root.
       String? root;
+      int? rooted;
       for (final id in wordsOnScreen(tester).toList()..sort()) {
         root = await rootDisplayOf(corpus, id);
+        rooted = id;
         if (root != null) break;
       }
       expect(
@@ -33,6 +37,10 @@ void main() {
         isNotNull,
         reason: 'no word of the first set carries a root to open',
       );
+
+      // The panel arrives folded on a new install; the word opens it.
+      await tester.tap(find.byKey(WordKey(rooted!)));
+      await tester.pumpAndSettle();
 
       // The link sits under the root's ring, in the half of the sheet that
       // opens when the reader asks for the counts.
@@ -50,8 +58,14 @@ void main() {
             'a tablet-sized window opened the phone reading instead of the '
             'three panes the design draws for it',
       );
+      // Counted inside the deep dive: the reading screen it was pushed over,
+      // with the root's name and ring, stays built until the push settles,
+      // and on a desktop window that is not in front it may not have yet.
       expect(
-        find.text(root!),
+        find.descendant(
+          of: find.byType(DeepDiveScreen),
+          matching: find.text(root!),
+        ),
         findsOneWidget,
         reason:
             'the deep dive opened on a root other than the one the '

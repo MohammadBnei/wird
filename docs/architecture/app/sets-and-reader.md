@@ -25,7 +25,7 @@ sequenceDiagram
   S->>O: aya understood
   R->>S: stay on a word
   S->>O: position moved
-  R->>S: Pray this set
+  R->>S: Pray from this set
   S->>P: the set, already read
   R->>P: prepare, begin, pray, come back
   P->>O: set prayed, with its derived id, if a reached rakʿah recited it
@@ -39,7 +39,7 @@ flowchart LR
   index(["Sūra index"]) -->|"an aya"| reader
   root(["A root or its family"]) -->|"an aya"| reader
   home(["Home: Prepare a prayer"]) --> prepare["Prepare"]
-  reader -->|"Pray this set"| prepare
+  reader -->|"Pray from this set"| prepare
   prepare -->|"Begin"| prayer["Prayer 1b"]
   reader -->|"aya understood, position"| outbox[("Outbox")]
   prayer -->|"on the way back, via Prepare"| outbox
@@ -87,8 +87,8 @@ stateDiagram-v2
   Visiting --> OnTheWalk: Back to the walk
   OnTheWalk --> OnTheWalk: mark understood, then Next set
   Visiting --> OnTheWalk: mark understood, then Next set
-  OnTheWalk --> Prayer: Pray this set, prepare, begin
-  Visiting --> Prayer: Pray this set, prepare, begin
+  OnTheWalk --> Prayer: Pray from this set, prepare, begin
+  Visiting --> Prayer: Pray from this set, prepare, begin
   Prayer --> OnTheWalk: back, prayer recorded if the set was recited
   Prayer --> Visiting: back, prayer recorded if the set was recited
 ```
@@ -139,7 +139,7 @@ int _setWidth(List<int> wordCounts, {int? span}) {
 }
 ```
 
-[sets.dart:453](../../../app/lib/data/sets.dart#L453-L466). The chosen width is stored per starting aya in the local `set_span` table ([sets.dart:474](../../../app/lib/data/sets.dart#L474-L491)). It is a width, never a position, and it never leaves the phone. The Settings stepper writes it ([settings_screen.dart:73](../../../app/lib/features/settings/settings_screen.dart#L83-L90)).
+[sets.dart:453](../../../app/lib/data/sets.dart#L453-L466). The chosen width is stored per starting aya in the local `set_span` table ([sets.dart:474](../../../app/lib/data/sets.dart#L474-L491)). It is a width, never a position, and it never leaves the phone. The Settings stepper writes it ([settings_screen.dart:73](../../../app/lib/features/settings/settings_screen.dart#L84-L91)).
 
 ### 3. A set's id is derived, not minted
 
@@ -212,15 +212,15 @@ The sūra comes from [`ayaSet`](../../../app/lib/data/sets.dart#L295-L337), whos
 
 ### 6. The sūra list is lazy both ways
 
-A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:941](../../../app/lib/features/study/study_screen.dart#L963-L1013)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:1192](../../../app/lib/features/study/study_screen.dart#L1214-L1235), [sets.dart:423](../../../app/lib/data/sets.dart#L423-L453)).
+A sūra can be 286 ayas and 6116 words. The top of the screen is a `CustomScrollView` hung from the aya the reader opened on. Slivers before the anchor grow upward, slivers after it grow downward ([study_screen.dart:941](../../../app/lib/features/study/study_screen.dart#L967-L1017)). An aya with no words yet draws a placeholder of about the right height and asks for the words around it: 4 ayas back, 12 ahead, in one query ([study_screen.dart:1192](../../../app/lib/features/study/study_screen.dart#L1218-L1239), [sets.dart:423](../../../app/lib/data/sets.dart#L423-L453)).
 
-Above the first aya and below the last, a link opens the sūra before and the sūra after, in the reading order chosen in Settings ([study_screen.dart:996](../../../app/lib/features/study/study_screen.dart#L1018-L1059), [`surahBeside`](../../../app/lib/data/sets.dart#L374-L390)). By revelation, the sūra after Al-ʿAlaq is Al-Qalam. The links are worked out on every build, so switching the order moves them without reopening the sūra.
+Above the first aya and below the last, a link opens the sūra before and the sūra after, in the reading order chosen in Settings ([study_screen.dart:996](../../../app/lib/features/study/study_screen.dart#L1022-L1063), [`surahBeside`](../../../app/lib/data/sets.dart#L374-L390)). By revelation, the sūra after Al-ʿAlaq is Al-Qalam. The links are worked out on every build, so switching the order moves them without reopening the sūra.
 
 Each word arrives with its English gloss and, where The Last Dialogue's pages carry it, its French one ([ADR 0012](../../adr/0012-french-word-glosses-from-the-last-dialogue.md)). Each aya's translation, Pickthall's English or Rashid Maash's French, sits under it unless the reader turns it off in Settings ([ADR 0017](../../adr/0017-ayas-are-translated-into-english-from-pickthall.md)).
 
 ### 7. The root sheet walks the sūra a word at a time
 
-A tap on any word, particles included, opens it in the sheet under the list. [`_open`](../../../app/lib/features/study/study_screen.dart#L321-L351) reads everything the sheet shows before it draws any of it:
+A tap on any word, particles included, opens it in the sheet under the list. On a new install the sheet arrives folded, and the tap unfolds it: the word is how a reader asks what it means ([study_screen.dart:623](../../../app/lib/features/study/study_screen.dart#L623-L628)). The sheet leads light: the word, its first two senses with the rest one tap away in place, then the rest below the fold, where the counts are: the dictionaries and the verdict on the senses, and the word's grammar ([root_sheet.dart:432](../../../app/lib/features/study/root_sheet.dart#L432-L444), [root_sheet.dart:905](../../../app/lib/features/study/root_sheet.dart#L905-L969)). [`_open`](../../../app/lib/features/study/study_screen.dart#L321-L351) reads everything the sheet shows before it draws any of it:
 
 - the root;
 - its lemmas;
@@ -249,7 +249,7 @@ The sheet reads in one order. The first row holds the root, the word as this aya
 
 A step is found by aya ([`stepFrom`](../../../app/lib/features/study/reading_walk.dart#L17-L37)): past the end of an aya it goes to the next aya, read or not, and the screen reads that aya's chunk before stepping again ([study_screen.dart:553](../../../app/lib/features/study/study_screen.dart#L575-L580)). Counting along a flat list of the words read so far landed a step from 2:255 back near 2:1.
 
-Once the reader has stayed on a word for two seconds, and again when they leave, it is written as their position in that sūra and queued for their other devices ([ADR 0015](../../adr/0015-the-reading-position-is-kept-per-sura-and-synced.md), [`movePosition`](../../../app/lib/data/db.dart#L497-L516)).
+Once the reader has stayed on a word for two seconds, and again when they leave, it is written as their position in that sūra and queued for their other devices ([ADR 0015](../../adr/0015-the-reading-position-is-kept-per-sura-and-synced.md), [`movePosition`](../../../app/lib/data/db.dart#L544-L563)).
 
 #### How the list moves
 
@@ -267,50 +267,52 @@ stateDiagram-v2
   released --> idle: pause, stop, end
 ```
 
-Following turns the page: once the recited word passes two thirds of the way down, it is scrolled to a third from the top ([study_screen.dart:492](../../../app/lib/features/study/study_screen.dart#L514-L525)). Any play the reader asks for, from the reading screen or the player bar on any screen, starts following again; the recitation carrying on by itself after a word heard over it does not ([`Recitation.asked`](../../../app/lib/app.dart#L241)). Only the sūra or an aya playing is followed, never a word heard alone, and while following the reading position moves with the recited word ([study_screen.dart:202](../../../app/lib/features/study/study_screen.dart#L224-L253)). The screen marks its own scrolls, so any other scroll start is the reader's hand, whatever moved the list ([study_screen.dart:532](../../../app/lib/features/study/study_screen.dart#L554-L565), [study_screen.dart:947](../../../app/lib/features/study/study_screen.dart#L969-L980)). A recited word whose aya is not built rebuilds the list hung from that aya ([study_screen.dart:508](../../../app/lib/features/study/study_screen.dart#L530-L534)). While the recitation plays and the list does not follow, a "Back to recitation" chip sits over the list ([study_screen.dart:909](../../../app/lib/features/study/study_screen.dart#L931-L946)).
+Following turns the page: once the recited word passes two thirds of the way down, it is scrolled to a third from the top ([study_screen.dart:492](../../../app/lib/features/study/study_screen.dart#L514-L525)). Any play the reader asks for, from the reading screen or the player bar on any screen, starts following again; the recitation carrying on by itself after a word heard over it does not ([`Recitation.asked`](../../../app/lib/app.dart#L241)). Only the sūra or an aya playing is followed, never a word heard alone, and while following the reading position moves with the recited word ([study_screen.dart:202](../../../app/lib/features/study/study_screen.dart#L224-L253)). The screen marks its own scrolls, so any other scroll start is the reader's hand, whatever moved the list ([study_screen.dart:532](../../../app/lib/features/study/study_screen.dart#L554-L565), [study_screen.dart:947](../../../app/lib/features/study/study_screen.dart#L973-L984)). A recited word whose aya is not built rebuilds the list hung from that aya ([study_screen.dart:508](../../../app/lib/features/study/study_screen.dart#L530-L534)). While the recitation plays and the list does not follow, a "Back to recitation" chip sits over the list ([study_screen.dart:909](../../../app/lib/features/study/study_screen.dart#L935-L950)).
 
-A drag down on the sheet's top bar folds the sheet to that bar alone, and the sūra takes the screen: a reader who only wants to read has no use for a root under every word. A drag up, or a tap on the folded bar, brings it back; a drag up on an open sheet expands it, and the same long drag up from a folded sheet does both. Going down is a step at a time: a drag down on an expanded sheet stops at its usual height, and only the next one folds it. The choice is kept in `display_prefs.root_open`, so the reader finds the sheet as they left it ([root_sheet.dart:233](../../../app/lib/features/study/root_sheet.dart#L233-L272), [study_screen.dart:708](../../../app/lib/features/study/study_screen.dart#L730-L769)). Folding, opening and expanding all move the same way: the band above the sheet changes height over 350 ms, and a folding sheet keeps its root drawn until it has gone down ([study_screen.dart:661](../../../app/lib/features/study/study_screen.dart#L683-L711)). Expanded, the sūra stays under the open aya instead of being rebuilt: the two cross, each fading and drifting 24px, so the reader comes back to the sūra where they left it ([study_screen.dart:862](../../../app/lib/features/study/study_screen.dart#L884-L927)).
+A drag down on the sheet's top bar folds the sheet to that bar alone, and the sūra takes the screen: a reader who only wants to read has no use for a root under every word. A drag up, or a tap on the folded bar, brings it back; a drag up on an open sheet expands it, and the same long drag up from a folded sheet does both. Going down is a step at a time: a drag down on an expanded sheet stops at its usual height, and only the next one folds it. The choice is kept in `display_prefs.root_open`, so the reader finds the sheet as they left it ([root_sheet.dart:240](../../../app/lib/features/study/root_sheet.dart#L240-L279), [study_screen.dart:708](../../../app/lib/features/study/study_screen.dart#L734-L773)). Folding, opening and expanding all move the same way: the band above the sheet changes height over 350 ms, and a folding sheet keeps its root drawn until it has gone down ([study_screen.dart:661](../../../app/lib/features/study/study_screen.dart#L687-L715)). Expanded, the sūra stays under the open aya instead of being rebuilt: the two cross, each fading and drifting 24px, so the reader comes back to the sūra where they left it ([study_screen.dart:862](../../../app/lib/features/study/study_screen.dart#L888-L931)).
 
 A tap on the sheet's top bar, or on its "Counts, forms, other ayas" row, shrinks the sūra to the open word's aya, whole and with its translation, and brings up the counts, the ring of the root's lemmas and the other ayas; scrolling the sheet never does. Each other aya is shown as a line around the root's word in it, lit, so the word it is listed for is never cut off. An other aya opens in place of the sūra, with a way back to the word the reader was on and a way to read that aya's sūra from there.
 
-The root letters open the root's own screen. A screen that names an aya answers by popping its id back down, and the reader reloads in place rather than stacking a second reader ([study_screen.dart:609](../../../app/lib/features/study/study_screen.dart#L631-L635)):
+The root letters open the root's own screen. A screen that names an aya answers by popping its id back down, and the reader reloads in place rather than stacking a second reader ([study_screen.dart:609](../../../app/lib/features/study/study_screen.dart#L635-L639)):
 
 - the sūra index, reached from the sūra's name in the bar;
 - a root, its spine and the deep dive, which call one helper ([family.dart:29](../../../app/lib/features/root/family.dart#L29-L30));
 - Progress (1d), whose "All 114" opens the index and passes its answer on ([progress_screen.dart:50](../../../app/lib/features/progress/progress_screen.dart#L50-L54)), and whose "Reading" rows answer the word the reader last stood on as an `AtWord`.
 
-The drawer and home catch an aya or a word too, and push the reader with it ([wird_shell.dart:249](../../../app/lib/shell/wird_shell.dart#L249-L268)).
+The drawer and home catch an aya or a word too, and push the reader with it ([wird_shell.dart:250](../../../app/lib/shell/wird_shell.dart#L250-L269)).
 
 ### Home
 
-Home names the waiting set on a card with its Arabic, says where the walk stands, and lists the sūras the reader is part-way through ([dashboard_screen.dart:283](../../../app/lib/features/dashboard/dashboard_screen.dart#L283)). ADR 0033.
+A new install opens on the setup screen first, once. It asks three things, each already answered: the language (the phone's, written only if the reader changes it), the order of the walk, and the reciter, with a sample of each. Start, or the system's back, records `setup_done` and pops to home underneath ([setup_screen.dart:20](../../../app/lib/features/setup/setup_screen.dart#L20-L61)). An install from before setup has the reader's tables but no `setup_done`; [`openWirdAt`](../../../app/lib/data/db.dart#L186-L187) sees that before creating anything, marks setup done and keeps its root panel open ([db.dart:354](../../../app/lib/data/db.dart#L354-L370)). ADR 0034.
 
-- **Welcome.** Shown until an aya is understood or a prayer is recorded. Derived from `ayah_understood` and `set_prayers`, never stored. Opening a sūra does not end it.
-- **Where you are.** The waiting sūra's place among the 114 in the order the reader walks, plus its juz in the muṣḥaf's order only. Under it, a strip with one tick per sūra in the walk's order, lit by how much of each is understood, with the current sūra taller. Tapping it opens 1d.
-- **Continue reading.** The three sūras last read, leaving out the walk's own sūra, each with "aya n of m". A place, not progress (ADR 0015).
+Home has few doors ([dashboard_screen.dart:25](../../../app/lib/features/dashboard/dashboard_screen.dart#L25-L52)):
+
+- **The set card.** The waiting set with its Arabic. "Read the set" is the primary button and comes first; "Pray from this set" sits under it, quieter ([dashboard_screen.dart:160](../../../app/lib/features/dashboard/dashboard_screen.dart#L160-L241)). Read opens the set's first aya, not the last place stood in.
+- **Continue.** One line, "Continue Al-Baqarah · 2:255", for the sūra last read outside the walk. A sūra understood to its end is finished, not open, so it is skipped ([dashboard_screen.dart:247](../../../app/lib/features/dashboard/dashboard_screen.dart#L247-L275)).
+- **Two doors.** Any sūra (the index) and a prayer of one's own. Where the walk stands, the passage and what is kept are in the drawer ([dashboard_screen.dart:293](../../../app/lib/features/dashboard/dashboard_screen.dart#L293-L336)).
 
 ```mermaid
 flowchart TD
-  db[("ayah_understood · set_prayers · reading_positions")] --> waiting["whatIsWaiting"]
-  waiting --> welcome{"started?"}
-  welcome -->|no| hello["Welcome"]
-  waiting --> card["Set card + Arabic"]
-  waiting --> strip["Where you are: line + 114-tick strip"]
-  waiting --> cont["Continue reading"]
-  strip -->|tap| passage["Passage 1d"]
-  passage -->|"aya or AtWord"| reader["Reader 1a"]
-  cont -->|AtWord| reader
+  launch(["Launch"]) --> done{"setup_done?"}
+  done -->|no| setup["Setup: language, order, reciter"]
+  setup -->|"Start or back"| home
+  done -->|yes| home["Home"]
+  home --> read["Read the set"] --> reader["Reader 1a, sheet folded"]
+  home --> pray["Pray from this set"] --> prepare["Preparation"]
+  home --> cont["Continue sūra · aya"] -->|AtWord| reader
+  home --> index["Any sūra"]
+  home --> own["Prepare a prayer"] --> prepare
 ```
 
 ### 8. Marking an aya understood
 
-The circle that closes each aya marks it understood when tapped ([study_screen.dart:588](../../../app/lib/features/study/study_screen.dart#L610-L614)). Held, it recites that aya alone, understood or not; that is the only per-aya play control, so the reading is not a column of buttons. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L357-L385) with a fresh op id per tap. It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. An aya already understood answers no tap: no op takes the mark back.
+The circle that closes each aya marks it understood when tapped ([study_screen.dart:588](../../../app/lib/features/study/study_screen.dart#L610-L614)). Held, it recites that aya alone, understood or not; that is the only per-aya play control, so the reading is not a column of buttons. The write goes through [`markSetUnderstood`](../../../app/lib/data/db.dart#L404-L432) with a fresh op id per tap. It inserts into `ayah_understood` and queues one `ayah_understood` op in the same transaction. An aya already understood answers no tap: no op takes the mark back.
 
 Scrolling or walking past an aya marks nothing. Understood is what the reader says, and the position is where they are; neither is read from the other.
 
 ### 9. Praying a set
 
-The walk still proposes sets, and home still offers "Pray this set". The reading screen's Pray action prays the ayas around the open word, the reading width wide ([study_screen.dart:407](../../../app/lib/features/study/study_screen.dart#L429-L489), [study_screen.dart:835](../../../app/lib/features/study/study_screen.dart#L857)). The recitation is not that set: it is the whole sūra (section 10). Both call one function, which stops the audio and opens the prayer's preparation on that set:
+The walk still proposes sets, and home still offers "Pray from this set". The reading screen's Pray action prays the ayas around the open word, the reading width wide ([study_screen.dart:407](../../../app/lib/features/study/study_screen.dart#L429-L489), [study_screen.dart:835](../../../app/lib/features/study/study_screen.dart#L861)). The recitation is not that set: it is the whole sūra (section 10). Both call one function, which stops the audio and opens the prayer's preparation on that set:
 
 ```dart
 Future<void> prayTheSet(BuildContext context, StudySet set) async {
@@ -320,15 +322,14 @@ Future<void> prayTheSet(BuildContext context, StudySet set) async {
 }
 ```
 
-[app.dart:453](../../../app/lib/app.dart#L535-L539). Home also has a "Prepare a prayer" door, which opens the same screen with no set ([dashboard_screen.dart:424](../../../app/lib/features/dashboard/dashboard_screen.dart#L424-L428)).
+[app.dart:453](../../../app/lib/app.dart#L535-L539). Home also has a "Prepare a prayer" door, which opens the same screen with no set ([dashboard_screen.dart:307](../../../app/lib/features/dashboard/dashboard_screen.dart#L307-L310)).
 
 #### The preparation
 
 ```mermaid
 flowchart TB
-  preset["Preset: Fajr 2, Ẓuhr 4, ʿAṣr 4,<br/>Maghrib 3, ʿIshāʾ 4, or none"] --> count["Rakʿahs, 1 to 12"]
-  count --> passages["Passage after Al-Fātiḥa<br/>rakʿah 1, rakʿah 2<br/>later rakʿahs: Al-Fātiḥa only"]
-  passages --> movement["Voice, pace, words a minute"]
+  preset["Prayer card: Fajr 2, Ẓuhr 4, ʿAṣr 4,<br/>Maghrib 3, ʿIshāʾ 4, or none,<br/>and the rakʿahs, 1 to 12"] --> passages["One line per rakʿah<br/>rakʿah 1, rakʿah 2: Al-Fātiḥa · passage<br/>later rakʿahs: Al-Fātiḥa only"]
+  passages --> movement["Text moves: Voice, Steady or Tap<br/>and words a minute"]
   movement --> display["Gloss, faded neighbours, Arabic size"]
   display --> begin(["Begin"])
   passages -.-> chooser["Passage chooser<br/>opens on the current range"]
@@ -336,15 +337,17 @@ flowchart TB
   display -.-> preview(["Preview: one rakʿah, looping"])
 ```
 
-The screen opens where the reader left it last time, from `prayer_prefs`, except the passages ([prepare_screen.dart:107](../../../app/lib/features/prayer/prepare_screen.dart#L107-L159)). The first is the set it was opened on, or else the walk's next set, but never a set of Al-Fātiḥa: Al-Fātiḥa is already recited in every rakʿah, and as the passage every word would stand in two places ([prepare_screen.dart:128](../../../app/lib/features/prayer/prepare_screen.dart#L128-L133)). The second is the first's continuation: as many ayas as the first holds, straight after it, going on into the next sūra when the first ends one ([prayer_plan.dart:135](../../../app/lib/features/prayer/prayer_plan.dart#L135-L154)).
+The screen opens where the reader left it last time, from `prayer_prefs`, except the passages ([prepare_screen.dart:124](../../../app/lib/features/prayer/prepare_screen.dart#L124-L178)). The first is the set it was opened on, or else the walk's next set, but never a set of Al-Fātiḥa: Al-Fātiḥa is already recited in every rakʿah, and as the passage every word would stand in two places ([prepare_screen.dart:145](../../../app/lib/features/prayer/prepare_screen.dart#L145-L150)). The second is the first's continuation: as many ayas as the first holds, straight after it, going on into the next sūra when the first ends one ([prayer_plan.dart:135](../../../app/lib/features/prayer/prayer_plan.dart#L135-L154)).
 
-If the database does not answer, the screen says so and offers "Try again" rather than staying blank. One read runs at a time, so a second tap cannot race the first ([prepare_screen.dart:92](../../../app/lib/features/prayer/prepare_screen.dart#L92-L105), [prepare_screen.dart:703](../../../app/lib/features/prayer/prepare_screen.dart#L703-L717)).
+If the database does not answer, the screen says so and offers "Try again" rather than staying blank. One read runs at a time, so a second tap cannot race the first ([prepare_screen.dart:109](../../../app/lib/features/prayer/prepare_screen.dart#L109-L122), [prepare_screen.dart:678](../../../app/lib/features/prayer/prepare_screen.dart#L678-L692)).
 
-- A preset sets the rakʿah count; tapping the chosen preset again clears it, and the count stays ([prepare_screen.dart:193](../../../app/lib/features/prayer/prepare_screen.dart#L193-L200), [prayer_plan.dart:14](../../../app/lib/features/prayer/prayer_plan.dart#L14-L29)).
+- A preset sets the rakʿah count; tapping the chosen preset again clears it, and the count stays ([prepare_screen.dart:212](../../../app/lib/features/prayer/prepare_screen.dart#L212-L219), [prayer_plan.dart:14](../../../app/lib/features/prayer/prayer_plan.dart#L14-L29)).
 - Only the first two rakʿahs carry a passage after Al-Fātiḥa. The second can still be set to "same as the first". The rest are Al-Fātiḥa alone ([prayer_plan.dart:64](../../../app/lib/features/prayer/prayer_plan.dart#L64-L68)).
-- The pace runs from 15 to 90 words a minute, in steps of 5 ([prepare_screen.dart:777](../../../app/lib/features/prayer/prepare_screen.dart#L777-L780)). Voice is only ticked once the microphone is granted and the model is on the phone, and the reader's wish is kept for the day it is. Until then, "Follow my voice" carries what is missing right under it: an "Allow microphone" button, then the model's download panel from Settings. When both are done the row ticks itself ([prepare_screen.dart:745](../../../app/lib/features/prayer/prepare_screen.dart#L745-L764)), as described in [voice-follow](voice-follow.md#1-the-microphone-is-asked-for-before-the-prayer-never-in-it).
-- "Silence notifications" is a reminder, not a switch. Android only lets an app silence the phone after a permission granted in system settings, and iOS has no way at all, so the reader does it ([prepare_screen.dart:820](../../../app/lib/features/prayer/prepare_screen.dart#L820-L828)).
-- The preview sheet runs one rakʿah from its passage, round and round, at the pace when voice or pace is chosen, and never opens the microphone ([prepare_screen.dart:316](../../../app/lib/features/prayer/prepare_screen.dart#L316-L387)).
+- How the text moves is one choice of three ([prepare_screen.dart:87](../../../app/lib/features/prayer/prepare_screen.dart#L87-L96)). Voice follows the recitation with the pace as its fallback; Steady is the pace alone; Tap moves a word per tap. A reader saved as voice alone, from before, reads as Voice and gets the pace with it ([prepare_screen.dart:172](../../../app/lib/features/prayer/prepare_screen.dart#L172)). The pace runs from 15 to 90 words a minute, in steps of 5 ([prepare_screen.dart:749](../../../app/lib/features/prayer/prepare_screen.dart#L749-L752)).
+- Voice is followed only once the microphone is granted and the model is on the phone, and the reader's choice is kept for the day it is. Until then the text moves at the pace, the note says so, and what is missing sits under the choice: an "Allow microphone" button, then the model's download panel from Settings ([prepare_screen.dart:702](../../../app/lib/features/prayer/prepare_screen.dart#L702-L766)), as described in [voice-follow](voice-follow.md#1-the-microphone-is-asked-for-before-the-prayer-never-in-it).
+- Only the lines of rakʿah 1 and 2 open the chooser: a plan holds no passage past the second ([prepare_screen.dart:581](../../../app/lib/features/prayer/prepare_screen.dart#L581-L586)).
+- "Silence notifications" is a reminder, not a switch. Android only lets an app silence the phone after a permission granted in system settings, and iOS has no way at all, so the reader does it ([prepare_screen.dart:791](../../../app/lib/features/prayer/prepare_screen.dart#L791-L799)).
+- The preview sheet runs one rakʿah from its passage, round and round, at the pace when voice or pace is chosen, and never opens the microphone ([prepare_screen.dart:335](../../../app/lib/features/prayer/prepare_screen.dart#L335-L406)).
 
 The sūra list searches by number or by name, in English or Arabic, with the marks folded away so `kafirun` finds al-Kāfirūn, and takes a reference such as `2:255`; a half-typed `2:` already narrows to Al-Baqarah ([sura_picker.dart:36](../../../app/lib/features/index/sura_picker.dart#L36-L67)). Given the database, it also searches the text: ayas whose Arabic, English or French holds the query, and ayas carrying a root typed as letters (`كتب`, `ك ت ب`) or as its transliteration (`k-t-b`). The text is read once and kept in memory, folded so that a reader's spelling meets the muṣḥaf's: the long ā the muṣḥaf writes its own way (a dagger alif, a wāw or yāʾ carrying one) is left out on both sides with every alif, so `الرحمن` finds ٱلرَّحْمَـٰنِ and `الصلاة` finds ٱلصَّلَوٰةَ; Latin loses its marks, so `hmd` finds the root ḥ-m-d. Hits are worked out once per query, with the sūras the screen leaves out already left out, so they never take a place ([aya_search.dart:25](../../../app/lib/features/index/aya_search.dart#L25-L188), [sura_picker.dart:337](../../../app/lib/features/index/sura_picker.dart#L337-L375)). In the passage chooser, with nothing typed, it shows one suggestion as a card with its first aya: the walk's next set for the first rakʿah, the ayas after the first rakʿah's passage for the second. Then "same as rakʿah 1", Al-Fātiḥa only, and the passages recently recited with how long each takes. A dot marks what the rakʿah recites now. A suggestion inside one sūra opens the range step rather than being taken as it is ([passage_chooser.dart:268](../../../app/lib/features/prayer/passage_chooser.dart#L268-L331), [passage_chooser.dart:149](../../../app/lib/features/prayer/passage_chooser.dart#L149-L157)). Al-Fātiḥa is never offered, neither in the list, through a reference, nor among the ayas found, for the same reason it is never the default ([passage_chooser.dart:279](../../../app/lib/features/prayer/passage_chooser.dart#L279)).
 
@@ -363,11 +366,11 @@ flowchart LR
 
 #### What is written, and when
 
-The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:20](../../../app/lib/features/prayer/prayer_screen.dart#L20-L33)). It reports the furthest rakʿah reached and any pinched Arabic size through a `PrayerOutcome`. The preparation writes when the reader comes back, however they left, then closes ([prepare_screen.dart:269](../../../app/lib/features/prayer/prepare_screen.dart#L269-L314)):
+The prayer screen writes nothing: it runs inside the prayer, where no moment is safe for a write ([prayer_screen.dart:20](../../../app/lib/features/prayer/prayer_screen.dart#L20-L33)). It reports the furthest rakʿah reached and any pinched Arabic size through a `PrayerOutcome`. The preparation writes when the reader comes back, however they left, then closes ([prepare_screen.dart:288](../../../app/lib/features/prayer/prepare_screen.dart#L288-L333)):
 
-- `prayer_prefs`: how this prayer was prepared, so the next starts the same way. Written before the prayer too. Device-local ([db.dart:678](../../../app/lib/data/db.dart#L688-L699)).
-- `prayer_history`: one row for each passage a reached rakʿah recited, for "recently recited". Device-local ([db.dart:696](../../../app/lib/data/db.dart#L706-L711)).
-- [`recordSetPrayed`](../../../app/lib/data/db.dart#L398) for the credited set, only if a reached rakʿah recited it. The credited set is the one Prepare was opened on, or else the walk's next set ([prepare_screen.dart:167](../../../app/lib/features/prayer/prepare_screen.dart#L167)). It inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
+- `prayer_prefs`: how this prayer was prepared, so the next starts the same way. Written before the prayer too. Device-local ([db.dart:678](../../../app/lib/data/db.dart#L737-L748)).
+- `prayer_history`: one row for each passage a reached rakʿah recited, for "recently recited". Device-local ([db.dart:696](../../../app/lib/data/db.dart#L755-L760)).
+- [`recordSetPrayed`](../../../app/lib/data/db.dart#L445) for the credited set, only if a reached rakʿah recited it. The credited set is the one Prepare was opened on, or else the walk's next set ([prepare_screen.dart:186](../../../app/lib/features/prayer/prepare_screen.dart#L186)). It inserts the set (ignored if it exists), the prayer, and one `set_prayed` op that carries the range and the derived id.
 
 A prayer that recites some other passage leaves only the history behind. A prayer the reader never returns from is not counted, and a preparation left before Begin is no prayer at all. The count may be short; it is never invented.
 

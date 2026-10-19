@@ -49,6 +49,17 @@ Future<Database> testCorpus() async {
   // this database is cached for the whole process. Emptying it costs nothing
   // now and would have blanked 523 rows before.
   await _db!.delete('root_notes');
+  // The root panel open, as an existing reader has it. A new install folds it
+  // (ADR 0034), but nearly every reading-screen test is about what the panel
+  // shows; the fold itself is tested by deleting this row.
+  await _db!.insert('display_prefs', {
+    'id': 1,
+    'display': defaultDisplay,
+    'arabic_size': defaultArabicSize,
+    'header_open': defaultHeaderOpen ? 1 : 0,
+    'root_open': 1,
+    'aya_translation': defaultAyaTranslation ? 1 : 0,
+  });
   return _db!;
 }
 

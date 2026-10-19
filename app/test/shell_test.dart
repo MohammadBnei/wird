@@ -5,6 +5,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/features/study/word_row.dart';
 import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
+import 'package:wird/data/auth.dart';
 import 'package:wird/data/db.dart';
 import 'package:wird/data/sets.dart';
 import 'package:wird/features/about/about_screen.dart';
@@ -242,7 +243,7 @@ void main() {
     expect(find.byType(SettingsScreen), findsOneWidget);
 
     for (final elsewhere in const [
-      'Pray this set',
+      'Pray from this set',
       'Your passage',
       'Kept',
       'Sūra index',
@@ -319,6 +320,63 @@ void main() {
       find.descendant(of: drawer, matching: find.text('Home')),
       findsNothing,
     );
+  });
+
+  // The failure: a reader who signed in in settings opens the drawer and is
+  // told nobody is signed in.
+  testWidgets('the drawer names the reader who is signed in', (tester) async {
+    await tester.runAsync(() async {
+      await ensureAuthTable(db);
+      await db.insert('auth_tokens', {
+        'id': 1,
+        'subject': 'reader@bnei.dev',
+        'id_token': 'x',
+        'expires_at': DateTime(2100).toIso8601String(),
+      });
+    });
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    final drawer = find.byType(WirdDrawer);
+    expect(
+      find.descendant(
+        of: drawer,
+        matching: find.text('Signed in as reader@bnei.dev'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: drawer, matching: find.text('NOT SIGNED IN')),
+      findsNothing,
+    );
+  });
+
+  // The failure: the drawer keeps naming a reader who has since signed out.
+  testWidgets('the drawer forgets a reader who signed out since it last '
+      'opened', (tester) async {
+    await tester.runAsync(() async {
+      await ensureAuthTable(db);
+      await db.insert('auth_tokens', {
+        'id': 1,
+        'subject': 'reader@bnei.dev',
+        'id_token': 'x',
+        'expires_at': DateTime(2100).toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    expect(find.text('Signed in as reader@bnei.dev'), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(WirdDrawer))).pop();
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => db.delete('auth_tokens'));
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.text('NOT SIGNED IN'), findsOneWidget);
+    expect(find.text('Signed in as reader@bnei.dev'), findsNothing);
   });
 
   testWidgets('the index opened from "All 114" offers the drawer rather than '

@@ -15,6 +15,7 @@ import 'features/progress/progress_screen.dart';
 import 'features/report/report_screen.dart';
 import 'features/root/root_screen.dart';
 import 'features/root/root_spine_screen.dart';
+import 'features/setup/setup_screen.dart';
 import 'features/study/study_screen.dart';
 import 'shell/wird_shell.dart';
 import 'theme/nocturne.dart';
@@ -34,6 +35,7 @@ abstract final class Routes {
   static const settings = '/settings';
   static const report = '/report';
   static const about = '/about';
+  static const setup = '/setup';
 }
 
 /// What screen `1c` is opened on: one aya, with one root lit inside it.
@@ -50,14 +52,17 @@ typedef ScreenBuilder = Widget Function(Database db, Object? arguments);
 // conventional shell around the seven: a drawer lists the destinations, and
 // the dashboard is home.
 //
-// dashboard: the app opens here. The set the walk has ready, the act of
-//   praying it, and the way into everything else.
+// setup: a new install's first screen, once (ADR 0034). Pushed over the
+//   dashboard by initialRoute, so Start or back pops to home and the dashboard
+//   stays the bottom route the drawer pops to.
+// dashboard: every later launch opens here. The set the walk has ready, read
+//   first or prayed, and the doors to any sūra and to a prayer of one's own.
 // study (1a): the set, reached from the dashboard or the drawer.
 //   an underlined word                -> swaps 1a's own root panel, no push
 //   the root panel's identity row     -> root (3a), the root of the word just tapped
 //   "Deep dive"                       -> deepDive (1c), on that aya and that root
 //   "Mark set understood"             -> stays on 1a
-//   "Pray this set"                   -> prepare, which opens the prayer (1b) and
+//   "Pray from this set"              -> prepare, which opens the prayer (1b) and
 //                                        records it on the way back
 // root (3a): back arrow -> back to whoever pushed it; keep icon -> keeps the root.
 //            A root with more than 8 derivatives is read as rootSpine (2b) instead;
@@ -74,6 +79,7 @@ typedef ScreenBuilder = Widget Function(Database db, Object? arguments);
 // kept (1e), deepDive (1c), prepare: back -> back to whoever pushed them. The
 //   prayer (1b) is pushed by prepare alone, and pops back to it.
 final screens = <String, ScreenBuilder>{
+  Routes.setup: (db, _) => const SetupScreen(),
   Routes.dashboard: (db, _) => const DashboardScreen(),
   // The target is how the screen is built on an aya the reader asked for,
   // rather than on where they last stood; an AtWord opens it on one word.
@@ -200,11 +206,15 @@ Route<void> screenRoute(RouteSettings settings, Database db) {
 /// The flusher is held the same way and for the same reason — it is the app
 /// that comes back to the foreground, not a screen — and a build without one
 /// is a test or the gallery, which have no server to reach.
+///
+/// [setupDone] false opens the first-launch setup over home. It defaults to
+/// done because only `main` knows a new install from an old one.
 Widget wirdApp(
   Database db, {
   required Prefs prefs,
   Recitation? recitation,
   Flusher? flusher,
+  bool setupDone = true,
 }) => Wird(
   db: db,
   prefs: prefs,
@@ -228,7 +238,7 @@ Widget wirdApp(
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        initialRoute: Routes.dashboard,
+        initialRoute: setupDone ? Routes.dashboard : Routes.setup,
         onGenerateRoute: (settings) => screenRoute(settings, db),
       ),
     ),

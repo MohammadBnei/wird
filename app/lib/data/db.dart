@@ -172,6 +172,19 @@ Future<void> installCorpus(File target, Uint8List bytes) async {
 /// are there beside it.
 Future<Database> openWirdAt(String path) async {
   final db = await openDatabase(path);
+  // Asked before anything is created: an install from before the setup screen
+  // has the reader's tables but no `setup_done`. Those readers are past the
+  // first step, so they skip setup and keep the open root panel that was the
+  // default when they last saw it. A fresh corpus ships neither table.
+  final before = {
+    for (final r in await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' "
+      "AND name IN ('ayah_understood', 'setup_done')",
+    ))
+      r['name']! as String,
+  };
+  final predatesSetup =
+      before.contains('ayah_understood') && !before.contains('setup_done');
   // ponytail: the plan's user rows also carry a user_id. There is no account
   // until the auth phase, so the aya's own id is the key here; the column
   // arrives with the sign-in that needs it.
@@ -331,8 +344,42 @@ Future<Database> openWirdAt(String path) async {
       attempts     INTEGER NOT NULL DEFAULT 0
     )''');
   await ensureOutboxAttempts(db);
+  // Whether this install has been through the setup screen. No row means not
+  // yet, including a reader who left the app mid-setup.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS setup_done (
+      id      INTEGER PRIMARY KEY CHECK (id = 1),
+      done_at TEXT NOT NULL
+    )''');
+  if (predatesSetup) {
+    await db.transaction((txn) async {
+      await _markSetupDone(txn);
+      final display = await txn.query('display_prefs', limit: 1);
+      if (display.isEmpty) {
+        await txn.insert('display_prefs', {
+          'id': 1,
+          'display': defaultDisplay,
+          'arabic_size': defaultArabicSize,
+          'header_open': defaultHeaderOpen ? 1 : 0,
+          'root_open': 1,
+          'aya_translation': defaultAyaTranslation ? 1 : 0,
+        });
+      }
+    });
+  }
   return db;
 }
+
+/// Whether the reader has been through the setup screen on this device.
+Future<bool> setupDone(Database db) async =>
+    (await db.query('setup_done', limit: 1)).isNotEmpty;
+
+Future<void> markSetupDone(Database db) => _markSetupDone(db);
+
+Future<void> _markSetupDone(DatabaseExecutor db) => db.insert('setup_done', {
+  'id': 1,
+  'done_at': DateTime.now().toUtc().toIso8601String(),
+}, conflictAlgorithm: ConflictAlgorithm.ignore);
 
 final _entropy = Random.secure();
 
@@ -569,12 +616,12 @@ Future<List<({int surah, int wordId})>> readingPositions(
 const defaultDisplay = 0;
 const defaultArabicSize = 31.0;
 
-/// The header arrives folded and the root panel open. On a 402x874 phone the
+/// The header and the root panel both arrive folded. On a 402x874 phone the
 /// two ends of screen 1a took 40% of it between them; the header is
 /// orientation, which a reader wants once, and the panel is the study, which
-/// is what a word tap fills.
+/// a word tap opens when the reader asks for it (ADR 0034).
 const defaultHeaderOpen = false;
-const defaultRootOpen = true;
+const defaultRootOpen = false;
 
 /// Each aya's translation is shown under it until the reader turns it off.
 const defaultAyaTranslation = true;
@@ -594,7 +641,9 @@ Future<void> ensureChromeColumns(Database db) async {
   final have = {for (final c in columns) c['name'] as String};
   for (final (column, byDefault) in [
     ('header_open', defaultHeaderOpen),
-    ('root_open', defaultRootOpen),
+    // Open, not today's default: a row this old belongs to a reader who saw
+    // the panel open and never folded it.
+    ('root_open', true),
     ('aya_translation', defaultAyaTranslation),
   ]) {
     if (have.contains(column)) continue;

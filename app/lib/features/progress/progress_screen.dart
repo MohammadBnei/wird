@@ -150,12 +150,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
         _tile(
           n,
           _grouped(passage.setsUnderstood),
-          _l10n.progress_setsUnderstood,
+          _l10n.progress_setsUnderstood(passage.setsUnderstood),
         ),
         _tile(
           n,
           _grouped(passage.prayersRecorded),
-          _l10n.progress_prayersRecorded,
+          _l10n.progress_prayersRecorded(passage.prayersRecorded),
         ),
       ],
     ),

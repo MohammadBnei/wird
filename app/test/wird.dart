@@ -63,16 +63,20 @@ Future<Widget> wirdAround(
 }
 
 /// The whole app, from its first route, with a cache the test controls.
+///
+/// [setupDone] false is a new install, which opens on the setup screen.
 Future<Widget> wholeApp(
   Database db, {
   AudioCache? cache,
   Recitation? recitation,
+  bool setupDone = true,
 }) async {
   final prefs = await Prefs.read(db);
   return wirdApp(
     db,
     prefs: prefs,
     recitation: recitation ?? Recitation(cache: cache, tuning: prefs.playback),
+    setupDone: setupDone,
   );
 }
 

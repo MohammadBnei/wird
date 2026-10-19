@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wird/data/db.dart';
@@ -42,7 +43,10 @@ void main() {
     // Al-Fātiḥa 1:1 on its own: the nuzul walk opens at Al-ʿAlaq and will
     // never propose this set, so marking it is never asked of the reader and
     // it can only ever add to the numerator.
-    await recordSetPrayed(db, (await ayaSet(db, await readingOrder(db), 1001))!);
+    await recordSetPrayed(
+      db,
+      (await ayaSet(db, await readingOrder(db), 1001))!,
+    );
 
     final passage = await readPassage(db);
     expect(passage.setsUnderstood, 2);
@@ -59,6 +63,53 @@ void main() {
     expect(find.text('prayers on them'), findsNothing);
     expect(find.text('prayers per set'), findsNothing);
     expect(find.text('1.5'), findsNothing);
+  });
+
+  // The failure: one prayer reads "1 prayers recorded".
+  testWidgets('a single prayer is not labelled in the plural', (tester) async {
+    final set = (await nextSet(db, await readingOrder(db)))!;
+    await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
+    await recordSetPrayed(db, set);
+    await open(tester);
+    expect(find.text('set understood'), findsOneWidget);
+    expect(find.text('prayer recorded'), findsOneWidget);
+  });
+
+  // The failure: the plural fix turned none or several into the singular.
+  testWidgets('none or two of each is still labelled in the plural', (
+    tester,
+  ) async {
+    await open(tester);
+    expect(find.text('sets understood'), findsOneWidget);
+    expect(find.text('prayers recorded'), findsOneWidget);
+
+    for (var i = 0; i < 2; i++) {
+      final set = (await nextSet(db, await readingOrder(db)))!;
+      await recordSetPrayed(db, set);
+      await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
+    }
+    await open(tester);
+    expect(find.text('sets understood'), findsOneWidget);
+    expect(find.text('prayers recorded'), findsOneWidget);
+  });
+
+  // The failure: French reads "0 prières enregistrées", where French takes the
+  // singular for zero as it does for one.
+  testWidgets('French labels none and one in the singular', (tester) async {
+    Future<void> openFr() async => pumpPhone(
+      tester,
+      await wirdAround(db, ProgressScreen(db: db), locale: const Locale('fr')),
+    );
+    await openFr();
+    expect(find.text('passage compris'), findsOneWidget);
+    expect(find.text('prière enregistrée'), findsOneWidget);
+
+    final set = (await nextSet(db, await readingOrder(db)))!;
+    await recordSetPrayed(db, set);
+    await markSetUnderstood(db, newOpId(), [for (final a in set.ayas) a.id]);
+    await openFr();
+    expect(find.text('passage compris'), findsOneWidget);
+    expect(find.text('prière enregistrée'), findsOneWidget);
   });
 
   testWidgets('the passage is counted against something other than the 6,236 '
@@ -133,5 +184,4 @@ void main() {
     expect(find.byType(IndexScreen), findsOneWidget);
     expect(find.byType(KeptScreen), findsNothing);
   });
-
 }

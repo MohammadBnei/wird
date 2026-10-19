@@ -26,6 +26,9 @@ flowchart LR
   A30[0030 play from what was touched last] -. extends .-> A25
   A22 -. extended by .-> A28[0028 Play and App Store beside the APK]
   A32[0032 deletion keeps the shared sign-in] -. amends .-> A28
+  A34[0034 setup, then a home of few doors] -. supersedes in part .-> A33[0033 home says where the reader stands]
+  A34 -. amends .-> A10
+  A34 -. amends .-> A26
 ```
 
 | File | Decision | Status |
@@ -40,7 +43,7 @@ flowchart LR
 | [0007-the-voice-model-is-published-where-its-weights-already-live.md](0007-the-voice-model-is-published-where-its-weights-already-live.md) | Publish the voice model where its weights live | superseded by 0008 |
 | [0008-the-recogniser-is-served-from-wirds-own-host.md](0008-the-recogniser-is-served-from-wirds-own-host.md) | The recogniser is served from Wird's own host | accepted |
 | [0009-the-recogniser-hears-quranic-phonemes-not-language.md](0009-the-recogniser-hears-quranic-phonemes-not-language.md) | The recogniser hears Qur'anic phonemes, not language | accepted |
-| [0010-the-server-owns-the-roots-and-their-senses.md](0010-the-server-owns-the-roots-and-their-senses.md) | The server owns the roots and their senses | accepted |
+| [0010-the-server-owns-the-roots-and-their-senses.md](0010-the-server-owns-the-roots-and-their-senses.md) | The server owns the roots and their senses | accepted, amended by 0034 |
 | [0011-two-doc-families.md](0011-two-doc-families.md) | Agent docs and human docs are two families with two styles | accepted |
 | [0012-french-word-glosses-from-the-last-dialogue.md](0012-french-word-glosses-from-the-last-dialogue.md) | The French under each word comes from The Last Dialogue, matched by its Arabic | accepted |
 | [0013-the-reading-screens-root-panel-walks-word-by-word.md](0013-the-reading-screens-root-panel-walks-word-by-word.md) | The reading screen's root panel walks word by word, where the corpus attribution stood | accepted, amended by 0014 |
@@ -56,11 +59,12 @@ flowchart LR
 | [0023-six-reciters-and-a-word-by-word-voice.md](0023-six-reciters-and-a-word-by-word-voice.md) | The reader picks one of six reciters, and can hear each word spoken alone | accepted, amended by 0025 and 0029 |
 | [0024-the-sura-picker-turns-its-order-and-searches-the-text.md](0024-the-sura-picker-turns-its-order-and-searches-the-text.md) | The sūra picker turns its own order, and searches the text of the Qur'an in memory | accepted |
 | [0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md](0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md) | The reader recites the whole sūra, and streams what is not on disk | accepted |
-| [0026-reports-are-triaged-and-turned-into-issues.md](0026-reports-are-triaged-and-turned-into-issues.md) | Reports are triaged on the operations view, exported to the agent, and turned into paraphrased issues | accepted |
+| [0026-reports-are-triaged-and-turned-into-issues.md](0026-reports-are-triaged-and-turned-into-issues.md) | Reports are triaged on the operations view, exported to the agent, and turned into paraphrased issues | accepted, amended by 0034 |
 | [0027-wird-is-mit-licensed.md](0027-wird-is-mit-licensed.md) | Wird's own code is MIT licensed | accepted |
 | [0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md](0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md) | Wird ships through Google Play and the App Store, beside the APK | accepted, amended by 0032 |
 | [0029-a-words-own-audio-is-found-by-its-position.md](0029-a-words-own-audio-is-found-by-its-position.md) | A word's own audio is found by its position, not by the API's path | accepted |
 | [0030-play-carries-on-from-what-the-reader-touched-last.md](0030-play-carries-on-from-what-the-reader-touched-last.md) | Play carries on from what the reader touched last | accepted |
 | [0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md](0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md) | The reading list follows the recitation until the reader takes it | accepted |
 | [0032-account-deletion-removes-wird-data-and-keeps-the-shared-sign-in.md](0032-account-deletion-removes-wird-data-and-keeps-the-shared-sign-in.md) | Account deletion removes Wird's data and keeps the shared sign-in | accepted |
-| [0033-home-says-where-the-reader-stands.md](0033-home-says-where-the-reader-stands.md) | Home says where the reader stands, and the root constellation is gone | accepted |
+| [0033-home-says-where-the-reader-stands.md](0033-home-says-where-the-reader-stands.md) | Home says where the reader stands, and the root constellation is gone | accepted, superseded in part by 0034 |
+| [0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md](0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md) | A reader starts with a short setup, then a home of few doors | accepted |

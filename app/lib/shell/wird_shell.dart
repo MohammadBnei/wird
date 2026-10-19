@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../data/auth.dart';
 import '../features/settings/settings_screen.dart' show showSettings;
 import '../l10n/app_localizations.dart';
 import '../nav.dart';
@@ -300,13 +301,9 @@ class WirdDrawer extends StatelessWidget {
     );
   }
 
-  /// The account, which there is not one of yet.
-  ///
-  /// Sign-in waits on the identity server, so this says so in the reader's
-  /// words instead of drawing a name and an avatar that belong to nobody. The
-  /// space is here now because the head of the drawer is where an account
-  /// lives, and moving the destinations down later to make room for it is a
-  /// change the reader would feel.
+  /// Who is signed in, in the words the account panel in settings uses, or
+  /// that nobody is. Read each time the drawer opens, so a sign-in or a
+  /// sign-out made in settings shows on the next open.
   Widget _account(BuildContext context, Nocturne n, AppLocalizations l10n) =>
       Padding(
         padding: EdgeInsets.fromLTRB(
@@ -318,15 +315,7 @@ class WirdDrawer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.shell_notSignedIn,
-              style: TextStyle(
-                fontSize: 10,
-                height: 1.2,
-                letterSpacing: 0.11 * 10,
-                color: n.accent,
-              ),
-            ),
+            const _SignedIn(),
             SizedBox(height: n.space('2')),
             Text('Wird', style: Theme.of(context).textTheme.headlineMedium),
             SizedBox(height: n.space('1')),
@@ -341,6 +330,41 @@ class WirdDrawer extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// Who is signed in. The drawer is built afresh on each open, so this reads
+/// the account once per open rather than on every rebuild, which would flash
+/// "not signed in" while the read is under way.
+class _SignedIn extends StatefulWidget {
+  const _SignedIn();
+
+  @override
+  State<_SignedIn> createState() => _SignedInState();
+}
+
+class _SignedInState extends State<_SignedIn> {
+  late final Future<Tokens?> _reader = Account(Wird.of(context).db).current();
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Nocturne.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    return FutureBuilder<Tokens?>(
+      future: _reader,
+      builder: (context, reader) => Text(
+        switch (reader.data) {
+          final r? => l10n.settingsSignedInAs(r.subject),
+          null => l10n.shell_notSignedIn,
+        },
+        style: TextStyle(
+          fontSize: 10,
+          height: 1.2,
+          letterSpacing: 0.11 * 10,
+          color: n.accent,
+        ),
+      ),
+    );
+  }
 }
 
 /// One destination. Its own press and focus states, because the drawer is the

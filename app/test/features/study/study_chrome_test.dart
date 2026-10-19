@@ -5,6 +5,7 @@ import 'package:wird/app.dart';
 import 'package:wird/data/audio.dart';
 import 'package:wird/features/root/root_screen.dart';
 import 'package:wird/features/study/study_screen.dart';
+import 'package:wird/features/study/word_row.dart';
 import 'package:wird/nav.dart';
 
 import '../../corpus.dart';
@@ -69,14 +70,31 @@ void main() {
   testWidgets('a display setting changed after a fold writes the fold away', (
     tester,
   ) async {
+    // A new install: no display row yet.
+    await db.delete('display_prefs');
     final prefs = await Prefs.read(db);
     expect(prefs.headerOpen, isFalse, reason: 'the header arrives folded');
-    expect(prefs.rootOpen, isTrue, reason: 'the root panel arrives open');
+    expect(prefs.rootOpen, isFalse, reason: 'the root panel arrives folded');
 
     await prefs.setHeaderOpen(true);
     await prefs.setDisplay(3);
 
     expect((await Prefs.read(db)).headerOpen, isTrue);
+  });
+
+  // The failure: a new install opened every word's study before the reader
+  // had read the aya, and once folded, a word tap no longer said what the
+  // word means.
+  testWidgets('a new install starts with the study folded, and a word tap '
+      'unfolds it', (tester) async {
+    await db.delete('display_prefs');
+    await openStudy(tester);
+    expect(find.byKey(const ValueKey('open-root')), findsNothing);
+
+    await tester.tap(find.byKey(WordKey(96001002)));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-root')), findsOneWidget);
+    expect((await Prefs.read(db)).rootOpen, isTrue);
   });
 
   testWidgets(
