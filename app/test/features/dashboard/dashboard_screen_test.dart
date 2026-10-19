@@ -60,9 +60,7 @@ void main() {
 
   // The failure: the set's two buttons weighed the same, with Pray on top, so
   // a newcomer was asked to pray a set before being offered to read it.
-  testWidgets('home asks for a prayer before offering to read the set', (
-    tester,
-  ) async {
+  testWidgets('home offers reading the set before praying it', (tester) async {
     await openHome(tester);
 
     final read = find.byKey(const Key('read the set'));
@@ -80,7 +78,9 @@ void main() {
 
   // The failure: home repeated every drawer row as a door, so the screen a
   // reader lands on had six ways out and no first step.
-  testWidgets('home lists every drawer destination as a door', (tester) async {
+  testWidgets('home has only two doors, any sūra and a prayer of one\'s own', (
+    tester,
+  ) async {
     await openHome(tester);
 
     expect(find.byKey(const ValueKey('door/index')), findsOneWidget);
@@ -89,11 +89,10 @@ void main() {
     expect(find.byKey(const ValueKey('door/kept')), findsNothing);
   });
 
-  // The failure: the one continue line pointed at the sūra the walk had just
-  // finished, rather than at one the reader opened outside it.
-  testWidgets('home offers a finished sūra as the place to continue', (
-    tester,
-  ) async {
+  // The failure: the one continue line pointed at a sūra already understood
+  // to its end, rather than at one the reader is still partway through.
+  testWidgets('home never offers a sūra understood to its end as the place '
+      'to continue, but still offers one half understood', (tester) async {
     await markSetUnderstood(db, newOpId(), [
       for (var a = 1; a <= 7; a++) 1000 + a,
     ]);
@@ -106,8 +105,30 @@ void main() {
     expect(find.byKey(const ValueKey('continue 2255003')), findsOneWidget);
   });
 
-  testWidgets('home lists the sūra the walk is in twice, once as the set and '
-      'once as a place to continue', (tester) async {
+  // The failure: with every place stood in already understood, home still
+  // drew a continue line pointing back into a finished sūra.
+  testWidgets('home draws no continue line when every place read is a '
+      'finished sūra', (tester) async {
+    await markSetUnderstood(db, newOpId(), [
+      for (var a = 1; a <= 7; a++) 1000 + a,
+    ]);
+    await movePosition(db, 1007001);
+    await openHome(tester);
+
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith('continue '),
+      ),
+      findsNothing,
+    );
+  });
+
+  // The failure: the sūra the walk is in showed twice, once as the set and
+  // once more as a place to continue.
+  testWidgets('home does not offer the sūra the walk is in as a place to '
+      'continue', (tester) async {
     final set = (await nextSet(db, ReadingOrder.nuzul))!;
     final inTheSet = set.ayas.first.id * 1000 + 1;
     await movePosition(db, inTheSet);

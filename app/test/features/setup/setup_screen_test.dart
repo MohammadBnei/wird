@@ -86,4 +86,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(recitation.sampling.value, isNull);
   });
+
+  // The failure: the system's back on setup leaves the flag unwritten, and
+  // the reader meets setup again on every launch.
+  testWidgets('back from setup lands on home and setup stays done', (
+    tester,
+  ) async {
+    await pumpPhone(tester, await wholeApp(db, setupDone: false));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SetupScreen), findsNothing);
+    expect(find.byType(DashboardScreen), findsOneWidget);
+    expect(await setupDone(db), isTrue);
+  });
+
+  // The failure: a reader picks French on setup and the app stays in English,
+  // or forgets the choice by the next launch.
+  testWidgets('a language picked on setup is the one the app speaks', (
+    tester,
+  ) async {
+    await pumpPhone(tester, await wholeApp(db, setupDone: false));
+    await tester.tap(find.text('Français'));
+    await tester.pumpAndSettle();
+    expect(find.text('Commencer'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('start')));
+    await tester.pumpAndSettle();
+    expect(await languagePref(db), 'fr');
+  });
 }

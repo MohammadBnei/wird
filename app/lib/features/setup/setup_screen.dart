@@ -51,7 +51,13 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _finish() async {
     if (_done) return;
     _done = true;
-    await markSetupDone(Wird.of(context).db);
+    try {
+      await markSetupDone(Wird.of(context).db);
+    } catch (_) {
+      // Unrecorded, setup simply shows again on the next launch; a second
+      // Start on this one gets to try the write again.
+      _done = false;
+    }
   }
 
   Future<void> _start() async {

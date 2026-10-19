@@ -562,13 +562,14 @@ void main() {
   // The failure: the sheet a word tap opens led with the dictionary link,
   // the verdict, every sense and the grammar, before the reader had read a
   // word of the meaning (ADR 0034).
-  testWidgets('a word tap opens every sense, the verdict and the grammar at '
-      'once', (tester) async {
+  testWidgets('a word tap shows two senses and keeps the rest, the verdict '
+      'and the grammar below the fold', (tester) async {
     await seedSenses(db, {'قرأ': 'to gather; to recite; to study'});
     await openStudy(tester);
 
     expect(find.text('to recite'), findsOneWidget);
     expect(find.text('to study'), findsNothing);
+    expect(find.text('1 more sense'), findsOneWidget);
     await tester.tap(find.byKey(const Key('more senses')));
     await tester.pumpAndSettle();
     expect(find.text('to study'), findsOneWidget);

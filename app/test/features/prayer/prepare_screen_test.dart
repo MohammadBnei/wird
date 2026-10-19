@@ -7,6 +7,7 @@ import 'package:wird/features/prayer/passage_chooser.dart';
 import 'package:wird/features/prayer/prepare_screen.dart';
 import 'package:wird/l10n/app_localizations.dart';
 import 'package:wird/theme/nocturne.dart';
+import 'package:wird/widgets/nocturne_segmented.dart';
 
 import '../../corpus.dart';
 import 'sets.dart';
@@ -228,10 +229,84 @@ void main() {
 
   // The failure: every plan line opened the chooser, and a later rakʿah's
   // choice landed on rakʿah 2, which is the only other passage a plan holds.
-  testWidgets('tapping rakʿah 3 replaces rakʿah 2’s passage', (tester) async {
+  testWidgets('a passage chosen for rakʿah 2 moves rakʿah 1 or lands on a '
+      'later rakʿah', (tester) async {
     await pumpPrepare(tester, db: db, from: asr);
-    expect(find.byKey(const Key('passage 2')), findsOneWidget);
+    expect(find.text('Begin Maghrib'), findsOneWidget);
     expect(find.byKey(const Key('passage 3')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('passage 2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'ikhlas');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('sura-112')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Recite Al-Ikhlas'));
+    await tester.pumpAndSettle();
+
+    String line(int r) => find
+        .descendant(
+          of: find.byKey(Key('passage $r')),
+          matching: find.byType(RichText),
+        )
+        .evaluate()
+        .map((e) => (e.widget as RichText).text.toPlainText())
+        .join();
+    expect(line(1), contains("Al-'Asr"));
+    expect(line(2), contains('Al-Ikhlas'));
+    expect(find.textContaining('Al-Humazah'), findsNothing);
+    // Rakʿah 3 recites Al-Fātiḥa alone, with no passage to be handed.
+    expect(find.text('Al-Fātiḥa', findRichText: true), findsOneWidget);
+  });
+
+  // The failure: the three-way choice reads a saved choice as another one, or
+  // writes back something other than what the reader picked.
+  testWidgets('how the text moves is shown or saved as another choice than '
+      'the one made', (tester) async {
+    Future<void> save(bool voice, bool pace) => setPrayerPrefs(db, (
+      preset: 'maghrib',
+      rakahs: 3,
+      voice: voice,
+      pace: pace,
+      wpm: 40,
+      gloss: true,
+      around: true,
+      arabicSize: 52,
+    ));
+    int shown() => tester
+        .widget<NocturneSegmented>(find.byKey(const Key('moves')))
+        .selected;
+    final moves = find.byKey(const Key('moves'));
+
+    for (final (voice, pace, index, note) in [
+      (true, true, 0, 'Until it can, the text moves'),
+      (false, true, 1, 'The text moves at 40 words a minute.'),
+      (false, false, 2, 'Tap the screen to move to the next word.'),
+    ]) {
+      await save(voice, pace);
+      await pumpPrepare(tester, db: db, from: asr);
+      expect(shown(), index, reason: 'saved voice $voice, pace $pace');
+      expect(find.textContaining(note), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.pumpAndSettle();
+    }
+
+    for (final (label, voice, pace) in [
+      ('Voice', true, true),
+      ('Steady', false, true),
+      ('Tap', false, false),
+    ]) {
+      await pumpPrepare(tester, db: db, from: asr);
+      final segment = find.descendant(of: moves, matching: find.text(label));
+      await tester.ensureVisible(segment);
+      await tester.tap(segment);
+      await tester.pumpAndSettle();
+      await prayAndLeave(tester);
+      final kept = await prayerPrefs(db);
+      expect((kept.voice, kept.pace), (voice, pace), reason: label);
+    }
   });
 
   testWidgets('the preview makes the reader sit through Al-Fātiḥa, or counts '

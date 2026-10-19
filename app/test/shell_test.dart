@@ -352,6 +352,33 @@ void main() {
     );
   });
 
+  // The failure: the drawer keeps naming a reader who has since signed out.
+  testWidgets('the drawer forgets a reader who signed out since it last '
+      'opened', (tester) async {
+    await tester.runAsync(() async {
+      await ensureAuthTable(db);
+      await db.insert('auth_tokens', {
+        'id': 1,
+        'subject': 'reader@bnei.dev',
+        'id_token': 'x',
+        'expires_at': DateTime(2100).toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
+    await pumpPhone(tester, await wholeApp(db, cache: silent));
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    expect(find.text('Signed in as reader@bnei.dev'), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(WirdDrawer))).pop();
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => db.delete('auth_tokens'));
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.text('NOT SIGNED IN'), findsOneWidget);
+    expect(find.text('Signed in as reader@bnei.dev'), findsNothing);
+  });
+
   testWidgets('the index opened from "All 114" offers the drawer rather than '
       'the way back to the passage the reader was reading', (tester) async {
     await pumpPhone(tester, await wholeApp(db, cache: silent));

@@ -85,8 +85,8 @@ void main() {
   // The failure: a new install opened every word's study before the reader
   // had read the aya, and once folded, a word tap no longer said what the
   // word means.
-  testWidgets('a new install opens the study up front, and a word tap leaves '
-      'it folded', (tester) async {
+  testWidgets('a new install starts with the study folded, and a word tap '
+      'unfolds it', (tester) async {
     await db.delete('display_prefs');
     await openStudy(tester);
     expect(find.byKey(const ValueKey('open-root')), findsNothing);
