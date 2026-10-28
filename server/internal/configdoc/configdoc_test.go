@@ -32,6 +32,10 @@ func TestTable(t *testing.T) {
 	if got, _ := Table(path, "### `c`"); got != nil {
 		t.Errorf("a missing heading read %q", got)
 	}
+	// A heading with no table of its own does not borrow the next section's.
+	if got, _ := Table(path, "# x"); got != nil {
+		t.Errorf("# x has no table, read %q", got)
+	}
 }
 
 func TestDiff(t *testing.T) {

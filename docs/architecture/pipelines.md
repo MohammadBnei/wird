@@ -107,7 +107,7 @@ if err := db.ReplaceSenses(ctx, senses); err != nil {
 }
 ```
 
-[senseseed/main.go:88](../../server/cmd/senseseed/main.go#L87-L89)
+[senseseed/main.go:87](../../server/cmd/senseseed/main.go#L87-L89)
 
 ### 4. jidhr gets both halves in one file
 

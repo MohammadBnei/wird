@@ -174,7 +174,7 @@ The columns are `root`, `sense_en`, `sense_fr`, `poetic_en`, `poetic_fr`, `lane`
 
 ### 5. Check the log, then seed Postgres
 
-`senseseed` reads the log in file order. It skips the header and refuses the whole run if any row names a root the corpus does not record, lacks English or French, or cites a verse ([main.go:189](../../../server/cmd/senseseed/main.go#L195-L200)). It lists every bad row, not just the first. A file with no senses is refused too, because a seed of nothing would unpublish every sense ([main.go:202](../../../server/cmd/senseseed/main.go#L208-L212)).
+`senseseed` reads the log in file order. It skips the header and refuses the whole run if any row names a root the corpus does not record, lacks English or French, or cites a verse ([main.go:195](../../../server/cmd/senseseed/main.go#L195-L200)). It lists every bad row, not just the first. A file with no senses is refused too, because a seed of nothing would unpublish every sense ([main.go:208](../../../server/cmd/senseseed/main.go#L208-L212)).
 
 ```go
 		switch {
@@ -188,9 +188,9 @@ The columns are `root`, `sense_en`, `sense_fr`, `poetic_en`, `poetic_fr`, `lane`
 			errs = append(errs, fmt.Errorf("line %d: root %s has no French, and a sense ships in both languages or neither", line, s.Root))
 		}
 ```
-[main.go:179](../../../server/cmd/senseseed/main.go#L185-L194)
+[main.go:185](../../../server/cmd/senseseed/main.go#L185-L194)
 
-The known roots come from the bundled corpus ([main.go:214](../../../server/cmd/senseseed/main.go#L220-L247)). The database comes from `DATABASE_URL` only, never a flag. Left unset, the seed is refused unless `WIRD_DEV=1` names the local compose database, and `-dry` checks the file and touches no database, so needs neither. Before it writes, the seeder prints the database and host it is about to replace ([config.go:25](../../../server/cmd/senseseed/config.go#L25-L72)). The seeder does not run migrations: the deployed API does that when it starts ([main.go:69](../../../server/cmd/senseseed/main.go#L69-L80)).
+The known roots come from the bundled corpus ([main.go:220](../../../server/cmd/senseseed/main.go#L220-L247)). The database comes from `DATABASE_URL` only, never a flag. Left unset, the seed is refused unless `WIRD_DEV=1` names the local compose database, and `-dry` checks the file and touches no database, so needs neither. Before it writes, the seeder prints the database and host it is about to replace ([config.go:25](../../../server/cmd/senseseed/config.go#L25-L72)). The seeder does not run migrations: the deployed API does that when it starts ([main.go:69](../../../server/cmd/senseseed/main.go#L69-L80)).
 
 ### 6. Replace the whole table in one transaction
 
@@ -213,7 +213,7 @@ The known roots come from the bundled corpus ([main.go:214](../../../server/cmd/
 ```
 [senses.go:149](../../../server/internal/store/senses.go#L149-L161)
 
-The table has no `reviewed` column, and the poetic register is stored but never served ([00009_the_server_owns_the_senses.sql:35](../../../server/migrations/00009_the_server_owns_the_senses.sql#L35-L42)). After seeding, `senseseed` prints the new hash so the operator can compare it with what the route answers ([main.go:91](../../../server/cmd/senseseed/main.go#L90-L98)).
+The table has no `reviewed` column, and the poetic register is stored but never served ([00009_the_server_owns_the_senses.sql:35](../../../server/migrations/00009_the_server_owns_the_senses.sql#L35-L42)). After seeding, `senseseed` prints the new hash so the operator can compare it with what the route answers ([main.go:90](../../../server/cmd/senseseed/main.go#L90-L98)).
 
 ### 7. Hash only what is served
 

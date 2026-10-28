@@ -34,6 +34,8 @@ func Table(path, heading string) ([]Row, error) {
 		switch {
 		case !under:
 			under = line == heading
+		case !in && strings.HasPrefix(line, "#"):
+			return nil, nil // the next section: this heading has no table of its own
 		case !strings.HasPrefix(line, "|"):
 			if in {
 				return rows, nil
