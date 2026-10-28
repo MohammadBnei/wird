@@ -75,6 +75,35 @@ env:
   INFISICAL_IDENTITY_ID: 19807471-d73a-48d4-9e58-1dc34255ef77
 
 jobs:
+  # Commit messages on a PR, base..head. Merge commits are skipped: the repo
+  # merges PRs with merge commits, whose subjects are GitHub's own.
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Conventional subjects, no AI attribution
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # ponytail: plain "Generated with" also refuses a human body saying
+          # "Generated with sqlc"; reword it, or narrow the pattern if it bites.
+          type='^(feat|fix|refactor|test|docs|chore|perf|build|ci|style|revert)(\([^)]+\))?!?: .+'
+          bad='noreply@anthropic\.com|claude\.ai/|Generated with'
+          fail=0
+          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            if ! git log -1 --format=%s "$c" | grep -Eq "$type"; then
+              echo "::error::${c:0:7} subject is not a Conventional Commit"; fail=1
+            fi
+            if git log -1 --format=%B "$c" | grep -Eq "$bad"; then
+              echo "::error::${c:0:7} message carries AI attribution"; fail=1
+            fi
+          done
+          exit $fail
+
   # Gate 1 and the shell-only half of gate 7, run the way scripts/qa.sh runs
   # them rather than a second opinion about how to run them.
   checks:
@@ -108,7 +137,8 @@ jobs:
       # scripts/qa.sh names.
       - run: go build ./jidhr/... ./server/...
       - run: go vet ./jidhr/... ./server/...
-      # -p 1: the tests share one Postgres instance.
+      # -p 1: the tests share one Postgres instance. -race: a data race fails
+      # the PR instead of showing up in production; scripts/qa.sh does the same.
       #
       # No -skip any more. zz_gate_e2e_test.go shells out to `fvm flutter test`
       # and used to be exempted here by name, because without a toolchain it did
@@ -116,7 +146,7 @@ jobs:
       # now guards itself with exec.LookPath("fvm") and skips loudly wherever
       # there is no Flutter, which is one fewer hand-maintained list and catches
       # every other machine too rather than only this runner.
-      - run: go test -p 1 ./jidhr/... ./server/...
+      - run: go test -race -p 1 ./jidhr/... ./server/...
 
       # Lifted from scripts/qa.sh's todos_carry_an_issue. The marker is
       # assembled from two pieces for the same reason it is there: so this file

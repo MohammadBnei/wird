@@ -457,7 +457,7 @@ fi
 GO_PKGS=(./jidhr/... ./server/...)
 check "go build" go build "${GO_PKGS[@]}"
 check "go vet" go vet "${GO_PKGS[@]}"
-check "go test" go test -p 1 "${GO_PKGS[@]}"
+check "go test" go test -race -p 1 "${GO_PKGS[@]}"
 
 # 2 — the Flutter suite, and goldens that were not refreshed into passing.
 GATE=2

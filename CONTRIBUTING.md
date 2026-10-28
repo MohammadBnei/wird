@@ -50,4 +50,4 @@ that restates the line under it.
 
 ## Prose
 
-Code, comments and commit messages are written in normal English sentences.
+Code, comments and commit messages are written in normal English sentences. Commit subjects start with a Conventional Commit type (`feat:`, `fix(scope):`, `docs:`), and CI refuses a pull request that does not.
