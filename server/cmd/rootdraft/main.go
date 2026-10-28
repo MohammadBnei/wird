@@ -26,6 +26,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/csv"
@@ -105,9 +106,9 @@ func parseConfig(fs *flag.FlagSet, args []string, getenv func(string) string) (c
 		c.out = "./data/root_senses_draft.tsv"
 	}
 	if c.baseURL == "" {
-		c.baseURL = or(getenv("OPENAI_BASE_URL"), defaultBaseURL)
+		c.baseURL = cmp.Or(getenv("OPENAI_BASE_URL"), defaultBaseURL)
 	}
-	c.apiKey = or(getenv("HF_TOKEN"), getenv("OPENAI_API_KEY"))
+	c.apiKey = cmp.Or(getenv("HF_TOKEN"), getenv("OPENAI_API_KEY"))
 	return c, nil
 }
 
@@ -374,14 +375,6 @@ func readTSV(path string) ([][]string, error) {
 		return nil, fmt.Errorf("%s is not readable as TSV: %w", path, err)
 	}
 	return rows, nil
-}
-
-// or is the first non-empty value.
-func or(v, fallback string) string {
-	if v != "" {
-		return v
-	}
-	return fallback
 }
 
 // A tab or a newline inside a field would silently shift every column after it.

@@ -21,6 +21,7 @@ package main
 
 import (
 	"bufio"
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
@@ -257,9 +258,7 @@ func parseConfig(fs *flag.FlagSet, args []string, getenv func(string) string) (c
 	if err := fs.Parse(args); err != nil {
 		return c, err
 	}
-	if c.dsn = getenv("DATABASE_URL"); c.dsn == "" {
-		c.dsn = localDSN
-	}
+	c.dsn = cmp.Or(getenv("DATABASE_URL"), localDSN)
 	return c, nil
 }
 

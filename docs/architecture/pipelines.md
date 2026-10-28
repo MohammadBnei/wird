@@ -95,7 +95,7 @@ out := flag.String("out", "./app/assets/corpus.db", "corpus.db to write")
 fs.StringVar(&c.out, "out", "", "rows land here, for a person to read and promote; append-only, last row for a root wins")
 ```
 
-[rootdraft/main.go:80](../../server/cmd/rootdraft/main.go#L80)
+[rootdraft/main.go:81](../../server/cmd/rootdraft/main.go#L81)
 
 ### 3. The seed is the correction path
 
@@ -107,7 +107,7 @@ if err := db.ReplaceSenses(ctx, senses); err != nil {
 }
 ```
 
-[senseseed/main.go:86](../../server/cmd/senseseed/main.go#L86-L88)
+[senseseed/main.go:87](../../server/cmd/senseseed/main.go#L87-L89)
 
 ### 4. jidhr gets both halves in one file
 
@@ -120,7 +120,7 @@ if err != nil {
 }
 ```
 
-[jidhrcorpus/main.go:77](../../server/cmd/jidhrcorpus/main.go#L77-L80) · [its flags](../../server/cmd/jidhrcorpus/main.go#L233-L250) · [why no migration](../../server/cmd/jidhrcorpus/main.go#L61-L65)
+[jidhrcorpus/main.go:78](../../server/cmd/jidhrcorpus/main.go#L78-L81) · [its flags](../../server/cmd/jidhrcorpus/main.go#L234-L249) · [why no migration](../../server/cmd/jidhrcorpus/main.go#L62-L66)
 
 ## Why it is this way
 

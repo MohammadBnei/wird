@@ -111,7 +111,7 @@ go run ./jidhr/cmd/rootd
 curl -sG localhost:8081/v1/root --data-urlencode 'word=صَبَرُوا'
 ```
 
-It serves `jidhr/testdata/quran.json` from memory. The [rootd README](../../jidhr/cmd/rootd/README.md) is the whole HTTP contract. To rebuild the file, run `go run ./server/cmd/jidhrcorpus`. It reads the roots from the app's **corpus** and the meanings from the API's Postgres, so the meanings are whatever that database last had seeded ([main.go:233-250](../../server/cmd/jidhrcorpus/main.go#L233-L250)).
+It serves `jidhr/testdata/quran.json` from memory. The [rootd README](../../jidhr/cmd/rootd/README.md) is the whole HTTP contract. To rebuild the file, run `go run ./server/cmd/jidhrcorpus`. It reads the roots from the app's **corpus** and the meanings from the API's Postgres, so the meanings are whatever that database last had seeded ([main.go:234-249](../../server/cmd/jidhrcorpus/main.go#L234-L249)).
 
 ## 6. Run the tests
 
