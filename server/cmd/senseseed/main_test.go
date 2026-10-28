@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "modernc.org/sqlite"
 )
 
@@ -175,3 +176,19 @@ func TestAnEmptyRootsTableRefusesEverySenseOneByOne(t *testing.T) {
 }
 
 func errOf[T any](_ T, err error) error { return err }
+
+func TestTargetNamesTheDatabaseAndNotThePassword(t *testing.T) {
+	cfg, err := pgxpool.ParseConfig("postgres://wird:s3cret-sentinel@db.example:6543/wirdprod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := target(cfg)
+	for _, want := range []string{"wirdprod", "db.example:6543"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%q does not name %s", got, want)
+		}
+	}
+	if strings.Contains(got, "s3cret-sentinel") {
+		t.Errorf("%q prints the password", got)
+	}
+}

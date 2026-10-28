@@ -7,6 +7,7 @@ package configdoc
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"maps"
 	"os"
 	"slices"
@@ -71,6 +72,14 @@ func Check(t testing.TB, doc, heading string, fs *flag.FlagSet, read map[string]
 	if len(rows) == 0 {
 		t.Fatalf("%s has no table under %q", doc, heading)
 	}
+	for _, p := range Diff(rows, fs, read) {
+		t.Errorf("%s under %q %s", doc, heading, p)
+	}
+}
+
+// Diff is what Check reports: each flag or variable the rows leave out, each
+// flag whose documented default differs, and each row the code does not read.
+func Diff(rows []Row, fs *flag.FlagSet, read map[string]bool) []string {
 	want := map[string]string{} // what the code has
 	fs.VisitAll(func(f *flag.Flag) { want["-"+f.Name] = f.Value.String() })
 	for v := range read {
@@ -83,18 +92,20 @@ func Check(t testing.TB, doc, heading string, fs *flag.FlagSet, read map[string]
 		}
 		got[r.Name] = r.Default
 	}
+	var problems []string
 	for _, name := range slices.Sorted(maps.Keys(want)) {
 		d, ok := got[name]
 		switch {
 		case !ok:
-			t.Errorf("%s under %q does not document %s", doc, heading, name)
+			problems = append(problems, "does not document "+name)
 		case d != want[name]:
-			t.Errorf("%s under %q gives %s the default %q; the code has %q", doc, heading, name, d, want[name])
+			problems = append(problems, fmt.Sprintf("gives %s the default %q; the code has %q", name, d, want[name]))
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(got)) {
 		if _, ok := want[name]; !ok {
-			t.Errorf("%s under %q documents %s, which the code does not read", doc, heading, name)
+			problems = append(problems, "documents "+name+", which the code does not read")
 		}
 	}
+	return problems
 }

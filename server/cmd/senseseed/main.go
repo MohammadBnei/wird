@@ -82,8 +82,7 @@ func main() {
 	// Where the replace lands, before it does: a WIRD_DEV=1 left exported
 	// otherwise sends a seed meant elsewhere to the local database in silence.
 	// Host and database only; the DSN carries the password.
-	cc := pool.Config().ConnConfig
-	fmt.Printf("  seeding database %s on %s:%d\n", cc.Database, cc.Host, cc.Port)
+	fmt.Println(target(pool.Config()))
 
 	if err := db.ReplaceSenses(ctx, senses); err != nil {
 		log.Fatalf("write the senses: %v", err)
@@ -97,6 +96,13 @@ func main() {
 	fmt.Printf("  written; /v1/senses now hashes to %s, and answers it as an\n"+
 		"  ETag of \"<revision>-%s\" — the revision is the provenance prose's,\n"+
 		"  bumped by hand in package api when that prose changes.\n", version, version)
+}
+
+// target is the line naming where the replace lands: database, host and port,
+// never the password the DSN carries.
+func target(cfg *pgxpool.Config) string {
+	cc := cfg.ConnConfig
+	return fmt.Sprintf("  seeding database %s on %s:%d", cc.Database, cc.Host, cc.Port)
 }
 
 // The columns of the drafting log, in the order it writes them. Only the first

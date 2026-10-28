@@ -1,6 +1,7 @@
 package configdoc
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
 	"slices"
@@ -30,5 +31,30 @@ func TestTable(t *testing.T) {
 	}
 	if got, _ := Table(path, "### `c`"); got != nil {
 		t.Errorf("a missing heading read %q", got)
+	}
+}
+
+func TestDiff(t *testing.T) {
+	fs := flag.NewFlagSet("x", flag.ContinueOnError)
+	fs.String("in", "./x/", "")
+	read := map[string]bool{"DATABASE_URL": true}
+	clean := []Row{{"-in", "./x/"}, {"DATABASE_URL", "none (WIRD_DEV=1: local)"}}
+	for _, tc := range []struct {
+		name string
+		rows []Row
+		want []string
+	}{
+		// Positive control: in sync, and a variable's prose default is not compared.
+		{"clean", clean, nil},
+		{"flag missing", clean[1:], []string{"does not document -in"}},
+		{"variable missing", clean[:1], []string{"does not document DATABASE_URL"}},
+		{"default differs", []Row{{"-in", "./y/"}, clean[1]},
+			[]string{`gives -in the default "./y/"; the code has "./x/"`}},
+		{"row not read", append(slices.Clone(clean), Row{"-gone", "1"}),
+			[]string{"documents -gone, which the code does not read"}},
+	} {
+		if got := Diff(tc.rows, fs, read); !slices.Equal(got, tc.want) {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
 	}
 }
