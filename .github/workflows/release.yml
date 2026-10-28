@@ -98,6 +98,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOWORK: 'off'
+      # A module whose go line is newer than the installed Go fails instead of
+      # quietly downloading a toolchain: the check go.work used to make.
+      GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@v5
         with:
@@ -108,8 +111,8 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          # server/go.mod, not go.work: CI builds each module on its own. Keep
-          # the go line of jidhr/go.mod equal to this one, nothing checks it.
+          # server/go.mod, not go.work: CI builds each module on its own.
+          # GOTOOLCHAIN=local above fails the build if jidhr/go.mod asks for more.
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
 
@@ -122,7 +125,8 @@ jobs:
         run: docker compose up -d --wait postgres
 
       # Each module on its own with GOWORK off, so a committed or stray go.work
-      # cannot hide a missing require; server takes jidhr from server/go.mod.
+      # cannot hide a missing require; server takes jidhr from server/go.mod,
+      # which replaces it with ../jidhr.
       # The same commands as scripts/qa.sh.
       - run: go -C jidhr build ./... && go -C server build ./...
       - run: go -C jidhr vet ./... && go -C server vet ./...

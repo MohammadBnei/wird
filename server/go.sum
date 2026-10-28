@@ -1,5 +1,3 @@
-github.com/MohammadBnei/wird/jidhr v0.0.0-20261028180509-f23011fe9b8c h1:iOEEe0fd8ZNiB0YDZLZV+ygd0oSfrhVQyspelVYPiI0=
-github.com/MohammadBnei/wird/jidhr v0.0.0-20261028180509-f23011fe9b8c/go.mod h1:2poG+YJfdqEQPtr5F88yy2vG3TJeoc7DFO4gcYTCo6Y=
 github.com/coreos/go-oidc/v3 v3.21.0 h1:wZo4Q9Pum8dYEj0eMUPrqR+kvuGkeUplbLpNCkBqoWM=
 github.com/coreos/go-oidc/v3 v3.21.0/go.mod h1:DYCf24+ncYi+XkIH97GY1+dqoRlbaSI26KVTCI9SrY4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

@@ -17,7 +17,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 | jidhr | `jidhr/` | Standalone Arabic root engine, own Go module. `rootd` serves `jidhr/testdata/quran.json` in memory: no DB, no network, no key. ✗ not deployed (no caller). |
 | adminweb | `server/cmd/adminweb` | Ops view: totals, report triage, sense verdict tally, JSON export for agent (`.claude/rules/feedback.md`). Own image, `helm/adminweb-values.yaml` inert until infra-bootstrap (groups claim, forwardAuth, service account, restricted DB role). ADR 0004, 0026. |
 | CLI tools | `server/cmd/{ingest,etl,rootcheck,rootdraft,jidhrcorpus,senseseed}` | Dev-machine only. Never in image. |
-- server requires jidhr in `server/go.mod` (a pseudo-version of a main commit); `jidhrcorpus` imports its types. `go.work` still unions both for local root commands, but CI and qa.sh build with `GOWORK=off`, each module on its own: `go -C server build ./...` (`./...` at root fails).
+- `server/go.mod` requires jidhr + `replace => ../jidhr` (ADR 0035); `jidhrcorpus` imports its types. `go.work` still unions both for root commands. CI + qa.sh: `GOWORK=off`, `GOTOOLCHAIN=local` (CI), each module alone: `go -C server build ./...` (`./...` at root fails).
 - `server/internal/rootsense` is only SQLite reader in server tree; importers = CLI tools only. `corpus.db` never in image.
 
 ## Data
@@ -133,7 +133,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - e2e journeys in `app/integration_test/`, skip list `qa-skips.json`. Target via `scripts/device.sh`: cabled iPhone > iPhone 16 sim (iOS 18.6) > macOS. Skips recorded loudly.
 - Commands:
   - `cd app && fvm flutter analyze && fvm flutter test`
-  - `export GOWORK=off; for m in jidhr server; do go -C $m build ./... && go -C $m vet ./... && go -C $m test -p 1 ./...; done` (needs `docker compose up -d postgres`)
+  - `(export GOWORK=off; for m in jidhr server; do go -C $m build ./... && go -C $m vet ./... && go -C $m test -p 1 ./...; done)` (subshell → GOWORK stays unset after; needs `docker compose up -d postgres`)
   - `DEV=$(./scripts/device.sh) && fvm flutter test integration_test/ -d "$DEV"`
 - Flutter pinned via `.fvmrc` (3.47.5). Always `fvm flutter`.
 

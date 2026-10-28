@@ -3,7 +3,7 @@ module github.com/MohammadBnei/wird/server
 go 1.27.1
 
 require (
-	github.com/MohammadBnei/wird/jidhr v0.0.0-20261028180509-f23011fe9b8c
+	github.com/MohammadBnei/wird/jidhr v0.0.0
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/google/uuid v1.6.0
@@ -35,3 +35,7 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
+
+// jidhr lives in this repo: server always builds against the jidhr in the same
+// commit, so CI tests the two together and there is no pin to bump.
+replace github.com/MohammadBnei/wird/jidhr => ../jidhr

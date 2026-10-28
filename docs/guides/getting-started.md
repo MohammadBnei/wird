@@ -118,9 +118,8 @@ It serves `jidhr/testdata/quran.json` from memory. The [rootd README](../../jidh
 ```bash
 # Go: each module on its own, one package at a time, as CI runs it
 docker compose up -d postgres
-export GOWORK=off
-go -C jidhr build ./... && go -C jidhr test -p 1 ./...
-go -C server build ./... && go -C server test -p 1 ./...
+GOWORK=off go -C jidhr build ./... && GOWORK=off go -C jidhr test -p 1 ./...
+GOWORK=off go -C server build ./... && GOWORK=off go -C server test -p 1 ./...
 
 # App
 cd app && fvm flutter analyze && fvm flutter test
@@ -132,7 +131,7 @@ DEV=$(../scripts/device.sh) && fvm flutter test integration_test/ -d "$DEV"
 Two habits save time here:
 
 - Never use `./...` at the repo root. The root is not a module, and Go rejects the pattern.
-- Keep `GOWORK=off`. The committed `go.work` would let server build against the jidhr working tree and hide a missing require in `server/go.mod`.
+- Keep `GOWORK=off` on these commands, and only on these. The committed `go.work` would hide a missing require in `server/go.mod`. The `go run ./server/cmd/...` commands above run from the root, so they still need the workspace: do not export `GOWORK=off` in your shell.
 - Keep `-p 1`. The server tests share one Postgres.
 
 Test names state the failure they prevent. [CONTRIBUTING.md](../../CONTRIBUTING.md) has the rest of the conventions. For any change you can see on screen, the gate also asks you to look at it: [the visual gate](gate-visual.md).

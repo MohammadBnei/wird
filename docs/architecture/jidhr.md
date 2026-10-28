@@ -58,11 +58,11 @@ The full HTTP contract, with request and response examples, lives in the [rootd 
 
 Every answer carries a `method` field. It names the step that found the root, and that step is the confidence. There is no numeric score. Errors come in two kinds on purpose: 400 means the input was not an Arabic word, 404 means it was, and no root was found. A 404 `rootless` means the corpus records the word as a particle or pronoun with no root. A 404 `no_root` means the engine never met it.
 
-**Deployment.** `rootd` is not deployed. It has no image and no helm entry, because nothing calls it over the network ([ADR 0005](../adr/0005-deploying-the-api.md#one-image-and-it-holds-servercmdapi)). The helm values say so in their header ([values.yaml:6](../../helm/values.yaml#L6-L7)). CI still builds, vets and tests the module in the release workflow ([release.yml:124-138](../../.github/workflows/release.yml#L124-L138)). To run it yourself, use `go run ./jidhr/cmd/rootd` from the repo root.
+**Deployment.** `rootd` is not deployed. It has no image and no helm entry, because nothing calls it over the network ([ADR 0005](../adr/0005-deploying-the-api.md#one-image-and-it-holds-servercmdapi)). The helm values say so in their header ([values.yaml:6](../../helm/values.yaml#L6-L7)). CI still builds, vets and tests the module in the release workflow ([release.yml:127-142](../../.github/workflows/release.yml#L127-L142)). To run it yourself, use `go run ./jidhr/cmd/rootd` from the repo root.
 
 ## White box
 
-`jidhr/` is its own Go module. `server/go.mod` requires it at a pseudo-version of a main commit, which is how `jidhrcorpus` can import its types; CI builds with `GOWORK=off`, so that require is what counts. After a change to `pkg/root` types, bump it with `GOWORK=off go -C server get github.com/MohammadBnei/wird/jidhr@<commit>` before rerunning `jidhrcorpus`. `go.work` still joins the two modules for local commands run from the root. It has two packages: `pkg/root`, the resolver, and `cmd/rootd`, the thin HTTP layer.
+`jidhr/` is its own Go module. `server/go.mod` requires it and replaces it with `../jidhr`, which is how `jidhrcorpus` can import its types. CI builds with `GOWORK=off`, so that require is what counts, and server always builds against the jidhr in the same commit ([ADR 0035](../adr/0035-server-takes-jidhr-from-the-same-commit.md)). `go.work` still joins the two modules for local commands run from the root. It has two packages: `pkg/root`, the resolver, and `cmd/rootd`, the thin HTTP layer.
 
 ```mermaid
 flowchart TB

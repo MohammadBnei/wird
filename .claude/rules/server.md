@@ -7,7 +7,7 @@ paths:
 ---
 # server/ — Go API + tools
 
-- Build/test per module, as CI and qa.sh do: `GOWORK=off go -C server build ./...`, `go -C server test -p 1 ./...`. Never `./...` at root (root ≠ module). jidhr comes from the require in `server/go.mod`, not from go.work.
+- Build/test per module, as CI + qa.sh: `GOWORK=off go -C server build ./...`, `GOWORK=off go -C server test -p 1 ./...`. Never `./...` at root (root ≠ module). jidhr = require + `replace => ../jidhr` in `server/go.mod`, not go.work. ADR 0035.
 - `-p 1` required: store tests share real throwaway Postgres.
 - `cmd/api` = wird-api, Dockerfile `--target api`. Env: `DATABASE_URL`, `OIDC_ISSUER`, `OIDC_AUDIENCE`, `API_ADDR` (local defaults). Only api migrates.
 - Local: `docker compose up -d postgres oidc-stub` → `go run ./server/cmd/api`. Migrations embedded (`server/migrations`), run at startup via goose lib. No goose binary.

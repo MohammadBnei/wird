@@ -48,6 +48,5 @@ and CI do, so a missing require in `server/go.mod` fails here and not only in CI
 GOWORK=off go -C jidhr build ./... && GOWORK=off go -C server build ./...
 ```
 
-`server/go.mod` requires jidhr at a pseudo-version of a main commit. A change to
-`jidhr/pkg/root` reaches the server build only after
-`GOWORK=off go -C server get github.com/MohammadBnei/wird/jidhr@<commit>`.
+`server/go.mod` requires jidhr and replaces it with `../jidhr`, so server always builds
+against the jidhr in the same commit ([ADR 0035](adr/0035-server-takes-jidhr-from-the-same-commit.md)).
