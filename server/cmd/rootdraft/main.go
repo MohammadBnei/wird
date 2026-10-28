@@ -26,6 +26,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/csv"
@@ -57,37 +58,61 @@ type config struct {
 }
 
 func main() {
-	var c config
-	flag.StringVar(&c.db, "db", "./app/assets/corpus.db", "corpus.db to read the glosses from")
-	flag.StringVar(&c.laneDir, "lane", "./data/raw/lane", "the `originals` clone of Lane's TEI; gitignored, consulted, never shipped")
-	flag.StringVar(&c.prompt, "prompt", "", "the prompt to send; edit this to iterate")
-	flag.StringVar(&c.out, "out", "", "rows land here, for a person to read and promote; append-only, last row for a root wins")
-	flag.StringVar(&c.roots, "roots", "", "comma-separated roots; default is every root, commonest first")
-	flag.IntVar(&c.limit, "limit", 0, "do this many NEW roots; ones already done do not count against it; 0 means all")
-	flag.StringVar(&c.model, "model", "deepseek-ai/DeepSeek-V3.2", "the model to use")
-	flag.StringVar(&c.baseURL, "base-url", envOr("OPENAI_BASE_URL", "https://router.huggingface.co/v1"),
-		"any OpenAI-shaped endpoint: the HF router, OpenAI, OpenRouter, a local Ollama or vLLM")
-	flag.StringVar(&c.apiKey, "api-key", envOr("HF_TOKEN", os.Getenv("OPENAI_API_KEY")),
-		"bearer token; falls back to `hf auth token`")
-	flag.BoolVar(&c.jsonMode, "json-mode", true, "ask the provider for JSON; some reject the field, so turn it off for those")
-	flag.IntVar(&c.workers, "workers", 6, "roots drafted at once; the run waits on the provider, "+
-		"not on this machine, so raise it until the provider rate-limits and then back off")
-	flag.BoolVar(&c.force, "force", false, "redo roots already in -out")
-	flag.BoolVar(&c.dry, "dry", false, "print the assembled prompt for each root and call nothing")
-	flag.Parse()
+	c, _ := parseConfig(flag.CommandLine, os.Args[1:], os.Getenv) // ExitOnError: a bad flag exits 2
+	if err := draftStage(c); err != nil {
+		fmt.Fprintln(os.Stderr, "rootdraft:", err)
+		os.Exit(1)
+	}
+}
 
+// parseConfig reads the flags and then the environment. The token is never a
+// flag, nor any flag's default: a flag default is printed by -h and by every
+// flag error, so a token there lands in a terminal, a screenshot or a CI log.
+// No default here reads the environment at all; the env fills a flag left empty
+// after parsing, so -h only ever names a variable.
+//
+// Environment: HF_TOKEN, then OPENAI_API_KEY, then `hf auth token` (the token);
+// OPENAI_BASE_URL (the endpoint when -base-url is not given).
+func parseConfig(fs *flag.FlagSet, args []string, getenv func(string) string) (config, error) {
+	var c config
+	fs.StringVar(&c.db, "db", "./app/assets/corpus.db", "corpus.db to read the glosses from")
+	fs.StringVar(&c.laneDir, "lane", "./data/raw/lane", "the `originals` clone of Lane's TEI; gitignored, consulted, never shipped")
+	fs.StringVar(&c.prompt, "prompt", "", "the prompt to send; edit this to iterate")
+	fs.StringVar(&c.out, "out", "", "rows land here, for a person to read and promote; append-only, last row for a root wins")
+	fs.StringVar(&c.roots, "roots", "", "comma-separated roots; default is every root, commonest first")
+	fs.IntVar(&c.limit, "limit", 0, "do this many NEW roots; ones already done do not count against it; 0 means all")
+	fs.StringVar(&c.model, "model", "deepseek-ai/DeepSeek-V3.2", "the model to use")
+	fs.StringVar(&c.baseURL, "base-url", "", "any OpenAI-shaped endpoint: the HF router, OpenAI, OpenRouter, a local Ollama or vLLM; "+
+		"default $OPENAI_BASE_URL, else "+defaultBaseURL)
+	fs.BoolVar(&c.jsonMode, "json-mode", true, "ask the provider for JSON; some reject the field, so turn it off for those")
+	fs.IntVar(&c.workers, "workers", 6, "roots drafted at once; the run waits on the provider, "+
+		"not on this machine, so raise it until the provider rate-limits and then back off")
+	fs.BoolVar(&c.force, "force", false, "redo roots already in -out")
+	fs.BoolVar(&c.dry, "dry", false, "print the assembled prompt for each root and call nothing")
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage of %s:\n", fs.Name())
+		fs.PrintDefaults()
+		fmt.Fprintln(fs.Output(), "\nEnvironment (read, never printed):\n"+
+			"  HF_TOKEN, else OPENAI_API_KEY, else `hf auth token`  the bearer token\n"+
+			"  OPENAI_BASE_URL  the endpoint when -base-url is not given")
+	}
+	if err := fs.Parse(args); err != nil {
+		return c, err
+	}
 	if c.prompt == "" {
 		c.prompt = "./data/root-sense-prompt.md"
 	}
 	if c.out == "" {
 		c.out = "./data/root_senses_draft.tsv"
 	}
-
-	if err := draftStage(c); err != nil {
-		fmt.Fprintln(os.Stderr, "rootdraft:", err)
-		os.Exit(1)
+	if c.baseURL == "" {
+		c.baseURL = cmp.Or(getenv("OPENAI_BASE_URL"), defaultBaseURL)
 	}
+	c.apiKey = cmp.Or(getenv("HF_TOKEN"), getenv("OPENAI_API_KEY"))
+	return c, nil
 }
+
+const defaultBaseURL = "https://router.huggingface.co/v1"
 
 // Everything a run needs: the corpus, the prompt, the output, and a model to
 // talk to unless this is a dry run.
@@ -127,7 +152,7 @@ func begin(c config, header string) (*stage, error) {
 			}
 		}
 		if key == "" {
-			return nil, fmt.Errorf("no API key: pass -api-key, set HF_TOKEN or OPENAI_API_KEY, " +
+			return nil, fmt.Errorf("no API key: set HF_TOKEN or OPENAI_API_KEY, " +
 				"or run `hf auth login` so `hf auth token` can print one")
 		}
 		if s.writer, err = newDrafter(c.baseURL, key, c.model, c.jsonMode); err != nil {
@@ -350,13 +375,6 @@ func readTSV(path string) ([][]string, error) {
 		return nil, fmt.Errorf("%s is not readable as TSV: %w", path, err)
 	}
 	return rows, nil
-}
-
-func envOr(name, fallback string) string {
-	if v := os.Getenv(name); v != "" {
-		return v
-	}
-	return fallback
 }
 
 // A tab or a newline inside a field would silently shift every column after it.
