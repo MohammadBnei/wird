@@ -9,7 +9,7 @@ flowchart LR
   subgraph mac["Your machine"]
     app["Wird app<br/>fvm flutter run"]
     db[("wird.db<br/>corpus + your data")]
-    api["wird-api<br/>go run ./server/cmd/api<br/>:8080"]
+    api["wird-api<br/>WIRD_DEV=1 go run ./server/cmd/api<br/>:8080"]
     rootd["jidhr rootd<br/>:8081"]
     json["jidhr/testdata/quran.json"]
     subgraph compose["docker compose"]
@@ -86,28 +86,28 @@ The API needs Postgres and an OIDC issuer. Both come from [docker-compose.yml](.
 
 ```bash
 docker compose up -d postgres oidc-stub
-go run ./server/cmd/api
+WIRD_DEV=1 go run ./server/cmd/api
 ```
 
-The API runs its migrations at startup, so there is no separate step. It reads four variables, and each has a default that matches the compose file ([main.go:20-39](../../server/cmd/api/main.go#L20-L39)):
+The API runs its migrations at startup, so there is no separate step. Without `WIRD_DEV=1` it refuses to start until `DATABASE_URL`, `OIDC_ISSUER` and `OIDC_AUDIENCE` are all set, and says which are missing in one `config refused` line. `WIRD_DEV=1` fills the ones you leave unset with the compose stack's ([config.go:65-83](../../server/cmd/api/config.go#L65-L83)):
 
-| Variable | Local default |
+| Variable | With `WIRD_DEV=1` |
 |---|---|
 | `DATABASE_URL` | the compose Postgres on port 5432 |
 | `OIDC_ISSUER` | the stub on port 8082 |
 | `OIDC_AUDIENCE` | `wird` |
-| `API_ADDR` | `:8080` |
+| `API_ADDR` | `:8080`, with or without `WIRD_DEV` |
 
-Moving onto the real Authentik changes `OIDC_ISSUER` and `OIDC_AUDIENCE`, nothing else. The audience must be the client id there. See [Authentik wiring](authentik-wiring.md).
+Moving onto the real Authentik means setting `OIDC_ISSUER` and `OIDC_AUDIENCE` and dropping `WIRD_DEV`. The audience must be the client id there. See [Authentik wiring](authentik-wiring.md). Every variable is in the [API's table](../architecture/api.md#1-start-read-the-environment-migrate-listen).
 
-Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.go:192-193](../../server/internal/api/api.go#L205-L206)). That is by design: nothing is licensed yet, and Wird never invents commentary.
+Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.go:226-227](../../server/internal/api/api.go#L226-L227)). That is by design: nothing is licensed yet, and Wird never invents commentary.
 
 ## 5. Run jidhr
 
-jidhr needs no database, no network and no key.
+jidhr needs no database and no network. `ROOTD_DEV=1` lets it serve without a key; without it, rootd refuses to start until `ROOTD_API_KEY` is set.
 
 ```bash
-go run ./jidhr/cmd/rootd
+ROOTD_DEV=1 go run ./jidhr/cmd/rootd
 curl -sG localhost:8081/v1/root --data-urlencode 'word=صَبَرُوا'
 ```
 

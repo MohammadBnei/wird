@@ -10,17 +10,23 @@ the same corpus.
 
 ## Running it
 
-You need Go and a clone of this repository. Nothing else — no database, no network,
-no key. The corpus is a file in the repository and is read into memory at startup.
+You need Go and a clone of this repository. Nothing else — no database and no network.
+The corpus is a file in the repository and is read into memory at startup.
 
 ```bash
-go run ./jidhr/cmd/rootd    # :8081, the Qur'anic corpus, no key, 5 requests a second
+ROOTD_DEV=1 go run ./jidhr/cmd/rootd           # :8081, the Qur'anic corpus, no key, 5 requests a second
+ROOTD_API_KEY=… go run ./jidhr/cmd/rootd       # the same, with every /v1 call asking for the key
 ```
+
+A listener with no key is asked for by name: without `ROOTD_DEV=1`, an unset
+`ROOTD_API_KEY` refuses to start, so a deployed rootd never serves `/v1` open by
+accident. Every problem with the settings is reported at once, in one
+`config refused` line, and the process exits 1.
 
 It logs what it loaded, including the languages that corpus holds meanings in:
 
 ```json
-{"level":"INFO","msg":"rootd listening","addr":":8081","corpus":"jidhr/testdata/quran.json","languages":["en","fr"],"authenticated":false,"rate_per_second":5}
+{"level":"INFO","msg":"rootd listening","addr":":8081","corpus":"jidhr/testdata/quran.json","languages":["en","fr"],"authenticated":false,"rate_per_second":5,"dev":true}
 ```
 
 Five questions, five different answers — this is the whole service:
@@ -64,10 +70,14 @@ the two shapes.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
+| `ROOTD_DEV` | unset | `1` allows an unset `ROOTD_API_KEY`, so `/v1` asks for no key. Any other value is refused |
 | `ROOTD_ADDR` | `:8081` | listen address |
 | `ROOTD_CORPUS` | `jidhr/testdata/quran.json` | the corpus file to serve, read once at startup |
-| `ROOTD_API_KEY` | unset | when set, every `/v1` call must send `Authorization: Bearer <key>` |
-| `ROOTD_RATE` | `5` | requests a second per caller; the burst is four seconds' worth. `0` turns throttling off |
+| `ROOTD_API_KEY` | required unless `ROOTD_DEV=1` | every `/v1` call must send `Authorization: Bearer <key>` |
+| `ROOTD_RATE` | `5` | requests a second per caller; the burst is four seconds' worth. `0` turns throttling off. Anything else that is not a finite rate of at least `0.25` (a burst of one) is refused |
+
+`TestConfigDocumented` holds this table and the variables `config.go` reads to the
+same set.
 
 `GET /healthz` answers 200 and is deliberately outside both the key and the rate
 limit, so an orchestrator's probe cannot be throttled into restarting a healthy

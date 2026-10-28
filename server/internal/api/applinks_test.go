@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/MohammadBnei/wird/server/internal/api"
 )
 
 const testFingerprint = "45:85:EA:58:05:B0:DC:C7:86:E1:2C:12:A0:5A:59:80:" +
@@ -16,8 +18,7 @@ const testFingerprint = "45:85:EA:58:05:B0:DC:C7:86:E1:2C:12:A0:5A:59:80:" +
 // The platform fetches it, not a signed-in reader, so it has to answer without
 // a bearer token like /healthz and /auth/callback do.
 func TestAndroidCannotVerifyTheLinkBecauseNothingServesTheAssetLinks(t *testing.T) {
-	t.Setenv("WIRD_ANDROID_SHA256", testFingerprint)
-	h := newHarness(t)
+	h := newHarnessWith(t, api.Config{AndroidSHA256: testFingerprint})
 
 	w := h.get(t, "/.well-known/assetlinks.json", "")
 
@@ -57,8 +58,7 @@ func TestAndroidCannotVerifyTheLinkBecauseNothingServesTheAssetLinks(t *testing.
 // A release key and a test key are different certificates, and a reader may
 // hold either. Dropping one silently unverifies that build's links.
 func TestOnlyOneSigningKeyCanEverVerifyTheLink(t *testing.T) {
-	t.Setenv("WIRD_ANDROID_SHA256", testFingerprint+" , AA:BB")
-	h := newHarness(t)
+	h := newHarnessWith(t, api.Config{AndroidSHA256: testFingerprint + " , AA:BB"})
 
 	var got []struct {
 		Target struct {
@@ -82,8 +82,7 @@ func TestOnlyOneSigningKeyCanEverVerifyTheLink(t *testing.T) {
 // never written, and pretending to have an answer hides a missing deployment
 // variable behind a link that quietly never verifies.
 func TestAnUnconfiguredDeploymentPublishesAStatementThatGrantsNobody(t *testing.T) {
-	t.Setenv("WIRD_ANDROID_SHA256", "")
-	h := newHarness(t)
+	h := newHarnessWith(t, api.Config{AndroidSHA256: ""})
 
 	if w := h.get(t, "/.well-known/assetlinks.json", ""); w.Code != http.StatusNotFound {
 		t.Errorf("answered %d: %s", w.Code, w.Body.String())

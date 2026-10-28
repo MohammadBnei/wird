@@ -12,7 +12,7 @@ Today nothing in Wird calls it at run time. The app finds roots in its own **cor
 |---|---|---|
 | A written Arabic word, with or without diacritics | The root, how often the Qur'an uses it, and the senses written for it in `en` and `fr` | `jidhr/testdata/quran.json`, read once at startup |
 | A root's letters | That root and its senses | The same file |
-| Words that are not Arabic, or have no root | A clear error that says which of the two it is | Nothing else: no network, no key by default |
+| Words that are not Arabic, or have no root | A clear error that says which of the two it is | Nothing else: no network; a key unless `ROOTD_DEV=1` |
 
 ```mermaid
 sequenceDiagram
@@ -58,7 +58,7 @@ The full HTTP contract, with request and response examples, lives in the [rootd 
 
 Every answer carries a `method` field. It names the step that found the root, and that step is the confidence. There is no numeric score. Errors come in two kinds on purpose: 400 means the input was not an Arabic word, 404 means it was, and no root was found. A 404 `rootless` means the corpus records the word as a particle or pronoun with no root. A 404 `no_root` means the engine never met it.
 
-**Deployment.** `rootd` is not deployed. It has no image and no helm entry, because nothing calls it over the network ([ADR 0005](../adr/0005-deploying-the-api.md#one-image-and-it-holds-servercmdapi)). The helm values say so in their header ([values.yaml:6](../../helm/values.yaml#L6-L7)). CI still builds, vets and tests the module in the release workflow ([release.yml:127-142](../../.github/workflows/release.yml#L127-L142)). To run it yourself, use `go run ./jidhr/cmd/rootd` from the repo root.
+**Deployment.** `rootd` is not deployed. It has no image and no helm entry, because nothing calls it over the network ([ADR 0005](../adr/0005-deploying-the-api.md#one-image-and-it-holds-servercmdapi)). The helm values say so in their header ([values.yaml:6](../../helm/values.yaml#L6-L7)). CI still builds, vets and tests the module in the release workflow ([release.yml:127-142](../../.github/workflows/release.yml#L127-L142)). To run it yourself, use `ROOTD_DEV=1 go run ./jidhr/cmd/rootd` from the repo root, or set `ROOTD_API_KEY` instead; with neither it refuses to start ([ADR 0036](../adr/0036-each-binary-refuses-a-partial-configuration.md)).
 
 ## White box
 
@@ -113,7 +113,7 @@ flowchart TD
 
 ### 1. rootd loads the file and serves it
 
-`main` reads `ROOTD_CORPUS`, which defaults to `jidhr/testdata/quran.json` ([main.go:23](../../jidhr/cmd/rootd/main.go#L23)). It loads the whole file into a `MemoryStore`. If the file is missing or broken, the process stops rather than serving empty answers.
+`main` reads its whole configuration once, through `load` in `config.go`, and refuses to start with every problem in one `config refused` line: an unset `ROOTD_API_KEY` without `ROOTD_DEV=1`, or a `ROOTD_RATE` that is not `0` or a finite rate of at least `0.25` ([config.go:35-81](../../jidhr/cmd/rootd/config.go#L35-L81)). The [README's table](../../jidhr/cmd/rootd/README.md) lists every variable. `ROOTD_CORPUS` defaults to `jidhr/testdata/quran.json` ([config.go:53-55](../../jidhr/cmd/rootd/config.go#L53-L55)). It loads the whole file into a `MemoryStore`. If the file is missing or broken, the process stops rather than serving empty answers.
 
 ```go
 	f, err := os.Open(corpusPath)
@@ -129,9 +129,9 @@ flowchart TD
 	}
 ```
 
-[main.go:29](../../jidhr/cmd/rootd/main.go#L29-L39)
+[main.go:35-45](../../jidhr/cmd/rootd/main.go#L35-L45)
 
-It then sets up the rate limit (`ROOTD_RATE`, 5 per second by default, with a burst of four seconds' worth) and the optional shared key (`ROOTD_API_KEY`) ([main.go:41](../../jidhr/cmd/rootd/main.go#L41-L51)). It binds the port before it logs that it is listening ([main.go:67](../../jidhr/cmd/rootd/main.go#L67-L75)).
+It then sets up the rate limit (`ROOTD_RATE`, 5 per second by default, with a burst of four seconds' worth) and the shared key (`ROOTD_API_KEY`) ([main.go:47-57](../../jidhr/cmd/rootd/main.go#L47-L57)). It binds the port before it logs that it is listening ([main.go:73-81](../../jidhr/cmd/rootd/main.go#L73-L81)).
 
 ### 2. Routes sit behind the limit and the key
 

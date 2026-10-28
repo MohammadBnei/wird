@@ -42,7 +42,7 @@ docs/     human docs + adr/ + design/ (vendored, never hand-edit)
 - gate: `./scripts/qa.sh` → exit code = verdict, writes `qa-report.json`
 - Go, per module as CI runs it: `GOWORK=off go -C server build ./...` · `GOWORK=off go -C server test -p 1 ./...` (same for `jidhr`; never `./...` at root)
 - app: `cd app && fvm flutter analyze && fvm flutter test`
-- local API: `docker compose up -d postgres oidc-stub && go run ./server/cmd/api`
+- local API: `docker compose up -d postgres oidc-stub && WIRD_DEV=1 go run ./server/cmd/api`. No `WIRD_DEV` → required env unset = `config refused`, exit 1 (ADR 0036)
 - reader feedback (reports, sense verdicts) → triage + issues: `.claude/rules/feedback.md`
 
 ## Load-bearing paths — never move/rename
@@ -50,6 +50,7 @@ docs/     human docs + adr/ + design/ (vendored, never hand-edit)
 - `docs/toolchain.md` brew-leaves block ← `qa.sh` check 7
 - `docs/design/nocturne-styles.css` ← `app/test/theme/nocturne_tokens_test.dart`, `server/cmd/adminweb`
 - `data/root-sense-prompt.md` ← `server/cmd/rootdraft/main.go`
+- env tables in `docs/architecture/api.md`, `docs/architecture/adminweb.md`, `jidhr/cmd/rootd/README.md` ← `TestConfigDocumented` (first `| Variable |` table)
 - doc paths cited in code comments → `git grep` before moving any doc
 
 ## Hard rules

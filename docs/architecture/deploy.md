@@ -213,9 +213,11 @@ A manual run builds and pushes both images but skips this job, so it never deplo
   hostname: wird.bnei.dev
 ```
 
-[values.yaml:45](../../helm/values.yaml#L45) · probes [values.yaml:49-60](../../helm/values.yaml#L49-L60) · the route [api.go:41](../../server/internal/api/api.go#L42)
+[values.yaml:45](../../helm/values.yaml#L45) · probes [values.yaml:49-60](../../helm/values.yaml#L49-L60) · the route [api.go:63](../../server/internal/api/api.go#L63)
 
 Values that are not secret are written in the file: the OIDC issuer and audience, and the Android app-link fingerprint ([values.yaml:118-158](../../helm/values.yaml#L118-L158)). Everything secret arrives from one Kubernetes Secret, loaded whole with `envFrom` ([values.yaml:114-116](../../helm/values.yaml#L114-L116)). That Secret is built in the infrastructure repo from Infisical. It holds the database address and the object store keys for the voice model. This repo names only that Secret. It never mounts a whole Infisical project, which would hand the pod every password on the platform ([values.yaml:109-113](../../helm/values.yaml#L109-L113)).
+
+The API refuses to start on a configuration that is only partly there ([ADR 0036](../adr/0036-each-binary-refuses-a-partial-configuration.md)). A Secret row that renders empty, such as one of the four object store values, is a pod that exits with `config refused` naming the variable, not a healthy pod whose Download button answers 503. The chart's default rolling update keeps the old pod serving while the new one crashloops, so ArgoCD can show Synced with a rollout that never finished: check that the new ReplicaSet is Ready.
 
 The pod runs one replica. The API runs two cleanup timers inside its own process, and two replicas would race them ([values.yaml:72-76](../../helm/values.yaml#L72-L76)).
 
@@ -239,7 +241,7 @@ func Open(ctx context.Context, url string) (*Store, error) {
 }
 ```
 
-[store.go:31-41](../../server/internal/store/store.go#L31-L41) · called from [main.go:20](../../server/cmd/api/main.go#L20)
+[store.go:31-41](../../server/internal/store/store.go#L31-L41) · called from [main.go:28](../../server/cmd/api/main.go#L28)
 
 ### 8. Knowing your commit is live
 

@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/MohammadBnei/wird/server/internal/api"
 )
 
 const (
@@ -12,13 +14,11 @@ const (
 	modelPath = "/models/" + modelKey
 )
 
+var testModels = &api.Models{Bucket: "wird-models", Endpoint: "https://s3.bnei.dev", AccessKey: "GKtest", Secret: "secrettest"}
+
 func withStore(t *testing.T) *harness {
 	t.Helper()
-	t.Setenv("WIRD_MODELS_S3_BUCKET", "wird-models")
-	t.Setenv("WIRD_MODELS_S3_ENDPOINT", "https://s3.bnei.dev")
-	t.Setenv("WIRD_MODELS_S3_ACCESS_KEY", "GKtest")
-	t.Setenv("WIRD_MODELS_S3_SECRET", "secrettest")
-	return newHarness(t)
+	return newHarnessWith(t, api.Config{Models: testModels})
 }
 
 // The bug a reader actually hit: every model file answered
@@ -106,10 +106,6 @@ func TestThePrefixItselfIsSignedAsThoughItWereAFile(t *testing.T) {
 // 404 — the client turns it into "the recogniser cannot be fetched" rather
 // than anything that reads as the reader's own fault.
 func TestADeploymentWithNoStoreTellsTheReaderTheirFileIsMissing(t *testing.T) {
-	t.Setenv("WIRD_MODELS_S3_BUCKET", "")
-	t.Setenv("WIRD_MODELS_S3_ENDPOINT", "")
-	t.Setenv("WIRD_MODELS_S3_ACCESS_KEY", "")
-	t.Setenv("WIRD_MODELS_S3_SECRET", "")
 	h := newHarness(t)
 
 	w := h.get(t, modelPath, "")

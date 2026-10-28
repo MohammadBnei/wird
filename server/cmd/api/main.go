@@ -17,17 +17,25 @@ func main() {
 	log := slog.Default()
 	ctx := context.Background()
 
-	db, err := store.Open(ctx, env("DATABASE_URL", "postgres://wird:wird@localhost:5432/wird"))
+	// Every problem with the configuration at once, before anything is opened:
+	// a deployment missing a value never starts half-configured.
+	cfg, err := fromProcess()
+	if err != nil {
+		log.Error("config refused", "err", err)
+		os.Exit(1)
+	}
+
+	db, err := store.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Error("database unavailable", "err", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	// One variable is the whole difference between the local stub and
-	// authentik.bnei.dev. Nothing below this line knows which it is.
-	issuer := env("OIDC_ISSUER", "http://localhost:8082/wird")
-	authenticator, err := auth.New(ctx, issuer, env("OIDC_AUDIENCE", "wird"), db, log)
+	// The issuer and audience are the whole difference between the local stub
+	// and authentik.bnei.dev. Nothing below this line knows which it is.
+	issuer := cfg.OIDCIssuer
+	authenticator, err := auth.New(ctx, issuer, cfg.OIDCAudience, db, log)
 	if err != nil {
 		log.Error("issuer unavailable", "issuer", issuer, "err", err)
 		os.Exit(1)
@@ -36,9 +44,9 @@ func main() {
 	go maintain(ctx, db, log)
 	go sweep(ctx, db, log)
 
-	addr := env("API_ADDR", ":8080")
-	log.Info("wird-api listening", "addr", addr, "issuer", issuer)
-	if err := http.ListenAndServe(addr, api.Routes(db, authenticator, log)); err != nil {
+	addr := cfg.Addr
+	log.Info("wird-api listening", "addr", addr, "issuer", issuer, "dev", cfg.Dev)
+	if err := http.ListenAndServe(addr, api.Routes(db, authenticator, log, cfg.API)); err != nil {
 		log.Error("wird-api stopped", "err", err)
 		os.Exit(1)
 	}
@@ -88,11 +96,4 @@ func sweep(ctx context.Context, db *store.Store, log *slog.Logger) {
 		}
 		time.Sleep(sweepInterval)
 	}
-}
-
-func env(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

@@ -3,7 +3,6 @@ package api
 import (
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
@@ -45,23 +44,20 @@ type modelStore struct {
 	log    *slog.Logger
 }
 
-func modelStoreFromEnv(log *slog.Logger) *modelStore {
-	bucket := os.Getenv("WIRD_MODELS_S3_BUCKET")
-	endpoint := os.Getenv("WIRD_MODELS_S3_ENDPOINT")
-	access := os.Getenv("WIRD_MODELS_S3_ACCESS_KEY")
-	secret := os.Getenv("WIRD_MODELS_S3_SECRET")
-	if bucket == "" || endpoint == "" || access == "" || secret == "" {
+// newModelStore is nil when the deployment has no store (m nil).
+func newModelStore(m *Models, log *slog.Logger) *modelStore {
+	if m == nil {
 		return nil
 	}
 	return &modelStore{
-		bucket: bucket,
+		bucket: m.Bucket,
 		// Garage's region, and it is not a cosmetic string: the signature is
 		// computed over it, so the wrong one is a 403 rather than a warning.
 		sign: presigner{
-			endpoint:  endpoint,
-			region:    cmpOr(os.Getenv("WIRD_MODELS_S3_REGION"), "garage"),
-			accessKey: access,
-			secret:    secret,
+			endpoint:  m.Endpoint,
+			region:    cmpOr(m.Region, "garage"),
+			accessKey: m.AccessKey,
+			secret:    m.Secret,
 		},
 		log: log,
 	}
