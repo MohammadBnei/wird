@@ -112,7 +112,7 @@ erDiagram
 ```
 [main.go:101](../../../server/cmd/rootdraft/main.go#L101-L106)
 
-The model is reached through any OpenAI-shaped endpoint, chosen with `-base-url` (else `OPENAI_BASE_URL`) and `-model`. The token comes from `HF_TOKEN`, else `OPENAI_API_KEY`, else `hf auth token`, and is never a flag, so `-h` cannot print it ([main.go:83](../../../server/cmd/rootdraft/main.go#L83-L85), [main.go:107](../../../server/cmd/rootdraft/main.go#L107-L110)). Several roots are drafted at once, and one lock keeps each row whole in the file ([main.go:276](../../../server/cmd/rootdraft/main.go#L276-L308)).
+The model is reached through any OpenAI-shaped endpoint, chosen with `-base-url` (else `OPENAI_BASE_URL`) and `-model`. The token comes from `HF_TOKEN`, else `OPENAI_API_KEY`, else `hf auth token`, and is never a flag, so `-h` cannot print it ([main.go:110](../../../server/cmd/rootdraft/main.go#L110), [main.go:145](../../../server/cmd/rootdraft/main.go#L145-L152)). Several roots are drafted at once, and one lock keeps each row whole in the file ([main.go:276](../../../server/cmd/rootdraft/main.go#L276-L308)).
 
 ### 2. Fill the prompt with what the root is checked against
 
