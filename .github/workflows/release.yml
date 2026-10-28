@@ -139,7 +139,7 @@ jobs:
       # now guards itself with exec.LookPath("fvm") and skips loudly wherever
       # there is no Flutter, which is one fewer hand-maintained list and catches
       # every other machine too rather than only this runner.
-      - run: go -C jidhr test -race -p 1 ./... && go -C server test -race -p 1 ./...
+      - run: go -C jidhr test -race -count=1 -p 1 ./... && go -C server test -race -count=1 -p 1 ./...
 
       # Lifted from scripts/qa.sh's todos_carry_an_issue. The marker is
       # assembled from two pieces for the same reason it is there: so this file

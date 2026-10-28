@@ -36,7 +36,7 @@ The ukubi Code Standard (§5) asks for one `Config` per binary, built from `load
 - Every local run needs `WIRD_DEV=1` (or `ROOTD_DEV=1`, or a key). The docs and the agent context say so.
 - `rootd`'s "no key" mode is an explicit opt-in.
 - Every new variable goes into `config.go`, its `envVars` list and the doc table in the same PR, or `TestConfigDocumented` fails. Variables read by libraries (pgx's `PG*`, `net/http`'s proxy variables, `crypto/x509`'s `SSL_CERT_*`) are listed beside each table, not in it.
-- The env ban reads files outside the `server` module (`../jidhr`, `../docs`), which the Go test cache does not recheck, so CI runs the Go tests with `-count=1`.
+- The env ban reads files outside the `server` module (`../jidhr`, `../docs`), which the Go test cache does not recheck, so CI (`release.yml`) and `scripts/qa.sh` run the Go tests with `-count=1`.
 
 ## Reversibility
 
