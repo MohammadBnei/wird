@@ -21,6 +21,7 @@ paths:
 - `rootdraft` (LLM + `data/root-sense-prompt.md`) → TSV → `senseseed` → Postgres → `/v1/senses` → app cache.
 - `senseseed` = command, not migration: corrections re-seed w/o schema churn.
 - Draft log append-only, prompt digest per row → generations diff side by side.
+- Secrets env only: `HF_TOKEN`→`OPENAI_API_KEY`→`hf auth token`; `DATABASE_URL`. Never a flag, never a flag default from env → `-h` + every flag error print it. Never log a DSN.
 
 ## Prompt `data/root-sense-prompt.md` — traps
 - Loaded at runtime by `server/cmd/rootdraft/main.go`. Path load-bearing.

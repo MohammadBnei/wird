@@ -56,5 +56,5 @@ fvm flutter run -d <android device id> --dart-define=WIRD_ORIGIN=https://wird.bn
 - Never silence `the_app_calls_what_it_ships` with `excused_doors` row when real caller about to land.
 - Goldens never refreshed inside gate.
 - Bump `provenanceRevision` in `server/internal/api/senses.go` by hand whenever `sensesAttribution|sensesBasis|sensesSource` change, or installed devices never learn.
-- Prod seed/re-seed: DSN via env only (`DATABASE_URL=... go run ./server/cmd/senseseed -tsv data/root_senses_draft.tsv -roots app/assets/corpus.db`), never `-db` (visible in `ps`). `-dry` first. Ask owner for DSN, never guess. Same file re-seeded → version unchanged.
+- Prod seed/re-seed: DSN via env only (`DATABASE_URL=... go run ./server/cmd/senseseed -tsv data/root_senses_draft.tsv -roots app/assets/corpus.db`), no DSN flag exists (would be visible in `ps`, `-h`). `-dry` first. Ask owner for DSN, never guess. Same file re-seeded → version unchanged.
 - Merge to `main` deploys. Open PR; only `checks` runs on it.

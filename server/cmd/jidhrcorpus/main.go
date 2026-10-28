@@ -8,8 +8,8 @@
 // So this command now needs a database. The paragraph that stood here argued that
 // corpus.db was the single checked artefact both the root engine and the app answer
 // from; that argument has moved to Postgres for the half of the data Wird authors,
-// and corpus.db keeps it for the half it does not. Point -pg at the same database
-// GET /v1/senses serves, or the exported meanings are whatever was last seeded
+// and corpus.db keeps it for the half it does not. Point DATABASE_URL at the same
+// database GET /v1/senses serves, or the exported meanings are whatever was last seeded
 // somewhere else and rootd answers with prose no reader is being shown.
 package main
 
@@ -46,20 +46,14 @@ const note = "The corpus rootd serves, written by server/cmd/jidhrcorpus. The ro
 	"from no lexicon, and carrying nobody's authority. Rebuild from both sources; editing this file by " +
 	"hand puts it out of step with the corpus and with the server."
 
-func main() {
-	// -db keeps its name and its meaning: the corpus.db the morphology is read out
-	// of. The new flag is -pg, so a run that has not learnt about it fails on a
-	// database it cannot reach rather than quietly exporting a corpus with no
-	// meanings in it.
-	in := flag.String("db", "./app/assets/corpus.db", "the corpus.db the app bundles")
-	dsn := flag.String("pg", env("DATABASE_URL", "postgres://wird:wird@localhost:5432/wird"),
-		"the Wird database the root senses are read out of")
-	out := flag.String("out", "./jidhr/testdata/quran.json", "the jidhr corpus to write")
-	flag.Parse()
+type config struct{ in, dsn, out string }
 
-	db, err := sql.Open("sqlite", "file:"+filepath.Clean(*in)+"?mode=ro")
+func main() {
+	cfg, _ := parseConfig(flag.CommandLine, os.Args[1:], os.Getenv) // ExitOnError: a bad flag exits 2
+
+	db, err := sql.Open("sqlite", "file:"+filepath.Clean(cfg.in)+"?mode=ro")
 	if err != nil {
-		log.Fatalf("open %s: %v", *in, err)
+		log.Fatalf("open %s: %v", cfg.in, err)
 	}
 	defer db.Close()
 
@@ -68,7 +62,7 @@ func main() {
 	// read, and a read-only tool that migrates the database it reads couples a
 	// corpus rebuild to whatever migrations the operator's tree happens to carry.
 	// senseseed makes the same choice for the same reason.
-	pool, err := pgxpool.New(ctx, *dsn)
+	pool, err := pgxpool.New(ctx, cfg.dsn)
 	if err != nil {
 		log.Fatalf("database unavailable: %v", err)
 	}
@@ -82,23 +76,23 @@ func main() {
 	// does not select those columns at all.
 	pack, err := store.New(pool).Senses(ctx)
 	if err != nil {
-		log.Fatalf("read the senses from %s: %v", *dsn, err)
+		log.Fatalf("read the senses from the Wird database: %v", err) // never the DSN: it carries the password
 	}
 
 	c, err := build(db, pack.Senses)
 	if err != nil {
-		log.Fatalf("read %s: %v", *in, err)
+		log.Fatalf("read %s: %v", cfg.in, err)
 	}
-	if err := write(*out, c); err != nil {
-		log.Fatalf("write %s: %v", *out, err)
+	if err := write(cfg.out, c); err != nil {
+		log.Fatalf("write %s: %v", cfg.out, err)
 	}
 
-	fi, err := os.Stat(*out)
+	fi, err := os.Stat(cfg.out)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("%s\n  roots %d  attested forms %d  rootless forms %d  roots with a meaning %d  languages %v\n  %.2f MB\n",
-		*out, len(c.Roots), len(c.Attested), len(c.Rootless), len(c.Meanings), languages(c), float64(fi.Size())/(1<<20))
+		cfg.out, len(c.Roots), len(c.Attested), len(c.Rootless), len(c.Meanings), languages(c), float64(fi.Size())/(1<<20))
 }
 
 // corpusFile is what jidhr reads, with the provenance note the reader of the file
@@ -227,14 +221,36 @@ func build(db *sql.DB, senses []store.Sense) (root.Corpus, error) {
 	return c, nil
 }
 
-// env reads the DSN default from the environment, so a run against a deployed
-// database is a variable rather than a password in a shell history.
-func env(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+// parseConfig reads the flags, then the DSN from the environment, so a run
+// against a deployed database is a variable rather than a password in a shell
+// history. The DSN is never a flag nor a flag's default: a default is printed by
+// -h and by every flag error.
+//
+// -db keeps its name and its meaning: the corpus.db the morphology is read out
+// of. The Wird database is DATABASE_URL only.
+//
+// Environment: DATABASE_URL (the Wird database; the local compose one if unset).
+func parseConfig(fs *flag.FlagSet, args []string, getenv func(string) string) (config, error) {
+	var c config
+	fs.StringVar(&c.in, "db", "./app/assets/corpus.db", "the corpus.db the app bundles")
+	fs.StringVar(&c.out, "out", "./jidhr/testdata/quran.json", "the jidhr corpus to write")
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage of %s:\n", fs.Name())
+		fs.PrintDefaults()
+		fmt.Fprintln(fs.Output(), "\nEnvironment (read, never printed):\n"+
+			"  DATABASE_URL  the Wird database the root senses are read out of; the local compose database if unset")
 	}
-	return fallback
+	if err := fs.Parse(args); err != nil {
+		return c, err
+	}
+	if c.dsn = getenv("DATABASE_URL"); c.dsn == "" {
+		c.dsn = localDSN
+	}
+	return c, nil
 }
+
+// localDSN is the compose database's, a fallback with nothing secret in it.
+const localDSN = "postgres://wird:wird@localhost:5432/wird"
 
 func write(path string, c root.Corpus) error {
 	f, err := os.Create(path)

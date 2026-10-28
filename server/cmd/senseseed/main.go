@@ -39,20 +39,21 @@ import (
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
-func main() {
-	tsv := flag.String("tsv", "./data/root_senses_draft.tsv", "the drafting log to seed from")
-	roots := flag.String("roots", "./app/assets/corpus.db", "the corpus.db whose roots table every root is checked against")
-	dsn := flag.String("db", env("DATABASE_URL", "postgres://wird:wird@localhost:5432/wird"), "the database to seed")
-	dry := flag.Bool("dry", false, "read and check the file, write nothing, and touch no database")
-	flag.Parse()
+type config struct {
+	tsv, roots, dsn string
+	dry             bool
+}
 
-	known, err := knownRoots(*roots)
+func main() {
+	c, _ := parseConfig(flag.CommandLine, os.Args[1:], os.Getenv) // ExitOnError: a bad flag exits 2
+
+	known, err := knownRoots(c.roots)
 	if err != nil {
-		log.Fatalf("read the roots from %s: %v", *roots, err)
+		log.Fatalf("read the roots from %s: %v", c.roots, err)
 	}
-	senses, err := load(*tsv, known)
+	senses, err := load(c.tsv, known)
 	if err != nil {
-		log.Fatalf("read %s:\n%v", *tsv, err)
+		log.Fatalf("read %s:\n%v", c.tsv, err)
 	}
 
 	distinct := map[string]bool{}
@@ -60,9 +61,9 @@ func main() {
 		distinct[s.Root] = true
 	}
 	fmt.Printf("%s\n  rows %d  roots %d  of %d in the corpus\n",
-		*tsv, len(senses), len(distinct), len(known))
+		c.tsv, len(senses), len(distinct), len(known))
 
-	if *dry {
+	if c.dry {
 		fmt.Println("  nothing written (-dry)")
 		return
 	}
@@ -75,7 +76,7 @@ func main() {
 	// can be ahead of the image actually serving. api and adminweb migrate on
 	// start because they are the deployed artefact; a one-shot run against
 	// production is not.
-	pool, err := pgxpool.New(ctx, *dsn)
+	pool, err := pgxpool.New(ctx, c.dsn)
 	if err != nil {
 		log.Fatalf("database unavailable: %v", err)
 	}
@@ -237,9 +238,30 @@ func knownRoots(path string) (map[string]bool, error) {
 	return known, nil
 }
 
-func env(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+// parseConfig reads the flags, then the DSN from the environment. The DSN is
+// never a flag nor a flag's default: a default is printed by -h and by every
+// flag error, and a DSN carries the database password.
+//
+// Environment: DATABASE_URL (the database to seed; the local compose one if unset).
+func parseConfig(fs *flag.FlagSet, args []string, getenv func(string) string) (config, error) {
+	var c config
+	fs.StringVar(&c.tsv, "tsv", "./data/root_senses_draft.tsv", "the drafting log to seed from")
+	fs.StringVar(&c.roots, "roots", "./app/assets/corpus.db", "the corpus.db whose roots table every root is checked against")
+	fs.BoolVar(&c.dry, "dry", false, "read and check the file, write nothing, and touch no database")
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage of %s:\n", fs.Name())
+		fs.PrintDefaults()
+		fmt.Fprintln(fs.Output(), "\nEnvironment (read, never printed):\n"+
+			"  DATABASE_URL  the database to seed; the local compose database if unset")
 	}
-	return fallback
+	if err := fs.Parse(args); err != nil {
+		return c, err
+	}
+	if c.dsn = getenv("DATABASE_URL"); c.dsn == "" {
+		c.dsn = localDSN
+	}
+	return c, nil
 }
+
+// localDSN is the compose database's, a fallback with nothing secret in it.
+const localDSN = "postgres://wird:wird@localhost:5432/wird"

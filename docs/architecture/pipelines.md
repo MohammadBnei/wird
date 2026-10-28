@@ -92,10 +92,10 @@ out := flag.String("out", "./app/assets/corpus.db", "corpus.db to write")
 `rootdraft` asks a language model about one root at a time, giving it that root's glosses from the corpus and its Lane article. Rows go into an append-only log, and the last row for a root wins. `rootcheck` scores a proposed English sense against the corpus glosses of that root's words. See [Senses](pipelines/senses.md).
 
 ```go
-flag.StringVar(&c.out, "out", "", "rows land here, for a person to read and promote; append-only, last row for a root wins")
+fs.StringVar(&c.out, "out", "", "rows land here, for a person to read and promote; append-only, last row for a root wins")
 ```
 
-[rootdraft/main.go:64](../../server/cmd/rootdraft/main.go#L64)
+[rootdraft/main.go:80](../../server/cmd/rootdraft/main.go#L80)
 
 ### 3. The seed is the correction path
 
@@ -107,7 +107,7 @@ if err := db.ReplaceSenses(ctx, senses); err != nil {
 }
 ```
 
-[senseseed/main.go:85](../../server/cmd/senseseed/main.go#L85-L87)
+[senseseed/main.go:86](../../server/cmd/senseseed/main.go#L86-L88)
 
 ### 4. jidhr gets both halves in one file
 
@@ -116,11 +116,11 @@ if err := db.ReplaceSenses(ctx, senses); err != nil {
 ```go
 pack, err := store.New(pool).Senses(ctx)
 if err != nil {
-	log.Fatalf("read the senses from %s: %v", *dsn, err)
+	log.Fatalf("read the senses from the Wird database: %v", err) // never the DSN: it carries the password
 }
 ```
 
-[jidhrcorpus/main.go:83](../../server/cmd/jidhrcorpus/main.go#L83-L86) · [its flags](../../server/cmd/jidhrcorpus/main.go#L54-L57) · [why no migration](../../server/cmd/jidhrcorpus/main.go#L67-L71)
+[jidhrcorpus/main.go:77](../../server/cmd/jidhrcorpus/main.go#L77-L80) · [its flags](../../server/cmd/jidhrcorpus/main.go#L233-L250) · [why no migration](../../server/cmd/jidhrcorpus/main.go#L61-L65)
 
 ## Why it is this way
 
