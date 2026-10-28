@@ -5,6 +5,10 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/MohammadBnei/ukubi-go/errs"
+	"github.com/MohammadBnei/wird/server/internal/httpx"
+	"github.com/MohammadBnei/wird/server/internal/keys"
 )
 
 // Where a phone fetches the speech recogniser, and the one other route
@@ -75,7 +79,7 @@ func (m *modelStore) serve(w http.ResponseWriter, r *http.Request) {
 	signed, err := m.sign.get(m.bucket, key, time.Now(), modelURLTTL)
 	if err != nil {
 		m.log.Error("presign a model", "key", key, "err", err)
-		http.Error(w, "the recogniser cannot be reached", http.StatusBadGateway)
+		httpx.Error(w, errs.Internal, keys.ModelsUnreachable, "the recogniser cannot be reached")
 		return
 	}
 
@@ -92,7 +96,7 @@ func (m *modelStore) serve(w http.ResponseWriter, r *http.Request) {
 // missing, and the client turns this into "the recogniser cannot be fetched"
 // rather than anything that reads as the reader's own fault.
 func modelsNotConfigured(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "no recogniser is published here", http.StatusServiceUnavailable)
+	httpx.Error(w, errs.Unavailable, keys.ModelsNotPublished, "no recogniser is published here")
 }
 
 func cmpOr(v, fallback string) string {

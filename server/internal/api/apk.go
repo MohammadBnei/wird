@@ -5,6 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/MohammadBnei/ukubi-go/errs"
+	"github.com/MohammadBnei/wird/server/internal/httpx"
+	"github.com/MohammadBnei/wird/server/internal/keys"
 )
 
 // Where the public site's Download buttons point.
@@ -26,14 +30,14 @@ func apk(store *modelStore, key string, log *slog.Logger) http.HandlerFunc {
 		// 503, not 404: the page is right to offer the app, it is the
 		// deployment that has not published one yet.
 		return func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "no Android build is published here yet", http.StatusServiceUnavailable)
+			httpx.Error(w, errs.Unavailable, keys.APKNotPublished, "no Android build is published here yet")
 		}
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		signed, err := store.sign.get(store.bucket, key, time.Now(), modelURLTTL)
 		if err != nil {
 			log.Error("presign the apk", "key", key, "err", err)
-			http.Error(w, "the Android build cannot be reached", http.StatusBadGateway)
+			httpx.Error(w, errs.Internal, keys.APKUnreachable, "the Android build cannot be reached")
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")

@@ -307,13 +307,24 @@ func storeMethods(t *testing.T) map[string]bool {
 		}
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv == nil || !fn.Name.IsExported() {
+			if !ok || fn.Recv == nil || !fn.Name.IsExported() || !exportedRecv(fn) {
 				continue
 			}
 			methods[fn.Name.Name] = true
 		}
 	}
 	return methods
+}
+
+// exportedRecv: the method's receiver type is one this binary can name. An
+// unexported type's methods (a refusal's Error) reach it only as an error.
+func exportedRecv(fn *ast.FuncDecl) bool {
+	t := fn.Recv.List[0].Type
+	if star, ok := t.(*ast.StarExpr); ok {
+		t = star.X
+	}
+	id, ok := t.(*ast.Ident)
+	return !ok || id.IsExported()
 }
 
 // The page is rendered from a real database with two readers in it, and the

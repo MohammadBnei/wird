@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/MohammadBnei/ukubi-go/errs"
 	"github.com/MohammadBnei/wird/server/internal/auth"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
+	"github.com/MohammadBnei/wird/server/internal/keys"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
@@ -30,11 +32,11 @@ func (h *Handler) sync(w http.ResponseWriter, r *http.Request) {
 		Ops []store.Op `json:"ops"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxSyncBody)).Decode(&batch); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "the batch is not readable")
+		httpx.Error(w, errs.InvalidArgument, keys.BadBatch, "the batch is not readable")
 		return
 	}
 	if len(batch.Ops) > maxOpsPerBatch {
-		httpx.Error(w, http.StatusBadRequest, "too many ops in one batch")
+		httpx.Error(w, errs.InvalidArgument, keys.BatchTooBig, "too many ops in one batch")
 		return
 	}
 	results, err := h.store.Apply(r.Context(), auth.User(r.Context()).ID, batch.Ops)
@@ -50,7 +52,7 @@ func (h *Handler) sync(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) changes(w http.ResponseWriter, r *http.Request) {
 	changes, err := h.store.Changes(r.Context(), auth.User(r.Context()).ID, r.URL.Query().Get("since"))
 	if errors.Is(err, store.ErrBadCursor) {
-		httpx.Error(w, http.StatusBadRequest, "that is not a cursor this server issued")
+		httpx.Error(w, errs.InvalidArgument, keys.BadCursor, "that is not a cursor this server issued")
 		return
 	}
 	if err != nil {

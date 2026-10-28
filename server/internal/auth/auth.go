@@ -13,7 +13,9 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 
+	"github.com/MohammadBnei/ukubi-go/errs"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
+	"github.com/MohammadBnei/wird/server/internal/keys"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
@@ -47,17 +49,17 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := bearer(r)
 		if !ok {
-			httpx.Error(w, http.StatusUnauthorized, "a bearer token is required")
+			httpx.Error(w, errs.Unauthenticated, keys.TokenMissing, "a bearer token is required")
 			return
 		}
 		token, err := a.verifier.Verify(r.Context(), raw)
 		if err != nil {
 			a.log.Info("token refused", "err", err)
-			httpx.Error(w, http.StatusUnauthorized, "token rejected")
+			httpx.Error(w, errs.Unauthenticated, keys.TokenRejected, "token rejected")
 			return
 		}
 		if token.Subject == "" {
-			httpx.Error(w, http.StatusUnauthorized, "token rejected")
+			httpx.Error(w, errs.Unauthenticated, keys.TokenRejected, "token rejected")
 			return
 		}
 		user, err := a.users.ReaderFor(r.Context(), token.Subject, signedIn(token))
@@ -70,11 +72,11 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		case errors.Is(err, store.ErrDeleted):
-			httpx.Error(w, http.StatusUnauthorized, "token rejected")
+			httpx.Error(w, errs.Unauthenticated, keys.TokenRejected, "token rejected")
 			return
 		case err != nil:
 			a.log.Error("reader lookup", "err", err)
-			httpx.Error(w, http.StatusInternalServerError, "unavailable")
+			httpx.Error(w, errs.Internal, errs.KeyInternal, "unavailable")
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))

@@ -232,7 +232,7 @@ For a GET, the hash and the rows are read in one read-only, repeatable-read snap
 
 ### 8. Serve the pack, open and cacheable
 
-The route sits on the outer mux, so the bearer-token middleware never sees it ([api.go:92](../../../server/internal/api/api.go#L92)). HEAD reads only the hash. GET reads the rows. Both set the ETag and answer 304 when the phone already has that version.
+The route sits on the outer mux, so the bearer-token middleware never sees it ([api.go:94](../../../server/internal/api/api.go#L94)). HEAD reads only the hash. GET reads the rows. Both set the ETag and answer 304 when the phone already has that version.
 
 ```go
 func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {
@@ -250,22 +250,22 @@ func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 ```
-[senses.go:105](../../../server/internal/api/senses.go#L105-L118)
+[senses.go:106](../../../server/internal/api/senses.go#L106-L119)
 
-The body is `{version, source, attribution, basis, senses: [{root, en, fr}]}` ([senses.go:82](../../../server/internal/api/senses.go#L82-L88)). The route never answers 404: an empty table is a 200 with an empty list, and errors go through a helper that has no 404 branch ([senses.go:167](../../../server/internal/api/senses.go#L166-L169)). The Go server has no rate limiter; the ingress in front of it limits the whole host ([senses.go:23](../../../server/internal/api/senses.go#L23-L28)).
+The body is `{version, source, attribution, basis, senses: [{root, en, fr}]}` ([senses.go:83](../../../server/internal/api/senses.go#L83-L89)). The route never answers 404: an empty table is a 200 with an empty list, and errors go through a helper that has no 404 branch ([senses.go:167](../../../server/internal/api/senses.go#L167-L170)). The Go server has no rate limiter; the ingress in front of it limits the whole host ([senses.go:24](../../../server/internal/api/senses.go#L24-L29)).
 
 ### 9. The version carries the provenance prose
 
-The three strings a reader sees around a sense (source, attribution, basis) are Go constants beside the handler, not rows in Postgres ([senses.go:62](../../../server/internal/api/senses.go#L62-L80)). The basis says plainly that a sense is a machine draft no person has read. The version starts with a hand-bumped revision, so a change to that prose reaches phones even when no sense changed.
+The three strings a reader sees around a sense (source, attribution, basis) are Go constants beside the handler, not rows in Postgres ([senses.go:63](../../../server/internal/api/senses.go#L63-L81)). The basis says plainly that a sense is a machine draft no person has read. The version starts with a hand-bumped revision, so a change to that prose reaches phones even when no sense changed.
 
 ```go
 func packVersion(digest string) string {
 	return strconv.Itoa(provenanceRevision) + "-" + digest
 }
 ```
-[senses.go:145](../../../server/internal/api/senses.go#L144-L146)
+[senses.go:145](../../../server/internal/api/senses.go#L145-L147)
 
-Whoever edits `sensesSource`, `sensesAttribution` or `sensesBasis` must bump `provenanceRevision` in the same change ([senses.go:45](../../../server/internal/api/senses.go#L45)).
+Whoever edits `sensesSource`, `sensesAttribution` or `sensesBasis` must bump `provenanceRevision` in the same change ([senses.go:46](../../../server/internal/api/senses.go#L46)).
 
 ### 10. The same senses feed jidhr
 

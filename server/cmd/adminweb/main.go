@@ -252,7 +252,7 @@ func (s *server) triage(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&f); err != nil {
-			http.Error(w, "the body is not a triage: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "the body is not a triage", http.StatusBadRequest)
 			return
 		}
 	} else {

@@ -217,7 +217,7 @@ const isVerdict = `r.kind = 'improvement'
 
 [admin.go:148-149](../../server/internal/store/admin.go#L148-L149)
 
-It is applied once, by the report sweep in `wird-api`, when a report first arrives. The sweep stores the matching root in the report's `verdict_root`, judged against the roots served at that moment, and carries it unchanged on every later sweep ([sync.go:569-588](../../server/internal/store/sync.go#L569-L588)). The report list and the export leave out every report with a `verdict_root`, and the tally counts exactly those, so no report can fall between them ([admin.go:173](../../server/internal/store/admin.go#L173)).
+It is applied once, by the report sweep in `wird-api`, when a report first arrives. The sweep stores the matching root in the report's `verdict_root`, judged against the roots served at that moment, and carries it unchanged on every later sweep ([sync.go:606-625](../../server/internal/store/sync.go#L606-L625)). The report list and the export leave out every report with a `verdict_root`, and the tally counts exactly those, so no report can fall between them ([admin.go:173](../../server/internal/store/admin.go#L173)).
 
 The tally groups them by root and language:
 

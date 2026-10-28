@@ -90,7 +90,15 @@ class FakeWird {
         request.response
           ..statusCode = HttpStatus.unauthorized
           ..headers.contentType = ContentType.json
-          ..write(jsonEncode({'error': 'token rejected'}));
+          ..write(
+            jsonEncode({
+              'code': 'unauthenticated',
+              'key': 'auth.token_rejected',
+              'message': 'token rejected',
+              'source': '',
+              'detail': '',
+            }),
+          );
         unawaited(request.response.close());
         continue;
       }

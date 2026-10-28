@@ -3,6 +3,7 @@ module github.com/MohammadBnei/wird/server
 go 1.27.1
 
 require (
+	github.com/MohammadBnei/ukubi-go v0.0.0-20261028220812-cb6b357f2366
 	github.com/MohammadBnei/wird/jidhr v0.0.0
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-jose/go-jose/v4 v4.1.4
@@ -10,7 +11,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/pressly/goose/v3 v3.28.0
 	github.com/tmc/langchaingo v0.1.14
-	golang.org/x/text v0.41.0
+	golang.org/x/text v0.42.0
 	modernc.org/sqlite v1.57.0
 )
 
@@ -28,9 +29,9 @@ require (
 	github.com/sethvargo/go-retry v0.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	modernc.org/libc v1.75.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
@@ -39,3 +40,5 @@ require (
 // jidhr lives in this repo: server always builds against the jidhr in the same
 // commit, so CI tests the two together and there is no pin to bump.
 replace github.com/MohammadBnei/wird/jidhr => ../jidhr
+
+tool github.com/MohammadBnei/ukubi-go/cmd/ukubicheck
