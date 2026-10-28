@@ -116,14 +116,14 @@ on:
 
 ### 2. The checks: the Go half of the gate
 
-`checks` starts Postgres 18 from the repo's own `docker-compose.yml`, then builds, vets and tests both Go modules. It names the modules because `./...` fails at a workspace root. Two shell checks follow: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
+`checks` starts Postgres 18 from the repo's own `docker-compose.yml`, then builds, vets and tests both Go modules. It runs with `GOWORK: 'off'` and builds each module on its own, so `go.work` cannot hide a missing require in `server/go.mod`. Two shell checks follow: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
 
 ```yaml
-      - run: go build ./jidhr/... ./server/...
-      - run: go vet ./jidhr/... ./server/...
+      - run: go -C jidhr build ./... && go -C server build ./...
+      - run: go -C jidhr vet ./... && go -C server vet ./...
 ```
 
-[release.yml:107-117](../../.github/workflows/release.yml#L107-L117) · marker rule [release.yml:122-127](../../.github/workflows/release.yml#L122-L127) · corpus budget [release.yml:131-135](../../.github/workflows/release.yml#L131-L135)
+[release.yml:97-138](../../.github/workflows/release.yml#L97-L138) · marker rule [release.yml:140-148](../../.github/workflows/release.yml#L140-L148) · corpus budget [release.yml:150-156](../../.github/workflows/release.yml#L150-L156)
 
 The Flutter half of the gate never runs in CI. It needs fvm and a device, and the runners have neither. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
 

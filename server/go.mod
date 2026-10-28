@@ -3,6 +3,7 @@ module github.com/MohammadBnei/wird/server
 go 1.27.1
 
 require (
+	github.com/MohammadBnei/wird/jidhr v0.0.0-20261028180509-f23011fe9b8c
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/google/uuid v1.6.0

@@ -96,6 +96,8 @@ jobs:
   # them rather than a second opinion about how to run them.
   checks:
     runs-on: ubuntu-latest
+    env:
+      GOWORK: 'off'
     steps:
       - uses: actions/checkout@v5
         with:
@@ -106,10 +108,9 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          # go.work, not server/go.mod — the workspace is what pins the
-          # toolchain for both modules, and a drift between them is exactly the
-          # kind of thing that only shows up in CI.
-          go-version-file: go.work
+          # server/go.mod, not go.work: CI builds each module on its own. Keep
+          # the go line of jidhr/go.mod equal to this one, nothing checks it.
+          go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
 
       # The store and handler tests run against a real Postgres 18, each in a
@@ -120,11 +121,11 @@ jobs:
       - name: Postgres
         run: docker compose up -d --wait postgres
 
-      # ./... is not a valid pattern at a workspace root that is not itself a
-      # module (go1.27.1), so each module is named — the same two paths
-      # scripts/qa.sh names.
-      - run: go build ./jidhr/... ./server/...
-      - run: go vet ./jidhr/... ./server/...
+      # Each module on its own with GOWORK off, so a committed or stray go.work
+      # cannot hide a missing require; server takes jidhr from server/go.mod.
+      # The same commands as scripts/qa.sh.
+      - run: go -C jidhr build ./... && go -C server build ./...
+      - run: go -C jidhr vet ./... && go -C server vet ./...
       # -p 1: the tests share one Postgres instance. -race: a data race fails
       # the PR instead of showing up in production; scripts/qa.sh does the same.
       #
@@ -134,7 +135,7 @@ jobs:
       # now guards itself with exec.LookPath("fvm") and skips loudly wherever
       # there is no Flutter, which is one fewer hand-maintained list and catches
       # every other machine too rather than only this runner.
-      - run: go test -race -p 1 ./jidhr/... ./server/...
+      - run: go -C jidhr test -race -p 1 ./... && go -C server test -race -p 1 ./...
 
       # Lifted from scripts/qa.sh's todos_carry_an_issue. The marker is
       # assembled from two pieces for the same reason it is there: so this file

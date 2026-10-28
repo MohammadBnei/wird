@@ -40,7 +40,7 @@ docs/     human docs + adr/ + design/ (vendored, never hand-edit)
 
 ## Commands
 - gate: `./scripts/qa.sh` → exit code = verdict, writes `qa-report.json`
-- Go: `go build ./server/... ./jidhr/...` · `go test -p 1 ./server/... ./jidhr/...` (never `./...` at root)
+- Go, per module as CI runs it: `GOWORK=off go -C server build ./...` · `GOWORK=off go -C server test -p 1 ./...` (same for `jidhr`; never `./...` at root)
 - app: `cd app && fvm flutter analyze && fvm flutter test`
 - local API: `docker compose up -d postgres oidc-stub && go run ./server/cmd/api`
 - reader feedback (reports, sense verdicts) → triage + issues: `.claude/rules/feedback.md`

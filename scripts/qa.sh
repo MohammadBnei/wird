@@ -444,9 +444,10 @@ run_journeys() {
 	check "every journey still runs, and none has been skipped for two phases" every_journey_still_runs "$run"
 }
 
-# 1 — Go builds, vets and tests. ./... is not a valid pattern at a workspace root
-# that is not itself a module (go1.27.1), so each module is named.
+# 1 — Go builds, vets and tests, each module on its own with GOWORK off, so a
+# go.work cannot hide a missing require: server takes jidhr from server/go.mod.
 GATE=1
+export GOWORK=off
 # The store and handler tests run against a real Postgres 18, each in a
 # database of its own: a mocked one cannot tell you a unique constraint is
 # missing, which is the whole defence against a prayer counted twice.
@@ -454,10 +455,11 @@ if command -v docker >/dev/null 2>&1; then
 	docker compose up -d --wait postgres >/dev/null 2>&1 ||
 		printf 'postgres did not come up; the server tests will say so\n'
 fi
-GO_PKGS=(./jidhr/... ./server/...)
-check "go build" go build "${GO_PKGS[@]}"
-check "go vet" go vet "${GO_PKGS[@]}"
-check "go test" go test -race -p 1 "${GO_PKGS[@]}"
+for mod in jidhr server; do
+	check "go build $mod" go -C "$ROOT/$mod" build ./...
+	check "go vet $mod" go -C "$ROOT/$mod" vet ./...
+	check "go test $mod" go -C "$ROOT/$mod" test -race -p 1 ./...
+done
 
 # 2 — the Flutter suite, and goldens that were not refreshed into passing.
 GATE=2

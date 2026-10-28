@@ -6,5 +6,5 @@ paths:
 
 - Own Go module, standalone product. No DB, no network, no key.
 - `go run ./jidhr/cmd/rootd` → :8081. API doc: `jidhr/cmd/rootd/README.md` (keep in sync with handlers).
-- Data: `jidhr/testdata/quran.json`. Rebuild: `go run ./server/cmd/jidhrcorpus` from `app/assets/corpus.db` → engine + app answer from one body of data. Never hand-edit json.
+- Data: `jidhr/testdata/quran.json`. Rebuild: `go run ./server/cmd/jidhrcorpus` from `app/assets/corpus.db` → engine + app answer from one body of data. Never hand-edit json. CI builds jidhrcorpus against the jidhr pinned in `server/go.mod`: after a `pkg/root` type change, bump it (`GOWORK=off go -C server get github.com/MohammadBnei/wird/jidhr@<commit>`).
 - Senses (meanings) = server-owned since ADR 0010. jidhr answers word → root, not sense authority.
