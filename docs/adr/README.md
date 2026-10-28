@@ -41,7 +41,7 @@ flowchart LR
 | [0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md](0005-voice-follow-locates-the-reciter-with-a-quran-model-on-the-phone.md) | Voice-follow runs a Qur'an model on the phone | accepted, model choice superseded by 0009 |
 | [0006-a-passage-is-read-a-set-is-answered-for.md](0006-a-passage-is-read-a-set-is-answered-for.md) | A passage is read; a set is answered for | accepted, amended by 0014 and 0020 |
 | [0007-the-voice-model-is-published-where-its-weights-already-live.md](0007-the-voice-model-is-published-where-its-weights-already-live.md) | Publish the voice model where its weights live | superseded by 0008 |
-| [0008-the-recogniser-is-served-from-wirds-own-host.md](0008-the-recogniser-is-served-from-wirds-own-host.md) | The recogniser is served from Wird's own host | accepted |
+| [0008-the-recogniser-is-served-from-wirds-own-host.md](0008-the-recogniser-is-served-from-wirds-own-host.md) | The recogniser is served from Wird's own host | accepted, amended by 0036 |
 | [0009-the-recogniser-hears-quranic-phonemes-not-language.md](0009-the-recogniser-hears-quranic-phonemes-not-language.md) | The recogniser hears Qur'anic phonemes, not language | accepted |
 | [0010-the-server-owns-the-roots-and-their-senses.md](0010-the-server-owns-the-roots-and-their-senses.md) | The server owns the roots and their senses | accepted, amended by 0034 |
 | [0011-two-doc-families.md](0011-two-doc-families.md) | Agent docs and human docs are two families with two styles | accepted |
@@ -69,3 +69,4 @@ flowchart LR
 | [0033-home-says-where-the-reader-stands.md](0033-home-says-where-the-reader-stands.md) | Home says where the reader stands, and the root constellation is gone | accepted, superseded in part by 0034 |
 | [0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md](0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md) | A reader starts with a short setup, then a home of few doors | accepted |
 | [0035-server-takes-jidhr-from-the-same-commit.md](0035-server-takes-jidhr-from-the-same-commit.md) | Server takes jidhr from the same commit, through a require and a local replace | accepted |
+| [0036-each-binary-refuses-a-partial-configuration.md](0036-each-binary-refuses-a-partial-configuration.md) | Each binary refuses a partial configuration | accepted |

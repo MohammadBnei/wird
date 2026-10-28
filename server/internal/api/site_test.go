@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/MohammadBnei/wird/server/internal/api"
 )
 
 // Somebody arriving at wird.bnei.dev has no account and no app yet. Before the
@@ -88,8 +90,7 @@ func TestTheDownloadButtonRedirectsToABuildNobodyPublished(t *testing.T) {
 // process, and never from a cached redirect whose signature has died.
 func TestTheDownloadButtonServesTheApkThroughTheApi(t *testing.T) {
 	const key = "android/wird-3f2a9c.apk"
-	t.Setenv("WIRD_APK_KEY", key)
-	h := withStore(t)
+	h := newHarnessWith(t, api.Config{Models: testModels, APKKey: key})
 
 	w := h.get(t, "/download/android", "")
 
@@ -122,8 +123,7 @@ func TestThePageCheckAndTheDownloadDisagree(t *testing.T) {
 	if got := head(withStore(t)); got != http.StatusServiceUnavailable {
 		t.Errorf("unpublished: HEAD answered %d", got)
 	}
-	t.Setenv("WIRD_APK_KEY", "android/wird-3f2a9c.apk")
-	if got := head(withStore(t)); got != http.StatusFound {
+	if got := head(newHarnessWith(t, api.Config{Models: testModels, APKKey: "android/wird-3f2a9c.apk"})); got != http.StatusFound {
 		t.Errorf("published: HEAD answered %d", got)
 	}
 }
@@ -131,13 +131,11 @@ func TestThePageCheckAndTheDownloadDisagree(t *testing.T) {
 // The page names the release beside its button. A number that is not the one
 // the button serves is worse than none, so an unrecorded version says nothing.
 func TestThePageNamesAVersionTheButtonDoesNotServe(t *testing.T) {
-	t.Setenv("WIRD_APK_VERSION", "")
-	if w := withStore(t).get(t, "/download/android/version", ""); w.Code != http.StatusNoContent {
+	if w := newHarnessWith(t, api.Config{Models: testModels, APKVersion: ""}).get(t, "/download/android/version", ""); w.Code != http.StatusNoContent {
 		t.Errorf("unrecorded: answered %d %q", w.Code, w.Body.String())
 	}
 
-	t.Setenv("WIRD_APK_VERSION", "0.0.3")
-	w := withStore(t).get(t, "/download/android/version", "")
+	w := newHarnessWith(t, api.Config{Models: testModels, APKVersion: "0.0.3"}).get(t, "/download/android/version", "")
 	if w.Code != http.StatusOK {
 		t.Fatalf("answered %d: %s", w.Code, w.Body.String())
 	}

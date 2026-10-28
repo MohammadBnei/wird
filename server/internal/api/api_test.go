@@ -28,13 +28,20 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
+	return newHarnessWith(t, api.Config{})
+}
+
+// newHarnessWith serves the open routes from c, as cmd/api would from its
+// environment.
+func newHarnessWith(t *testing.T, c api.Config) *harness {
+	t.Helper()
 	db, pool := testenv.Postgres(t)
 	issuer := testenv.NewIssuer(t)
 	authenticator, err := auth.New(t.Context(), issuer.URL, audience, db, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("issuer discovery: %v", err)
 	}
-	return &harness{routes: api.Routes(db, authenticator, slog.New(slog.DiscardHandler)), issuer: issuer, db: db, pool: pool}
+	return &harness{routes: api.Routes(db, authenticator, slog.New(slog.DiscardHandler), c), issuer: issuer, db: db, pool: pool}
 }
 
 // get sends a request carrying token, or none at all when token is empty.

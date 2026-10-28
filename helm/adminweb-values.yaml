@@ -15,7 +15,7 @@ image:
   # and to the same SHA as helm/values.yaml. Never bumped by hand.
   tag: "93007eafb492"
 
-# ADMIN_ADDR defaults to :8081 in server/cmd/adminweb/main.go.
+# ADMIN_ADDR defaults to :8081 in server/cmd/adminweb/config.go.
 service:
   port: 8081
 

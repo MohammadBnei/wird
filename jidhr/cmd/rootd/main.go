@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/MohammadBnei/wird/jidhr/pkg/root"
@@ -20,7 +19,14 @@ const burstPerRate = 4
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
-	corpusPath := env("ROOTD_CORPUS", "jidhr/testdata/quran.json")
+	// Every problem with the configuration at once, before anything is opened.
+	cfg, err := fromProcess()
+	if err != nil {
+		log.Error("config refused", "err", err)
+		os.Exit(1)
+	}
+
+	corpusPath := cfg.Corpus
 	// ponytail: the whole corpus in memory, read from one JSON file — 1,642 roots,
 	// 17,934 attested forms and 523 meanings is about a megabyte. Give the resolver
 	// a Store backed by a database when a corpus arrives that does not fit, or when
@@ -38,19 +44,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	rate := envFloat(log, "ROOTD_RATE", 5)
+	rate := cfg.Rate
 	srv := &server{
 		resolver: root.New(store),
 		store:    store,
 		langs:    store.Languages(),
-		apiKey:   os.Getenv("ROOTD_API_KEY"),
+		apiKey:   cfg.APIKey,
 		log:      log,
 	}
 	if rate > 0 {
 		srv.limiter = newLimiter(rate, rate*burstPerRate)
 	}
 
-	addr := env("ROOTD_ADDR", ":8081")
+	addr := cfg.Addr
 	httpd := &http.Server{
 		Addr:    addr,
 		Handler: srv.routes(),
@@ -72,29 +78,9 @@ func main() {
 
 	log.Info("rootd listening",
 		"addr", ln.Addr().String(), "corpus", corpusPath, "languages", srv.langs,
-		"authenticated", srv.apiKey != "", "rate_per_second", rate)
+		"authenticated", srv.apiKey != "", "rate_per_second", rate, "dev", cfg.Dev)
 	if err := httpd.Serve(ln); err != nil {
 		log.Error("rootd stopped", "err", err)
 		os.Exit(1)
 	}
-}
-
-func env(name, fallback string) string {
-	if v := os.Getenv(name); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func envFloat(log *slog.Logger, name string, fallback float64) float64 {
-	raw := os.Getenv(name)
-	if raw == "" {
-		return fallback
-	}
-	v, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		log.Warn("ignoring an unreadable setting", "name", name, "value", raw, "using", fallback)
-		return fallback
-	}
-	return v
 }

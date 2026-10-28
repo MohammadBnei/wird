@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -31,29 +30,19 @@ import (
 // iOS needs the same thing under a different name: appSiteAssociation below.
 const assetLinksPath = "GET /.well-known/assetlinks.json"
 
-func assetLinks(w http.ResponseWriter, r *http.Request) {
-	raw := strings.TrimSpace(os.Getenv("WIRD_ANDROID_SHA256"))
-	if raw == "" {
-		http.NotFound(w, r)
-		return
-	}
-
+// assetLinks parses raw once, at start: the deployment's value does not change
+// while the process runs.
+func assetLinks(raw string) http.HandlerFunc {
 	var quoted []string
-	for _, f := range strings.Split(raw, ",") {
+	for _, f := range strings.Split(strings.TrimSpace(raw), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			quoted = append(quoted, fmt.Sprintf("%q", f))
 		}
 	}
 	if len(quoted) == 0 {
-		http.NotFound(w, r)
-		return
+		return http.NotFound
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	// Android re-checks this periodically and a stale answer silently unverifies
-	// a link that used to work, so it is cached briefly rather than indefinitely.
-	w.Header().Set("Cache-Control", "public, max-age=300")
-	fmt.Fprintf(w, `[{
+	body := fmt.Sprintf(`[{
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
@@ -61,6 +50,13 @@ func assetLinks(w http.ResponseWriter, r *http.Request) {
     "sha256_cert_fingerprints": [%s]
   }
 }]`, strings.Join(quoted, ", "))
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Android re-checks this periodically and a stale answer silently unverifies
+		// a link that used to work, so it is cached briefly rather than indefinitely.
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		fmt.Fprint(w, body)
+	}
 }
 
 // iOS's half: the file an iPhone fetches (through Apple's CDN) before it will

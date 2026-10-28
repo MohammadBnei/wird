@@ -22,7 +22,7 @@ image:
   # against a tag that was never built.
   tag: "93007eafb492"
 
-# API_ADDR defaults to :8080 in server/cmd/api/main.go and nothing overrides it.
+# API_ADDR defaults to :8080 in server/cmd/api/config.go and nothing overrides it.
 service:
   port: 8080
 
@@ -134,7 +134,7 @@ env:
   # models bucket. Written by .github/workflows/apk.yml on each version tag,
   # never by hand: the key names the build's digest, so a new build is a new
   # key and a download resumed across a release never mixes two builds.
-  # Empty answers 503, which the page reads as "not published yet".
+  # Empty answers 503 ("not published yet"); set with no store, the API refuses to start.
   - name: WIRD_APK_KEY
     value: "android/wird-504026eced2f.apk"
   # The release that key is, as the page prints it beside its button. Written
@@ -158,9 +158,10 @@ env:
     value: Um9Je1MQghdZ4SqAjB7cWtGNubP64phIuGqzdzro
   # /models/ needs four values together — WIRD_MODELS_S3_BUCKET, _ENDPOINT,
   # _ACCESS_KEY and _SECRET — and they all arrive through wird-config above.
-  # With any of them missing server/internal/api/models.go builds no store and
-  # every /models/ request answers 503: the rest of the API is healthy, both
-  # probes pass, and the only thing broken is a reader's Download button.
+  # With some set and any of them missing, server/cmd/api/config.go refuses to
+  # start (`config refused`, naming the missing one; ADR 0036): before, the
+  # API came up healthy and only a reader's Download button answered 503. With
+  # all of them unset there is no store and /models/ answers 503.
   #
   # _REGION is there too. It is not cosmetic if it ever moves — the signature
   # is computed over the region, so a wrong one is a 403 carrying a signature

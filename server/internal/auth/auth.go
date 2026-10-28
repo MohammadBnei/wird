@@ -24,7 +24,7 @@ type Authenticator struct {
 }
 
 // New discovers the issuer named by OIDC_ISSUER and builds a verifier for it.
-// Swapping the local stub for authentik.bnei.dev is that one variable; no code
+// Swapping the local stub for authentik.bnei.dev is the issuer and audience; no code
 // on this path knows which of the two it is talking to.
 func New(ctx context.Context, issuer, audience string, users *store.Store, log *slog.Logger) (*Authenticator, error) {
 	provider, err := oidc.NewProvider(ctx, issuer)

@@ -229,7 +229,8 @@ it. Ten lines of shell and one browser tab.
 
    ```bash
    docker compose up -d postgres
-   OIDC_ISSUER=https://authentik.bnei.dev/application/o/wird/ \
+   # WIRD_DEV=1 only fills DATABASE_URL here: the two set below win over it.
+   WIRD_DEV=1 OIDC_ISSUER=https://authentik.bnei.dev/application/o/wird/ \
    OIDC_AUDIENCE=Um9Je1MQghdZ4SqAjB7cWtGNubP64phIuGqzdzro \
    API_ADDR=:8085 go run ./server/cmd/api &
    for k in id_token access_token; do

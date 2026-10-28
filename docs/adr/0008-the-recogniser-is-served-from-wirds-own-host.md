@@ -1,7 +1,7 @@
 # 8. The recogniser is served from Wird's own host
 
-Date: 2026-09-25. Status: accepted. Supersedes ADR 0007. Amends ADR 0005
-(deploying the API).
+Date: 2026-09-25. Status: accepted, amended by ADR 0036. Supersedes ADR 0007.
+Amends ADR 0005 (deploying the API).
 
 ## Context
 

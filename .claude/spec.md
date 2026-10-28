@@ -14,7 +14,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 |---|---|---|
 | App | `app/` | Flutter, iOS + Android + tablet. Owns bundled corpus, generates sets, outbox for writes. |
 | wird-api | `server/cmd/api` | Go, stdlib `ServeMux`, `pgx/v5`, `goose`, hand SQL. Source of truth for user state + senses. Only deployed binary. |
-| jidhr | `jidhr/` | Standalone Arabic root engine, own Go module. `rootd` serves `jidhr/testdata/quran.json` in memory: no DB, no network, no key. ✗ not deployed (no caller). |
+| jidhr | `jidhr/` | Standalone Arabic root engine, own Go module. `rootd` serves `jidhr/testdata/quran.json` in memory: no DB, no network; key required unless `ROOTD_DEV=1`. ✗ not deployed (no caller). |
 | adminweb | `server/cmd/adminweb` | Ops view: totals, report triage, sense verdict tally, JSON export for agent (`.claude/rules/feedback.md`). Own image, `helm/adminweb-values.yaml` inert until infra-bootstrap (groups claim, forwardAuth, service account, restricted DB role). ADR 0004, 0026. |
 | CLI tools | `server/cmd/{ingest,etl,rootcheck,rootdraft,jidhrcorpus,senseseed}` | Dev-machine only. Never in image. |
 - `server/go.mod` requires jidhr + `replace => ../jidhr` (ADR 0035); `jidhrcorpus` imports its types. `go.work` still unions both for root commands. CI + qa.sh: `GOWORK=off`, `GOTOOLCHAIN=local` (CI), each module alone: `go -C server build ./...` (`./...` at root fails).
@@ -68,7 +68,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Authentik OIDC, public client, Auth Code + PKCE (S256 enforced by Authentik policy), no secret. Hand-rolled in `app/lib/data/auth.dart` (dio + `app_links`); tokens in sqflite `auth_tokens`. Issuer/client id/redirect = compile-time defines there.
 - Redirect `https://wird.bnei.dev/auth/callback` (App Link), strict match.
 - Server: `coreos/go-oidc` JWKS verify, `aud` = client id (not `wird`). Mints no tokens. Cluster shares one signing key across apps → `aud`/`iss` checks load-bearing.
-- Local: `docker compose up -d postgres oidc-stub` (mock issuer :8082). api env: `DATABASE_URL OIDC_ISSUER OIDC_AUDIENCE API_ADDR`.
+- Local: `docker compose up -d postgres oidc-stub` (mock issuer :8082). `WIRD_DEV=1 go run ./server/cmd/api`. api env: `DATABASE_URL OIDC_ISSUER OIDC_AUDIENCE` required unless `WIRD_DEV=1`, + `API_ADDR`, `WIRD_MODELS_S3_*`, `WIRD_APK_*`, `WIRD_ANDROID_SHA256`. Full table `docs/architecture/api.md`.
 - Different reader signing in clears device (`_handOver`); signing out drops tokens only.
 - Ops view auth = Authentik `platform-admins` group via forwardAuth. ADR 0004.
 

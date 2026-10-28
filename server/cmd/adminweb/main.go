@@ -27,10 +27,17 @@ func main() {
 	log := slog.Default()
 	ctx := context.Background()
 
+	// Every problem with the configuration at once, before anything is opened.
+	cfg, err := fromProcess()
+	if err != nil {
+		log.Error("config refused", "err", err)
+		os.Exit(1)
+	}
+
 	// store.New, not store.Open: Open runs the migrations, and goose takes no
 	// lock, so two binaries migrating the same database at once is a race. The
 	// api is the one that migrates; this reads the schema it left.
-	pool, err := pgxpool.New(ctx, env("DATABASE_URL", "postgres://wird:wird@localhost:5432/wird"))
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err == nil {
 		err = pool.Ping(ctx)
 	}
@@ -41,18 +48,14 @@ func main() {
 	db := store.New(pool)
 	defer db.Close()
 
-	issuer := env("OIDC_ISSUER", "http://localhost:8082/wird")
-	// OIDC_CLIENT_ID is the proxy provider's id as authentik generated it,
-	// delivered beside its secret: a proxy provider's id cannot be declared, so
-	// it is read from the deployment rather than committed. OIDC_AUDIENCE is
-	// the local stub's.
-	audience := env("OIDC_CLIENT_ID", env("OIDC_AUDIENCE", "wird-admin"))
+	// The audience is OIDC_CLIENT_ID, else OIDC_AUDIENCE: config.go says why.
+	issuer, audience := cfg.OIDCIssuer, cfg.Audience
 	// authentik's proxy provider has no signing key and cannot be given one, so
 	// it signs HS256 with its client secret and its keys endpoint verifies
 	// nothing it issues. With the secret set, that is the only key; without it
 	// (the local stub, which signs RS256) the issuer's published keys are.
 	var verifier *oidc.IDTokenVerifier
-	if secret := os.Getenv("OIDC_CLIENT_SECRET"); secret != "" {
+	if secret := cfg.ClientSecret; secret != "" {
 		verifier = clientSecretVerifier(issuer, audience, secret)
 	} else {
 		provider, err := oidc.NewProvider(ctx, issuer)
@@ -66,14 +69,14 @@ func main() {
 	// Read once, and refuse to start without it. An operations page served
 	// unstyled is a wall of rows nobody reads carefully, and a dashboard is
 	// believed whether or not it is legible.
-	css, err := os.ReadFile(env("NOCTURNE_CSS", "docs/design/nocturne-styles.css"))
+	css, err := os.ReadFile(cfg.CSSPath)
 	if err != nil {
 		log.Error("stylesheet unavailable", "err", err)
 		os.Exit(1)
 	}
 
-	addr := env("ADMIN_ADDR", ":8081")
-	log.Info("wird-adminweb listening", "addr", addr, "issuer", issuer, "audience", audience)
+	addr := cfg.Addr
+	log.Info("wird-adminweb listening", "addr", addr, "issuer", issuer, "audience", audience, "dev", cfg.Dev)
 	handler := routes(db, verifier, css, log)
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Error("wird-adminweb stopped", "err", err)
@@ -294,11 +297,4 @@ var tmpl = template.Must(template.New("dashboard.html").Funcs(template.FuncMap{
 
 func render(w io.Writer, d dashboard) error {
 	return tmpl.Execute(w, d)
-}
-
-func env(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

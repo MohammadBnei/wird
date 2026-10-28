@@ -169,11 +169,11 @@ func New(ctx context.Context, issuer, audience string, users *store.Store, log *
 
 [auth.go:29-39](../../../server/internal/auth/auth.go#L29-L39)
 
-Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE` ([main.go:29-30](../../../server/cmd/api/main.go#L29-L30)). Swapping the local stub for the real Authentik is one variable, and no code on this path knows which it talks to.
+Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE`, both required unless `WIRD_DEV=1` points them at the local stub ([config.go:82-83](../../../server/cmd/api/config.go#L82-L83)). Swapping the local stub for the real Authentik is those two values, and no code on this path knows which it talks to.
 
 ### 6. The middleware checks, then finds the reader
 
-The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:41-80](../../../server/internal/api/api.go#L41-L80)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
+The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:62-101](../../../server/internal/api/api.go#L62-L101)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
 
 ```go
 		token, err := a.verifier.Verify(r.Context(), raw)

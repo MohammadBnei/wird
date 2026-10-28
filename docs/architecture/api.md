@@ -72,6 +72,7 @@ Errors from the JSON endpoints have one shape, `{"error": "<reason>"}`. The reas
 ```mermaid
 flowchart TB
   env[/"environment variables"/]
+  load["load (config.go)<br/>every refusal at once"]
   main["cmd/api main"]
   open_db["store.Open<br/>connect + run migrations"]
   authn["auth.New<br/>discover the issuer"]
@@ -85,7 +86,7 @@ flowchart TB
   pg[("Postgres")]
   bg["background loops<br/>prune op log, sweep reports"]
 
-  env --> main
+  env --> load --> main
   main --> open_db --> pg
   main --> authn
   main --> routes --> outer
@@ -97,18 +98,33 @@ flowchart TB
 
 ### 1. Start: read the environment, migrate, listen
 
-`main` reads its whole configuration from the environment. It opens Postgres, which also applies every migration not yet run, then asks the identity server to describe itself. If either step fails, the process exits. [main.go:20-34](../../server/cmd/api/main.go#L20-L34)
+`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:51-125](../../server/cmd/api/config.go#L51-L125), [main.go:20-26](../../server/cmd/api/main.go#L20-L26)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:28-42](../../server/cmd/api/main.go#L28-L42)
+
+It fails closed. A deployment that is missing a value refuses to start rather than starting against `localhost`, and a store that is half configured refuses rather than silently answering 503 ([ADR 0036](../adr/0036-each-binary-refuses-a-partial-configuration.md)). `WIRD_DEV=1` is the one switch for a local run: it fills the three required values with the compose stack's and changes nothing else.
 
 | Variable | Default | What it sets |
 |---|---|---|
-| `DATABASE_URL` | the local compose Postgres | The database. [main.go:20](../../server/cmd/api/main.go#L20) |
-| `OIDC_ISSUER` | the local OIDC stub | Where tokens come from. [main.go:29](../../server/cmd/api/main.go#L29) |
-| `OIDC_AUDIENCE` | `wird` | The `aud` a token must carry; in production, the app's client id. [main.go:30](../../server/cmd/api/main.go#L30) |
-| `API_ADDR` | `:8080` | The listen address. [main.go:39](../../server/cmd/api/main.go#L39) |
-| `WIRD_ANDROID_SHA256` | unset, so 404 | Signing-key fingerprints for `assetlinks.json`. [applinks.go:37](../../server/internal/api/applinks.go#L37) |
-| `WIRD_MODELS_S3_*` | unset, so models answer "not configured" | Bucket, endpoint, key pair and region of the voice model store. [models.go:48-68](../../server/internal/api/models.go#L48-L68) |
-| `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. [apk.go:22](../../server/internal/api/apk.go#L22) |
-| `WIRD_APK_VERSION` | unset, so `/download/android/version` answers 204 and the page prints plain "APK" | The release that key is, printed beside the page's Download button. Set by `apk.yml` together with the key. [apk.go:47](../../server/internal/api/apk.go#L47) |
+| `WIRD_DEV` | unset | `1` lets the three required values below default to the local compose Postgres and OIDC stub. Any other value is refused. [config.go:54-60](../../server/cmd/api/config.go#L54-L60) |
+| `DATABASE_URL` | required; with `WIRD_DEV=1`, the local compose Postgres | The database. [config.go:79](../../server/cmd/api/config.go#L79) |
+| `OIDC_ISSUER` | required; with `WIRD_DEV=1`, the local OIDC stub | Where tokens come from, passed through byte for byte (production's trailing slash matters). [config.go:82](../../server/cmd/api/config.go#L82) |
+| `OIDC_AUDIENCE` | required; with `WIRD_DEV=1`, `wird` | The `aud` a token must carry; in production, the app's client id. [config.go:83](../../server/cmd/api/config.go#L83) |
+| `API_ADDR` | `:8080` | The listen address. [config.go:61-63](../../server/cmd/api/config.go#L61-L63) |
+| `WIRD_MODELS_S3_BUCKET` | unset, so `/models/` and `/download/android` answer 503 | The bucket of the voice model store. The four store values come together: one set without the others is refused. [config.go:88-107](../../server/cmd/api/config.go#L88-L107) |
+| `WIRD_MODELS_S3_ENDPOINT` | unset | The store's S3 endpoint. |
+| `WIRD_MODELS_S3_ACCESS_KEY` | unset | The store's access key. |
+| `WIRD_MODELS_S3_SECRET` | unset | The store's secret key. |
+| `WIRD_MODELS_S3_REGION` | `garage` | The region the signature is computed over; a wrong one is a 403. Set alone, it is refused like the other four. [models.go:58](../../server/internal/api/models.go#L58) |
+| `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. Refused without a store. [apk.go:22](../../server/internal/api/apk.go#L22) |
+| `WIRD_APK_VERSION` | unset, so `/download/android/version` answers 204 and the page prints plain "APK" | The release that key is, printed beside the page's Download button. Set by `apk.yml` together with the key, and refused without it. [apk.go:47](../../server/internal/api/apk.go#L47) |
+| `WIRD_ANDROID_SHA256` | unset, so 404 | Signing-key fingerprints for `assetlinks.json`, comma-separated, parsed once at start. [applinks.go:35-44](../../server/internal/api/applinks.go#L35-L44) |
+
+`TestConfigDocumented` holds this table, the variables `load` reads, and its `envVars` list to the same set, and `server/env_test.go` refuses any other code that reads the environment.
+
+Read by libraries, not by `load`, and so not in the table:
+
+- pgx fills any part `DATABASE_URL` leaves out from `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE` and the rest of libpq's variables.
+- go-oidc's discovery and key fetches go through `net/http`, which honours `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`.
+- `crypto/x509` reads `SSL_CERT_FILE` and `SSL_CERT_DIR` for the roots it trusts.
 
 Migrations are embedded in the binary. The server and the test database both come up through `Open`, so a migration cannot work in one and fail in the other. [store.go:28-55](../../server/internal/store/store.go#L28-L55)
 
@@ -127,7 +143,7 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:26-82](../../server/internal/api/api.go#L26-L82)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:47-103](../../server/internal/api/api.go#L47-L103)
 
 ```go
 	v1 := http.NewServeMux()
@@ -143,11 +159,11 @@ func Migrate(ctx context.Context, url string) error {
 	v1.HandleFunc("GET /v1/roots/{letters}/lexicon", h.lexicon)
 ```
 
-`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:71-80](../../server/internal/api/api.go#L71-L80)
+`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:92-101](../../server/internal/api/api.go#L92-L101)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:72-79](../../server/internal/api/api.go#L72-L79)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:93-100](../../server/internal/api/api.go#L93-L100)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 
@@ -168,7 +184,7 @@ The middleware verifies the token, then finds the reader behind its subject, cre
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes. [httpx.go:10-22](../../server/internal/httpx/httpx.go#L10-L22)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:204-211](../../server/internal/api/api.go#L204-L211)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:225-232](../../server/internal/api/api.go#L225-L232)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -181,7 +197,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:178-186](../../server/internal/api/api.go#L178-L186)), a root must be at most 32 bytes of Arabic letters ([api.go:190-200](../../server/internal/api/api.go#L190-L200)), and a kept kind must be `aya`, `root` or `note` ([api.go:117-124](../../server/internal/api/api.go#L117-L124)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:199-207](../../server/internal/api/api.go#L199-L207)), a root must be at most 32 bytes of Arabic letters ([api.go:211-221](../../server/internal/api/api.go#L211-L221)), and a kept kind must be `aya`, `root` or `note` ([api.go:138-145](../../server/internal/api/api.go#L138-L145)).
 
 ### 4. The store holds every SQL statement
 
@@ -222,14 +238,14 @@ No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold 
 
 ### 6. Two loops run beside the server
 
-`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:52-62](../../server/cmd/api/main.go#L52-L62), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:75-91](../../server/cmd/api/main.go#L75-L91)). [main.go:36-37](../../server/cmd/api/main.go#L36-L37)
+`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:60-70](../../server/cmd/api/main.go#L60-L70), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:83-99](../../server/cmd/api/main.go#L83-L99)). [main.go:44-45](../../server/cmd/api/main.go#L44-L45)
 
 ```go
 	go maintain(ctx, db, log)
 	go sweep(ctx, db, log)
 ```
 
-Both are marked as deliberate ceilings: they assume one replica ([main.go:50-51](../../server/cmd/api/main.go#L50-L51)). Two replicas racing the report sweep could lose or double a report. [main.go:81-83](../../server/cmd/api/main.go#L81-L83)
+Both are marked as deliberate ceilings: they assume one replica ([main.go:58-59](../../server/cmd/api/main.go#L58-L59)). Two replicas racing the report sweep could lose or double a report. [main.go:89-91](../../server/cmd/api/main.go#L89-L91)
 
 ## Why it is this way
 

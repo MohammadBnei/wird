@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 	"strconv"
 	"unicode"
 
@@ -21,9 +20,31 @@ type Handler struct {
 	log   *slog.Logger
 }
 
+// Config is what the open routes serve from. cmd/api builds it once at start
+// from the environment (server/cmd/api/config.go), so nothing in this package
+// reads the environment, at start or on a request.
+type Config struct {
+	// Models is the store /models/ and /download/android presign against.
+	// Nil means no store: both answer 503.
+	Models *Models
+	// APKKey is the object /download/android redirects to; empty answers 503.
+	APKKey string
+	// APKVersion is the release APKKey is; empty answers 204.
+	APKVersion string
+	// AndroidSHA256 is the signing-key fingerprints, comma-separated, as the
+	// deployment writes them; parsed once in Routes. Empty answers 404.
+	AndroidSHA256 string
+}
+
+// Models is the S3 store the recogniser and the APK live in. Region empty
+// means Garage's.
+type Models struct {
+	Bucket, Endpoint, AccessKey, Secret, Region string
+}
+
 // Routes wires every endpoint behind the authenticator, except the few that are
 // reached without an account: each open route below says why it is open.
-func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handler {
+func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger, c Config) http.Handler {
 	h := &Handler{store: s, log: log}
 
 	v1 := http.NewServeMux()
@@ -48,13 +69,13 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	mux.HandleFunc(callbackPath, authCallback)
 	// Android fetches this before it will treat /auth/callback as this app's
 	// link, and it is fetched by the platform rather than by a signed-in reader.
-	mux.HandleFunc(assetLinksPath, assetLinks)
+	mux.HandleFunc(assetLinksPath, assetLinks(c.AndroidSHA256))
 	mux.HandleFunc(appSiteAssociationPath, appSiteAssociation)
 	// The recogniser, fetched by a phone that has never signed in and never
 	// needs to. It answers 302 to the store and the bytes never come through
 	// here; without a store configured it says so rather than pretending the
 	// file is missing.
-	models := modelStoreFromEnv(log)
+	models := newModelStore(c.Models, log)
 	if models != nil {
 		mux.HandleFunc(modelsPath, models.serve)
 	} else {
@@ -62,8 +83,8 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger) http.Handle
 	}
 	// The app itself, from the same store, for the public page's Download
 	// buttons. apk.go carries why the key is configured rather than fixed.
-	mux.HandleFunc(apkPath, apk(models, os.Getenv("WIRD_APK_KEY"), log))
-	mux.HandleFunc(apkVersionPath, apkVersion(os.Getenv("WIRD_APK_VERSION")))
+	mux.HandleFunc(apkPath, apk(models, c.APKKey, log))
+	mux.HandleFunc(apkVersionPath, apkVersion(c.APKVersion))
 	// The senses, fetched by a phone that has never signed in. Open for the
 	// same reason as the recogniser, and registered here rather than on v1 so
 	// ServeMux specificity keeps it out of the middleware. senses.go carries
