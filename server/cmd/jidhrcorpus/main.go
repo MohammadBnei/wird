@@ -14,11 +14,9 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -47,14 +45,15 @@ const note = "The corpus rootd serves, written by server/cmd/jidhrcorpus. The ro
 	"from no lexicon, and carrying nobody's authority. Rebuild from both sources; editing this file by " +
 	"hand puts it out of step with the corpus and with the server."
 
-type config struct{ in, dsn, out string }
-
 func main() {
-	cfg, _ := parseConfig(flag.CommandLine, os.Args[1:], os.Getenv) // ExitOnError: a bad flag exits 2
-
-	db, err := sql.Open("sqlite", "file:"+filepath.Clean(cfg.in)+"?mode=ro")
+	cfg, err := fromProcess() // ExitOnError: a bad flag exits 2
 	if err != nil {
-		log.Fatalf("open %s: %v", cfg.in, err)
+		log.Fatalf("config refused: %v", err)
+	}
+
+	db, err := sql.Open("sqlite", "file:"+filepath.Clean(cfg.In)+"?mode=ro")
+	if err != nil {
+		log.Fatalf("open %s: %v", cfg.In, err)
 	}
 	defer db.Close()
 
@@ -63,7 +62,7 @@ func main() {
 	// read, and a read-only tool that migrates the database it reads couples a
 	// corpus rebuild to whatever migrations the operator's tree happens to carry.
 	// senseseed makes the same choice for the same reason.
-	pool, err := pgxpool.New(ctx, cfg.dsn)
+	pool, err := pgxpool.New(ctx, cfg.DSN)
 	if err != nil {
 		log.Fatalf("database unavailable: %v", err)
 	}
@@ -82,18 +81,18 @@ func main() {
 
 	c, err := build(db, pack.Senses)
 	if err != nil {
-		log.Fatalf("read %s: %v", cfg.in, err)
+		log.Fatalf("read %s: %v", cfg.In, err)
 	}
-	if err := write(cfg.out, c); err != nil {
-		log.Fatalf("write %s: %v", cfg.out, err)
+	if err := write(cfg.Out, c); err != nil {
+		log.Fatalf("write %s: %v", cfg.Out, err)
 	}
 
-	fi, err := os.Stat(cfg.out)
+	fi, err := os.Stat(cfg.Out)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("%s\n  roots %d  attested forms %d  rootless forms %d  roots with a meaning %d  languages %v\n  %.2f MB\n",
-		cfg.out, len(c.Roots), len(c.Attested), len(c.Rootless), len(c.Meanings), languages(c), float64(fi.Size())/(1<<20))
+		cfg.Out, len(c.Roots), len(c.Attested), len(c.Rootless), len(c.Meanings), languages(c), float64(fi.Size())/(1<<20))
 }
 
 // corpusFile is what jidhr reads, with the provenance note the reader of the file
@@ -221,35 +220,6 @@ func build(db *sql.DB, senses []store.Sense) (root.Corpus, error) {
 	}
 	return c, nil
 }
-
-// parseConfig reads the flags, then the DSN from the environment, so a run
-// against a deployed database is a variable rather than a password in a shell
-// history. The DSN is never a flag nor a flag's default: a default is printed by
-// -h and by every flag error.
-//
-// -db keeps its name and its meaning: the corpus.db the morphology is read out
-// of. The Wird database is DATABASE_URL only.
-//
-// Environment: DATABASE_URL (the Wird database; the local compose one if unset).
-func parseConfig(fs *flag.FlagSet, args []string, getenv func(string) string) (config, error) {
-	var c config
-	fs.StringVar(&c.in, "db", "./app/assets/corpus.db", "the corpus.db the app bundles")
-	fs.StringVar(&c.out, "out", "./jidhr/testdata/quran.json", "the jidhr corpus to write")
-	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "Usage of %s:\n", fs.Name())
-		fs.PrintDefaults()
-		fmt.Fprintln(fs.Output(), "\nEnvironment (read, never printed):\n"+
-			"  DATABASE_URL  the Wird database the root senses are read out of; the local compose database if unset")
-	}
-	if err := fs.Parse(args); err != nil {
-		return c, err
-	}
-	c.dsn = cmp.Or(getenv("DATABASE_URL"), localDSN)
-	return c, nil
-}
-
-// localDSN is the compose database's, a fallback with nothing secret in it.
-const localDSN = "postgres://wird:wird@localhost:5432/wird"
 
 func write(path string, c root.Corpus) error {
 	f, err := os.Create(path)

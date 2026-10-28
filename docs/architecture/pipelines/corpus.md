@@ -133,7 +133,7 @@ if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
 }
 ```
 
-[ingest/main.go:77](../../../server/cmd/ingest/main.go#L77-L80) · [the copyright check](../../../server/cmd/ingest/verify.go#L118-L149)
+[ingest/main.go:69](../../../server/cmd/ingest/main.go#L69-L72) · [the copyright check](../../../server/cmd/ingest/verify.go#L118-L149)
 
 ### 2. Timings come from the quran-align release
 
@@ -148,7 +148,7 @@ if err := extractTimings(filepath.Join(dir, alignZip), dir, recitations); err !=
 }
 ```
 
-[ingest/main.go:86](../../../server/cmd/ingest/main.go#L86-L91) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
+[ingest/main.go:78](../../../server/cmd/ingest/main.go#L78-L83) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
 
 ### 3. Sūras and ayas, one file each
 
@@ -162,7 +162,7 @@ if len(suras) != 114 {
 }
 ```
 
-[ingest/main.go:105](../../../server/cmd/ingest/main.go#L105-L109) · [the refusal](../../../server/cmd/ingest/main.go#L163-L176)
+[ingest/main.go:99](../../../server/cmd/ingest/main.go#L99-L103) · [the refusal](../../../server/cmd/ingest/main.go#L157-L170)
 
 ### 3b. The French under each word, from The Last Dialogue
 
@@ -245,15 +245,15 @@ if _, err := tx.Exec(`INSERT INTO corpus_meta VALUES (?,?,?)`,
 
 [etl/write.go:202](../../../server/cmd/etl/write.go#L201-L204) · [the schema](../../../server/cmd/etl/write.go#L16-L144) · [why root_notes is empty](../../../server/cmd/etl/write.go#L251-L265)
 
-`corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 7. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
+`corpus_version` is the number the API groups reports by. It is a flag whose default is the current version, 8. The documented rebuild passes no flag, so the default is what ships. A test in the app checks the bundled file agrees.
 
 It is also how a phone already holding an older corpus gets the new one. The app carries the same number as `bundledCorpusVersion`. When the installed file's version is lower, the app fills the new corpus beside it, copies the reader's own tables and the fetched senses across, and swaps the file in by rename. A failed upgrade keeps the old file. A rebuild that keeps the same number is therefore never delivered: bump it.
 
 ```go
-version := flag.Int("corpus-version", 7, "corpus_version the API negotiates")
+fs.IntVar(&c.CorpusVersion, "corpus-version", 8, "corpus_version the API negotiates")
 ```
 
-[etl/main.go:19](../../../server/cmd/etl/main.go#L19)
+[etl/config.go:28](../../../server/cmd/etl/config.go#L28)
 
 ### 8. The gate keeps it under 60 MB
 

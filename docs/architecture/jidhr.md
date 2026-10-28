@@ -259,7 +259,7 @@ If nothing is attested, the templates in `pattern.go` propose readings ([pattern
 
 ### 10. How the file is rebuilt
 
-`server/cmd/jidhrcorpus` reads the roots and word forms from `app/assets/corpus.db`, and the senses from the API's Postgres through the same read `GET /v1/senses` uses ([jidhrcorpus/main.go:78](../../server/cmd/jidhrcorpus/main.go#L78)). Its flags are `-db` and `-out`; the database is `DATABASE_URL` only, never a flag ([jidhrcorpus/main.go:234](../../server/cmd/jidhrcorpus/main.go#L234-L249)). It refuses a sense written for a root the morphology does not record.
+`server/cmd/jidhrcorpus` reads the roots and word forms from `app/assets/corpus.db`, and the senses from the API's Postgres through the same read `GET /v1/senses` uses ([jidhrcorpus/main.go:77](../../server/cmd/jidhrcorpus/main.go#L77)). Its flags are `-db` and `-out`; the database is `DATABASE_URL` only, never a flag, and an unset one is refused unless `WIRD_DEV=1` names the local compose database ([jidhrcorpus/config.go:25](../../server/cmd/jidhrcorpus/config.go#L25-L67)). It refuses a sense written for a root the morphology does not record.
 
 ```go
 	for _, sn := range senses {
@@ -279,9 +279,9 @@ If nothing is attested, the templates in `pattern.go` propose readings ([pattern
 	}
 ```
 
-[jidhrcorpus/main.go:207](../../server/cmd/jidhrcorpus/main.go#L207-L221)
+[jidhrcorpus/main.go:206](../../server/cmd/jidhrcorpus/main.go#L206-L220)
 
-The file checked in today holds 1,642 roots, 17,934 attested forms, 1,189 rootless forms, and senses in `en` and `fr` for all 1,642 roots, all in the plain register. The file carries a `note` saying the senses are drafts written by a language model and checked by no person ([jidhrcorpus/main.go:43](../../server/cmd/jidhrcorpus/main.go#L43-L48)). Editing the JSON by hand is undone by the next rebuild.
+The file checked in today holds 1,642 roots, 17,934 attested forms, 1,189 rootless forms, and senses in `en` and `fr` for all 1,642 roots, all in the plain register. The file carries a `note` saying the senses are drafts written by a language model and checked by no person ([jidhrcorpus/main.go:41](../../server/cmd/jidhrcorpus/main.go#L41-L46)). Editing the JSON by hand is undone by the next rebuild.
 
 ## Why it is this way
 

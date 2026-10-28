@@ -29,6 +29,8 @@ flowchart LR
   A34[0034 setup, then a home of few doors] -. supersedes in part .-> A33[0033 home says where the reader stands]
   A34 -. amends .-> A10
   A34 -. amends .-> A26
+  A36[0036 each binary refuses a partial configuration] -. amends .-> A8
+  A37[0037 each CLI refuses a partial configuration] -. amends .-> A36
 ```
 
 | File | Decision | Status |
@@ -69,4 +71,5 @@ flowchart LR
 | [0033-home-says-where-the-reader-stands.md](0033-home-says-where-the-reader-stands.md) | Home says where the reader stands, and the root constellation is gone | accepted, superseded in part by 0034 |
 | [0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md](0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md) | A reader starts with a short setup, then a home of few doors | accepted |
 | [0035-server-takes-jidhr-from-the-same-commit.md](0035-server-takes-jidhr-from-the-same-commit.md) | Server takes jidhr from the same commit, through a require and a local replace | accepted |
-| [0036-each-binary-refuses-a-partial-configuration.md](0036-each-binary-refuses-a-partial-configuration.md) | Each binary refuses a partial configuration | accepted |
+| [0036-each-binary-refuses-a-partial-configuration.md](0036-each-binary-refuses-a-partial-configuration.md) | Each binary refuses a partial configuration | accepted, amended by 0037 |
+| [0037-each-cli-refuses-a-partial-configuration.md](0037-each-cli-refuses-a-partial-configuration.md) | Each CLI refuses a partial configuration | accepted |

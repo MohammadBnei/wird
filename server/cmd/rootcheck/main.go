@@ -18,35 +18,18 @@ import (
 )
 
 func main() {
-	db := flag.String("db", "./app/assets/corpus.db", "corpus.db to read")
-	laneDir := flag.String("lane", "./data/raw/lane", "the  clone of Lane's TEI; gitignored, consulted, never shipped")
-	threshold := flag.Float64("threshold", 0, "score pass mark; 0 means the calibrated bar. Overriding it drops every term but the score and the clause order")
-	flag.Usage = func() {
-		fmt.Fprint(os.Stderr, `rootcheck <command> [flags]
-
-  check <root> <sense>  score one candidate sense against one root
-  calibrate             score the built-in right/wrong senses, report the separation
-  scan                  score every known-right sense against every root
-  survey                how much evidence each root offers, before any sense exists
-  cost <tsv>            how many senses in a root\tsense TSV each part of the bar keeps
-  order <tsv>           rewrite the TSV so every sense leads with its heaviest clause
-  evidence [root...]    the glosses a sense must be written from, heaviest first
-  build <tsv> <json>    check every proposed sense and write out the ones that hold
-  reliability           which wazn-to-English rules the corpus supports
-  lane <root>           Lane's article for a root, to write its sense from
-
-`)
-		flag.PrintDefaults()
+	c, err := fromProcess() // ExitOnError: a bad flag exits 2, -h exits 0
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "rootcheck: config refused:", err)
+		os.Exit(1)
 	}
-	flag.Parse()
-
-	args := flag.Args()
+	args, threshold, laneDir := c.Args, c.Threshold, c.LaneDir
 	if len(args) == 0 {
-		flag.Usage()
+		flag.CommandLine.Usage()
 		os.Exit(2)
 	}
 
-	roots, err := rootsense.LoadRoots(*db)
+	roots, err := rootsense.LoadRoots(c.DB)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "rootcheck:", err)
 		os.Exit(1)
@@ -57,20 +40,20 @@ func main() {
 		// Before the corpus is even opened: this reads no corpus, and a missing
 		// clone should say so rather than failing on a root.
 		if len(args) < 2 {
-			flag.Usage()
+			flag.CommandLine.Usage()
 			os.Exit(2)
 		}
-		if err := lane.Print(os.Stdout, *laneDir, args[1]); err != nil {
+		if err := lane.Print(os.Stdout, laneDir, args[1]); err != nil {
 			fmt.Fprintln(os.Stderr, "rootcheck:", err)
 			os.Exit(1)
 		}
 		return
 	case "check":
 		if len(args) < 3 {
-			flag.Usage()
+			flag.CommandLine.Usage()
 			os.Exit(2)
 		}
-		bar, err := barFor(roots, *threshold)
+		bar, err := barFor(roots, threshold)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "rootcheck:", err)
 			os.Exit(1)
@@ -91,7 +74,7 @@ func main() {
 		sep.Report(os.Stdout, roots)
 
 	case "scan":
-		bar, err := barFor(roots, *threshold)
+		bar, err := barFor(roots, threshold)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "rootcheck:", err)
 			os.Exit(1)
@@ -100,10 +83,10 @@ func main() {
 
 	case "cost":
 		if len(args) < 2 {
-			flag.Usage()
+			flag.CommandLine.Usage()
 			os.Exit(2)
 		}
-		bar, err := barFor(roots, *threshold)
+		bar, err := barFor(roots, threshold)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "rootcheck:", err)
 			os.Exit(1)
@@ -115,7 +98,7 @@ func main() {
 
 	case "order":
 		if len(args) < 2 {
-			flag.Usage()
+			flag.CommandLine.Usage()
 			os.Exit(2)
 		}
 		if err := Order(os.Stdout, roots, args[1]); err != nil {
@@ -128,10 +111,10 @@ func main() {
 
 	case "build":
 		if len(args) < 3 {
-			flag.Usage()
+			flag.CommandLine.Usage()
 			os.Exit(2)
 		}
-		bar, err := barFor(roots, *threshold)
+		bar, err := barFor(roots, threshold)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "rootcheck:", err)
 			os.Exit(1)
@@ -148,7 +131,7 @@ func main() {
 		Reliability(os.Stdout, roots)
 
 	default:
-		flag.Usage()
+		flag.CommandLine.Usage()
 		os.Exit(2)
 	}
 }

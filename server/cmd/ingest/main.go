@@ -4,14 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -57,28 +54,23 @@ var defaultRecitations = []string{
 var sourceURLs = []string{chaptersURL, versesURL, alignURL, corpusPage, tldIndexURL}
 
 func main() {
-	out := flag.String("out", "./data/raw/", "directory the downloads land in; gitignored")
-	manifestPath := flag.String("manifest", "./data/manifest.json", "manifest to write; this is what git holds")
-	only := flag.String("suras", "", "suras to fetch, e.g. 1,2,103,112 or 1-5 (default: all 114)")
-	recitations := flag.String("recitations", strings.Join(defaultRecitations, ","),
-		"which of quran-align's 12 recitations to take word timings from, comma-separated")
-	delay := flag.Duration("delay", 200*time.Millisecond, "pause between requests")
-	retries := flag.Int("retries", 5, "retries per request before giving up")
-	force := flag.Bool("force", false, "re-download files that are already on disk")
-	flag.Parse()
-
-	if err := run(*out, *manifestPath, *only, strings.Split(*recitations, ","), *delay, *retries, *force); err != nil {
+	c, err := fromProcess() // ExitOnError: a bad flag exits 2
+	if err != nil {
+		log.Fatalf("config refused: %v", err)
+	}
+	if err := run(c); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(dir, manifestPath, only string, recitations []string, delay time.Duration, retries int, force bool) error {
+func run(c Config) error {
 	ctx := context.Background()
+	dir, manifestPath, recitations, force := c.Out, c.Manifest, c.Recitations, c.Force
 	// Before 38 MB of downloads: the one file a person has to put there by hand.
 	if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
 		return err
 	}
-	f := &fetcher{hc: &http.Client{Timeout: 2 * time.Minute}, delay: delay, retries: retries}
+	f := &fetcher{hc: &http.Client{Timeout: 2 * time.Minute}, delay: c.Delay, retries: c.Retries}
 
 	// The word timings come from quran-align's release package rather than from
 	// quran.com, which serves the same numbers on terms that forbid storing them
@@ -98,9 +90,11 @@ func run(dir, manifestPath, only string, recitations []string, delay time.Durati
 		return err
 	}
 
-	suras, err := selectSuras(only, chapters)
-	if err != nil {
-		return err
+	suras := c.Suras
+	if suras == nil {
+		for _, ch := range chapters {
+			suras = append(suras, ch.ID)
+		}
 	}
 	if len(suras) != 114 {
 		if err := refusePartialOverwrite(manifestPath); err != nil {
@@ -173,31 +167,4 @@ func refusePartialOverwrite(path string) error {
 			"Pass -manifest elsewhere, or drop -suras", path)
 	}
 	return nil
-}
-
-func selectSuras(spec string, chapters []chapter) ([]int, error) {
-	if strings.TrimSpace(spec) == "" {
-		out := make([]int, 0, len(chapters))
-		for _, ch := range chapters {
-			out = append(out, ch.ID)
-		}
-		return out, nil
-	}
-	var out []int
-	for _, part := range strings.Split(spec, ",") {
-		part = strings.TrimSpace(part)
-		lo, hi, isRange := strings.Cut(part, "-")
-		if !isRange {
-			hi = lo
-		}
-		a, err1 := strconv.Atoi(strings.TrimSpace(lo))
-		b, err2 := strconv.Atoi(strings.TrimSpace(hi))
-		if err1 != nil || err2 != nil || a < 1 || b > 114 || a > b {
-			return nil, fmt.Errorf("-suras %q: %q is not a sura or a range within 1-114", spec, part)
-		}
-		for n := a; n <= b; n++ {
-			out = append(out, n)
-		}
-	}
-	return out, nil
 }

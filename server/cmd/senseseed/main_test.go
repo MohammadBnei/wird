@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
-	"flag"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "modernc.org/sqlite"
 )
 
@@ -178,34 +177,18 @@ func TestAnEmptyRootsTableRefusesEverySenseOneByOne(t *testing.T) {
 
 func errOf[T any](_ T, err error) error { return err }
 
-// The failure: -h, and every flag error, prints the database password.
-func TestHelpNeverPrintsTheDatabasePassword(t *testing.T) {
-	fs := flag.NewFlagSet("senseseed", flag.ContinueOnError)
-	var buf bytes.Buffer
-	fs.SetOutput(&buf)
-	getenv := func(string) string { return "postgres://u:PWSENTINEL@h/db" }
-	if _, err := parseConfig(fs, []string{"-h"}, getenv); err != flag.ErrHelp {
-		t.Fatalf("-h: got %v, want flag.ErrHelp", err)
+func TestTargetNamesTheDatabaseAndNotThePassword(t *testing.T) {
+	cfg, err := pgxpool.ParseConfig("postgres://wird:s3cret-sentinel@db.example:6543/wirdprod")
+	if err != nil {
+		t.Fatal(err)
 	}
-	out := buf.String()
-	if strings.Contains(out, "PWSENTINEL") {
-		t.Fatalf("-h printed DATABASE_URL:\n%s", out)
-	}
-	if fs.Lookup("db") != nil {
-		t.Error("-db is a flag again; a DSN on the command line is in the shell history")
-	}
-	for _, want := range []string{"-tsv", "-roots", "-dry", "DATABASE_URL"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("-h does not mention %s:\n%s", want, out)
+	got := target(cfg)
+	for _, want := range []string{"wirdprod", "db.example:6543"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%q does not name %s", got, want)
 		}
 	}
-}
-
-func TestTheDSNIsDatabaseURLThenTheLocalCompose(t *testing.T) {
-	for env, want := range map[string]string{"postgres://u:p@h/db": "postgres://u:p@h/db", "": localDSN} {
-		c, err := parseConfig(flag.NewFlagSet("", flag.ContinueOnError), nil, func(string) string { return env })
-		if err != nil || c.dsn != want {
-			t.Errorf("DATABASE_URL=%q: dsn %q, %v; want %q", env, c.dsn, err, want)
-		}
+	if strings.Contains(got, "s3cret-sentinel") {
+		t.Errorf("%q prints the password", got)
 	}
 }
