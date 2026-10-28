@@ -77,6 +77,7 @@ func TestAHalfConfiguredDeploymentStarts(t *testing.T) {
 		{"Inf", with(prod, "ROOTD_RATE", "Inf"), []string{badRate}},
 		{"-Inf", with(prod, "ROOTD_RATE", "-infinity"), []string{badRate}},
 		{"a burst under one", with(prod, "ROOTD_RATE", "0.1"), []string{badRate}},
+		{"a burst past MaxFloat64", with(prod, "ROOTD_RATE", "1e308"), []string{badRate}},
 		{"both at once", map[string]string{"ROOTD_RATE": "fast"}, []string{
 			"ROOTD_API_KEY is unset (ROOTD_DEV=1 serves /v1 without a key)", "ROOTD_RATE is not a number"}},
 	} {

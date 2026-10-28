@@ -113,7 +113,7 @@ flowchart TD
 
 ### 1. rootd loads the file and serves it
 
-`main` reads its whole configuration once, through `load` in `config.go`, and refuses to start with every problem in one `config refused` line: an unset `ROOTD_API_KEY` without `ROOTD_DEV=1`, or a `ROOTD_RATE` that is not `0` or a finite rate of at least `0.25` ([config.go:35-80](../../jidhr/cmd/rootd/config.go#L35-L80)). The [README's table](../../jidhr/cmd/rootd/README.md) lists every variable. `ROOTD_CORPUS` defaults to `jidhr/testdata/quran.json` ([main.go:29](../../jidhr/cmd/rootd/main.go#L29)). It loads the whole file into a `MemoryStore`. If the file is missing or broken, the process stops rather than serving empty answers.
+`main` reads its whole configuration once, through `load` in `config.go`, and refuses to start with every problem in one `config refused` line: an unset `ROOTD_API_KEY` without `ROOTD_DEV=1`, or a `ROOTD_RATE` that is not `0` or a finite rate of at least `0.25` ([config.go:35-81](../../jidhr/cmd/rootd/config.go#L35-L81)). The [README's table](../../jidhr/cmd/rootd/README.md) lists every variable. `ROOTD_CORPUS` defaults to `jidhr/testdata/quran.json` ([config.go:53-55](../../jidhr/cmd/rootd/config.go#L53-L55)). It loads the whole file into a `MemoryStore`. If the file is missing or broken, the process stops rather than serving empty answers.
 
 ```go
 	f, err := os.Open(corpusPath)

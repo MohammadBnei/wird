@@ -66,8 +66,9 @@ func load(getenv func(string) string) (Config, error) {
 			errs = append(errs, errors.New("ROOTD_RATE is not a number"))
 		// Negative and NaN used to turn the limiter off, and +Inf let every
 		// request through; a burst under one token (which takes in every
-		// negative) answered 429 forever.
-		case v != 0 && (math.IsNaN(v) || math.IsInf(v, 0) || v*burstPerRate < 1):
+		// negative) answered 429 forever. The burst is checked rather than v: a
+		// finite rate past MaxFloat64/burstPerRate is an infinite burst.
+		case v != 0 && (math.IsNaN(v) || math.IsInf(v*burstPerRate, 0) || v*burstPerRate < 1):
 			errs = append(errs, errors.New("ROOTD_RATE must be 0 (off) or a finite rate of at least 0.25 a second"))
 		default:
 			c.Rate = v
