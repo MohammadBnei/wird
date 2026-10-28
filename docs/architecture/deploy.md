@@ -137,7 +137,7 @@ The Flutter half of the gate never runs in CI. It needs fvm and a device, and th
         run: echo "value=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
 ```
 
-[release.yml:157-159](../../.github/workflows/release.yml#L157-L159)
+[release.yml:178-180](../../.github/workflows/release.yml#L178-L180)
 
 It builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC at build time. It is never stored in the repo.
 
@@ -157,7 +157,7 @@ Both images are built from the same Dockerfile, one target each, in one job and 
           done
 ```
 
-[release.yml:227-237](../../.github/workflows/release.yml#L227-L237) · job guard [release.yml:137-145](../../.github/workflows/release.yml#L137-L145) · password step [release.yml:169-186](../../.github/workflows/release.yml#L169-L186)
+[release.yml:246-256](../../.github/workflows/release.yml#L246-L256) · job guard [release.yml:158-166](../../.github/workflows/release.yml#L158-L166) · password step [release.yml:190-201](../../.github/workflows/release.yml#L190-L201)
 
 ### 4. One binary per image
 
@@ -201,7 +201,7 @@ ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
           done
 ```
 
-[release.yml:275-281](../../.github/workflows/release.yml#L275-L281) · commit and push [release.yml:286-297](../../.github/workflows/release.yml#L286-L297) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
+[release.yml:294-300](../../.github/workflows/release.yml#L294-L300) · commit and push [release.yml:305-316](../../.github/workflows/release.yml#L305-L316) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
 A manual run builds and pushes both images but skips this job, so it never deploys.
 
