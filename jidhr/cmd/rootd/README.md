@@ -205,12 +205,14 @@ Flutter app bundles. Edit the database — through `server/cmd/etl`, which refus
 sense the root's own words no longer bear out — then rebuild:
 
 ```bash
-go run ./server/cmd/jidhrcorpus
+WIRD_DEV=1 go run ./server/cmd/jidhrcorpus
 # ./jidhr/testdata/quran.json
 #   roots 1642  attested forms 17934  rootless forms 1189  roots with a meaning 523  languages [en fr]
 #   0.80 MB
 ```
 
+The meanings come from the Wird server's Postgres: `WIRD_DEV=1` reads the local compose
+database, `DATABASE_URL` any other, and with neither the command refuses to run.
 `-db` and `-out` move either end. Editing the JSON by hand puts it out of step with
 the database the app reads, and the next rebuild silently reverts you.
 

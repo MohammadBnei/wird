@@ -1,6 +1,6 @@
 # 36. Each binary refuses a partial configuration
 
-Date: 2026-10-28. Status: accepted. Amends ADR 0008.
+Date: 2026-10-28. Status: accepted, amended by 0037. Amends ADR 0008.
 
 ## Context
 

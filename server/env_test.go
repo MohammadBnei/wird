@@ -46,12 +46,12 @@ var envAllowed = map[string][]string{
 	"server/cmd/api/config.go":      {"os.Getenv"},
 	"server/cmd/adminweb/config.go": {"os.Getenv"},
 	"jidhr/cmd/rootd/config.go":     {"os.Getenv"},
-	// The CLIs already take getenv as a parameter; their Config files are
-	// W4b, and until then they keep passing os.Getenv from main.
-	"server/cmd/jidhrcorpus/main.go": {"os.Getenv"},
-	"server/cmd/senseseed/main.go":   {"os.Getenv"},
-	// rootdraft also runs `hf auth token` (main.go:150) for its token.
-	"server/cmd/rootdraft/main.go": {"import os/exec", "os.Getenv"},
+	// One Config per CLI (docs/adr/0037). etl, ingest and rootcheck read no
+	// environment; these three pass os.Getenv to their loadConfig, and
+	// rootdraft's also runs `hf auth token` for its token.
+	"server/cmd/jidhrcorpus/config.go": {"os.Getenv"},
+	"server/cmd/senseseed/config.go":   {"os.Getenv"},
+	"server/cmd/rootdraft/config.go":   {"import os/exec", "os.Getenv"},
 	// A test helper outside a _test.go file, imported only by tests: the DSN
 	// of the Postgres the tests make their throwaway databases in.
 	"server/internal/testenv/postgres.go": {"os.Getenv()"},

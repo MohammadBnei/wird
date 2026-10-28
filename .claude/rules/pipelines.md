@@ -24,7 +24,7 @@ paths:
 - Secrets env only: `HF_TOKEN`→`OPENAI_API_KEY`→`hf auth token`; `DATABASE_URL`. Never a flag, never a flag default from env → `-h` + every flag error print it. Never log a DSN.
 
 ## Prompt `data/root-sense-prompt.md` — traps
-- Loaded at runtime by `server/cmd/rootdraft/main.go`. Path load-bearing.
+- Loaded at runtime by `server/cmd/rootdraft` (default path in `config.go`). Path load-bearing.
 - Never put a number in clause-count rule, not even "typical". Any figure = target, not bound (measured: cap "2-6" → all 30 roots at 6; no number → mean 8.17, range 4-13).
 - Cap removal exposed 3 rules it enforced by accident, now explicit: one sense ≠ many clauses; heaviest sense (occurrence counts) leads, not Lane's order; incidental denotation dressed as verb ("to be a swift horse") forbidden same as noun.
 - Negative examples get echoed. State test, not counterexample.

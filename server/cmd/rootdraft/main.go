@@ -26,14 +26,11 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"database/sql"
 	"encoding/csv"
-	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 	"sync"
@@ -49,67 +46,16 @@ var verseRef = regexp.MustCompile(`\b\d{1,3}\s*:\s*\d{1,3}\b`)
 
 const draftHeader = "root\tsense_en\tsense_fr\tpoetic_en\tpoetic_fr\tlane\tprompt\tmodel"
 
-type config struct {
-	db, laneDir, prompt, out string
-	roots                    string
-	limit, workers           int
-	model, baseURL, apiKey   string
-	jsonMode, force, dry     bool
-}
-
 func main() {
-	c, _ := parseConfig(flag.CommandLine, os.Args[1:], os.Getenv) // ExitOnError: a bad flag exits 2
+	c, err := fromProcess() // ExitOnError: a bad flag exits 2
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "rootdraft: config refused:", err)
+		os.Exit(1)
+	}
 	if err := draftStage(c); err != nil {
 		fmt.Fprintln(os.Stderr, "rootdraft:", err)
 		os.Exit(1)
 	}
-}
-
-// parseConfig reads the flags and then the environment. The token is never a
-// flag, nor any flag's default: a flag default is printed by -h and by every
-// flag error, so a token there lands in a terminal, a screenshot or a CI log.
-// No default here reads the environment at all; the env fills a flag left empty
-// after parsing, so -h only ever names a variable.
-//
-// Environment: HF_TOKEN, then OPENAI_API_KEY, then `hf auth token` (the token);
-// OPENAI_BASE_URL (the endpoint when -base-url is not given).
-func parseConfig(fs *flag.FlagSet, args []string, getenv func(string) string) (config, error) {
-	var c config
-	fs.StringVar(&c.db, "db", "./app/assets/corpus.db", "corpus.db to read the glosses from")
-	fs.StringVar(&c.laneDir, "lane", "./data/raw/lane", "the `originals` clone of Lane's TEI; gitignored, consulted, never shipped")
-	fs.StringVar(&c.prompt, "prompt", "", "the prompt to send; edit this to iterate")
-	fs.StringVar(&c.out, "out", "", "rows land here, for a person to read and promote; append-only, last row for a root wins")
-	fs.StringVar(&c.roots, "roots", "", "comma-separated roots; default is every root, commonest first")
-	fs.IntVar(&c.limit, "limit", 0, "do this many NEW roots; ones already done do not count against it; 0 means all")
-	fs.StringVar(&c.model, "model", "deepseek-ai/DeepSeek-V3.2", "the model to use")
-	fs.StringVar(&c.baseURL, "base-url", "", "any OpenAI-shaped endpoint: the HF router, OpenAI, OpenRouter, a local Ollama or vLLM; "+
-		"default $OPENAI_BASE_URL, else "+defaultBaseURL)
-	fs.BoolVar(&c.jsonMode, "json-mode", true, "ask the provider for JSON; some reject the field, so turn it off for those")
-	fs.IntVar(&c.workers, "workers", 6, "roots drafted at once; the run waits on the provider, "+
-		"not on this machine, so raise it until the provider rate-limits and then back off")
-	fs.BoolVar(&c.force, "force", false, "redo roots already in -out")
-	fs.BoolVar(&c.dry, "dry", false, "print the assembled prompt for each root and call nothing")
-	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "Usage of %s:\n", fs.Name())
-		fs.PrintDefaults()
-		fmt.Fprintln(fs.Output(), "\nEnvironment (read, never printed):\n"+
-			"  HF_TOKEN, else OPENAI_API_KEY, else `hf auth token`  the bearer token\n"+
-			"  OPENAI_BASE_URL  the endpoint when -base-url is not given")
-	}
-	if err := fs.Parse(args); err != nil {
-		return c, err
-	}
-	if c.prompt == "" {
-		c.prompt = "./data/root-sense-prompt.md"
-	}
-	if c.out == "" {
-		c.out = "./data/root_senses_draft.tsv"
-	}
-	if c.baseURL == "" {
-		c.baseURL = cmp.Or(getenv("OPENAI_BASE_URL"), defaultBaseURL)
-	}
-	c.apiKey = cmp.Or(getenv("HF_TOKEN"), getenv("OPENAI_API_KEY"))
-	return c, nil
 }
 
 const defaultBaseURL = "https://router.huggingface.co/v1"
@@ -117,7 +63,7 @@ const defaultBaseURL = "https://router.huggingface.co/v1"
 // Everything a run needs: the corpus, the prompt, the output, and a model to
 // talk to unless this is a dry run.
 type stage struct {
-	cfg    config
+	cfg    Config
 	conn   *sql.DB
 	prompt promptFile
 	done   map[string]bool
@@ -125,40 +71,28 @@ type stage struct {
 	writer drafter
 }
 
-func begin(c config, header string) (*stage, error) {
-	p, err := readPrompt(c.prompt)
+func begin(c Config, header string) (*stage, error) {
+	p, err := readPrompt(c.Prompt)
 	if err != nil {
 		return nil, err
 	}
-	conn, err := sql.Open("sqlite", c.db)
+	conn, err := sql.Open("sqlite", c.DB)
 	if err != nil {
 		return nil, err
 	}
 	s := &stage{cfg: c, conn: conn, prompt: p, done: map[string]bool{}}
 	// -dry never skips. It exists to show what WOULD be sent, and a root already
 	// done is exactly the one you want to inspect when its row looks wrong.
-	if !c.force && !c.dry {
-		if s.done, err = alreadyDone(c.out); err != nil {
+	if !c.Force && !c.Dry {
+		if s.done, err = alreadyDone(c.Out); err != nil {
 			return nil, err
 		}
 	}
-	if !c.dry {
-		key := c.apiKey
-		if key == "" {
-			// The token already on this machine, rather than a second one to
-			// manage: `hf auth login` puts it where the CLI can print it.
-			if out, err := exec.Command("hf", "auth", "token").Output(); err == nil {
-				key = strings.TrimSpace(string(out))
-			}
-		}
-		if key == "" {
-			return nil, fmt.Errorf("no API key: set HF_TOKEN or OPENAI_API_KEY, " +
-				"or run `hf auth login` so `hf auth token` can print one")
-		}
-		if s.writer, err = newDrafter(c.baseURL, key, c.model, c.jsonMode); err != nil {
+	if !c.Dry {
+		if s.writer, err = newDrafter(c.BaseURL, c.APIKey, c.Model, c.JSONMode); err != nil {
 			return nil, err
 		}
-		if s.file, err = os.OpenFile(c.out, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err != nil {
+		if s.file, err = os.OpenFile(c.Out, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err != nil {
 			return nil, err
 		}
 		if info, err := s.file.Stat(); err == nil && info.Size() == 0 {
@@ -216,18 +150,18 @@ func (t *tally) blame(root string, err error, raw string) {
 	}
 }
 
-func draftStage(c config) error {
+func draftStage(c Config) error {
 	s, err := begin(c, draftHeader)
 	if err != nil {
 		return err
 	}
 	defer s.close()
 
-	articles, err := lane.Articles(c.laneDir)
+	articles, err := lane.Articles(c.LaneDir)
 	if err != nil {
 		return err
 	}
-	want, err := chooseRoots(s.conn, c.roots)
+	want, err := chooseRoots(s.conn, c.Roots)
 	if err != nil {
 		return err
 	}
@@ -242,13 +176,13 @@ func draftStage(c config) error {
 			t.skipped++
 			continue
 		}
-		if c.limit > 0 && len(todo) >= c.limit {
+		if c.Limit > 0 && len(todo) >= c.Limit {
 			break
 		}
 		todo = append(todo, root)
 	}
 
-	if c.dry {
+	if c.Dry {
 		for _, root := range todo {
 			subject, err := subjectFor(s.conn, articles, root)
 			if err != nil {
@@ -260,7 +194,7 @@ func draftStage(c config) error {
 				s.prompt.for_(subject))
 			t.did++
 		}
-		return t.report("drafted", c.out, c.dry)
+		return t.report("drafted", c.Out, c.Dry)
 	}
 
 	// A root's draft is one request and a wait, so the run is bound by the
@@ -276,7 +210,7 @@ func draftStage(c config) error {
 	// each is written under the lock in one call.
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	gate := make(chan struct{}, c.workers)
+	gate := make(chan struct{}, c.Workers)
 	for _, root := range todo {
 		wg.Add(1)
 		go func(root string) {
@@ -301,13 +235,13 @@ func draftStage(c config) error {
 			}
 			fmt.Fprintf(s.file, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				root, tab(got.SenseEn), tab(got.SenseFr), tab(got.PoeticEn), tab(got.PoeticFr),
-				subject.LaneHow, s.prompt.sha, c.model)
+				subject.LaneHow, s.prompt.sha, c.Model)
 			t.did++
 			fmt.Fprintf(os.Stderr, "  %s ✓ %s\n", root, firstLine(got.SenseEn))
 		}(root)
 	}
 	wg.Wait()
-	return t.report("drafted", c.out, c.dry)
+	return t.report("drafted", c.Out, c.Dry)
 }
 
 // Commonest first, so a truncated run leaves the roots a reader actually meets

@@ -75,7 +75,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 ## Senses pipeline (ADR 0010)
 - Rule: what Wird wrote → served; upstream content → bundled.
 - Postgres `root_senses` (PK `root_letters`, `sense_en`, `sense_fr`, `poetic_*` stored never served). No `reviewed` column.
-- Seed: `server/cmd/senseseed -tsv data/root_senses_draft.tsv -roots app/assets/corpus.db`. Full replace; last row per root wins (`ON CONFLICT`); skips header; no clause reordering. DSN via `DATABASE_URL` env only; no DSN flag exists. `-dry` checks only.
+- Seed: `server/cmd/senseseed -tsv data/root_senses_draft.tsv -roots app/assets/corpus.db`. Full replace; last row per root wins (`ON CONFLICT`); skips header; no clause reordering. DSN via `DATABASE_URL` env only; no DSN flag exists. Unset → refused unless `WIRD_DEV=1` (local compose) or `-dry` (ADR 0037). `-dry` checks only.
 - `GET|HEAD /v1/senses` open, no auth. Body `{version,source,attribution,basis,senses:[{root,en,fr}]}`. `ETag` = version, 304 on `If-None-Match`, never 404 (empty = `senses: []`).
 - Version = `<provenanceRevision>-<md5 over rows ORDER BY root_letters>`. Bump `provenanceRevision` in `server/internal/api/senses.go` BY HAND whenever `sensesAttribution|sensesBasis|sensesSource` prose changes.
 - Prose has one holder: Go consts beside handler.

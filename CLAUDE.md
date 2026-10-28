@@ -49,8 +49,9 @@ docs/     human docs + adr/ + design/ (vendored, never hand-edit)
 - `docs/adr/0002-*-vectors.json` ← 4 tests (app + server)
 - `docs/toolchain.md` brew-leaves block ← `qa.sh` check 7
 - `docs/design/nocturne-styles.css` ← `app/test/theme/nocturne_tokens_test.dart`, `server/cmd/adminweb`
-- `data/root-sense-prompt.md` ← `server/cmd/rootdraft/main.go`
+- `data/root-sense-prompt.md` ← `server/cmd/rootdraft/config.go` (`-prompt` default)
 - env tables in `docs/architecture/api.md`, `docs/architecture/adminweb.md`, `jidhr/cmd/rootd/README.md` ← `TestConfigDocumented` (first `| Variable |` table)
+- CLI tables `docs/architecture/pipelines.md` `## Configuration`, one ``### `<tool>` `` heading per CLI ← each CLI's `TestConfigDocumented` (heading text exact)
 - doc paths cited in code comments → `git grep` before moving any doc
 
 ## Hard rules

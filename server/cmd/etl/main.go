@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -9,34 +8,28 @@ import (
 )
 
 func main() {
-	in := flag.String("in", "./data/raw/", "ingest directory")
-	out := flag.String("out", "./app/assets/corpus.db", "corpus.db to write")
-	// 7 since the reciters arrived: the asset in app/assets/ carries 7, the API
-	// groups reports by this number, and the rebuild SOURCES.md documents passes
-	// no flag — so a stale default would silently regress every report's build.
-	// app/test/features/report/report_screen_test.dart asserts the asset agrees
-	// with this, which is what caught the last bump.
-	version := flag.Int("corpus-version", 8, "corpus_version the API negotiates")
-	full := flag.Bool("full", true, "require the whole Qur'an: 114 suras, 6236 ayas")
-	flag.Parse()
-
-	c, err := Load(*in, Recitations)
+	cfg, err := fromProcess() // ExitOnError: a bad flag exits 2
 	if err != nil {
-		log.Fatalf("read %s: %v", *in, err)
+		log.Fatalf("config refused: %v", err)
 	}
-	if err := c.Check(*full); err != nil {
+
+	c, err := Load(cfg.In, Recitations)
+	if err != nil {
+		log.Fatalf("read %s: %v", cfg.In, err)
+	}
+	if err := c.Check(cfg.Full); err != nil {
 		log.Fatalf("corpus rejected: %v", err)
 	}
-	if err := Write(*out, c, *version, time.Now()); err != nil {
-		log.Fatalf("write %s: %v", *out, err)
+	if err := Write(cfg.Out, c, cfg.CorpusVersion, time.Now()); err != nil {
+		log.Fatalf("write %s: %v", cfg.Out, err)
 	}
 
-	fi, err := os.Stat(*out)
+	fi, err := os.Stat(cfg.Out)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("%s\n  suras %d  ayas %d  words %d  roots %d  audio %d\n  parsed segments %d  roles %d\n  words with no French gloss %d\n  %.2f MB\n",
-		*out, len(c.Surahs), len(c.Ayahs), len(c.Words), len(c.Roots), len(c.Audio),
+		cfg.Out, len(c.Surahs), len(c.Ayahs), len(c.Words), len(c.Roots), len(c.Audio),
 		len(c.Irab), len(IrabRoles()), c.FrenchGlossesMissed, float64(fi.Size())/(1<<20))
 	for _, r := range c.Recited {
 		fmt.Printf("  %s: segments %d (clamped %d)  words with no timing %d\n",
