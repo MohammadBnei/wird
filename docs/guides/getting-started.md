@@ -42,7 +42,7 @@ cd app && fvm install && fvm flutter pub get
 ./scripts/qa.sh
 ```
 
-[scripts/qa.sh](../../scripts/qa.sh) is the gate. Its exit code is the verdict, and it writes `qa-report.json` with one entry per check. It runs the Go build and tests, the Flutter analyzer and tests, the end-to-end journeys on a device, and the shell checks: the toolchain record, the corpus size budget, and the rule that every marker comment names an issue. It starts Postgres for you if Docker is installed ([qa.sh:442-445](../../scripts/qa.sh#L442-L445)).
+[scripts/qa.sh](../../scripts/qa.sh) is the gate. Its exit code is the verdict, and it writes `qa-report.json` with one entry per check. It runs the Go build and tests, the Flutter analyzer and tests, the end-to-end journeys on a device, and the shell checks: the toolchain record, the corpus size budget, and the rule that every marker comment names an issue. It starts Postgres for you if Docker is installed ([qa.sh:454-457](../../scripts/qa.sh#L454-L457)).
 
 Run it before every push. CI only runs the Go half, as [Deploy](../architecture/deploy.md#2-the-checks-the-go-half-of-the-gate) explains, so a broken Flutter test is yours to catch.
 
@@ -116,10 +116,10 @@ It serves `jidhr/testdata/quran.json` from memory. The [rootd README](../../jidh
 ## 6. Run the tests
 
 ```bash
-# Go: both modules by name, one package at a time
+# Go: each module on its own, one package at a time, as CI runs it
 docker compose up -d postgres
-go build ./server/... ./jidhr/...
-go test -p 1 ./server/... ./jidhr/...
+GOWORK=off go -C jidhr build ./... && GOWORK=off go -C jidhr test -p 1 ./...
+GOWORK=off go -C server build ./... && GOWORK=off go -C server test -p 1 ./...
 
 # App
 cd app && fvm flutter analyze && fvm flutter test
@@ -130,7 +130,8 @@ DEV=$(../scripts/device.sh) && fvm flutter test integration_test/ -d "$DEV"
 
 Two habits save time here:
 
-- Never use `./...` at the repo root. The root is a Go workspace, not a module, and Go rejects the pattern.
+- Never use `./...` at the repo root. The root is not a module, and Go rejects the pattern.
+- Keep `GOWORK=off` on these commands, and only on these. The committed `go.work` would hide a missing require in `server/go.mod`. The `go run ./server/cmd/...` commands above run from the root, so they still need the workspace: do not export `GOWORK=off` in your shell.
 - Keep `-p 1`. The server tests share one Postgres.
 
 Test names state the failure they prevent. [CONTRIBUTING.md](../../CONTRIBUTING.md) has the rest of the conventions. For any change you can see on screen, the gate also asks you to look at it: [the visual gate](gate-visual.md).

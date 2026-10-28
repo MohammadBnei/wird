@@ -68,3 +68,4 @@ flowchart LR
 | [0032-account-deletion-removes-wird-data-and-keeps-the-shared-sign-in.md](0032-account-deletion-removes-wird-data-and-keeps-the-shared-sign-in.md) | Account deletion removes Wird's data and keeps the shared sign-in | accepted |
 | [0033-home-says-where-the-reader-stands.md](0033-home-says-where-the-reader-stands.md) | Home says where the reader stands, and the root constellation is gone | accepted, superseded in part by 0034 |
 | [0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md](0034-a-reader-starts-with-a-short-setup-then-a-home-of-few-doors.md) | A reader starts with a short setup, then a home of few doors | accepted |
+| [0035-server-takes-jidhr-from-the-same-commit.md](0035-server-takes-jidhr-from-the-same-commit.md) | Server takes jidhr from the same commit, through a require and a local replace | accepted |

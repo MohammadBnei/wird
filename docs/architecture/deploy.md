@@ -116,14 +116,14 @@ on:
 
 ### 2. The checks: the Go half of the gate
 
-`checks` starts Postgres 18 from the repo's own `docker-compose.yml`, then builds, vets and tests both Go modules. It names the modules because `./...` fails at a workspace root. Two shell checks follow: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
+`checks` starts Postgres 18 from the repo's own `docker-compose.yml`, then builds, vets and tests both Go modules. It runs with `GOWORK: 'off'` and builds each module on its own, so `go.work` cannot hide a missing require in `server/go.mod`, and with `GOTOOLCHAIN: local`, so a module asking for a newer Go fails instead of downloading one. Two shell checks follow: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
 
 ```yaml
-      - run: go build ./jidhr/... ./server/...
-      - run: go vet ./jidhr/... ./server/...
+      - run: go -C jidhr build ./... && go -C server build ./...
+      - run: go -C jidhr vet ./... && go -C server vet ./...
 ```
 
-[release.yml:107-117](../../.github/workflows/release.yml#L107-L117) · marker rule [release.yml:122-127](../../.github/workflows/release.yml#L122-L127) · corpus budget [release.yml:131-135](../../.github/workflows/release.yml#L131-L135)
+[release.yml:97-142](../../.github/workflows/release.yml#L97-L142) · marker rule [release.yml:144-152](../../.github/workflows/release.yml#L144-L152) · corpus budget [release.yml:154-160](../../.github/workflows/release.yml#L154-L160)
 
 The Flutter half of the gate never runs in CI. It needs fvm and a device, and the runners have neither. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
 
@@ -137,7 +137,7 @@ The Flutter half of the gate never runs in CI. It needs fvm and a device, and th
         run: echo "value=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
 ```
 
-[release.yml:157-159](../../.github/workflows/release.yml#L157-L159)
+[release.yml:182-184](../../.github/workflows/release.yml#L182-L184)
 
 It builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC at build time. It is never stored in the repo.
 
@@ -157,7 +157,7 @@ Both images are built from the same Dockerfile, one target each, in one job and 
           done
 ```
 
-[release.yml:227-237](../../.github/workflows/release.yml#L227-L237) · job guard [release.yml:137-145](../../.github/workflows/release.yml#L137-L145) · password step [release.yml:169-186](../../.github/workflows/release.yml#L169-L186)
+[release.yml:250-260](../../.github/workflows/release.yml#L250-L260) · job guard [release.yml:162-170](../../.github/workflows/release.yml#L162-L170) · password step [release.yml:194-205](../../.github/workflows/release.yml#L194-L205)
 
 ### 4. One binary per image
 
@@ -201,7 +201,7 @@ ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
           done
 ```
 
-[release.yml:275-281](../../.github/workflows/release.yml#L275-L281) · commit and push [release.yml:286-297](../../.github/workflows/release.yml#L286-L297) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
+[release.yml:298-304](../../.github/workflows/release.yml#L298-L304) · commit and push [release.yml:309-320](../../.github/workflows/release.yml#L309-L320) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
 A manual run builds and pushes both images but skips this job, so it never deploys.
 

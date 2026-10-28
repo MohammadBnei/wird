@@ -41,8 +41,12 @@ through the `github.com/pressly/goose/v3` library (`server/internal/store/store.
 
 `go build ./...` does not work from the repo root on Go 1.27.1: the root is not itself
 a module, and Go rejects the pattern with "directory prefix . does not contain modules
-listed in go.work". Name the modules instead, as `scripts/qa.sh` does:
+listed in go.work". Build each module on its own with the workspace off, as `scripts/qa.sh`
+and CI do, so a missing require in `server/go.mod` fails here and not only in CI:
 
 ```bash
-go build ./jidhr/... ./server/...
+GOWORK=off go -C jidhr build ./... && GOWORK=off go -C server build ./...
 ```
+
+`server/go.mod` requires jidhr and replaces it with `../jidhr`, so server always builds
+against the jidhr in the same commit ([ADR 0035](adr/0035-server-takes-jidhr-from-the-same-commit.md)).
