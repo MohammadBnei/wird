@@ -122,7 +122,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 ## Deploy
 - Merge to `main` deploys. PR runs `.github/workflows/checks.yml` (Go gate, image builds no push), `trailers.yml` (commit rules), `app-checks.yml` (Flutter, app/** only). Shared jobs from `MohammadBnei/ukubi-ci`, pinned by sha.
 - `.github/workflows/release.yml` (push/dispatch only): calls `checks.yml` (gofmt/vet/test `-p 1` on Postgres 18, issue-marker rule, corpus budget) → image build on self-hosted runner → bump `image.tag` in `helm/values.yaml` → ArgoCD (infra-bootstrap) syncs. Tag = short SHA, no semver.
-- One `Dockerfile`, targets `api` and `adminweb`. It builds inside `server/` with `jidhr/` copied beside it (`replace => ../jidhr`).
+- One `Dockerfile`, targets `api` and `adminweb`. It builds inside `server/` with `jidhr/go.mod` copied beside it (`replace => ../jidhr`; neither binary imports jidhr).
 - `DATABASE_URL` from Secret assembled in infra-bootstrap; direct 5432, never pgbouncer (pgx prepared stmts + goose advisory lock break under txn pooling). DB role `connlimit` 20.
 - Flutter in CI = `app-checks.yml` only (analyze + test minus goldens). Goldens, e2e, audits never in CI → run `scripts/qa.sh` locally before push.
 - Host: `https://wird.bnei.dev`.

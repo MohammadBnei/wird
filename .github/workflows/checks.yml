@@ -16,9 +16,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # No go.work is committed, so every step runs each module on its own. The
-  # build in pre-test and the go test step also set GOWORK=off and
-  # GOTOOLCHAIN=local, as qa.sh does, so every binary still links.
+  # ponytail: gofmt and vet run before pre-test with no GOWORK=off (ukubi-ci
+  # has no env input). No go.work is in git (gitignored at any depth), and the
+  # pre-test build and go test run with GOWORK=off and GOTOOLCHAIN=local, as
+  # qa.sh does, so a stray go.work still fails there. Upgrade: an env input in
+  # ukubi-ci.
   server:
     uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
     with:

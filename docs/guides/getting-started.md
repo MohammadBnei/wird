@@ -128,7 +128,7 @@ cd app && fvm flutter analyze && fvm flutter test
 DEV=$(../scripts/device.sh) && fvm flutter test integration_test/ -d "$DEV"
 ```
 
-Two habits save time here:
+These habits save time here:
 
 - Never use `./...` at the repo root. The root is not a module, and Go rejects the pattern.
 - There is no `go.work` in git. `GOWORK=off` keeps one you made yourself from hiding a missing require in `server/go.mod`.

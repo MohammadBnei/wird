@@ -4,12 +4,12 @@ qa-report.json
 # Go
 # No workspace in git: each module builds on its own (server takes jidhr through
 # a replace, ADR 0035). A local `go work init ./jidhr ./server` stays possible.
-/go.work
-/go.work.sum
+go.work
+go.work.sum
 /bin/
 *.test
-# `go build ./server/cmd/...` names its output after the last path element and
-# drops it here. A 2.6 MB Mach-O called `cmd` was one `git add -A` away from
+# With a local go.work, `go build ./server/cmd/...` from the root names its
+# output after the last path element and drops it here. A 2.6 MB Mach-O called `cmd` was one `git add -A` away from
 # the history; several agents commit in this repo and only one of them has to
 # be careless.
 /cmd

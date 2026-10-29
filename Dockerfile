@@ -7,9 +7,9 @@
 # The build runs inside server/, the module both binaries belong to. The repo
 # root is not a module, and there is no go.work, so `go build ./...` from the
 # root does not work. server/go.mod replaces jidhr with ../jidhr (ADR 0035),
-# so jidhr is copied next to it.
+# so jidhr's go.mod is copied next to it.
 #
-# `COPY . .` is also 21 GB — app/ carries Flutter build output. .dockerignore
+# `COPY . .` would be 21 GB — app/ carries Flutter build output. .dockerignore
 # covers it, but the copies below are explicit anyway so a stale ignore file
 # cannot quietly put the Qur'an corpus into a server image.
 FROM golang:1.27-alpine AS build
@@ -22,8 +22,8 @@ COPY server/go.mod server/go.sum ./
 COPY jidhr/go.mod jidhr/go.sum ../jidhr/
 RUN go mod download
 
+# No jidhr source: neither binary imports it, so jidhr edits keep this cache.
 COPY server/ ./
-COPY jidhr/ ../jidhr/
 
 # CGO off: modernc.org/sqlite is pure Go and nothing else here needs a C
 # toolchain, so the binary is static and the final stage needs no libc match.
