@@ -78,8 +78,6 @@ jobs:
 
   build-push:
     needs: checks
-    # PRs do not run this workflow; image-build in checks.yml covers them.
-    if: github.event_name != 'pull_request'
     # NOT `ukubi` — that label belongs to the runner holding a ServiceAccount
     # token with cluster access. This one has none, which is exactly why builds
     # belong on it (infra-bootstrap ADR-0034).

@@ -15,4 +15,6 @@ jobs:
     with:
       conventional: true
       agent-trailers: forbid
-      extra-banned: 'generated with'
+      # Unanchored, as the old check-commits.sh: attribution mid-line or indented.
+      # Scoped to a vendor name so a body describing the rule still passes.
+      extra-banned: 'generated (with|by).*(claude|anthropic)|co-authored-by:.*(claude|anthropic)'

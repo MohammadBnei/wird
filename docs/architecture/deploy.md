@@ -118,7 +118,7 @@ on:
 
 ### 2. The checks: the Go half of the gate
 
-`checks.yml` runs on every pull request, and `release.yml` calls it before it builds anything. It calls the shared `go-checks` workflow once per Go module: `gofmt`, `go vet`, then `go test -race -count=1 -p 1`. For `server` it starts Postgres 18 from the repo's own `docker-compose.yml` first. Before the tests run, it sets `GOWORK=off` and `GOTOOLCHAIN=local`, so `go.work` cannot hide a missing require in `server/go.mod`, and a module asking for a newer Go fails instead of downloading one. `gofmt` and `vet` still run in workspace mode. Two shell checks follow in the `gates` job: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
+`checks.yml` runs on every pull request, and `release.yml` calls it before it builds anything. It calls the shared `go-checks` workflow once per Go module: `gofmt`, `go vet`, then `go test -race -count=1 -p 1`. For `server` it starts Postgres 18 from the repo's own `docker-compose.yml` first. Before the tests run, it sets `GOWORK=off` and `GOTOOLCHAIN=local` and builds every package of the module, so `go.work` cannot hide a missing require in `server/go.mod`, a module asking for a newer Go fails instead of downloading one, and every binary still links. `gofmt` and `vet` still run in workspace mode. Two shell checks follow in the `gates` job: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
 
 ```yaml
   server:
@@ -128,15 +128,17 @@ on:
       test-flags: '-p 1'
       pre-test: |
         docker compose up -d --wait postgres
+        export GOWORK=off GOTOOLCHAIN=local
         echo GOWORK=off >> "$GITHUB_ENV"
         echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
+        go -C server build ./...
 ```
 
-[checks.yml:22-30](../../.github/workflows/checks.yml#L22-L30) · gates job [checks.yml:42-61](../../.github/workflows/checks.yml#L42-L61) · image builds on pull requests [checks.yml:65-77](../../.github/workflows/checks.yml#L65-L77)
+[checks.yml:23-33](../../.github/workflows/checks.yml#L23-L33) · gates job [checks.yml:47-68](../../.github/workflows/checks.yml#L47-L68) · image builds on pull requests [checks.yml:72-84](../../.github/workflows/checks.yml#L72-L84)
 
 On a pull request the two images are also built, without pushing, on GitHub-hosted runners, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
 
-The Flutter half of the gate never runs in CI. It needs fvm and a device, and the runners have neither. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
+Only part of the Flutter half of the gate runs in CI: `app-checks.yml` runs `flutter analyze` and the tests minus the goldens on pull requests that touch `app/`. The goldens and the e2e journeys need fvm, a Mac and a device, and the runners have none of them. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
 
 ### 3. The image tag is the commit
 
@@ -148,7 +150,7 @@ The Flutter half of the gate never runs in CI. It needs fvm and a device, and th
         run: echo "value=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
 ```
 
-[release.yml:98-100](../../.github/workflows/release.yml#L98-L100)
+[release.yml:96-98](../../.github/workflows/release.yml#L96-L98)
 
 It builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC at build time. It is never stored in the repo.
 
@@ -168,7 +170,7 @@ Both images are built from the same Dockerfile, one target each, in one job and 
           done
 ```
 
-[release.yml:166-176](../../.github/workflows/release.yml#L166-L176) · job guard [release.yml:79-86](../../.github/workflows/release.yml#L79-L86) · password step [release.yml:110-121](../../.github/workflows/release.yml#L110-L121)
+[release.yml:164-174](../../.github/workflows/release.yml#L164-L174) · build runner [release.yml:79-84](../../.github/workflows/release.yml#L79-L84) · password step [release.yml:108-119](../../.github/workflows/release.yml#L108-L119)
 
 ### 4. One binary per image
 
@@ -212,7 +214,7 @@ ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
           done
 ```
 
-[release.yml:214-220](../../.github/workflows/release.yml#L214-L220) · commit and push [release.yml:225-236](../../.github/workflows/release.yml#L225-L236) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
+[release.yml:212-218](../../.github/workflows/release.yml#L212-L218) · commit and push [release.yml:223-234](../../.github/workflows/release.yml#L223-L234) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
 A manual run builds and pushes both images but skips this job, so it never deploys.
 

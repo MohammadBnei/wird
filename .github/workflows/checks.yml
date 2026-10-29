@@ -16,9 +16,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ponytail: gofmt and vet run in go.work workspace mode here; the go test step
-  # runs with GOWORK=off and GOTOOLCHAIN=local (set in pre-test) so a missing
-  # require still fails. Upgrade: an env input in ukubi-ci.
+  # ponytail: gofmt and vet run in go.work workspace mode here; the build in
+  # pre-test and the go test step run with GOWORK=off and GOTOOLCHAIN=local, so
+  # a missing require still fails and every binary still links, as qa.sh does.
+  # Upgrade: an env input in ukubi-ci.
   server:
     uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
     with:
@@ -26,8 +27,10 @@ jobs:
       test-flags: '-p 1'
       pre-test: |
         docker compose up -d --wait postgres
+        export GOWORK=off GOTOOLCHAIN=local
         echo GOWORK=off >> "$GITHUB_ENV"
         echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
+        go -C server build ./...
 
   jidhr:
     uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
@@ -35,14 +38,18 @@ jobs:
       working-directory: jidhr
       test-flags: '-p 1'
       pre-test: |
+        export GOWORK=off GOTOOLCHAIN=local
         echo GOWORK=off >> "$GITHUB_ENV"
         echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
+        go -C jidhr build ./...
 
   # Gate 7's shell-only half, lifted from scripts/qa.sh.
   gates:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
 
       # The marker is assembled from two pieces so this file is not its own
       # first hit.
