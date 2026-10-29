@@ -7,7 +7,7 @@ paths:
 ---
 # server/ — Go API + tools
 
-- Build/test per module, as CI + qa.sh: `GOWORK=off go -C server build ./...`, `GOWORK=off go -C server test -p 1 ./...`. Never `./...` at root (root ≠ module). jidhr = require + `replace => ../jidhr` in `server/go.mod`. No go.work in git (gitignored). ADR 0035.
+- Build/test per module, as CI + qa.sh: `GOWORK=off go -C server build ./...`, `GOWORK=off go -C server test -p 1 ./...`. Never `./...` at root (root ≠ module). jidhr = require + `replace => ../jidhr` in `server/go.mod`. No go.work in git (gitignored). ADR 0035. Replace = deliberate gap vs Code Standard §4 (no replace): pin → server tests frozen jidhr; jidhrcorpus imports `server/internal/store` → cannot move to jidhr. Revisit only when 2nd repo builds server or modules split.
 - `-p 1` required: store tests share real throwaway Postgres.
 - `cmd/api` = wird-api, Dockerfile `--target api`. Config: `cmd/api/config.go` `load(getenv)` only env reader; table `docs/architecture/api.md` (doc test). `DATABASE_URL`, `OIDC_ISSUER`, `OIDC_AUDIENCE` required unless `WIRD_DEV=1`. `WIRD_MODELS_S3_*` all-or-none, half → refuse start. Only api migrates.
 - Local: `docker compose up -d postgres oidc-stub` → `WIRD_DEV=1 go -C server run ./cmd/api`. adminweb reads `docs/design/…css` relative → `go build -C server -o ../bin/ ./cmd/adminweb && WIRD_DEV=1 bin/adminweb` from root. Migrations embedded (`server/migrations`), run at startup via goose lib. No goose binary.
