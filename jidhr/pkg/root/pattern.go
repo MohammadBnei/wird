@@ -18,6 +18,8 @@ import (
 // ponytail: twelve shapes matched letter by letter. The upgrade path is a real
 // morphological analyser over a vowelled corpus, which would narrow the candidate
 // set this rung hands the store rather than replace the store's verdict.
+//
+//ukubicheck:table the twelve base wazn shapes
 var baseTemplates = []string{
 	"فاعل",    // form III, and the active participle faa3il
 	"افعل",    // forms IV and IX
@@ -43,7 +45,8 @@ type template struct {
 	doubled bool
 }
 
-var templates = expandTemplates(baseTemplates)
+//ukubicheck:table the wazn shapes with their weak variants
+var templates = expandTemplates(slices.Clone(baseTemplates))
 
 func expandTemplates(shapes []string) []template {
 	var out []template
@@ -67,6 +70,8 @@ func expandTemplates(shapes []string) []template {
 // defective root in its third slot, a hollow root in its second. A spelling that
 // may be hiding one of them yields a reading for each, because nothing in the
 // letters says which.
+//
+//ukubicheck:table the weak radicals
 var weakLetters = []rune{'و', 'ي'}
 
 // radicalReadings lists the radicals a slot may hold, given the letter the
@@ -105,7 +110,7 @@ func radicalReadings(c rune, final bool) []rune {
 			// ة folds to ه. A feminine ending is not a radical at all, so under this
 			// reading the root's third radical is not written: صلاة is ص ل و wearing
 			// an ending, not ص ل ه.
-			out = append(out, weakLetters...)
+			out = append(out, slices.Clone(weakLetters)...)
 		}
 	}
 	return out
@@ -114,6 +119,8 @@ func radicalReadings(c rune, final bool) []rune {
 // longVowels are the letters a template writes to stretch a vowel rather than to
 // spell a radical. They are the only letters that can stand in a radical slot and
 // not be a radical, which is what keeps the readings below finite.
+//
+//ukubicheck:table the long-vowel letters
 var longVowels = []rune{'ا', 'و', 'ي'}
 
 // apply reads the radicals a stem puts in this template's slots and returns every
@@ -203,12 +210,12 @@ func rootsAt(stem []rune, at [3]int) []string {
 	final := at[2] == len(stem)-1 && at[2] != at[1]
 	thirds := radicalReadings(third, final)
 	if final && thirdRadicalIsOneReadingAmongSeveral(stem, at[2]) {
-		thirds = append(thirds, weakLetters...)
+		thirds = append(thirds, slices.Clone(weakLetters)...)
 	}
 
 	seconds := radicalReadings(second, false)
 	if second == 'ا' {
-		seconds = weakLetters
+		seconds = slices.Clone(weakLetters)
 	}
 
 	var out []string

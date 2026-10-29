@@ -33,7 +33,7 @@ const callbackPath = "GET /auth/callback"
 
 // The code is a credential. It is shown to the one person holding it and is
 // never logged, never stored, and never sent anywhere by this page.
-var callbackPage = template.Must(template.New("callback").Parse(`<!doctype html>
+const callbackHTML = `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -78,10 +78,18 @@ var callbackPage = template.Must(template.New("callback").Parse(`<!doctype html>
       function () { b.textContent = 'Select it and copy'; });
   };
 </script>
-</body></html>`))
+</body></html>`
 
-// authCallback renders what the issuer sent, and does nothing with it.
-func authCallback(w http.ResponseWriter, r *http.Request) {
+// callback renders what the issuer sent on page (callbackHTML's), and does nothing with it.
+type callback struct{ page *template.Template }
+
+// newCallback parses callbackHTML once, when Routes wires the route; it is a
+// constant, so a fault in it panics at startup, never on a reader's request.
+func newCallback() callback {
+	return callback{template.Must(template.New("callback").Parse(callbackHTML))}
+}
+
+func (c callback) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	// The reader's own address, rebuilt rather than echoed: r.URL carries no
@@ -124,7 +132,7 @@ func authCallback(w http.ResponseWriter, r *http.Request) {
 	if fail != "" {
 		w.WriteHeader(http.StatusBadRequest)
 	}
-	_ = callbackPage.Execute(w, struct {
+	_ = c.page.Execute(w, struct {
 		Error   string
 		Address string
 	}{Error: fail, Address: addr.String()})

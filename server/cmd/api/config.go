@@ -11,6 +11,8 @@ import (
 
 // envVars is every variable load reads. TestConfigDocumented holds it, the
 // reads load makes, and the table in docs/architecture/api.md to the same set.
+//
+//ukubicheck:table every variable load reads
 var envVars = []string{
 	"WIRD_DEV",
 	"DATABASE_URL",

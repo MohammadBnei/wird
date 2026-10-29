@@ -41,6 +41,7 @@ const (
 	axisLead       = "lead"
 )
 
+//ukubicheck:table the known-right and known-wrong senses
 var Calibration = []Case{
 	// Senses known to be right. Each names every branch of its root the corpus
 	// actually realises, not only the branch a dictionary would lead with: كتب

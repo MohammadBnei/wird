@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/MohammadBnei/ukubi-go/telemetry"
@@ -18,7 +19,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	c, err := Load(cfg.In, Recitations)
+	c, err := Load(cfg.In, slices.Clone(Recitations))
 	if err != nil {
 		slog.Error("read", "path", cfg.In, "err", err)
 		os.Exit(1)

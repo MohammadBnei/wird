@@ -120,6 +120,8 @@ const defaultSlug = "husary-muallim"
 
 // Recitations are the ones ingest's defaultRecitations extracts. The other six
 // of quran-align's twelve do not pass and ADR 0023 lists why.
+//
+//ukubicheck:table the recitations ingest extracts
 var Recitations = []Recitation{
 	{defaultSlug, "Husary_Muallim_128kbps", "Mahmoud Khalil Al-Husary", "Muallim"},
 	{"husary", "Husary_64kbps", "Mahmoud Khalil Al-Husary", "Murattal"},
@@ -456,6 +458,8 @@ type morphology struct {
 // A radical is never a bare alef — the published root alphabet folds every hamza
 // onto A, and corpus.quran.com renders it back as أ, so أ is what a reader is shown
 // (ق ر أ, not ق ر ا). The seat is lost with the fold: لؤلؤ comes back as لألأ.
+//
+//ukubicheck:table the Buckwalter radicals in Arabic
 var buckwalterArabic = map[rune]rune{
 	'A': 'أ', 'b': 'ب', 't': 'ت', 'v': 'ث', 'j': 'ج', 'H': 'ح', 'x': 'خ',
 	'd': 'د', '*': 'ذ', 'r': 'ر', 'z': 'ز', 's': 'س', '$': 'ش', 'S': 'ص',
@@ -613,6 +617,7 @@ func spaced(letters string) string {
 	return strings.Join(strings.Split(letters, ""), " ")
 }
 
+//ukubicheck:table the Latin spelling of each Arabic letter
 var arabicLatin = map[rune]string{
 	'ء': "ʾ", 'آ': "ā", 'أ': "ʾ", 'ؤ': "ʾ", 'إ': "ʾ", 'ئ': "ʾ", 'ا': "ā", 'ب': "b",
 	'ة': "t", 'ت': "t", 'ث': "th", 'ج': "j", 'ح': "ḥ", 'خ': "kh", 'د': "d", 'ذ': "dh",

@@ -169,7 +169,7 @@ func New(ctx context.Context, issuer, audience string, users *store.Store, log *
 
 [auth.go:31-41](../../../server/internal/auth/auth.go#L31-L41)
 
-Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE`, both required unless `WIRD_DEV=1` points them at the local stub ([config.go:87-88](../../../server/cmd/api/config.go#L87-L88)). Swapping the local stub for the real Authentik is those two values, and no code on this path knows which it talks to.
+Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE`, both required unless `WIRD_DEV=1` points them at the local stub ([config.go:89-90](../../../server/cmd/api/config.go#L89-L90)). Swapping the local stub for the real Authentik is those two values, and no code on this path knows which it talks to.
 
 ### 6. The middleware checks, then finds the reader
 

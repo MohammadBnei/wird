@@ -19,9 +19,9 @@ const Drain = 20 * time.Second
 // Traefik routes to it until it sees that: a listener closed at once refuses
 // those requests, and the reader gets a 502.
 //
-// ponytail: a fixed wait, not a readiness probe that fails first. A var so a
-// test need not wait it out.
-var Settle = 5 * time.Second
+// ponytail: a fixed wait, not a readiness probe that fails first. A test calls
+// serve with its own rather than wait this one out.
+const Settle = 5 * time.Second
 
 // Serve answers on ln until ctx is cancelled (SIGTERM), keeps answering for
 // Settle, then stops accepting and lets the requests in flight finish, for up
@@ -34,6 +34,11 @@ var Settle = 5 * time.Second
 // before the server does. net/http's own lines (a handler panic, an Accept
 // error) are ERROR: something on our side failed.
 func Serve(ctx context.Context, ln net.Listener, h http.Handler, log *slog.Logger) error {
+	return serve(ctx, ln, h, log, Settle)
+}
+
+// serve is Serve with the settle wait given.
+func serve(ctx context.Context, ln net.Listener, h http.Handler, log *slog.Logger, settle time.Duration) error {
 	srv := &http.Server{
 		Handler:           h,
 		ReadHeaderTimeout: 10 * time.Second,
@@ -45,7 +50,7 @@ func Serve(ctx context.Context, ln net.Listener, h http.Handler, log *slog.Logge
 	done := make(chan error, 1)
 	go func() {
 		<-ctx.Done()
-		time.Sleep(Settle)
+		time.Sleep(settle)
 		shut, cancel := context.WithTimeout(context.WithoutCancel(ctx), Drain)
 		defer cancel()
 		done <- srv.Shutdown(shut)

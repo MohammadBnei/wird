@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"html/template"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -131,7 +130,7 @@ func run(log *slog.Logger) int {
 // routes is every page. Each route but /healthz gets a span from t, outside
 // its gate, so a refusal is traced too; a nil or inert t adds nothing.
 func routes(db *store.Store, verifier *oidc.IDTokenVerifier, css []byte, log *slog.Logger, t *telemetry.Tracing) http.Handler {
-	s := &server{db: db, log: log}
+	s := &server{db: db, log: log, tmpl: parseDashboard()}
 	mux := http.NewServeMux()
 	handle := func(pattern string, h http.Handler) { mux.Handle(pattern, t.Handler(pattern, h)) }
 	// Untraced: a probe every few seconds is noise, not a request.
@@ -167,8 +166,9 @@ func noStore(next http.Handler) http.Handler {
 }
 
 type server struct {
-	db  *store.Store
-	log *slog.Logger
+	db   *store.Store
+	log  *slog.Logger
+	tmpl *template.Template // the dashboard, parseDashboard's
 }
 
 // dashboard is what an operator sees. Each section is read on its own and says
@@ -220,7 +220,7 @@ func (s *server) dashboard(w http.ResponseWriter, r *http.Request) {
 	// Rendered whole before a byte is sent: a template fault is ours (ERROR),
 	// a write that fails after it is a client gone away (WARN).
 	var buf bytes.Buffer
-	if err := render(&buf, page); err != nil {
+	if err := s.tmpl.Execute(&buf, page); err != nil {
 		s.log.ErrorContext(r.Context(), "page not written", "err", err)
 		http.Error(w, "the page could not be rendered", http.StatusInternalServerError)
 		return
@@ -237,7 +237,7 @@ func (s *server) dashboard(w http.ResponseWriter, r *http.Request) {
 func (s *server) reportsJSON(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	if status != "" && !slices.Contains(store.ReportStatuses, status) {
-		http.Error(w, "status is one of "+strings.Join(store.ReportStatuses, ", "), http.StatusBadRequest)
+		http.Error(w, "status is one of "+strings.Join(slices.Clone(store.ReportStatuses), ", "), http.StatusBadRequest)
 		return
 	}
 	reports, truncated, err := s.db.Reports(r.Context(),
@@ -284,10 +284,10 @@ type triageForm struct {
 // issue, or "issued" is a claim nobody can follow to anything.
 func (f triageForm) check() string {
 	if f.Category != "" && !slices.Contains(store.ReportCategories, f.Category) {
-		return "category is empty or one of " + strings.Join(store.ReportCategories, ", ")
+		return "category is empty or one of " + strings.Join(slices.Clone(store.ReportCategories), ", ")
 	}
 	if !slices.Contains(store.ReportStatuses, f.Status) {
-		return "status is one of " + strings.Join(store.ReportStatuses, ", ")
+		return "status is one of " + strings.Join(slices.Clone(store.ReportStatuses), ", ")
 	}
 	if f.IssueURL != "" && !strings.HasPrefix(f.IssueURL, "https://github.com/") {
 		return "issue_url is empty or a https://github.com/ link"
@@ -347,11 +347,11 @@ func (s *server) triage(w http.ResponseWriter, r *http.Request) {
 //go:embed dashboard.html
 var templates embed.FS
 
-var tmpl = template.Must(template.New("dashboard.html").Funcs(template.FuncMap{
-	"categories": func() []string { return store.ReportCategories },
-	"statuses":   func() []string { return store.ReportStatuses },
-}).ParseFS(templates, "dashboard.html"))
-
-func render(w io.Writer, d dashboard) error {
-	return tmpl.Execute(w, d)
+// parseDashboard is the dashboard template. It is embedded, so a fault in it is
+// a build that should never have shipped: it panics at routes, before a request.
+func parseDashboard() *template.Template {
+	return template.Must(template.New("dashboard.html").Funcs(template.FuncMap{
+		"categories": func() []string { return slices.Clone(store.ReportCategories) },
+		"statuses":   func() []string { return slices.Clone(store.ReportStatuses) },
+	}).ParseFS(templates, "dashboard.html"))
 }

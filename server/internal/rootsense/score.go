@@ -14,17 +14,23 @@ import (
 // only report that the corpus does, or does not, bear the sense out. A root
 // whose sense the corpus cannot bear out ships nothing.
 
-var stopWords = map[string]bool{}
-
-func init() {
-	for _, w := range strings.Fields(`a an the and or but so then of to in on at for from by with
-		is are was were be been being it its he she they them him her you we i my your their his
-		not no nor if that this those these there which who whom what when where will would shall
-		may might can could do does did done has have had o ye thee thou thy as into upon than
-		very more most such all any some one two ones out up down about again ever never us our me
-		also upon`) {
-		stopWords[w] = true
-	}
+// stopWords are the English words too common to carry a claim.
+//
+//ukubicheck:table the English words too common to carry a claim
+var stopWords = map[string]bool{
+	"a": true, "an": true, "the": true, "and": true, "or": true, "but": true, "so": true, "then": true,
+	"of": true, "to": true, "in": true, "on": true, "at": true, "for": true, "from": true, "by": true,
+	"with": true, "is": true, "are": true, "was": true, "were": true, "be": true, "been": true, "being": true,
+	"it": true, "its": true, "he": true, "she": true, "they": true, "them": true, "him": true, "her": true,
+	"you": true, "we": true, "i": true, "my": true, "your": true, "their": true, "his": true, "not": true,
+	"no": true, "nor": true, "if": true, "that": true, "this": true, "those": true, "these": true,
+	"there": true, "which": true, "who": true, "whom": true, "what": true, "when": true, "where": true,
+	"will": true, "would": true, "shall": true, "may": true, "might": true, "can": true, "could": true,
+	"do": true, "does": true, "did": true, "done": true, "has": true, "have": true, "had": true, "o": true,
+	"ye": true, "thee": true, "thou": true, "thy": true, "as": true, "into": true, "upon": true, "than": true,
+	"very": true, "more": true, "most": true, "such": true, "all": true, "any": true, "some": true, "one": true,
+	"two": true, "ones": true, "out": true, "up": true, "down": true, "about": true, "again": true,
+	"ever": true, "never": true, "us": true, "our": true, "me": true, "also": true,
 }
 
 var WordRe = regexp.MustCompile(`[a-z]+`)
@@ -34,6 +40,8 @@ var WordRe = regexp.MustCompile(`[a-z]+`)
 // "merciful"). It is cruder than Porter on purpose: the vocabulary here is a
 // few thousand short gloss words, and over-stripping costs less than a
 // stemmer that splits "know" from "knowledge".
+//
+//ukubicheck:table the English suffixes the stemmer strips
 var suffixes = []string{
 	"ledge", "ness", "ment", "tion", "sion", "ence", "ance", "ings", "ing",
 	"edly", "ful", "ous", "ity", "ive", "ent", "ant", "ers", "ors", "est",
@@ -67,6 +75,8 @@ func plural(w string) string {
 //
 // "left" is deliberately absent: it is the past of "leave" and also a side, and
 // mapping it would let a sense about leaving agree with "the left hand".
+//
+//ukubicheck:table the English strong verbs
 var irregular = map[string]string{
 	"said": "say", "made": "make", "gave": "give", "given": "give",
 	"took": "take", "taken": "take", "came": "come", "went": "go", "gone": "go",
@@ -477,7 +487,7 @@ func Check(root *Root, sense string) Result {
 				continue
 			}
 			seen[t] = true
-			u := Ungrounded{Stem: t, Roots: rootsUsing(t), Measured: grounded || !company(t, used)}
+			u := Ungrounded{Stem: t, Roots: root.ix.rootsUsing(t), Measured: grounded || !root.ix.company(t, used)}
 			c.Ungrounded = append(c.Ungrounded, u)
 			res.Ungrounded = append(res.Ungrounded, u)
 			if u.Measured && u.Roots < res.Dispersion {
@@ -504,10 +514,10 @@ func Check(root *Root, sense string) Result {
 // phrasing of something already attested", and it is a test the corpus answers
 // rather than a shape a clause can be built into: a word that keeps company
 // with nothing the root says is a wording of nothing.
-func company(word string, attested map[string]bool) bool {
-	rs := rootsOf(word)
+func (ix *index) company(word string, attested map[string]bool) bool {
+	rs := ix.rootsOf(word)
 	for a := range attested {
-		for r := range rootsOf(a) {
+		for r := range ix.rootsOf(a) {
 			if rs[r] {
 				return true
 			}
@@ -522,15 +532,19 @@ func company(word string, attested map[string]bool) bool {
 //
 // ponytail: memoised linear scan of the stem index. A sense has a handful of
 // words and the index a few thousand stems; a prefix tree would be faster and
-// buy nothing measurable here.
-var rootsCache = map[string]map[string]bool{}
-
-func rootsOf(stem string) map[string]bool {
-	if rs, ok := rootsCache[stem]; ok {
+// buy nothing measurable here. A nil index (a Root no Bucket built) knows no
+// corpus and answers no roots.
+func (ix *index) rootsOf(stem string) map[string]bool {
+	if ix == nil {
+		return nil
+	}
+	ix.mu.Lock()
+	defer ix.mu.Unlock()
+	if rs, ok := ix.cache[stem]; ok {
 		return rs
 	}
 	roots := map[string]bool{}
-	for g, rs := range dispersion {
+	for g, rs := range ix.dispersion {
 		if !related(stem, g) && !related(g, stem) {
 			continue
 		}
@@ -538,11 +552,11 @@ func rootsOf(stem string) map[string]bool {
 			roots[r] = true
 		}
 	}
-	rootsCache[stem] = roots
+	ix.cache[stem] = roots
 	return roots
 }
 
-func rootsUsing(stem string) int { return len(rootsOf(stem)) }
+func (ix *index) rootsUsing(stem string) int { return len(ix.rootsOf(stem)) }
 
 // Content returns the distinct stems a sense makes its claim with, sorted, so
 // two senses can be compared as claims rather than as strings. "to argue; to

@@ -81,6 +81,8 @@ func bar(n, total int) string {
 // the check actually relies on is decided by this measurement, not by grammar
 // books: a rule earns its place only if its English marker really does show up
 // in that slot's glosses far above its rate elsewhere, often enough to matter.
+//
+//ukubicheck:table the wazn marker rules the survey measures
 var candidateRules = map[string][]string{
 	"form-II":     {"make", "made", "cause"},
 	"form-III":    {"with", "against"},

@@ -84,6 +84,8 @@ func IrabRoles() []IrabRole {
 //
 // ponytail: a map literal, read once at build time. It is not worth a file
 // format of its own until a translator who does not write Go needs to edit it.
+//
+//ukubicheck:table the i'rab role names
 var irabRoles = map[string][2]string{
 	// Parts of speech — the TAG column.
 	"POS:N":    {"Noun", "Nom"},

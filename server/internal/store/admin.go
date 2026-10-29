@@ -31,6 +31,8 @@ const (
 // adminAggregates is every statement the dashboard can cause to run. A new one
 // has to be added here to be run at all, which is what lets one test hold them
 // all to the same rule.
+//
+//ukubicheck:table every statement the dashboard can run
 var adminAggregates = []string{
 	readersSQL, setsPrayedSQL, syncFailuresSQL, parkedWritesSQL, corpusVersionsSQL, senseVerdictsSQL,
 }
@@ -128,6 +130,8 @@ const ReportExport = 5000
 // The categories an operator can file a report under, and what can become of
 // one. They are the column CHECKs in migration 00011, repeated so a caller can
 // refuse a bad value before it reaches SQL.
+//
+//ukubicheck:table the report categories and statuses migration 00011 allows
 var (
 	ReportCategories = []string{"sense", "bug", "ux", "content", "request", "noise"}
 	ReportStatuses   = []string{"new", "issued", "dismissed"}
@@ -225,14 +229,12 @@ func (s *Store) TriageReport(ctx context.Context, id, category, status, issueURL
 	return ErrReportNotFound
 }
 
-// senseHashSQL is the sense_hash of a text, in SQL: the first twelve hex
-// characters of the sha256 of its UTF-8 bytes. The app computes the same thing
-// in Dart, and both sides are held to one shared vector, because a hash that
-// differs by one byte of encoding makes every verdict read as cast against
-// text since corrected.
-func senseHashSQL(text string) string {
-	return `left(encode(sha256(convert_to(` + text + `, 'UTF8')), 'hex'), 12)`
-}
+// senseHashOpen + text + senseHashClose is the sense_hash of a text, in SQL:
+// the first twelve hex characters of the sha256 of its UTF-8 bytes. The app
+// computes the same thing in Dart, and both sides are held to one shared
+// vector, because a hash that differs by one byte of encoding makes every
+// verdict read as cast against text since corrected.
+const senseHashOpen, senseHashClose = `left(encode(sha256(convert_to(`, `, 'UTF8')), 'hex'), 12)`
 
 // senseVerdictsSQL tallies the thumbs per root and language. A verdict is
 // matched by isVerdict, so the root that comes back is root_senses' own key
@@ -252,12 +254,12 @@ func senseHashSQL(text string) string {
 // root a reseed has since dropped keeps its votes. It has no current text, so
 // none of them is bad_on_current: the LEFT JOIN leaves s empty and the hash
 // comparison never holds.
-var senseVerdictsSQL = `
+const senseVerdictsSQL = `
 SELECT r.verdict_root, r.locale,
        count(*) FILTER (WHERE r.body = 'sense good: ' || r.verdict_root) AS good,
        count(*) FILTER (WHERE r.body = 'sense bad: ' || r.verdict_root) AS bad,
        count(*) FILTER (WHERE r.body = 'sense bad: ' || r.verdict_root AND r.sense_hash = ` +
-	senseHashSQL(`CASE WHEN r.locale = 'fr' THEN s.sense_fr ELSE s.sense_en END`) + `) AS bad_on_current
+	senseHashOpen + `CASE WHEN r.locale = 'fr' THEN s.sense_fr ELSE s.sense_en END` + senseHashClose + `) AS bad_on_current
   FROM reports r
   LEFT JOIN root_senses s ON s.root_letters = r.verdict_root
  WHERE r.verdict_root IS NOT NULL

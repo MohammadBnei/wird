@@ -108,7 +108,7 @@ func (c *Corpus) Check(full bool) error {
 		}
 	}
 
-	errs = append(errs, c.checkIrab()...)
+	errs = append(errs, c.checkIrab(IrabRoles())...)
 	// All of the French or none of it. A reading that is French for a page and
 	// then English is worse than one that is honestly English throughout, and it
 	// is the failure a presence check cannot see: `language=fr` on the word gloss
@@ -155,11 +155,11 @@ func (c *Corpus) Check(full bool) error {
 //
 // So the count is taken from the JSON that ships in words.morphology, parsed
 // back here rather than trusted: the derived table and the provenance it was
-// derived from have to agree, or one of the two is lying to a reader.
-func (c *Corpus) checkIrab() []error {
+// derived from have to agree, or one of the two is lying to a reader. roles is
+// the vocabulary, passed in so a test can break a copy rather than the table.
+func (c *Corpus) checkIrab(roles []IrabRole) []error {
 	var errs []error
 
-	roles := IrabRoles()
 	named := make(map[string]bool, len(roles))
 	for _, r := range roles {
 		named[r.Code] = true

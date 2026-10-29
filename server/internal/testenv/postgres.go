@@ -4,10 +4,10 @@ package testenv
 
 import (
 	"context"
-	"fmt"
+	"crypto/rand"
 	"net/url"
 	"os"
-	"sync/atomic"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,8 +16,6 @@ import (
 
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
-
-var counter atomic.Int64
 
 // Postgres creates a database of its own, migrates it, and drops it when the
 // test ends. Tests share the server from docker-compose and never the schema,
@@ -35,7 +33,7 @@ func Postgres(t *testing.T) (*store.Store, *pgxpool.Pool) {
 	if err != nil {
 		t.Fatalf("no Postgres to test against (%v). Run: docker compose up -d postgres", err)
 	}
-	name := fmt.Sprintf("wird_test_%d_%d", os.Getpid(), counter.Add(1))
+	name := "wird_test_" + strings.ToLower(rand.Text()) // 26 base32 characters: unique, and a valid identifier
 	if _, err := conn.Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		t.Fatalf("create test database: %v", err)
 	}

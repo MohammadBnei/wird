@@ -12,8 +12,8 @@ import (
 // about (docs/adr/0038). ukubi-go's errkeys analyzer type-checks every
 // non-test file of the module for it, and fails when keys.go declares no key,
 // so a registry that moved or emptied cannot pass by checking nothing. The
-// other analyzers are off: env has env_test.go, and package state is not this
-// module's rule yet.
+// other analyzers are off: env has env_test.go, and package state has
+// state_test.go.
 //
 // Run with the shared GOCACHE: errkeys reads only files the build compiles,
 // which vet's cache keys on. A fresh cache is needed only once envban is on.
