@@ -17,11 +17,11 @@ FROM golang:1.27-alpine AS build
 
 WORKDIR /src
 
-# Dependency layer. jidhr has no go.sum because it has no dependencies; the
-# workspace still refuses to load without its go.mod on disk.
+# Dependency layer. jidhr's go.sum came with ukubi-go (docs/adr/0040), and the
+# workspace refuses to load without either module's go.mod on disk.
 COPY go.work go.work.sum ./
 COPY server/go.mod server/go.sum server/
-COPY jidhr/go.mod jidhr/
+COPY jidhr/go.mod jidhr/go.sum jidhr/
 RUN go mod download
 
 COPY server/ server/

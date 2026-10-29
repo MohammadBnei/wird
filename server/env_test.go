@@ -55,6 +55,9 @@ var envAllowed = map[string][]string{
 	// A test helper outside a _test.go file, imported only by tests: the DSN
 	// of the Postgres the tests make their throwaway databases in.
 	"server/internal/testenv/postgres.go": {"os.Getenv()"},
+	// Also test-only: a cmd's main run again as a child process, which
+	// inherits the test's environment plus the variables the test sets.
+	"server/internal/testenv/main.go": {"import os/exec", "os.Environ()"},
 }
 
 // envUses lists the environment readers src uses, called or as a value, under

@@ -89,7 +89,7 @@ docker compose up -d postgres oidc-stub
 WIRD_DEV=1 go run ./server/cmd/api
 ```
 
-The API runs its migrations at startup, so there is no separate step. Without `WIRD_DEV=1` it refuses to start until `DATABASE_URL`, `OIDC_ISSUER` and `OIDC_AUDIENCE` are all set, and says which are missing in one `config refused` line. `WIRD_DEV=1` fills the ones you leave unset with the compose stack's ([config.go:65-83](../../server/cmd/api/config.go#L65-L83)):
+The API runs its migrations at startup, so there is no separate step. Without `WIRD_DEV=1` it refuses to start until `DATABASE_URL`, `OIDC_ISSUER` and `OIDC_AUDIENCE` are all set, and says which are missing in one `config refused` line. `WIRD_DEV=1` fills the ones you leave unset with the compose stack's ([config.go:70-88](../../server/cmd/api/config.go#L70-L88)):
 
 | Variable | With `WIRD_DEV=1` |
 |---|---|
@@ -100,7 +100,7 @@ The API runs its migrations at startup, so there is no separate step. Without `W
 
 Moving onto the real Authentik means setting `OIDC_ISSUER` and `OIDC_AUDIENCE` and dropping `WIRD_DEV`. The audience must be the client id there. See [Authentik wiring](authentik-wiring.md). Every variable is in the [API's table](../architecture/api.md#1-start-read-the-environment-migrate-listen).
 
-Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.go:228-229](../../server/internal/api/api.go#L228-L229)). That is by design: nothing is licensed yet, and Wird never invents commentary.
+Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.go:257-258](../../server/internal/api/api.go#L257-L258)). That is by design: nothing is licensed yet, and Wird never invents commentary.
 
 ## 5. Run jidhr
 

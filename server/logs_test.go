@@ -240,6 +240,7 @@ func TestErrorSites(t *testing.T) {
 		`jidhr/cmd/rootd/main.go: main: "open the corpus"`,
 		`jidhr/cmd/rootd/main.go: main: "rootd shutdown failed"`,
 		`jidhr/cmd/rootd/main.go: main: "rootd stopped"`,
+		`jidhr/cmd/rootd/main.go: main: "tracing unavailable"`,
 		`jidhr/cmd/rootd/main.go: main: LevelError`, // http.Server.ErrorLog
 		`jidhr/cmd/rootd/server.go: lookupRoot: writeInternal("look up a root")`,
 		`jidhr/cmd/rootd/server.go: lookupRoot: writeInternal("read the meanings of a root")`,
@@ -256,6 +257,7 @@ func TestErrorSites(t *testing.T) {
 		`server/cmd/adminweb/main.go: run: "database unavailable"`,
 		`server/cmd/adminweb/main.go: run: "issuer unavailable"`,
 		`server/cmd/adminweb/main.go: run: "stylesheet unavailable"`,
+		`server/cmd/adminweb/main.go: run: "tracing unavailable"`,
 		`server/cmd/adminweb/main.go: run: "wird-adminweb shutdown failed"`,
 		`server/cmd/adminweb/main.go: run: "wird-adminweb stopped"`,
 		`server/cmd/adminweb/main.go: run: "wird-adminweb stopped"`,
@@ -265,6 +267,7 @@ func TestErrorSites(t *testing.T) {
 		`server/cmd/api/main.go: run: "config refused"`,
 		`server/cmd/api/main.go: run: "database unavailable"`,
 		`server/cmd/api/main.go: run: "issuer unavailable"`,
+		`server/cmd/api/main.go: run: "tracing unavailable"`,
 		`server/cmd/api/main.go: run: "wird-api shutdown failed"`,
 		`server/cmd/api/main.go: run: "wird-api stopped"`,
 		`server/cmd/api/main.go: run: "wird-api stopped"`,
@@ -398,7 +401,7 @@ func TestMainsLog(t *testing.T) {
 	want := map[string]string{
 		"server/cmd/api":      "telemetry.NewLogger(os.Stdout)",
 		"server/cmd/adminweb": "telemetry.NewLogger(os.Stdout)",
-		"jidhr/cmd/rootd":     "slog.New(slog.NewJSONHandler(os.Stdout, nil))",
+		"jidhr/cmd/rootd":     "telemetry.NewLogger(os.Stdout)",
 	}
 	for _, c := range cliTools {
 		want[c] = "telemetry.NewLogger(os.Stderr)"

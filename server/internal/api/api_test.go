@@ -41,7 +41,7 @@ func newHarnessWith(t *testing.T, c api.Config) *harness {
 	if err != nil {
 		t.Fatalf("issuer discovery: %v", err)
 	}
-	return &harness{routes: api.Routes(db, authenticator, slog.New(slog.DiscardHandler), c), issuer: issuer, db: db, pool: pool}
+	return &harness{routes: api.Routes(db, authenticator, slog.New(slog.DiscardHandler), c, nil), issuer: issuer, db: db, pool: pool}
 }
 
 // get sends a request carrying token, or none at all when token is empty.

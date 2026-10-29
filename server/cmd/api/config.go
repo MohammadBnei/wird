@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 
 	"github.com/MohammadBnei/wird/server/internal/api"
@@ -24,6 +25,7 @@ var envVars = []string{
 	"WIRD_APK_KEY",
 	"WIRD_APK_VERSION",
 	"WIRD_ANDROID_SHA256",
+	"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
 }
 
 // Config is the whole of wird-api's configuration, read once at start.
@@ -36,6 +38,9 @@ type Config struct {
 	OIDCAudience string
 	Addr         string
 	API          api.Config
+	// Traces is the OTLP/HTTP traces URL, /v1/traces included; empty means
+	// no tracing at all (docs/adr/0040).
+	Traces string
 }
 
 // The local defaults WIRD_DEV=1 fills in: docker-compose.yml's Postgres and
@@ -117,11 +122,22 @@ func load(getenv func(string) string) (Config, error) {
 		errs = append(errs, errors.New("WIRD_APK_VERSION is set but WIRD_APK_KEY is not"))
 	}
 	c.API.AndroidSHA256 = getenv("WIRD_ANDROID_SHA256")
+	c.Traces = getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+	if c.Traces != "" && !httpURL(c.Traces) {
+		errs = append(errs, errors.New("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is not an http(s) URL with a host"))
+	}
 
 	if err := errors.Join(errs...); err != nil {
 		return Config{}, err
 	}
 	return c, nil
+}
+
+// httpURL is telemetry.New's own check, made here so a bad value is refused
+// with the others and its value (which may carry user:secret@) never printed.
+func httpURL(v string) bool {
+	u, err := url.Parse(v)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
 // fromProcess is the one place wird-api reads its real environment.

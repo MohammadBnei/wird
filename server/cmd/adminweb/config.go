@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 )
 
@@ -18,6 +19,7 @@ var envVars = []string{
 	"OIDC_AUDIENCE",
 	"NOCTURNE_CSS",
 	"ADMIN_ADDR",
+	"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
 }
 
 // Config is the whole of wird-adminweb's configuration, read once at start.
@@ -34,6 +36,9 @@ type Config struct {
 	ClientSecret string
 	CSSPath      string
 	Addr         string
+	// Traces is the OTLP/HTTP traces URL, /v1/traces included; empty means
+	// no tracing at all (docs/adr/0040).
+	Traces string
 }
 
 // The local defaults WIRD_DEV=1 fills in: docker-compose.yml's Postgres and
@@ -102,10 +107,22 @@ func load(getenv func(string) string) (Config, error) {
 		c.Audience = required("OIDC_CLIENT_ID or OIDC_AUDIENCE", audience, devAudience)
 	}
 
+	c.Traces = getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+	if c.Traces != "" && !httpURL(c.Traces) {
+		errs = append(errs, errors.New("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is not an http(s) URL with a host"))
+	}
+
 	if err := errors.Join(errs...); err != nil {
 		return Config{}, err
 	}
 	return c, nil
+}
+
+// httpURL is telemetry.New's own check, made here so a bad value is refused
+// with the others and its value (which may carry user:secret@) never printed.
+func httpURL(v string) bool {
+	u, err := url.Parse(v)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
 // fromProcess is the one place wird-adminweb reads its real environment.

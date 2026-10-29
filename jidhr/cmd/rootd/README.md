@@ -78,9 +78,13 @@ the two shapes.
 | `ROOTD_CORPUS` | `jidhr/testdata/quran.json` | the corpus file to serve, read once at startup |
 | `ROOTD_API_KEY` | required unless `ROOTD_DEV=1` | every `/v1` call must send `Authorization: Bearer <key>` |
 | `ROOTD_RATE` | `5` | requests a second per caller; the burst is four seconds' worth. `0` turns throttling off. Anything else that is not a finite rate of at least `0.25` (a burst of one) is refused |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | unset, so no tracing at all | the OTLP/HTTP traces URL in full, `/v1/traces` included: one span per `/v1` route, a 401 or 429 included. Not an http(s) URL with a host is refused. See [ADR 0040](../../../docs/adr/0040-opt-in-traces.md) |
 
 `TestConfigDocumented` holds this table and the variables `config.go` reads to the
-same set.
+same set. With tracing on, the OpenTelemetry SDK still honours its own
+`OTEL_RESOURCE_ATTRIBUTES`, exporter headers, timeout, compression and certificates,
+`OTEL_BSP_*`, span limits and `OTEL_GO_X_*`; the service name (`rootd`), sampler,
+propagator and endpoint are set in code.
 
 `GET /healthz` answers 200 and is deliberately outside both the key and the rate
 limit, so an orchestrator's probe cannot be throttled into restarting a healthy

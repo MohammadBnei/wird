@@ -1,6 +1,6 @@
 # 39. Logs are JSON lines on stdout, and a SIGTERM drains
 
-Date: 2026-10-29. Status: accepted.
+Date: 2026-10-29. Status: accepted, amended by ADR 0040 (rootd now uses ukubi-go's logger, and the jidhr module has dependencies).
 
 ## Context
 

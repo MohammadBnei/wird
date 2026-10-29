@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"math"
+	"net/url"
 	"os"
 	"strconv"
 )
@@ -15,6 +16,7 @@ var envVars = []string{
 	"ROOTD_CORPUS",
 	"ROOTD_API_KEY",
 	"ROOTD_RATE",
+	"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
 }
 
 // Config is the whole of rootd's configuration, read once at start.
@@ -28,6 +30,9 @@ type Config struct {
 	APIKey string
 	// Rate is requests a second per caller; 0 turns throttling off.
 	Rate float64
+	// Traces is the OTLP/HTTP traces URL, /v1/traces included; empty means
+	// no tracing at all (docs/adr/0040).
+	Traces string
 }
 
 // load builds the Config from getenv, or refuses it with every problem at
@@ -75,10 +80,22 @@ func load(getenv func(string) string) (Config, error) {
 		}
 	}
 
+	c.Traces = getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+	if c.Traces != "" && !httpURL(c.Traces) {
+		errs = append(errs, errors.New("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is not an http(s) URL with a host"))
+	}
+
 	if err := errors.Join(errs...); err != nil {
 		return Config{}, err
 	}
 	return c, nil
+}
+
+// httpURL is telemetry.New's own check, made here so a bad value is refused
+// with the others and its value (which may carry user:secret@) never printed.
+func httpURL(v string) bool {
+	u, err := url.Parse(v)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
 // fromProcess is the one place rootd reads its real environment.

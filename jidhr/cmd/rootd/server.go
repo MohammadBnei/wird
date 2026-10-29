@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MohammadBnei/ukubi-go/telemetry"
+
 	"github.com/MohammadBnei/wird/jidhr/pkg/root"
 )
 
@@ -35,22 +37,45 @@ type server struct {
 	limiter *limiter
 	apiKey  string
 	log     *slog.Logger
+	// tracing spans every /v1 route; nil traces nothing.
+	tracing *telemetry.Tracing
+}
+
+// v1 is every route behind the gate, registered from this one table on the
+// inner mux and, as the same gate under a span, on the top one.
+func (s *server) v1() []route {
+	return []route{
+		{"GET /v1/root", s.resolveWord},
+		{"POST /v1/roots:batch", s.resolveBatch},
+		{"GET /v1/roots/{letters}", s.lookupRoot},
+	}
+}
+
+type route struct {
+	pattern string
+	handler http.HandlerFunc
 }
 
 // routes builds the public handler. Health checks sit outside the rate limiter
 // and outside authentication: throttling a kubelet probe takes the process down
-// for a reason that has nothing to do with the process.
+// for a reason that has nothing to do with the process. They are untraced too.
 func (s *server) routes() http.Handler {
 	api := http.NewServeMux()
-	api.HandleFunc("GET /v1/root", s.resolveWord)
-	api.HandleFunc("POST /v1/roots:batch", s.resolveBatch)
-	api.HandleFunc("GET /v1/roots/{letters}", s.lookupRoot)
+	for _, r := range s.v1() {
+		api.HandleFunc(r.pattern, r.handler)
+	}
 
 	top := http.NewServeMux()
 	top.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	top.Handle("/", s.rateLimited(s.authenticated(api)))
+	// One gate. Each route's span sits outside it, so a 401 or a 429 is
+	// traced; a path no route takes falls through to "/" untraced.
+	gate := s.rateLimited(s.authenticated(api))
+	for _, r := range s.v1() {
+		top.Handle(r.pattern, s.tracing.Handler(r.pattern, gate))
+	}
+	top.Handle("/", gate)
 	return top
 }
 

@@ -50,6 +50,20 @@ func run(log *slog.Logger) int {
 		return 1
 	}
 
+	// Before the database: deferred first, Shutdown runs last, once Serve has
+	// drained and db.Close is done. Inert when cfg.Traces is empty
+	// (docs/adr/0040).
+	tel, err := telemetry.New(cfg.Traces, "wird-adminweb")
+	if err != nil {
+		log.Error("tracing unavailable", "err", err)
+		return 1
+	}
+	defer func() {
+		if err := tel.Shutdown(); err != nil {
+			log.Warn("traces", "err", err)
+		}
+	}()
+
 	// store.New, not store.Open: Open runs the migrations, and goose takes no
 	// lock, so two binaries migrating the same database at once is a race. The
 	// api is the one that migrates; this reads the schema it left.
@@ -102,7 +116,7 @@ func run(log *slog.Logger) int {
 		return 1
 	}
 	log.Info("wird-adminweb listening", "addr", ln.Addr().String(), "issuer", issuer, "audience", audience, "dev", cfg.Dev)
-	if err := httpx.Serve(ctx, ln, routes(db, verifier, css, log), log); err != nil {
+	if err := httpx.Serve(ctx, ln, routes(db, verifier, css, log, tel), log); err != nil {
 		if ctx.Err() != nil {
 			log.Error("wird-adminweb shutdown failed", "err", err)
 		} else {
@@ -114,30 +128,34 @@ func run(log *slog.Logger) int {
 	return 0
 }
 
-func routes(db *store.Store, verifier *oidc.IDTokenVerifier, css []byte, log *slog.Logger) http.Handler {
+// routes is every page. Each route but /healthz gets a span from t, outside
+// its gate, so a refusal is traced too; a nil or inert t adds nothing.
+func routes(db *store.Store, verifier *oidc.IDTokenVerifier, css []byte, log *slog.Logger, t *telemetry.Tracing) http.Handler {
 	s := &server{db: db, log: log}
 	mux := http.NewServeMux()
+	handle := func(pattern string, h http.Handler) { mux.Handle(pattern, t.Handler(pattern, h)) }
+	// Untraced: a probe every few seconds is noise, not a request.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.HandleFunc("GET /styles.css", func(w http.ResponseWriter, _ *http.Request) {
+	handle("GET /styles.css", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		if _, err := w.Write(css); err != nil {
 			log.Warn("stylesheet not written", "err", err) // the client went away
 		}
-	})
+	}))
 	// Everything past here is behind the group, and none of it is cached: an
 	// operator's page or export kept by a proxy or a shared browser is reports
 	// read by whoever opens that cache next.
 	gated := func(h http.HandlerFunc) http.Handler { return noStore(operators(verifier, log, h)) }
-	mux.Handle("GET /{$}", gated(s.dashboard))
-	mux.Handle("GET /reports.json", gated(s.reportsJSON))
-	mux.Handle("GET /verdicts.json", gated(s.verdictsJSON))
+	handle("GET /{$}", gated(s.dashboard))
+	handle("GET /reports.json", gated(s.reportsJSON))
+	handle("GET /verdicts.json", gated(s.verdictsJSON))
 	// The one write. A signed-in operator's browser carries the token the
 	// proxy forwards, so a page elsewhere that posts here would be filing
 	// reports in their name; Go's own check refuses a cross-origin POST before
 	// the token is even looked at.
-	mux.Handle("POST /reports/{id}", http.NewCrossOriginProtection().Handler(gated(s.triage)))
+	handle("POST /reports/{id}", http.NewCrossOriginProtection().Handler(gated(s.triage)))
 	return mux
 }
 

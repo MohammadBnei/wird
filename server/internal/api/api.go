@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/MohammadBnei/ukubi-go/errs"
+	"github.com/MohammadBnei/ukubi-go/telemetry"
 	"github.com/MohammadBnei/wird/server/internal/auth"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
 	"github.com/MohammadBnei/wird/server/internal/keys"
@@ -44,63 +45,91 @@ type Models struct {
 	Bucket, Endpoint, AccessKey, Secret, Region string
 }
 
+// gated is every route behind the authenticator. Routes registers each one
+// twice from this one table: on v1, which is the only place a handler is
+// reached, and on the outer mux as the same gate over v1, so that its span is
+// named by its pattern and sits outside the gate (docs/adr/0040).
+func (h *Handler) gated() []route {
+	return []route{
+		{"GET /v1/me", h.me},
+		{"DELETE /v1/me", h.deleteMe},
+		{"GET /v1/corpus/version", h.corpusVersion},
+		{"POST /v1/sync", h.sync},
+		{"GET /v1/changes", h.changes},
+		{"GET /v1/progress", h.progress},
+		{"GET /v1/kept", h.kept},
+		{"GET /v1/ayahs/{surah}/{ayah}/tafsir", h.tafsir},
+		{"GET /v1/ayahs/{surah}/{ayah}/irab", h.irab},
+		{"GET /v1/roots/{letters}/lexicon", h.lexicon},
+	}
+}
+
+type route struct {
+	pattern string
+	handler http.HandlerFunc
+}
+
 // Routes wires every endpoint behind the authenticator, except the few that are
-// reached without an account: each open route below says why it is open.
-func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger, c Config) http.Handler {
+// reached without an account: each open route below says why it is open. Every
+// route but /healthz gets a span from t; a nil or inert t adds nothing.
+func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger, c Config, t *telemetry.Tracing) http.Handler {
 	h := &Handler{store: s, log: log}
 
 	v1 := http.NewServeMux()
-	v1.HandleFunc("GET /v1/me", h.me)
-	v1.HandleFunc("DELETE /v1/me", h.deleteMe)
-	v1.HandleFunc("GET /v1/corpus/version", h.corpusVersion)
-	v1.HandleFunc("POST /v1/sync", h.sync)
-	v1.HandleFunc("GET /v1/changes", h.changes)
-	v1.HandleFunc("GET /v1/progress", h.progress)
-	v1.HandleFunc("GET /v1/kept", h.kept)
-	v1.HandleFunc("GET /v1/ayahs/{surah}/{ayah}/tafsir", h.tafsir)
-	v1.HandleFunc("GET /v1/ayahs/{surah}/{ayah}/irab", h.irab)
-	v1.HandleFunc("GET /v1/roots/{letters}/lexicon", h.lexicon)
+	for _, r := range h.gated() {
+		v1.HandleFunc(r.pattern, r.handler)
+	}
 
 	mux := http.NewServeMux()
+	handle := func(pattern string, h http.Handler) { mux.Handle(pattern, t.Handler(pattern, h)) }
+	// Untraced: a probe every few seconds is noise, not a request.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	// Beside /healthz and for the same reason: a reader arriving from the
 	// identity server holds an authorization code and no bearer token, so
 	// behind the middleware this answered 401 and sign-in could never finish.
-	mux.HandleFunc(callbackPath, authCallback)
+	handle(callbackPath, http.HandlerFunc(authCallback))
 	// Android fetches this before it will treat /auth/callback as this app's
 	// link, and it is fetched by the platform rather than by a signed-in reader.
-	mux.HandleFunc(assetLinksPath, assetLinks(c.AndroidSHA256))
-	mux.HandleFunc(appSiteAssociationPath, appSiteAssociation)
+	handle(assetLinksPath, assetLinks(c.AndroidSHA256))
+	handle(appSiteAssociationPath, http.HandlerFunc(appSiteAssociation))
 	// The recogniser, fetched by a phone that has never signed in and never
 	// needs to. It answers 302 to the store and the bytes never come through
 	// here; without a store configured it says so rather than pretending the
 	// file is missing.
 	models := newModelStore(c.Models, log)
 	if models != nil {
-		mux.HandleFunc(modelsPath, models.serve)
+		handle(modelsPath, http.HandlerFunc(models.serve))
 	} else {
-		mux.HandleFunc(modelsPath, modelsNotConfigured)
+		handle(modelsPath, http.HandlerFunc(modelsNotConfigured))
 	}
 	// The app itself, from the same store, for the public page's Download
 	// buttons. apk.go carries why the key is configured rather than fixed.
-	mux.HandleFunc(apkPath, apk(models, c.APKKey, log))
-	mux.HandleFunc(apkVersionPath, apkVersion(c.APKVersion))
+	handle(apkPath, apk(models, c.APKKey, log))
+	handle(apkVersionPath, apkVersion(c.APKVersion))
 	// The senses, fetched by a phone that has never signed in. Open for the
 	// same reason as the recogniser, and registered here rather than on v1 so
 	// ServeMux specificity keeps it out of the middleware. senses.go carries
 	// the whole of why.
-	mux.HandleFunc(sensesPath, h.senses)
+	handle(sensesPath, http.HandlerFunc(h.senses))
 	// The public page, for someone who has not installed anything. Its files
 	// are one path segment deep (or under _ds/), and every API route is two or
 	// more, so these patterns cannot reach v1; /healthz is matched exactly and
 	// wins over {file}.
 	page := site.Handler()
-	mux.Handle("GET /{$}", page)
-	mux.Handle("GET /{file}", page)
-	mux.Handle("GET /_ds/", page)
-	mux.Handle("/", a.Middleware(v1))
+	handle("GET /{$}", page)
+	handle("GET /{file}", page)
+	handle("GET /_ds/", page)
+	// One gate, over v1. Each gated pattern is also on this mux, as this same
+	// gate under a span; anything else (another method, a path no route
+	// takes) falls through to "/" untraced, and v1 answers its 404 or 405
+	// after the gate, as it always has.
+	gate := a.Middleware(v1)
+	for _, r := range h.gated() {
+		handle(r.pattern, gate)
+	}
+	mux.Handle("/", gate)
 	return mux
 }
 

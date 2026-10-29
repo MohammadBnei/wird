@@ -52,7 +52,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	verifier := provider.Verifier(&oidc.Config{ClientID: audience})
 	return &harness{
-		routes: routes(db, verifier, css, slog.New(slog.DiscardHandler)),
+		routes: routes(db, verifier, css, slog.New(slog.DiscardHandler), nil),
 		issuer: issuer,
 		pool:   pool,
 	}
@@ -177,7 +177,7 @@ func TestATokenSignedWithTheClientSecretIsTheOnlyWayIn(t *testing.T) {
 	db, _ := testenv.Postgres(t)
 	const issuer = "https://authentik.example/application/o/wird-admin/"
 	secret := "the-wird-admin-client-secret-at-least-32-bytes"
-	h := routes(db, clientSecretVerifier(issuer, audience, secret), []byte(""), slog.New(slog.DiscardHandler))
+	h := routes(db, clientSecretVerifier(issuer, audience, secret), []byte(""), slog.New(slog.DiscardHandler), nil)
 
 	mint := func(key, aud string, groups ...string) string {
 		signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: []byte(key)}, nil)

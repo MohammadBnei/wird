@@ -41,6 +41,20 @@ func run(log *slog.Logger) int {
 		return 1
 	}
 
+	// Before the database: deferred first, Shutdown runs last, once Serve has
+	// drained and db.Close is done, so a hung collector never holds the
+	// database open. Inert when cfg.Traces is empty (docs/adr/0040).
+	tel, err := telemetry.New(cfg.Traces, "wird-api")
+	if err != nil {
+		log.Error("tracing unavailable", "err", err)
+		return 1
+	}
+	defer func() {
+		if err := tel.Shutdown(); err != nil {
+			log.Warn("traces", "err", err)
+		}
+	}()
+
 	// Startup runs to the end even after a SIGTERM, and Serve then drains at
 	// once: a migration or discovery cancelled halfway would log a false ERROR.
 	start := context.WithoutCancel(ctx)
@@ -77,7 +91,7 @@ func run(log *slog.Logger) int {
 	defer func() { stop(); loops.Wait() }()
 
 	log.Info("wird-api listening", "addr", ln.Addr().String(), "issuer", issuer, "dev", cfg.Dev)
-	if err := httpx.Serve(ctx, ln, api.Routes(db, authenticator, log, cfg.API), log); err != nil {
+	if err := httpx.Serve(ctx, ln, api.Routes(db, authenticator, log, cfg.API, tel), log); err != nil {
 		if ctx.Err() != nil {
 			log.Error("wird-api shutdown failed", "err", err)
 		} else {
