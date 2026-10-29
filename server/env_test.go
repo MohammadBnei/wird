@@ -257,3 +257,25 @@ func TestEnvUses(t *testing.T) {
 		}
 	}
 }
+
+// jidhr's CI tests rootd against jidhr's own ukubi-go pin (GOWORK=off), while
+// the image builds rootd through go.work, where the higher of the two pins
+// wins: two pins that differ ship a rootd nobody tested (docs/adr/0040).
+func TestJidhrShipsTheUkubiGoItWasTestedWith(t *testing.T) {
+	pin := func(gomod string) string {
+		b, err := os.ReadFile(gomod)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for line := range strings.Lines(string(b)) {
+			if f := strings.Fields(line); len(f) == 2 && f[0] == "github.com/MohammadBnei/ukubi-go" {
+				return f[1]
+			}
+		}
+		t.Fatalf("%s requires no ukubi-go", gomod)
+		return ""
+	}
+	if s, j := pin("go.mod"), pin("../jidhr/go.mod"); s != j {
+		t.Errorf("ukubi-go: server pins %s, jidhr %s; bump both together", s, j)
+	}
+}

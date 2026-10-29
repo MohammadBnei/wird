@@ -54,7 +54,7 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 		}
 		token, err := a.verifier.Verify(r.Context(), raw)
 		if err != nil {
-			a.log.Info("token refused", "err", err)
+			a.log.InfoContext(r.Context(), "token refused", "err", err)
 			httpx.Error(w, errs.Unauthenticated, keys.TokenRejected, "token rejected")
 			return
 		}

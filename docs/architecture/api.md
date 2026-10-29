@@ -158,7 +158,7 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. Both are built from one table, `gated`: each gated route is registered on `v1`, where its handler lives, and on the outer mux as the same gate, the auth middleware wrapped around `v1`. There is one gate value, so no handler is reachable except through it. A request no outer pattern takes, such as another method on a `/v1/` path or a path no route knows, falls through `"/"` to that same gate, and `v1` answers its 404 or 405 after it, as it always has. An open route stays open because it is registered on the outer mux by itself, not because the middleware skips it. [api.go:48-134](../../server/internal/api/api.go#L48-L134)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. Both are built from one table, `gated`: each gated route is registered on `v1`, where its handler lives, and on the outer mux as the same gate, the auth middleware wrapped around `v1`. There is one gate value, so no handler is reachable except through it. A request no outer pattern takes, such as another method on a `/v1/` path or a path no route knows, falls through `"/"` to that same gate, and `v1` answers its 404 or 405 after it, as it always has. An open route stays open because it is registered on the outer mux by itself, not because the middleware skips it. [api.go:48-131](../../server/internal/api/api.go#L48-L131)
 
 ```go
 func (h *Handler) gated() []route {
@@ -185,15 +185,15 @@ func (h *Handler) gated() []route {
 	mux.Handle("/", gate)
 ```
 
-[api.go:128-132](../../server/internal/api/api.go#L128-L132)
+[api.go:123-129](../../server/internal/api/api.go#L123-L129)
 
 Registering each gated route on the outer mux is for its span: the outer mux knows the pattern, so the span is named by it and sits outside the gate, and a 401 is traced like a 200 (see Traces below). `TestEveryGatedRouteRefusesNoTokenUnderItsOwnSpan` walks the whole table with no token and wants a 401 under one span for each.
 
-`/v1/senses` is the one open `/v1/` path. It is on the outer mux and not in `gated`, so it never meets the middleware. [api.go:115](../../server/internal/api/api.go#L115)
+`/v1/senses` is the one open `/v1/` path. It is on the outer mux and not in `gated`, so it never meets the middleware. [api.go:110](../../server/internal/api/api.go#L110)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:116-123](../../server/internal/api/api.go#L116-L123)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:111-118](../../server/internal/api/api.go#L111-L118)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 
@@ -214,7 +214,7 @@ The middleware verifies the token, then finds the reader behind its subject, cre
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes: `JSON` for an answer, and `Error(w, code, key, message)` for an error, which hands the body to ukubi-go's `errs.Write`. [httpx.go:12-29](../../server/internal/httpx/httpx.go#L12-L29)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:256-263](../../server/internal/api/api.go#L256-L263)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:253-260](../../server/internal/api/api.go#L253-L260)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -227,7 +227,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:230-238](../../server/internal/api/api.go#L230-L238)), a root must be at most 32 bytes of Arabic letters ([api.go:242-252](../../server/internal/api/api.go#L242-L252)), and a kept kind must be `aya`, `root` or `note` ([api.go:169-176](../../server/internal/api/api.go#L169-L176)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:227-235](../../server/internal/api/api.go#L227-L235)), a root must be at most 32 bytes of Arabic letters ([api.go:239-249](../../server/internal/api/api.go#L239-L249)), and a kept kind must be `aya`, `root` or `note` ([api.go:166-173](../../server/internal/api/api.go#L166-L173)).
 
 ### 4. The store holds every SQL statement
 

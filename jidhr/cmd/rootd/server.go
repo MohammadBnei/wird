@@ -60,19 +60,16 @@ type route struct {
 // and outside authentication: throttling a kubelet probe takes the process down
 // for a reason that has nothing to do with the process. They are untraced too.
 func (s *server) routes() http.Handler {
-	api := http.NewServeMux()
-	for _, r := range s.v1() {
-		api.HandleFunc(r.pattern, r.handler)
-	}
-
 	top := http.NewServeMux()
 	top.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	// One gate. Each route's span sits outside it, so a 401 or a 429 is
 	// traced; a path no route takes falls through to "/" untraced.
+	api := http.NewServeMux()
 	gate := s.rateLimited(s.authenticated(api))
 	for _, r := range s.v1() {
+		api.HandleFunc(r.pattern, r.handler)
 		top.Handle(r.pattern, s.tracing.Handler(r.pattern, gate))
 	}
 	top.Handle("/", gate)

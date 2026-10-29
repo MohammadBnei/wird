@@ -138,10 +138,10 @@ func routes(db *store.Store, verifier *oidc.IDTokenVerifier, css []byte, log *sl
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	handle("GET /styles.css", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handle("GET /styles.css", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		if _, err := w.Write(css); err != nil {
-			log.Warn("stylesheet not written", "err", err) // the client went away
+			log.WarnContext(r.Context(), "stylesheet not written", "err", err) // the client went away
 		}
 	}))
 	// Everything past here is behind the group, and none of it is cached: an
@@ -221,13 +221,13 @@ func (s *server) dashboard(w http.ResponseWriter, r *http.Request) {
 	// a write that fails after it is a client gone away (WARN).
 	var buf bytes.Buffer
 	if err := render(&buf, page); err != nil {
-		s.log.Error("page not written", "err", err)
+		s.log.ErrorContext(r.Context(), "page not written", "err", err)
 		http.Error(w, "the page could not be rendered", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := buf.WriteTo(w); err != nil {
-		s.log.Warn("page not written", "err", err)
+		s.log.WarnContext(r.Context(), "page not written", "err", err)
 	}
 }
 
@@ -308,7 +308,7 @@ func (s *server) triage(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&f); err != nil {
-			s.log.Info("triage body refused", "err", err) // client input
+			s.log.InfoContext(r.Context(), "triage body refused", "err", err) // client input
 			http.Error(w, "the body is not a triage", http.StatusBadRequest)
 			return
 		}

@@ -161,7 +161,7 @@ func documented(t *testing.T, path string) []string {
 // values start.
 func TestATracesEndpointThatIsNotAURLStarts(t *testing.T) {
 	const name = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
-	for _, v := range []string{"collector:4318", "grpc://user:secret@collector:4317", "http:///v1/traces", "user:secret@collector"} {
+	for _, v := range []string{"collector:4318", "grpc://user:secret@collector:4317", "http:///v1/traces", "http://:4318/v1/traces", "user:secret@collector"} {
 		_, err := load(func(k string) string { return with(prod, name, v, "WIRD_DEV", "2")[k] })
 		if err == nil {
 			t.Errorf("%q: started", v)

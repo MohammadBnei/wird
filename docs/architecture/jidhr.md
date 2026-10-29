@@ -137,9 +137,9 @@ Traces are off unless `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set, and then they
 
 ### 2. Routes sit behind the limit and the key
 
-The three `/v1` routes go through the rate limiter and then the key check. There is one gate value, the limiter around the key check around the inner mux; each route in the `v1` table is registered on the inner mux and, as that same gate under its span, on the top mux, and any other path falls through `"/"` to the gate untraced. `/healthz` is mounted outside both, untraced, so a probe can never be throttled ([server.go:44-80](../../jidhr/cmd/rootd/server.go#L44-L80)). `TestEveryV1RouteIsGatedUnderItsOwnSpan` walks the table with no key and wants a 401, then a 429, each under its span. The languages offered are the ones the file actually holds, not a list kept somewhere else ([store.go:310](../../jidhr/pkg/root/store.go#L310-L321)).
+The three `/v1` routes go through the rate limiter and then the key check. There is one gate value, the limiter around the key check around the inner mux; each route in the `v1` table is registered on the inner mux and, as that same gate under its span, on the top mux, and any other path falls through `"/"` to the gate untraced. `/healthz` is mounted outside both, untraced, so a probe can never be throttled ([server.go:44-77](../../jidhr/cmd/rootd/server.go#L44-L77)). `TestEveryV1RouteIsGatedUnderItsOwnSpan` walks the table with no key and wants a 401, then a 429, each under its span. The languages offered are the ones the file actually holds, not a list kept somewhere else ([store.go:310](../../jidhr/pkg/root/store.go#L310-L321)).
 
-Callers are told apart by network address only ([server.go:322](../../jidhr/cmd/rootd/server.go#L322-L328)). Behind a proxy, every caller looks like the proxy.
+Callers are told apart by network address only ([server.go:319](../../jidhr/cmd/rootd/server.go#L319-L325)). Behind a proxy, every caller looks like the proxy.
 
 ### 3. The word is checked, then keyed
 
@@ -257,7 +257,7 @@ If nothing is attested, the templates in `pattern.go` propose readings ([pattern
 
 ### 9. Errors become HTTP codes in one place
 
-`apiErrorFor` maps resolver errors to the status and code the README documents ([server.go:209](../../jidhr/cmd/rootd/server.go#L209-L229)): `ErrNotArabic` to 400, a rootless `NoRootError` to 404 `rootless`, any other `NoRootError` or a bare `ErrNoRoot` to 404 `no_root`, and everything else to 500 `internal`.
+`apiErrorFor` maps resolver errors to the status and code the README documents ([server.go:206](../../jidhr/cmd/rootd/server.go#L206-L226)): `ErrNotArabic` to 400, a rootless `NoRootError` to 404 `rootless`, any other `NoRootError` or a bare `ErrNoRoot` to 404 `no_root`, and everything else to 500 `internal`.
 
 ### 10. How the file is rebuilt
 

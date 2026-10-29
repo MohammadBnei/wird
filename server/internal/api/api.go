@@ -75,13 +75,8 @@ type route struct {
 func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger, c Config, t *telemetry.Tracing) http.Handler {
 	h := &Handler{store: s, log: log}
 
-	v1 := http.NewServeMux()
-	for _, r := range h.gated() {
-		v1.HandleFunc(r.pattern, r.handler)
-	}
-
 	mux := http.NewServeMux()
-	handle := func(pattern string, h http.Handler) { mux.Handle(pattern, t.Handler(pattern, h)) }
+	handle := func(pattern string, next http.Handler) { mux.Handle(pattern, t.Handler(pattern, next)) }
 	// Untraced: a probe every few seconds is noise, not a request.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -125,8 +120,10 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger, c Config, t
 	// gate under a span; anything else (another method, a path no route
 	// takes) falls through to "/" untraced, and v1 answers its 404 or 405
 	// after the gate, as it always has.
+	v1 := http.NewServeMux()
 	gate := a.Middleware(v1)
 	for _, r := range h.gated() {
+		v1.HandleFunc(r.pattern, r.handler)
 		handle(r.pattern, gate)
 	}
 	mux.Handle("/", gate)

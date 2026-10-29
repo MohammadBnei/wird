@@ -51,7 +51,7 @@ func operators(verifier *oidc.IDTokenVerifier, log *slog.Logger, next http.Handl
 		}
 		token, err := verifier.Verify(r.Context(), raw)
 		if err != nil {
-			log.Info("token refused", "err", err)
+			log.InfoContext(r.Context(), "token refused", "err", err)
 			http.Error(w, "token rejected", http.StatusUnauthorized)
 			return
 		}
@@ -59,7 +59,7 @@ func operators(verifier *oidc.IDTokenVerifier, log *slog.Logger, next http.Handl
 			Groups []string `json:"groups"`
 		}
 		if err := token.Claims(&claims); err != nil || !slices.Contains(claims.Groups, operatorGroup) {
-			log.Info("not an operator", "group", operatorGroup)
+			log.InfoContext(r.Context(), "not an operator", "group", operatorGroup)
 			http.Error(w, "this page is for "+operatorGroup, http.StatusForbidden)
 			return
 		}

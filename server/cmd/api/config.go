@@ -137,7 +137,7 @@ func load(getenv func(string) string) (Config, error) {
 // with the others and its value (which may carry user:secret@) never printed.
 func httpURL(v string) bool {
 	u, err := url.Parse(v)
-	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Hostname() != ""
 }
 
 // fromProcess is the one place wird-api reads its real environment.

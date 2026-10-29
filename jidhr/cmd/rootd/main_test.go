@@ -57,6 +57,10 @@ func TestMainSendsTheSpansOfTheDrainBeforeItExits(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cmd.Process.Kill() })
+	// A hung drain or Shutdown fails here, not at go test's 10-minute panic:
+	// the kill closes stdout and the connection, so every read below returns,
+	// and the exit check names it ("signal: killed").
+	time.AfterFunc(30*time.Second, func() { _ = cmd.Process.Kill() })
 	scan := bufio.NewScanner(stdout)
 	var out []string
 	var addr string
