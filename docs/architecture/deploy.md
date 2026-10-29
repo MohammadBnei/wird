@@ -81,7 +81,7 @@ flowchart TD
 ```mermaid
 flowchart LR
   subgraph image["Dockerfile"]
-    b["golang build stage<br/>server, with jidhr beside it"] --> bin["static wird-api and<br/>wird-adminweb binaries"]
+    b["golang build stage<br/>server + jidhr/go.mod"] --> bin["static wird-api and<br/>wird-adminweb binaries"]
     bin --> base["base: alpine + ca-certificates<br/>user 10001"]
     base --> a["target api<br/>wird-api, :8080"]
     base --> aw["target adminweb<br/>wird-adminweb + stylesheet, :8081"]
@@ -134,7 +134,7 @@ on:
         go -C server build ./...
 ```
 
-[checks.yml:22-32](../../.github/workflows/checks.yml#L22-L32) · gates job [checks.yml:46-67](../../.github/workflows/checks.yml#L46-L67) · image builds on pull requests [checks.yml:71-83](../../.github/workflows/checks.yml#L71-L83)
+[checks.yml:24-34](../../.github/workflows/checks.yml#L24-L34) · gates job [checks.yml:48-69](../../.github/workflows/checks.yml#L48-L69) · image builds on pull requests [checks.yml:73-85](../../.github/workflows/checks.yml#L73-L85)
 
 On a pull request the two images are also built, without pushing, on GitHub-hosted runners, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
 

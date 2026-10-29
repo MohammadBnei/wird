@@ -17,9 +17,9 @@ FROM golang:1.27-alpine AS build
 WORKDIR /src/server
 
 # Dependency layer. The replace => ../jidhr does not load without jidhr's
-# go.mod on disk; jidhr's go.sum came with ukubi-go (docs/adr/0040).
+# go.mod on disk. Its go.sum is not needed: Go reads only server/go.sum.
 COPY server/go.mod server/go.sum ./
-COPY jidhr/go.mod jidhr/go.sum ../jidhr/
+COPY jidhr/go.mod /src/jidhr/
 RUN go mod download
 
 # No jidhr source: neither binary imports it, so jidhr edits keep this cache.

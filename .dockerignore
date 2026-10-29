@@ -4,5 +4,5 @@
 # instruction runs.
 *
 !server/
-!jidhr/
+!jidhr/go.mod
 !docs/design/nocturne-styles.css
