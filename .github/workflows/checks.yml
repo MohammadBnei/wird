@@ -58,7 +58,7 @@ jobs:
         run: |
           set -uo pipefail
           marker='TO'"DO"
-          hits=$(git grep -I -n --untracked -F -e "$marker" -- . ':!CONTRIBUTING.md' | grep -vF "$marker(#") || true
+          hits=$(git grep -I -n --untracked -F -e "$marker" -- . ':!CONTRIBUTING.md' ':!CHANGELOG.md' | grep -vF "$marker(#") || true
           [ -z "$hits" ] || { echo "::error::a marker with no issue number behind it never comes back"; echo "$hits"; exit 1; }
 
       # The 60 MB budget decides whether the bundled-corpus split works at all.

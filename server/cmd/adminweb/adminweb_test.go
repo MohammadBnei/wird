@@ -402,7 +402,7 @@ func preview(t *testing.T, body string) {
 
 // An operator reading the page can tell which release served it. Mutation:
 // the handler leaves Version unset, and the footer names no release.
-func TestTheDashboardNamesTheReleaseServingIt(t *testing.T) {
+func TestTheDashboardFooterDoesNotLeaveTheReleaseUnnamed(t *testing.T) {
 	h := newHarness(t)
 
 	w := h.get(t, "/", h.operator(t))

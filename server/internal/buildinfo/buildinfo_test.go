@@ -5,7 +5,7 @@ import "testing"
 // The committed file must stay "dev": a real version committed here would be
 // what every local and test build claims to be. Only the image build writes
 // one (Dockerfile). Mutation: commit "0.1.0" in version.txt and this fails.
-func TestTheCommittedVersionIsDev(t *testing.T) {
+func TestALocalBuildDoesNotClaimARelease(t *testing.T) {
 	if got := Version(); got != "dev" {
 		t.Errorf("Version() = %q, want \"dev\" (the image build writes the real one)", got)
 	}

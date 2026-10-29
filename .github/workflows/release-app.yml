@@ -66,13 +66,17 @@ jobs:
 
       - name: The release to ship
         id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null) || tag=''
           [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
             || { echo "::error::no vX.Y.Z tag on main (got '$tag'); release.yml cuts them"; exit 1; }
           # The commits release.yml and apk.yml push themselves; anything else
-          # past the tag is work no release holds yet.
+          # past the tag is work no release holds yet. A copy of `bots` in the
+          # ukubi-ci release.yml that release.yml pins (and of its git-cliff
+          # skip list): change both when bumping that pin.
           bots='^(chore\((release|deploy)\)|chore: update helm image tag)'
           if unreleased=$(git log --format=%s "$tag..HEAD" | grep -vE "$bots"); then
             echo "::error::main has commits past $tag that no release holds. Wait for release.yml, or if they touch only Markdown or helm/ (no run of their own): gh workflow run release.yml --ref main, then press this again."
@@ -82,6 +86,14 @@ jobs:
           published=$(sed -n -E '/^  - name: WIRD_APK_VERSION$/{n;s/^    value: "(.*)"$/\1/p;}' helm/values.yaml)
           [ "$published" != "${tag#v}" ] \
             || { echo "::error::$tag is already published at /download/android; a new release comes from release.yml"; exit 1; }
+          # values.yaml names the tag only once apk.yml's publish step pushes,
+          # minutes after this button dispatched it. A run on the tag that is
+          # queued, running or green means it is already shipping; only a failed
+          # or cancelled one leaves it to ship again.
+          inflight=$(gh run list --workflow apk.yml --branch "$tag" --limit 20 --json conclusion \
+            --jq '[.[] | select(.conclusion != "failure" and .conclusion != "cancelled")] | length')
+          [ "$inflight" = 0 ] \
+            || { echo "::error::apk.yml already has a run on $tag; re-run a failed one by hand instead of pressing again"; exit 1; }
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Build and publish

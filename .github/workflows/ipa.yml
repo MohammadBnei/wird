@@ -104,16 +104,22 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > "$key"
           echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
 
-      # The build name is the tag, the build number the commit count at it, as
-      # in apk.yml: it only rises, which TestFlight requires.
+      # The build name is the tag, the build number the commit count at it,
+      # from the script apk.yml uses: it only rises, which TestFlight requires.
+      - name: Version
+        id: version
+        run: scripts/app-version.sh >> "$GITHUB_OUTPUT"
+
       - name: Configure
         working-directory: app
+        env:
+          NAME: ${{ steps.version.outputs.name }}
+          NUMBER: ${{ steps.version.outputs.number }}
         run: |
           set -euo pipefail
-          version=${GITHUB_REF_NAME#v}
           flutter build ios --release --config-only \
-            --build-name="$version" --build-number="$(git rev-list --count HEAD)" \
-            --dart-define=WIRD_VERSION="$version"
+            --build-name="$NAME" --build-number="$NUMBER" \
+            --dart-define=WIRD_VERSION="$NAME"
 
       - name: Archive
         working-directory: app/ios

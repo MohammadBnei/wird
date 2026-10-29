@@ -76,27 +76,13 @@ jobs:
           [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$GITHUB_REF_NAME is not a vX.Y.Z release tag"; exit 1; }
           git merge-base --is-ancestor HEAD origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
 
-      # The build name is the release tag (ADR 0041), not the pubspec line. From
-      # main, which never publishes, it is the last release plus the commit, the
-      # way release.yml names an untagged image, so a report sent from that
-      # build claims no release it is not. The build number is the commit count:
-      # it only rises, and was 548 at v0.0.14 against the pubspec's 15.
-      # ponytail: past 999 commits the arm64 code (2000+N) runs into the next
-      # ABI's 3000 range; harmless while only arm64 ships, and it still rises.
+      # The build name is the tag, the build number the commit count:
+      # scripts/app-version.sh says why, for every app build.
       - name: Version
         id: version
         run: |
           set -euo pipefail
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            name=${GITHUB_REF_NAME#v}
-          else
-            name="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)+$(git rev-parse --short=12 HEAD)"
-            name=${name#v}
-          fi
-          number=$(git rev-list --count HEAD)
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "number=$number" >> "$GITHUB_OUTPUT"
-          echo "Version $name, build $number." >> "$GITHUB_STEP_SUMMARY"
+          scripts/app-version.sh | tee -a "$GITHUB_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/setup-java@v4
         with:
@@ -334,19 +320,10 @@ jobs:
           [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$GITHUB_REF_NAME is not a vX.Y.Z release tag"; exit 1; }
           git merge-base --is-ancestor HEAD origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
 
-      # Same name and number as the apk job, computed the same way.
+      # Same name and number as the apk job, from the same script.
       - name: Version
         id: version
-        run: |
-          set -euo pipefail
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            name=${GITHUB_REF_NAME#v}
-          else
-            name="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)+$(git rev-parse --short=12 HEAD)"
-            name=${name#v}
-          fi
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "number=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+        run: scripts/app-version.sh >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@v4
         with:
@@ -468,8 +445,11 @@ jobs:
       # The closed track ("alpha"), because that is where Play's 14-day,
       # 12-tester clock for a new personal account runs. Production is
       # promoted by hand in the Console. Pinned to a commit: it holds the
-      # service account.
+      # service account. Only a tag uploads, as only a tag publishes the APK:
+      # a run from main builds a fresh 2000+N code that no release owns, and
+      # testers would get it.
       - name: Upload to Play (closed testing)
+        if: github.ref_type == 'tag'
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ env.PLAY_SERVICE_ACCOUNT_JSON }}

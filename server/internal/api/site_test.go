@@ -79,7 +79,7 @@ func TestThePageSwallowsTheRoutesBesideIt(t *testing.T) {
 // Which release is live, asked with no account, and answered by the server
 // rather than by the page's {file}, which would answer 404. Mutation: the
 // route removed, and this is the page's 404.
-func TestTheServerSaysWhichReleaseItIs(t *testing.T) {
+func TestAskingWhichReleaseIsLiveDoesNotFallToThePages404(t *testing.T) {
 	h := newHarness(t)
 
 	w := h.get(t, "/version", "")
