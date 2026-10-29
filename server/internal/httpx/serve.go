@@ -9,13 +9,23 @@ import (
 	"time"
 )
 
-// Drain is how long Serve gives requests in flight once ctx is cancelled:
-// under Kubernetes' default 30s grace, so a drain ends before the kill does.
+// Drain is how long Serve gives requests in flight once it stops accepting.
+// Settle plus Drain stays under Kubernetes' default 30s grace, so a drain ends
+// before the kill does.
 const Drain = 20 * time.Second
 
-// Serve answers on ln until ctx is cancelled (SIGTERM), then stops accepting
-// and lets the requests in flight finish, for up to Drain. It returns nil after
-// a clean drain.
+// Settle is how long Serve keeps accepting after ctx is cancelled. Kubernetes
+// sends SIGTERM and takes the pod out of its endpoints at the same moment, and
+// Traefik routes to it until it sees that: a listener closed at once refuses
+// those requests, and the reader gets a 502.
+//
+// ponytail: a fixed wait, not a readiness probe that fails first. A var so a
+// test need not wait it out.
+var Settle = 5 * time.Second
+
+// Serve answers on ln until ctx is cancelled (SIGTERM), keeps answering for
+// Settle, then stops accepting and lets the requests in flight finish, for up
+// to Drain. It returns nil after a clean drain.
 //
 // A request's context is never tied to ctx: a SIGTERM must not cancel the work
 // it is waiting for, or the drain turns into 500s.
@@ -35,6 +45,7 @@ func Serve(ctx context.Context, ln net.Listener, h http.Handler, log *slog.Logge
 	done := make(chan error, 1)
 	go func() {
 		<-ctx.Done()
+		time.Sleep(Settle)
 		shut, cancel := context.WithTimeout(context.WithoutCancel(ctx), Drain)
 		defer cancel()
 		done <- srv.Shutdown(shut)

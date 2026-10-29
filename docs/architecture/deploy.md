@@ -241,7 +241,7 @@ func Open(ctx context.Context, url string) (*Store, error) {
 }
 ```
 
-[store.go:31-41](../../server/internal/store/store.go#L31-L41) · called from [main.go:44](../../server/cmd/api/main.go#L44)
+[store.go:31-41](../../server/internal/store/store.go#L31-L41) · called from [main.go:48](../../server/cmd/api/main.go#L48)
 
 ### 8. Knowing your commit is live
 

@@ -53,9 +53,13 @@ func run(log *slog.Logger) int {
 	// store.New, not store.Open: Open runs the migrations, and goose takes no
 	// lock, so two binaries migrating the same database at once is a race. The
 	// api is the one that migrates; this reads the schema it left.
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	//
+	// Startup runs to the end even after a SIGTERM, and Serve then drains at
+	// once: a connect or discovery cancelled halfway would log a false ERROR.
+	start := context.WithoutCancel(ctx)
+	pool, err := pgxpool.New(start, cfg.DatabaseURL)
 	if err == nil {
-		err = pool.Ping(ctx)
+		err = pool.Ping(start)
 	}
 	if err != nil {
 		log.Error("database unavailable", "err", err)
@@ -74,7 +78,7 @@ func run(log *slog.Logger) int {
 	if secret := cfg.ClientSecret; secret != "" {
 		verifier = clientSecretVerifier(issuer, audience, secret)
 	} else {
-		provider, err := oidc.NewProvider(ctx, issuer)
+		provider, err := oidc.NewProvider(start, issuer)
 		if err != nil {
 			log.Error("issuer unavailable", "issuer", issuer, "err", err)
 			return 1

@@ -18,6 +18,8 @@ import (
 // held across the cancel must finish with its 200, its context still live,
 // and Serve must return nil.
 func TestServeDrainsInFlightOnCancel(t *testing.T) {
+	defer func(s time.Duration) { Settle = s }(Settle)
+	Settle = 0
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -50,13 +52,18 @@ func TestServeDrainsInFlightOnCancel(t *testing.T) {
 	<-entered
 	cancel()
 	// Shutdown has stopped accepting: a new connection is refused.
+	refused := false
 	for range 100 {
-		if c, err := net.Dial("tcp", ln.Addr().String()); err != nil {
+		c, err := net.Dial("tcp", ln.Addr().String())
+		if err != nil {
+			refused = true
 			break
-		} else {
-			c.Close()
 		}
+		c.Close()
 		time.Sleep(10 * time.Millisecond)
+	}
+	if !refused {
+		t.Error("still accepting connections 1s into the drain")
 	}
 	close(release)
 	if code := <-got; code != http.StatusOK {
@@ -69,6 +76,32 @@ func TestServeDrainsInFlightOnCancel(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Serve did not return after the drain")
+	}
+}
+
+// Kubernetes takes the pod out of its endpoints only as it sends SIGTERM, and
+// Traefik routes here until it notices: a listener closed at the signal turns
+// those requests into 502s. A request just after the cancel is still answered.
+func TestServeAnswersWhileEndpointsSettle(t *testing.T) {
+	defer func(s time.Duration) { Settle = s }(Settle)
+	Settle = time.Second
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	served := make(chan error, 1)
+	go func() {
+		served <- Serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), slog.New(slog.DiscardHandler))
+	}()
+	cancel()
+	resp, err := http.Get("http://" + ln.Addr().String())
+	if err != nil {
+		t.Fatalf("a request just after SIGTERM: %v, want it answered", err)
+	}
+	resp.Body.Close()
+	if err := <-served; err != nil {
+		t.Errorf("Serve: %v, want nil", err)
 	}
 }
 

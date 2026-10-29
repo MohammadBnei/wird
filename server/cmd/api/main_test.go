@@ -53,6 +53,14 @@ func TestEveryStopsAtTheSignalButNotTheWorkInFlight(t *testing.T) {
 	}
 }
 
+// A SIGTERM that lands before the loops start must not set off a full prune or
+// sweep, which would spend the grace period while the exit waits on it.
+func TestEveryDoesNoWorkAfterTheSignal(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	every(ctx, time.Hour, func(context.Context) { t.Error("work ran after the signal") })
+}
+
 // The whole main, as Kubernetes stops it: SIGTERM once it is listening, then
 // exit 0 with "wird-api drained" and no ERROR line.
 func TestMainDrainsOnSIGTERM(t *testing.T) {

@@ -106,7 +106,7 @@ flowchart TB
 
 ### 1. Start: read the environment, migrate, listen
 
-`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:51-125](../../server/cmd/api/config.go#L51-L125), [main.go:36-42](../../server/cmd/api/main.go#L36-L42)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:44-58](../../server/cmd/api/main.go#L44-L58)
+`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:51-125](../../server/cmd/api/config.go#L51-L125), [main.go:36-42](../../server/cmd/api/main.go#L36-L42)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:44-62](../../server/cmd/api/main.go#L44-L62)
 
 It fails closed. A deployment that is missing a value refuses to start rather than starting against `localhost`, and a store that is half configured refuses rather than silently answering 503 ([ADR 0036](../adr/0036-each-binary-refuses-a-partial-configuration.md)). `WIRD_DEV=1` is the one switch for a local run: it fills the three required values with the compose stack's and changes nothing else.
 
@@ -246,7 +246,7 @@ No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold 
 
 ### 6. Two loops run beside the server
 
-`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:107-116](../../server/cmd/api/main.go#L107-L116), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:129-144](../../server/cmd/api/main.go#L129-L144)). [main.go:68-70](../../server/cmd/api/main.go#L68-L70)
+`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:115-124](../../server/cmd/api/main.go#L115-L124), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:137-152](../../server/cmd/api/main.go#L137-L152)). [main.go:72-74](../../server/cmd/api/main.go#L72-L74)
 
 ```go
 	var loops sync.WaitGroup
@@ -254,13 +254,13 @@ No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold 
 	loops.Go(func() { sweep(ctx, db, log) })
 ```
 
-Both are marked as deliberate ceilings: they assume one replica ([main.go:105-106](../../server/cmd/api/main.go#L105-L106)). Two replicas racing the report sweep could lose or double a report. [main.go:135-137](../../server/cmd/api/main.go#L135-L137)
+Both are marked as deliberate ceilings: they assume one replica ([main.go:113-114](../../server/cmd/api/main.go#L113-L114)). Two replicas racing the report sweep could lose or double a report. [main.go:143-145](../../server/cmd/api/main.go#L143-L145)
 
 ### 7. Logs and shutdown
 
-The first line of `main` installs ukubi-go's JSON logger on stdout, so every line is one JSON object with `time`, `level` and `msg`, which is what Loki reads. ERROR means something on our side failed. When a request fails because its caller hung up, `httpx.Failed` logs the same words at WARN instead, so a phone dropping mid-sync never counts toward the error-rate alert ([serve.go:52](../../server/internal/httpx/serve.go#L52)). `server/logs_test.go` pins every ERROR line with its words.
+The first line of `main` installs ukubi-go's JSON logger on stdout, so every line is one JSON object with `time`, `level` and `msg`, which is what Loki reads. ERROR means something on our side failed. When a request fails because its caller hung up, `httpx.Failed` logs the same words at WARN instead, so a phone dropping mid-sync never counts toward the error-rate alert ([serve.go:63](../../server/internal/httpx/serve.go#L63)). `server/logs_test.go` pins every ERROR line with its words.
 
-The server runs through `httpx.Serve`: timeouts on reading and writing, net/http's own lines at ERROR, and a drain on SIGTERM. The requests in flight get up to 20 seconds to finish. The two loops stop, a sweep already running commits, and the database closes last ([main.go:76](../../server/cmd/api/main.go#L76), [main.go:91](../../server/cmd/api/main.go#L91)). [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md) has the why.
+The server runs through `httpx.Serve`: timeouts on reading and writing, net/http's own lines at ERROR, and a drain on SIGTERM. It keeps answering for 5 seconds, while Traefik learns the pod is going, then stops accepting and gives the requests in flight up to 20 seconds to finish. The two loops stop, a sweep already running commits or is cancelled 20 seconds after the signal, and the database closes last ([main.go:80](../../server/cmd/api/main.go#L80), [main.go:97](../../server/cmd/api/main.go#L97)). [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md) has the why.
 
 ## Why it is this way
 

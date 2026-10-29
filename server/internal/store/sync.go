@@ -107,7 +107,7 @@ func (s *Store) attempt(ctx context.Context, userID string, op Op) (OpResult, er
 		return result, nil
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return classify(op, err), nil
+		return classify(ctx, op, err), nil
 	}
 	return result, nil
 }
@@ -117,23 +117,23 @@ func (s *Store) attempt(ctx context.Context, userID string, op Op) (OpResult, er
 // is the only way to stage two writes landing at once.
 func applyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) OpResult {
 	if err := lockReader(ctx, tx, userID); err != nil {
-		return classify(op, err)
+		return classify(ctx, op, err)
 	}
 	first, err := recordOp(ctx, tx, userID, op.ClientOpID)
 	// The only value here the device chose is its op id; a class 22 is that
 	// id, not the body.
 	var pg *pgconn.PgError
 	if errors.As(err, &pg) && strings.HasPrefix(pg.Code, "22") {
-		return classify(op, refuse(keys.OpBadValue, "the op id is not a uuid"))
+		return classify(ctx, op, refuse(keys.OpBadValue, "the op id is not a uuid"))
 	}
 	if err != nil {
-		return classify(op, err)
+		return classify(ctx, op, err)
 	}
 	if !first {
 		return OpResult{ClientOpID: op.ClientOpID, Status: OpDuplicate}
 	}
 	if err := applyKind(ctx, tx, userID, op); err != nil {
-		return classify(op, err)
+		return classify(ctx, op, err)
 	}
 	return OpResult{ClientOpID: op.ClientOpID, Status: OpApplied}
 }
@@ -163,7 +163,7 @@ func lockReader(ctx context.Context, tx pgx.Tx, userID string) error {
 // classify separates the ops worth sending again from the ones that never
 // will be. A malformed body, an id that is not a uuid and a prayer against a
 // set that is not there are all the device's to fix; everything else is ours.
-func classify(op Op, err error) OpResult {
+func classify(ctx context.Context, op Op, err error) OpResult {
 	refused := func(key errs.Key, reason string) OpResult {
 		return OpResult{ClientOpID: op.ClientOpID, Status: OpRefused, Reason: reason, Key: key}
 	}
@@ -176,7 +176,7 @@ func classify(op Op, err error) OpResult {
 		if r.cause != nil {
 			// The kind only: nothing here names the reader. INFO: what the
 			// device sent was refused, which is client input, not our failure.
-			slog.Default().Info("op refused", "kind", op.Kind, "reason", r.reason, "cause", r.cause)
+			slog.Default().InfoContext(ctx, "op refused", "kind", op.Kind, "reason", r.reason, "cause", r.cause)
 		}
 		return refused(r.key, r.reason)
 	case !errors.As(err, &pg):
@@ -191,15 +191,16 @@ func classify(op Op, err error) OpResult {
 		return refused(keys.OpConflict, "it does not fit what is already recorded")
 	}
 	// The kind only, as above.
-	slog.Default().Log(context.Background(), failedLevel(err), "op not applied", "kind", op.Kind, "err", err)
+	slog.Default().Log(ctx, failedLevel(ctx), "op not applied", "kind", op.Kind, "err", err)
 	return OpResult{ClientOpID: op.ClientOpID, Status: OpFailed, Reason: "not applied, try again", Key: keys.OpRetry}
 }
 
 // failedLevel is ERROR for an op that failed on our side, and WARN when the
-// reader went away mid-sync and the cancelled context is the cause: a closed
-// connection is not our failure (standard §7).
-func failedLevel(err error) slog.Level {
-	if errors.Is(err, context.Canceled) {
+// reader went away mid-sync: a closed connection is not our failure (standard
+// §7). The request's context says so, not the error, which the driver does not
+// always wrap in context.Canceled. The same rule as httpx.Failed.
+func failedLevel(ctx context.Context) slog.Level {
+	if ctx.Err() != nil {
 		return slog.LevelWarn
 	}
 	return slog.LevelError

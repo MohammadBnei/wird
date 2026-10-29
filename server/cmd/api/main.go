@@ -41,7 +41,11 @@ func run(log *slog.Logger) int {
 		return 1
 	}
 
-	db, err := store.Open(ctx, cfg.DatabaseURL)
+	// Startup runs to the end even after a SIGTERM, and Serve then drains at
+	// once: a migration or discovery cancelled halfway would log a false ERROR.
+	start := context.WithoutCancel(ctx)
+
+	db, err := store.Open(start, cfg.DatabaseURL)
 	if err != nil {
 		log.Error("database unavailable", "err", err)
 		return 1
@@ -51,7 +55,7 @@ func run(log *slog.Logger) int {
 	// The issuer and audience are the whole difference between the local stub
 	// and authentik.bnei.dev. Nothing below this line knows which it is.
 	issuer := cfg.OIDCIssuer
-	authenticator, err := auth.New(ctx, issuer, cfg.OIDCAudience, db, log)
+	authenticator, err := auth.New(start, issuer, cfg.OIDCAudience, db, log)
 	if err != nil {
 		log.Error("issuer unavailable", "issuer", issuer, "err", err)
 		return 1
@@ -86,14 +90,18 @@ func run(log *slog.Logger) int {
 }
 
 // every runs work now and then once per interval until ctx is cancelled. The
-// work itself runs on a context that SIGTERM does not cancel, so a sweep in
-// flight commits rather than rolling back into a false ERROR.
+// work itself runs on a context that SIGTERM does not cancel at once, so a
+// sweep in flight commits rather than rolling back into a false ERROR. It is
+// cancelled httpx.Drain after the signal: a prune stuck on a lock must not
+// hold the exit past Kubernetes' grace, where SIGKILL skips db.Close.
 func every(ctx context.Context, interval time.Duration, work func(context.Context)) {
-	for {
-		work(context.WithoutCancel(ctx))
+	wctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer cancel()
+	context.AfterFunc(ctx, func() { time.AfterFunc(httpx.Drain, cancel) })
+	for ctx.Err() == nil {
+		work(wctx)
 		select {
 		case <-ctx.Done():
-			return
 		case <-time.After(interval):
 		}
 	}
