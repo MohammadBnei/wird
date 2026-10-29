@@ -12,7 +12,7 @@ Today nothing in Wird calls it at run time. The app finds roots in its own **cor
 |---|---|---|
 | A written Arabic word, with or without diacritics | The root, how often the Qur'an uses it, and the senses written for it in `en` and `fr` | `jidhr/testdata/quran.json`, read once at startup |
 | A root's letters | That root and its senses | The same file |
-| Words that are not Arabic, or have no root | A clear error that says which of the two it is | Nothing else: no network; a key unless `ROOTD_DEV=1` |
+| Words that are not Arabic, or have no root | A clear error that says which of the two it is | Nothing else: no network, except traces when `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set; a key unless `ROOTD_DEV=1` |
 
 ```mermaid
 sequenceDiagram
@@ -113,7 +113,7 @@ flowchart TD
 
 ### 1. rootd loads the file and serves it
 
-`main` reads its whole configuration once, through `load` in `config.go`, and refuses to start with every problem in one `config refused` line: an unset `ROOTD_API_KEY` without `ROOTD_DEV=1`, or a `ROOTD_RATE` that is not `0` or a finite rate of at least `0.25` ([config.go:35-81](../../jidhr/cmd/rootd/config.go#L35-L81)). The [README's table](../../jidhr/cmd/rootd/README.md) lists every variable. `ROOTD_CORPUS` defaults to `jidhr/testdata/quran.json` ([config.go:53-55](../../jidhr/cmd/rootd/config.go#L53-L55)). It loads the whole file into a `MemoryStore`. If the file is missing or broken, the process stops rather than serving empty answers.
+`main` reads its whole configuration once, through `load` in `config.go`, and refuses to start with every problem in one `config refused` line: an unset `ROOTD_API_KEY` without `ROOTD_DEV=1`, or a `ROOTD_RATE` that is not `0` or a finite rate of at least `0.25` ([config.go:40-91](../../jidhr/cmd/rootd/config.go#L40-L91)). The [README's table](../../jidhr/cmd/rootd/README.md) lists every variable. `ROOTD_CORPUS` defaults to `jidhr/testdata/quran.json` ([config.go:58-60](../../jidhr/cmd/rootd/config.go#L58-L60)). It loads the whole file into a `MemoryStore`. If the file is missing or broken, the process stops rather than serving empty answers.
 
 ```go
 	f, err := os.Open(corpusPath)
@@ -129,15 +129,17 @@ flowchart TD
 	}
 ```
 
-[main.go:43-53](../../jidhr/cmd/rootd/main.go#L43-L53)
+[main.go:50-60](../../jidhr/cmd/rootd/main.go#L50-L60)
 
-It then sets up the rate limit (`ROOTD_RATE`, 5 per second by default, with a burst of four seconds' worth) and the shared key (`ROOTD_API_KEY`) ([main.go:55-65](../../jidhr/cmd/rootd/main.go#L55-L65)). It binds the port before it logs that it is listening ([main.go:83-96](../../jidhr/cmd/rootd/main.go#L83-L96)). It logs JSON on stdout, and on SIGTERM it lets the requests in flight finish for up to 20 seconds before it exits ([main.go:108-128](../../jidhr/cmd/rootd/main.go#L108-L128), [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md)).
+It then sets up the rate limit (`ROOTD_RATE`, 5 per second by default, with a burst of four seconds' worth) and the shared key (`ROOTD_API_KEY`) ([main.go:62-73](../../jidhr/cmd/rootd/main.go#L62-L73)). It binds the port before it logs that it is listening ([main.go:91-104](../../jidhr/cmd/rootd/main.go#L91-L104)). It logs JSON on stdout, and on SIGTERM it lets the requests in flight finish for up to 20 seconds before it exits ([main.go:122-142](../../jidhr/cmd/rootd/main.go#L122-L142), [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md)).
+
+Traces are off unless `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set, and then they work as they do in `wird-api` ([its Traces section](api.md#8-traces-off-unless-configured), [ADR 0040](../adr/0040-opt-in-traces.md)): one span per `/v1` route, outside the limit and the key, so a 401 or a 429 is traced too. `main` shuts tracing down once the drain is over and before it exits either way, since `os.Exit` runs no deferred call ([main.go:105-110](../../jidhr/cmd/rootd/main.go#L105-L110)). It is the one reason the jidhr module has dependencies.
 
 ### 2. Routes sit behind the limit and the key
 
-The three `/v1` routes go through the rate limiter and then the key check. `/healthz` is mounted outside both, so a probe can never be throttled ([server.go:43](../../jidhr/cmd/rootd/server.go#L43-L55)). The languages offered are the ones the file actually holds, not a list kept somewhere else ([store.go:310](../../jidhr/pkg/root/store.go#L310-L321)).
+The three `/v1` routes go through the rate limiter and then the key check. There is one gate value, the limiter around the key check around the inner mux; each route in the `v1` table is registered on the inner mux and, as that same gate under its span, on the top mux, and any other path falls through `"/"` to the gate untraced. `/healthz` is mounted outside both, untraced, so a probe can never be throttled ([server.go:44-77](../../jidhr/cmd/rootd/server.go#L44-L77)). `TestEveryV1RouteIsGatedUnderItsOwnSpan` walks the table with no key and wants a 401, then a 429, each under its span. The languages offered are the ones the file actually holds, not a list kept somewhere else ([store.go:310](../../jidhr/pkg/root/store.go#L310-L321)).
 
-Callers are told apart by network address only ([server.go:297](../../jidhr/cmd/rootd/server.go#L297-L303)). Behind a proxy, every caller looks like the proxy.
+Callers are told apart by network address only ([server.go:319](../../jidhr/cmd/rootd/server.go#L319-L325)). Behind a proxy, every caller looks like the proxy.
 
 ### 3. The word is checked, then keyed
 
@@ -255,7 +257,7 @@ If nothing is attested, the templates in `pattern.go` propose readings ([pattern
 
 ### 9. Errors become HTTP codes in one place
 
-`apiErrorFor` maps resolver errors to the status and code the README documents ([server.go:184](../../jidhr/cmd/rootd/server.go#L184-L204)): `ErrNotArabic` to 400, a rootless `NoRootError` to 404 `rootless`, any other `NoRootError` or a bare `ErrNoRoot` to 404 `no_root`, and everything else to 500 `internal`.
+`apiErrorFor` maps resolver errors to the status and code the README documents ([server.go:206](../../jidhr/cmd/rootd/server.go#L206-L226)): `ErrNotArabic` to 400, a rootless `NoRootError` to 404 `rootless`, any other `NoRootError` or a bare `ErrNoRoot` to 404 `no_root`, and everything else to 500 `internal`.
 
 ### 10. How the file is rebuilt
 
@@ -287,6 +289,7 @@ The file checked in today holds 1,642 roots, 17,934 attested forms, 1,189 rootle
 
 - [ADR 0010](../adr/0010-the-server-owns-the-roots-and-their-senses.md) — senses live in the API's Postgres. `rootd` keeps reading an exported file rather than Postgres, so it stays a service with no database.
 - [ADR 0005](../adr/0005-deploying-the-api.md) — only the API is deployed. `rootd` has no caller, so it gets no image.
+- [ADR 0040](../adr/0040-opt-in-traces.md) — one span per route when an endpoint is set, outside the gate; for rootd, the reason the jidhr module has dependencies.
 
 ## Go deeper
 

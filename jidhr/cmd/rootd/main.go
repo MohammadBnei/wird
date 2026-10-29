@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/MohammadBnei/ukubi-go/telemetry"
+
 	"github.com/MohammadBnei/wird/jidhr/pkg/root"
 )
 
@@ -21,16 +23,21 @@ import (
 const burstPerRate = 4
 
 func main() {
-	// JSON on stdout for Alloy to tail (docs/adr/0039). The handler shape of
-	// ukubi-go's telemetry.NewLogger without its trace ids: rootd has no spans,
-	// and the jidhr module stays free of dependencies.
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	// JSON on stdout for Alloy to tail (docs/adr/0039), with a request's
+	// trace_id and span_id when tracing is on (docs/adr/0040).
+	slog.SetDefault(telemetry.NewLogger(os.Stdout))
 	log := slog.Default()
 
 	// Every problem with the configuration at once, before anything is opened.
 	cfg, err := fromProcess()
 	if err != nil {
 		log.Error("config refused", "err", err)
+		os.Exit(1)
+	}
+	// Inert when cfg.Traces is empty (docs/adr/0040).
+	tel, err := telemetry.New(cfg.Traces, "rootd")
+	if err != nil {
+		log.Error("tracing unavailable", "err", err)
 		os.Exit(1)
 	}
 
@@ -59,6 +66,7 @@ func main() {
 		langs:    store.Languages(),
 		apiKey:   cfg.APIKey,
 		log:      log,
+		tracing:  tel,
 	}
 	if rate > 0 {
 		srv.limiter = newLimiter(rate, rate*burstPerRate)
@@ -94,7 +102,13 @@ func main() {
 	log.Info("rootd listening",
 		"addr", ln.Addr().String(), "corpus", corpusPath, "languages", srv.langs,
 		"authenticated", srv.apiKey != "", "rate_per_second", rate, "dev", cfg.Dev)
-	if err := serve(ctx, httpd, ln); err != nil {
+	err = serve(ctx, httpd, ln)
+	// After the drain, so the spans of the requests it waited for are sent;
+	// before the exit either way, since os.Exit runs no deferred call.
+	if err := tel.Shutdown(); err != nil {
+		log.Warn("traces", "err", err)
+	}
+	if err != nil {
 		if ctx.Err() != nil {
 			log.Error("rootd shutdown failed", "err", err)
 		} else {

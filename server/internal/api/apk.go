@@ -36,7 +36,7 @@ func apk(store *modelStore, key string, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		signed, err := store.sign.get(store.bucket, key, time.Now(), modelURLTTL)
 		if err != nil {
-			log.Error("presign the apk", "key", key, "err", err)
+			log.ErrorContext(r.Context(), "presign the apk", "key", key, "err", err)
 			httpx.Error(w, errs.Internal, keys.APKUnreachable, "the Android build cannot be reached")
 			return
 		}

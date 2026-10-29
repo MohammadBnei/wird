@@ -86,8 +86,10 @@ flowchart TB
   authn["auth.New<br/>discover the issuer"]
   routes["api.Routes"]
   outer{"outer mux"}
-  openh["open handlers<br/>healthz, callback, assetlinks,<br/>models, senses"]
-  mw["auth middleware<br/>verify token, find or mint reader"]
+  span["one span per route, named by its pattern<br/>(off unless OTEL_EXPORTER_OTLP_TRACES_ENDPOINT)"]
+  openh["open handlers<br/>callback, assetlinks,<br/>models, senses, the page"]
+  health["/healthz<br/>untraced"]
+  mw["auth middleware: the one gate<br/>verify token, find or mint reader"]
   v1{"v1 mux"}
   h["thin handlers"]
   st["store package<br/>all SQL"]
@@ -98,26 +100,29 @@ flowchart TB
   main --> open_db --> pg
   main --> authn
   main --> routes --> outer
-  outer --> openh
-  outer -->|"any other path"| mw --> v1 --> h --> st --> pg
+  outer --> health
+  outer -->|"open route"| span --> openh
+  outer -->|"gated route"| span --> mw
+  outer -->|"any other path, untraced"| mw
+  mw --> v1 --> h --> st --> pg
   openh --> st
   main --> bg --> st
 ```
 
 ### 1. Start: read the environment, migrate, listen
 
-`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:51-125](../../server/cmd/api/config.go#L51-L125), [main.go:36-42](../../server/cmd/api/main.go#L36-L42)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:44-62](../../server/cmd/api/main.go#L44-L62)
+`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:56-134](../../server/cmd/api/config.go#L56-L134), [main.go:36-42](../../server/cmd/api/main.go#L36-L42)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:58-76](../../server/cmd/api/main.go#L58-L76)
 
 It fails closed. A deployment that is missing a value refuses to start rather than starting against `localhost`, and a store that is half configured refuses rather than silently answering 503 ([ADR 0036](../adr/0036-each-binary-refuses-a-partial-configuration.md)). `WIRD_DEV=1` is the one switch for a local run: it fills the three required values with the compose stack's and changes nothing else.
 
 | Variable | Default | What it sets |
 |---|---|---|
-| `WIRD_DEV` | unset | `1` lets the three required values below default to the local compose Postgres and OIDC stub. Any other value is refused. [config.go:54-60](../../server/cmd/api/config.go#L54-L60) |
-| `DATABASE_URL` | required; with `WIRD_DEV=1`, the local compose Postgres | The database. [config.go:79](../../server/cmd/api/config.go#L79) |
-| `OIDC_ISSUER` | required; with `WIRD_DEV=1`, the local OIDC stub | Where tokens come from, passed through byte for byte (production's trailing slash matters). [config.go:82](../../server/cmd/api/config.go#L82) |
-| `OIDC_AUDIENCE` | required; with `WIRD_DEV=1`, `wird` | The `aud` a token must carry; in production, the app's client id. [config.go:83](../../server/cmd/api/config.go#L83) |
-| `API_ADDR` | `:8080` | The listen address. [config.go:61-63](../../server/cmd/api/config.go#L61-L63) |
-| `WIRD_MODELS_S3_BUCKET` | unset, so `/models/` and `/download/android` answer 503 | The bucket of the voice model store. The four store values come together: one set without the others is refused. [config.go:88-107](../../server/cmd/api/config.go#L88-L107) |
+| `WIRD_DEV` | unset | `1` lets the three required values below default to the local compose Postgres and OIDC stub. Any other value is refused. [config.go:59-65](../../server/cmd/api/config.go#L59-L65) |
+| `DATABASE_URL` | required; with `WIRD_DEV=1`, the local compose Postgres | The database. [config.go:84](../../server/cmd/api/config.go#L84) |
+| `OIDC_ISSUER` | required; with `WIRD_DEV=1`, the local OIDC stub | Where tokens come from, passed through byte for byte (production's trailing slash matters). [config.go:87](../../server/cmd/api/config.go#L87) |
+| `OIDC_AUDIENCE` | required; with `WIRD_DEV=1`, `wird` | The `aud` a token must carry; in production, the app's client id. [config.go:88](../../server/cmd/api/config.go#L88) |
+| `API_ADDR` | `:8080` | The listen address. [config.go:66-68](../../server/cmd/api/config.go#L66-L68) |
+| `WIRD_MODELS_S3_BUCKET` | unset, so `/models/` and `/download/android` answer 503 | The bucket of the voice model store. The four store values come together: one set without the others is refused. [config.go:93-112](../../server/cmd/api/config.go#L93-L112) |
 | `WIRD_MODELS_S3_ENDPOINT` | unset | The store's S3 endpoint. |
 | `WIRD_MODELS_S3_ACCESS_KEY` | unset | The store's access key. |
 | `WIRD_MODELS_S3_SECRET` | unset | The store's secret key. |
@@ -125,6 +130,7 @@ It fails closed. A deployment that is missing a value refuses to start rather th
 | `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. Refused without a store. [apk.go:26](../../server/internal/api/apk.go#L26) |
 | `WIRD_APK_VERSION` | unset, so `/download/android/version` answers 204 and the page prints plain "APK" | The release that key is, printed beside the page's Download button. Set by `apk.yml` together with the key, and refused without it. [apk.go:51](../../server/internal/api/apk.go#L51) |
 | `WIRD_ANDROID_SHA256` | unset, so 404 | Signing-key fingerprints for `assetlinks.json`, comma-separated, parsed once at start. [applinks.go:35-44](../../server/internal/api/applinks.go#L35-L44) |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | unset, so no tracing at all | The OTLP/HTTP traces URL in full, `/v1/traces` included. A value that is not an http(s) URL with a host is refused. **Do not set it for production wird-api yet:** a span records the reader's IP address, user agent and path, which the privacy page does not cover ([ADR 0040](../adr/0040-opt-in-traces.md)). [config.go:125-128](../../server/cmd/api/config.go#L125-L128) |
 
 `TestConfigDocumented` holds this table, the variables `load` reads, and its `envVars` list to the same set, and `server/env_test.go` refuses any other code that reads the environment.
 
@@ -133,6 +139,7 @@ Read by libraries, not by `load`, and so not in the table:
 - pgx fills any part `DATABASE_URL` leaves out from `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE` and the rest of libpq's variables.
 - go-oidc's discovery and key fetches go through `net/http`, which honours `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`.
 - `crypto/x509` reads `SSL_CERT_FILE` and `SSL_CERT_DIR` for the roots it trusts.
+- With tracing on, the OpenTelemetry SDK still honours `OTEL_RESOURCE_ATTRIBUTES`, the exporter's `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `_TIMEOUT`, `_COMPRESSION` and certificate variables, `OTEL_BSP_*`, the span limits and `OTEL_GO_X_*`. The service name, sampler, propagator and endpoint are set in code, so `OTEL_SERVICE_NAME` and `OTEL_EXPORTER_OTLP_ENDPOINT` change nothing. The [ukubi-go `telemetry` package doc](https://github.com/MohammadBnei/ukubi-go/blob/main/telemetry/telemetry.go) is the list.
 
 Migrations are embedded in the binary. The server and the test database both come up through `Open`, so a migration cannot work in one and fail in the other. [store.go:28-55](../../server/internal/store/store.go#L28-L55)
 
@@ -151,27 +158,42 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:49-105](../../server/internal/api/api.go#L49-L105)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. Both are built from one table, `gated`: each gated route is registered on `v1`, where its handler lives, and on the outer mux as the same gate, the auth middleware wrapped around `v1`. There is one gate value, so no handler is reachable except through it. A request no outer pattern takes, such as another method on a `/v1/` path or a path no route knows, falls through `"/"` to that same gate, and `v1` answers its 404 or 405 after it, as it always has. An open route stays open because it is registered on the outer mux by itself, not because the middleware skips it. [api.go:48-131](../../server/internal/api/api.go#L48-L131)
 
 ```go
-	v1 := http.NewServeMux()
-	v1.HandleFunc("GET /v1/me", h.me)
-	v1.HandleFunc("DELETE /v1/me", h.deleteMe)
-	v1.HandleFunc("GET /v1/corpus/version", h.corpusVersion)
-	v1.HandleFunc("POST /v1/sync", h.sync)
-	v1.HandleFunc("GET /v1/changes", h.changes)
-	v1.HandleFunc("GET /v1/progress", h.progress)
-	v1.HandleFunc("GET /v1/kept", h.kept)
-	v1.HandleFunc("GET /v1/ayahs/{surah}/{ayah}/tafsir", h.tafsir)
-	v1.HandleFunc("GET /v1/ayahs/{surah}/{ayah}/irab", h.irab)
-	v1.HandleFunc("GET /v1/roots/{letters}/lexicon", h.lexicon)
+func (h *Handler) gated() []route {
+	return []route{
+		{"GET /v1/me", h.me},
+		{"DELETE /v1/me", h.deleteMe},
+		{"GET /v1/corpus/version", h.corpusVersion},
+		{"POST /v1/sync", h.sync},
+		{"GET /v1/changes", h.changes},
+		{"GET /v1/progress", h.progress},
+		{"GET /v1/kept", h.kept},
+		{"GET /v1/ayahs/{surah}/{ayah}/tafsir", h.tafsir},
+		{"GET /v1/ayahs/{surah}/{ayah}/irab", h.irab},
+		{"GET /v1/roots/{letters}/lexicon", h.lexicon},
+	}
+}
 ```
 
-`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:94-103](../../server/internal/api/api.go#L94-L103)
+```go
+	gate := a.Middleware(v1)
+	for _, r := range h.gated() {
+		handle(r.pattern, gate)
+	}
+	mux.Handle("/", gate)
+```
+
+[api.go:123-129](../../server/internal/api/api.go#L123-L129)
+
+Registering each gated route on the outer mux is for its span: the outer mux knows the pattern, so the span is named by it and sits outside the gate, and a 401 is traced like a 200 (see Traces below). `TestEveryGatedRouteRefusesNoTokenUnderItsOwnSpan` walks the whole table with no token and wants a 401 under one span for each.
+
+`/v1/senses` is the one open `/v1/` path. It is on the outer mux and not in `gated`, so it never meets the middleware. [api.go:110](../../server/internal/api/api.go#L110)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:95-102](../../server/internal/api/api.go#L95-L102)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:111-118](../../server/internal/api/api.go#L111-L118)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 
@@ -192,7 +214,7 @@ The middleware verifies the token, then finds the reader behind its subject, cre
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes: `JSON` for an answer, and `Error(w, code, key, message)` for an error, which hands the body to ukubi-go's `errs.Write`. [httpx.go:12-29](../../server/internal/httpx/httpx.go#L12-L29)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:227-234](../../server/internal/api/api.go#L227-L234)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:253-260](../../server/internal/api/api.go#L253-L260)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -205,7 +227,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:201-209](../../server/internal/api/api.go#L201-L209)), a root must be at most 32 bytes of Arabic letters ([api.go:213-223](../../server/internal/api/api.go#L213-L223)), and a kept kind must be `aya`, `root` or `note` ([api.go:140-147](../../server/internal/api/api.go#L140-L147)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:227-235](../../server/internal/api/api.go#L227-L235)), a root must be at most 32 bytes of Arabic letters ([api.go:239-249](../../server/internal/api/api.go#L239-L249)), and a kept kind must be `aya`, `root` or `note` ([api.go:166-173](../../server/internal/api/api.go#L166-L173)).
 
 ### 4. The store holds every SQL statement
 
@@ -246,7 +268,7 @@ No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold 
 
 ### 6. Two loops run beside the server
 
-`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:115-124](../../server/cmd/api/main.go#L115-L124), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:137-152](../../server/cmd/api/main.go#L137-L152)). [main.go:72-74](../../server/cmd/api/main.go#L72-L74)
+`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:129-138](../../server/cmd/api/main.go#L129-L138), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:151-166](../../server/cmd/api/main.go#L151-L166)). [main.go:86-88](../../server/cmd/api/main.go#L86-L88)
 
 ```go
 	var loops sync.WaitGroup
@@ -254,13 +276,17 @@ No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold 
 	loops.Go(func() { sweep(ctx, db, log) })
 ```
 
-Both are marked as deliberate ceilings: they assume one replica ([main.go:113-114](../../server/cmd/api/main.go#L113-L114)). Two replicas racing the report sweep could lose or double a report. [main.go:143-145](../../server/cmd/api/main.go#L143-L145)
+Both are marked as deliberate ceilings: they assume one replica ([main.go:127-128](../../server/cmd/api/main.go#L127-L128)). Two replicas racing the report sweep could lose or double a report. [main.go:157-159](../../server/cmd/api/main.go#L157-L159)
 
 ### 7. Logs and shutdown
 
 The first line of `main` installs ukubi-go's JSON logger on stdout, so every line is one JSON object with `time`, `level` and `msg`, which is what Loki reads. ERROR means something on our side failed. When a request fails because its caller hung up, `httpx.Failed` logs the same words at WARN instead, so a phone dropping mid-sync never counts toward the error-rate alert ([serve.go:63](../../server/internal/httpx/serve.go#L63)). `server/logs_test.go` pins every ERROR line with its words.
 
-The server runs through `httpx.Serve`: timeouts on reading and writing, net/http's own lines at ERROR, and a drain on SIGTERM. It keeps answering for 5 seconds, while Traefik learns the pod is going, then stops accepting and gives the requests in flight up to 20 seconds to finish. The two loops stop, a sweep already running commits or is cancelled 20 seconds after the signal, and the database closes last ([main.go:80](../../server/cmd/api/main.go#L80), [main.go:97](../../server/cmd/api/main.go#L97)). [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md) has the why.
+The server runs through `httpx.Serve`: timeouts on reading and writing, net/http's own lines at ERROR, and a drain on SIGTERM. It keeps answering for 5 seconds, while Traefik learns the pod is going, then stops accepting and gives the requests in flight up to 20 seconds to finish. The two loops stop, a sweep already running commits or is cancelled 20 seconds after the signal, and the database closes last ([main.go:94](../../server/cmd/api/main.go#L94), [main.go:111](../../server/cmd/api/main.go#L111)). Tracing shuts down after that, so the spans of the requests the drain waited for are sent ([main.go:44-56](../../server/cmd/api/main.go#L44-L56)). [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md) has the why.
+
+### 8. Traces, off unless configured
+
+With `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` unset, which is every deployment today, `telemetry.New` returns a tracing that wraps nothing: `Handler` hands back the handler itself, and every response is byte for byte what it was. With it set, ukubi-go's `telemetry` package gives every route but `/healthz` one server span, named by its pattern, and pushes them over OTLP/HTTP. A path no route takes has no span. The span is outside the gate, so a refused token is traced too. A `traceparent` from a caller starts a new trace linked to the caller's, never a child of it: anyone can send one. A log line written with a request's context gains `trace_id` and `span_id`. A failed export is a WARN line, `traces`; a tracing that cannot be built at start is `tracing unavailable` and exit 1. [ADR 0040](../adr/0040-opt-in-traces.md) has the why, and why it stays off for wird-api in production until the privacy page covers it.
 
 ## Why it is this way
 
@@ -272,6 +298,7 @@ The server runs through `httpx.Serve`: timeouts on reading and writing, net/http
 - [ADR 0008](../adr/0008-the-recogniser-is-served-from-wirds-own-host.md) — the voice model is served from Wird's own host, as a redirect.
 - [ADR 0010](../adr/0010-the-server-owns-the-roots-and-their-senses.md) — the server owns the senses, and serves them without a token.
 - [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md) — logs are JSON on stdout with deliberate levels, and a SIGTERM drains.
+- [ADR 0040](../adr/0040-opt-in-traces.md) — one span per route when an endpoint is set, outside the one gate, and off in production until the privacy page covers it.
 
 ## Go deeper
 

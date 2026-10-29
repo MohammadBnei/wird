@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"context"
+	"net/http"
 	"os"
-	"os/exec"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -62,7 +61,11 @@ func TestEveryDoesNoWorkAfterTheSignal(t *testing.T) {
 }
 
 // The whole main, as Kubernetes stops it: SIGTERM once it is listening, then
-// exit 0 with "wird-api drained" and no ERROR line.
+// exit 0 with "wird-api drained" and no ERROR line. Traces are on, and the
+// batcher waits a minute, so only Shutdown can send them: the span of a request
+// made while the server settles reaching the collector is Shutdown running
+// after the drain. Mutations: no Shutdown, or Shutdown on the signal before
+// the drain, and the span never arrives.
 func TestMainDrainsOnSIGTERM(t *testing.T) {
 	if os.Getenv("WIRD_API_TEST_CHILD") == "1" {
 		main()
@@ -70,65 +73,42 @@ func TestMainDrainsOnSIGTERM(t *testing.T) {
 	}
 	_, pool := testenv.Postgres(t)
 	issuer := testenv.NewIssuer(t)
+	collector := testenv.NewCollector(t)
 
-	cmd := exec.Command(os.Args[0], "-test.run=^TestMainDrainsOnSIGTERM$")
-	cmd.Env = append(os.Environ(),
-		"WIRD_API_TEST_CHILD=1",
+	status := 0
+	out, err := testenv.SIGTERM(t, "TestMainDrainsOnSIGTERM", "WIRD_API_TEST_CHILD", "wird-api listening", []string{
 		"WIRD_DEV=",
-		"DATABASE_URL="+pool.Config().ConnString(),
-		"OIDC_ISSUER="+issuer.URL,
+		"DATABASE_URL=" + pool.Config().ConnString(),
+		"OIDC_ISSUER=" + issuer.URL,
 		"OIDC_AUDIENCE=wird",
 		"API_ADDR=127.0.0.1:0",
-	)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = cmd.Process.Kill() })
-
-	lines := make(chan string)
-	go func() {
-		defer close(lines)
-		scan := bufio.NewScanner(stdout)
-		for scan.Scan() {
-			lines <- scan.Text()
+		"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + collector.URL,
+		"OTEL_BSP_SCHEDULE_DELAY=60000",
+	}, func(addr string) {
+		resp, err := http.Get("http://" + addr + "/v1/me")
+		if err != nil {
+			t.Errorf("a request while settling: %v", err)
+			return
 		}
-	}()
-
-	var out []string
-	timeout := time.After(30 * time.Second)
-	signalled := false
-	for line, ok := "", true; ok; {
-		select {
-		case line, ok = <-lines:
-			if !ok {
-				break
-			}
-			out = append(out, line)
-			if !signalled && strings.Contains(line, `"msg":"wird-api listening"`) {
-				signalled = true
-				if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-					t.Fatal(err)
-				}
-			}
-		case <-timeout:
-			t.Fatalf("no exit within 30s:\n%s", strings.Join(out, "\n"))
-		}
-	}
-	if err := cmd.Wait(); err != nil {
-		t.Errorf("exit: %v, want 0:\n%s", err, strings.Join(out, "\n"))
-	}
+		resp.Body.Close()
+		status = resp.StatusCode
+	})
 	all := strings.Join(out, "\n")
-	if !signalled {
-		t.Fatalf("never listened:\n%s", all)
+	if err != nil {
+		t.Errorf("exit: %v, want 0:\n%s", err, all)
 	}
 	if !strings.Contains(all, `"msg":"wird-api drained"`) {
 		t.Errorf("no drained line:\n%s", all)
 	}
 	if strings.Contains(all, `"level":"ERROR"`) {
 		t.Errorf("an ERROR on a clean SIGTERM:\n%s", all)
+	}
+	// Positive control: the request was served, and refused at the gate.
+	if status != http.StatusUnauthorized {
+		t.Errorf("GET /v1/me while settling answered %d, want 401", status)
+	}
+	got := collector.Received()
+	if !bytes.Contains(got, []byte("GET /v1/me")) || !bytes.Contains(got, []byte("wird-api")) {
+		t.Errorf("the span of a request served while settling never reached the collector (%d bytes)", len(got))
 	}
 }

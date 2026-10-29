@@ -55,6 +55,9 @@ var envAllowed = map[string][]string{
 	// A test helper outside a _test.go file, imported only by tests: the DSN
 	// of the Postgres the tests make their throwaway databases in.
 	"server/internal/testenv/postgres.go": {"os.Getenv()"},
+	// Also test-only: a cmd's main run again as a child process, which
+	// inherits the test's environment plus the variables the test sets.
+	"server/internal/testenv/main.go": {"import os/exec", "os.Environ()"},
 }
 
 // envUses lists the environment readers src uses, called or as a value, under
@@ -252,5 +255,27 @@ func TestEnvUses(t *testing.T) {
 		if !slices.Equal(got, c.want) {
 			t.Errorf("%s: %v, want %v", c.src, got, c.want)
 		}
+	}
+}
+
+// jidhr's CI tests rootd against jidhr's own ukubi-go pin (GOWORK=off), while
+// the image builds rootd through go.work, where the higher of the two pins
+// wins: two pins that differ ship a rootd nobody tested (docs/adr/0040).
+func TestJidhrShipsTheUkubiGoItWasTestedWith(t *testing.T) {
+	pin := func(gomod string) string {
+		b, err := os.ReadFile(gomod)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for line := range strings.Lines(string(b)) {
+			if f := strings.Fields(line); len(f) == 2 && f[0] == "github.com/MohammadBnei/ukubi-go" {
+				return f[1]
+			}
+		}
+		t.Fatalf("%s requires no ukubi-go", gomod)
+		return ""
+	}
+	if s, j := pin("go.mod"), pin("../jidhr/go.mod"); s != j {
+		t.Errorf("ukubi-go: server pins %s, jidhr %s; bump both together", s, j)
 	}
 }

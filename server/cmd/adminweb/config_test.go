@@ -153,3 +153,35 @@ func documented(t *testing.T, path string) []string {
 	}
 	return names
 }
+
+// Tracing is off unless OTEL_EXPORTER_OTLP_TRACES_ENDPOINT says where to send
+// it: the SDK's catch-all OTEL_EXPORTER_OTLP_ENDPOINT is never read. A value
+// that is not an http(s) URL with a host is refused with the other problems,
+// by name: it may carry user:secret@. Mutation: the check dropped, and the bad
+// values start.
+func TestATracesEndpointThatIsNotAURLStarts(t *testing.T) {
+	const name = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
+	for _, v := range []string{"collector:4318", "grpc://user:secret@collector:4317", "http:///v1/traces", "http://:4318/v1/traces", "user:secret@collector"} {
+		_, err := load(func(k string) string { return with(prod, name, v, "WIRD_DEV", "2")[k] })
+		if err == nil {
+			t.Errorf("%q: started", v)
+			continue
+		}
+		if !strings.Contains(err.Error(), name+" is not an http(s) URL with a host") || !strings.Contains(err.Error(), "WIRD_DEV") {
+			t.Errorf("%q: refused with %q, want both problems", v, err)
+		}
+		if strings.Contains(err.Error(), "secret") || strings.Contains(err.Error(), "collector") {
+			t.Errorf("%q: the refusal shows the value: %q", v, err)
+		}
+	}
+	for env, want := range map[string]string{
+		"":                            "",
+		"OTEL_EXPORTER_OTLP_ENDPOINT": "",
+		name:                          "https://u:p@otlp.example/v1/traces",
+	} {
+		got, err := load(func(k string) string { return with(prod, env, "https://u:p@otlp.example/v1/traces")[k] })
+		if err != nil || got.Traces != want {
+			t.Errorf("with %q set: traces %q, %v; want %q", env, got.Traces, err, want)
+		}
+	}
+}

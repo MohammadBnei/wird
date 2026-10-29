@@ -78,7 +78,7 @@ func (m *modelStore) serve(w http.ResponseWriter, r *http.Request) {
 
 	signed, err := m.sign.get(m.bucket, key, time.Now(), modelURLTTL)
 	if err != nil {
-		m.log.Error("presign a model", "key", key, "err", err)
+		m.log.ErrorContext(r.Context(), "presign a model", "key", key, "err", err)
 		httpx.Error(w, errs.Internal, keys.ModelsUnreachable, "the recogniser cannot be reached")
 		return
 	}
