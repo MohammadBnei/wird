@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -102,6 +103,13 @@ func TestMainDrainsOnSIGTERM(t *testing.T) {
 	}
 	if strings.Contains(all, `"level":"ERROR"`) {
 		t.Errorf("an ERROR on a clean SIGTERM:\n%s", all)
+	}
+	// The start line names the release (buildinfo); a test build is "dev".
+	// Mutation: the attribute dropped from the line, and this fails.
+	if !slices.ContainsFunc(out, func(l string) bool {
+		return strings.Contains(l, `"msg":"wird-api listening"`) && strings.Contains(l, `"version":"dev"`)
+	}) {
+		t.Errorf("the start line does not name the release:\n%s", all)
 	}
 	// Positive control: the request was served, and refused at the gate.
 	if status != http.StatusUnauthorized {

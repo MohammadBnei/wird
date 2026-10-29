@@ -29,7 +29,7 @@ void main() {
     final version = find.byKey(const Key('app version'));
     await tester.scrollUntilVisible(version, 300);
     // A test build is not a release, so it says dev; the release build passes
-    // the pubspec's version in as WIRD_VERSION.
+    // the release tag's version in as WIRD_VERSION.
     expect(tester.widget<Text>(version).data, 'Wird $appVersion');
     expect(appVersion, 'dev');
   });

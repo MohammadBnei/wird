@@ -1,5 +1,5 @@
 # release-app.yml (the release button) -> this workflow, dispatched on the
-# version tag it just pushed -> a release-signed arm64 APK -> s3://wird-models/android/
+# release tag it picked (release.yml cuts them) -> a release-signed arm64 APK -> s3://wird-models/android/
 # wird-<sha12>.apk -> WIRD_APK_KEY bumped in helm/values.yaml -> ArgoCD rolls
 # the pod, and https://wird.bnei.dev/download/android (server/internal/api/
 # apk.go) hands out the new build. docs/guides/releasing-the-apk.md is the
@@ -66,16 +66,37 @@ jobs:
         with:
           fetch-depth: 0
 
-      # A tag that disagrees with the pubspec ships an APK that reports a
-      # different version than its download link; a tag off main publishes code
-      # main never had. release-app.yml makes neither, and this refuses both.
-      - name: Tag matches the pubspec version, and is on main
+      # A tag that is not a release names a version nobody cut; a tag off main
+      # publishes code main never had. release-app.yml dispatches neither, and
+      # this refuses both.
+      - name: Tag is a release, and is on main
         if: github.ref_type == 'tag'
         run: |
           set -euo pipefail
-          want=$(sed -n -E 's/^version: ([^+]+).*/\1/p' app/pubspec.yaml)
-          [ "${GITHUB_REF_NAME#v}" = "$want" ] || { echo "::error::tag $GITHUB_REF_NAME but pubspec says $want"; exit 1; }
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$GITHUB_REF_NAME is not a vX.Y.Z release tag"; exit 1; }
           git merge-base --is-ancestor HEAD origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+
+      # The build name is the release tag (ADR 0041), not the pubspec line. From
+      # main, which never publishes, it is the last release plus the commit, the
+      # way release.yml names an untagged image, so a report sent from that
+      # build claims no release it is not. The build number is the commit count:
+      # it only rises, and was 548 at v0.0.14 against the pubspec's 15.
+      # ponytail: past 999 commits the arm64 code (2000+N) runs into the next
+      # ABI's 3000 range; harmless while only arm64 ships, and it still rises.
+      - name: Version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            name=${GITHUB_REF_NAME#v}
+          else
+            name="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)+$(git rev-parse --short=12 HEAD)"
+            name=${name#v}
+          fi
+          number=$(git rev-list --count HEAD)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          echo "Version $name, build $number." >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/setup-java@v4
         with:
@@ -198,15 +219,17 @@ jobs:
       # No force-version-code-ignoring-abi: that flag is for walk builds, and a
       # release keeps the per-ABI version code.
       # WIRD_VERSION is what the app reports itself as (report.dart's
-      # appVersion), read from the same pubspec line the build name comes from:
-      # one place holds the version.
+      # appVersion), the same name the build carries: one place, the tag.
       - name: Build
         working-directory: app
+        env:
+          NAME: ${{ steps.version.outputs.name }}
+          NUMBER: ${{ steps.version.outputs.number }}
         run: |
           set -euo pipefail
-          version=$(sed -n -E 's/^version: ([^+]+).*/\1/p' pubspec.yaml)
           flutter build apk --release --split-per-abi --target-platform android-arm64 \
-            --dart-define=WIRD_VERSION="$version"
+            --build-name="$NAME" --build-number="$NUMBER" \
+            --dart-define=WIRD_VERSION="$NAME"
 
       # The second line of defence for the fallback above, checked on the
       # artifact itself rather than on the inputs.
@@ -304,13 +327,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Tag matches the pubspec version, and is on main
+      - name: Tag is a release, and is on main
         if: github.ref_type == 'tag'
         run: |
           set -euo pipefail
-          want=$(sed -n -E 's/^version: ([^+]+).*/\1/p' app/pubspec.yaml)
-          [ "${GITHUB_REF_NAME#v}" = "$want" ] || { echo "::error::tag $GITHUB_REF_NAME but pubspec says $want"; exit 1; }
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$GITHUB_REF_NAME is not a vX.Y.Z release tag"; exit 1; }
           git merge-base --is-ancestor HEAD origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+
+      # Same name and number as the apk job, computed the same way.
+      - name: Version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            name=${GITHUB_REF_NAME#v}
+          else
+            name="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)+$(git rev-parse --short=12 HEAD)"
+            name=${name#v}
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "number=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@v4
         with:
@@ -391,27 +427,31 @@ jobs:
             prop keyPassword "$WIRD_ANDROID_UPLOAD_PASSWORD"
           } > app/android/key.properties
 
-      # 2000+N: the arm64 APK's version code (Flutter's abi*1000 + N), so a
-      # phone holding the APK sees the Play build as the same release, and the
-      # next one as an update, whichever channel it came from.
+      # 2000+N, N the commit count: the arm64 APK's version code (Flutter's
+      # abi*1000 + N), so a phone holding the APK sees the Play build as the
+      # same release, and the next one as an update, whichever channel it came
+      # from.
       - name: Build
         working-directory: app
+        env:
+          NAME: ${{ steps.version.outputs.name }}
+          NUMBER: ${{ steps.version.outputs.number }}
         run: |
           set -euo pipefail
-          line=$(sed -n -E 's/^version: (.*)$/\1/p' pubspec.yaml)
           flutter build appbundle --release \
-            --build-number=$((2000 + ${line##*+})) \
-            --dart-define=WIRD_VERSION="${line%%+*}"
+            --build-name="$NAME" --build-number=$((2000 + NUMBER)) \
+            --dart-define=WIRD_VERSION="$NAME"
 
       - name: Signed with the upload key, at 2000+N
+        env:
+          NUMBER: ${{ steps.version.outputs.number }}
         run: |
           set -euo pipefail
           aab=app/build/app/outputs/bundle/release/app-release.aab
           certs=$(keytool -printcert -jarfile "$aab")
           echo "$certs" | grep -E 'Owner|SHA256'
           if grep -q 'CN=Android Debug' <<<"$certs"; then echo "::error::signed with the debug key"; exit 1; fi
-          line=$(sed -n -E 's/^version: (.*)$/\1/p' app/pubspec.yaml)
-          echo "versionCode $((2000 + ${line##*+}))" >> "$GITHUB_STEP_SUMMARY"
+          echo "versionCode $((2000 + NUMBER))" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Remove the key
         if: always()

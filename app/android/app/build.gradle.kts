@@ -52,7 +52,7 @@ android {
         //
         // The split also decides the version code, which is not obvious and
         // costs a walk when it bites. Flutter's own Gradle plugin mints
-        // `abi * 1000 + pubspec build number` for each split APK — arm64 is 2,
+        // `abi * 1000 + build number` for each split APK — arm64 is 2,
         // so 1.0.0+1 installs as 2001 (FlutterPluginConstants.ABI_VERSION,
         // FlutterPlugin.kt's applicationVariants.all block). A debug build
         // keeps the plain 1, so `flutter run` over a release APK fails with

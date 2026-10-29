@@ -173,7 +173,7 @@ Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE`, both r
 
 ### 6. The middleware checks, then finds the reader
 
-The middleware wraps the whole `v1` mux, and that one gate answers every path the open routes do not claim: each gated pattern is registered on the outer mux as the gate itself, for its span, and everything else falls through `"/"` to it ([api.go:78-129](../../../server/internal/api/api.go#L78-L129)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
+The middleware wraps the whole `v1` mux, and that one gate answers every path the open routes do not claim: each gated pattern is registered on the outer mux as the gate itself, for its span, and everything else falls through `"/"` to it ([api.go:79-134](../../../server/internal/api/api.go#L79-L134)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
 
 ```go
 		token, err := a.verifier.Verify(r.Context(), raw)

@@ -25,6 +25,7 @@ import (
 
 	"github.com/MohammadBnei/ukubi-go/telemetry"
 
+	"github.com/MohammadBnei/wird/server/internal/buildinfo"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
@@ -114,7 +115,7 @@ func run(log *slog.Logger) int {
 		log.Error("wird-adminweb stopped", "err", err)
 		return 1
 	}
-	log.Info("wird-adminweb listening", "addr", ln.Addr().String(), "issuer", issuer, "audience", audience, "dev", cfg.Dev)
+	log.Info("wird-adminweb listening", "addr", ln.Addr().String(), "issuer", issuer, "audience", audience, "dev", cfg.Dev, "version", buildinfo.Version())
 	if err := httpx.Serve(ctx, ln, routes(db, verifier, css, log, tel), log); err != nil {
 		if ctx.Err() != nil {
 			log.Error("wird-adminweb shutdown failed", "err", err)
@@ -186,10 +187,12 @@ type dashboard struct {
 	ReportsCut bool
 	Verdicts   []store.SenseVerdict
 	VerdictsOK bool
+	// The release this binary is (buildinfo), printed in the footer.
+	Version string
 }
 
 func (s *server) dashboard(w http.ResponseWriter, r *http.Request) {
-	var page dashboard
+	page := dashboard{Version: buildinfo.Version()}
 	var err error
 
 	if page.Corpus, err = s.db.CorpusVersion(r.Context()); err == nil {

@@ -2,6 +2,8 @@ name: wird
 description: "Read a set of ayas, recite it in prayer, open any word's root."
 publish_to: 'none'
 
+# Local builds only. Release builds pass --build-name (the release tag) and
+# --build-number (the commit count at it) over this line (ADR 0041).
 version: 0.0.14+15
 
 environment:

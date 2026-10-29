@@ -1,5 +1,5 @@
 # release-app.yml (the release button) -> this workflow, dispatched on the
-# version tag it just pushed, once IOS_RELEASE_ENABLED is set -> an archive
+# release tag it picked (release.yml cuts them), once IOS_RELEASE_ENABLED is set -> an archive
 # signed by Apple's cloud signing -> uploaded to App Store Connect, where it
 # shows up in TestFlight. Promotion to the App Store is done by hand there.
 # docs/guides/releasing-to-stores.md is the human version of this file.
@@ -45,14 +45,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Same refusal as apk.yml: a tag off main, or one that disagrees with the
-      # pubspec, never reaches TestFlight.
-      - name: Tag matches the pubspec version, and is on main
+      # Same refusal as apk.yml: a tag off main, or one that is not a release,
+      # never reaches TestFlight.
+      - name: Tag is a release, and is on main
         run: |
           set -euo pipefail
           [ "$GITHUB_REF_TYPE" = tag ] || { echo "::error::run this on a v* tag"; exit 1; }
-          want=$(sed -n -E 's/^version: ([^+]+).*/\1/p' app/pubspec.yaml)
-          [ "${GITHUB_REF_NAME#v}" = "$want" ] || { echo "::error::tag $GITHUB_REF_NAME but pubspec says $want"; exit 1; }
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$GITHUB_REF_NAME is not a vX.Y.Z release tag"; exit 1; }
           git merge-base --is-ancestor HEAD origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
 
       - uses: subosito/flutter-action@v2
@@ -105,12 +104,16 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > "$key"
           echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
 
+      # The build name is the tag, the build number the commit count at it, as
+      # in apk.yml: it only rises, which TestFlight requires.
       - name: Configure
         working-directory: app
         run: |
           set -euo pipefail
-          version=$(sed -n -E 's/^version: ([^+]+).*/\1/p' pubspec.yaml)
-          flutter build ios --release --config-only --dart-define=WIRD_VERSION="$version"
+          version=${GITHUB_REF_NAME#v}
+          flutter build ios --release --config-only \
+            --build-name="$version" --build-number="$(git rev-list --count HEAD)" \
+            --dart-define=WIRD_VERSION="$version"
 
       - name: Archive
         working-directory: app/ios

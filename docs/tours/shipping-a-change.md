@@ -45,9 +45,9 @@ Your pull request builds, vets and tests both Go modules against a fresh Postgre
 
 ## 4. You merge, and that is the release
 
-A merge to `main` is a release. Nobody cuts a version. The same checks run again, and then one container image is built holding only `wird-api`, tagged with your commit.
+A merge to `main` is a release. Nobody types a version: git-cliff reads your commit subject, tags the next `vX.Y.Z` and adds it to `CHANGELOG.md`. The same checks run first, and then one container image is built holding only `wird-api`, tagged with the release commit and carrying that version.
 
-→ [Deploy: the image tag is the commit](../architecture/deploy.md#3-the-image-tag-is-the-commit) · [one binary per image](../architecture/deploy.md#4-one-binary-per-image)
+→ [Deploy: the release, then the image](../architecture/deploy.md#3-the-release-then-the-image) · [one binary per image](../architecture/deploy.md#4-one-binary-per-image)
 
 ## 5. The tag is written into helm
 

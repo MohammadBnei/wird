@@ -76,6 +76,25 @@ func TestThePageSwallowsTheRoutesBesideIt(t *testing.T) {
 	}
 }
 
+// Which release is live, asked with no account, and answered by the server
+// rather than by the page's {file}, which would answer 404. Mutation: the
+// route removed, and this is the page's 404.
+func TestTheServerSaysWhichReleaseItIs(t *testing.T) {
+	h := newHarness(t)
+
+	w := h.get(t, "/version", "")
+
+	var got map[string]string
+	decode(t, w, http.StatusOK, &got)
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type is %q", ct)
+	}
+	// "dev": a test binary is built from the committed version.txt.
+	if len(got) != 1 || got["version"] != "dev" {
+		t.Errorf("body is %v, want {version: dev}", got)
+	}
+}
+
 // Without a published build the button has nothing to hand out, and it must
 // say so rather than redirect to a key the store does not hold.
 func TestTheDownloadButtonRedirectsToABuildNobodyPublished(t *testing.T) {

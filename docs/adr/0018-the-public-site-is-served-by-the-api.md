@@ -5,7 +5,7 @@ Date: 2026-10-01. Status: accepted. Amends ADR 0005.
 ## Context
 
 `https://wird.bnei.dev/` answered `a bearer token is required`: every path the
-API did not know fell to the authenticator ([api.go](../../server/internal/api/api.go#L77)).
+API did not know fell to the authenticator ([api.go](../../server/internal/api/api.go#L78)).
 Wird had no page that says what it is, and no way to get the Android app
 without a cable.
 

@@ -16,8 +16,8 @@ enum ReportKind { bug, request, improvement }
 /// The build a report was written from.
 ///
 /// Passed in by the release build (`--dart-define=WIRD_VERSION`), read from
-/// the pubspec's own version line, so the number is written in one place
-/// (ADR 0022). Any other build says `dev`: a report from a build nobody
+/// the release tag, so the number is written in one place
+/// (ADR 0041). Any other build says `dev`: a report from a build nobody
 /// released should not claim a version that was.
 const appVersion = String.fromEnvironment('WIRD_VERSION', defaultValue: 'dev');
 
