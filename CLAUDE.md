@@ -41,9 +41,10 @@ docs/     human docs + adr/ + design/ (vendored, never hand-edit)
 
 ## Commands
 - gate: `./scripts/qa.sh` → exit code = verdict, writes `qa-report.json`
-- Go, per module as CI runs it: `GOWORK=off go -C server build ./...` · `GOWORK=off go -C server test -p 1 ./...` (same for `jidhr`; never `./...` at root)
+- Go, per module as CI runs it: `GOWORK=off go -C server build ./...` · `GOWORK=off go -C server test -p 1 ./...` (same for `jidhr`; never `./...` at root; no go.work in git)
+- path-reading CLIs (etl ingest rootcheck rootdraft senseseed jidhrcorpus adminweb rootd): defaults relative to repo root → `go build -C server -o ../bin/ ./cmd/<x> && bin/<x>` from root (rootd: `-C jidhr`). Never `go -C server run` them (cwd = server/ → wrong paths, ingest writes server/data/raw/)
 - app: `cd app && fvm flutter analyze && fvm flutter test`
-- local API: `docker compose up -d postgres oidc-stub && WIRD_DEV=1 go run ./server/cmd/api`. No `WIRD_DEV` → required env unset = `config refused`, exit 1 (ADR 0036)
+- local API: `docker compose up -d postgres oidc-stub && WIRD_DEV=1 go -C server run ./cmd/api`. No `WIRD_DEV` → required env unset = `config refused`, exit 1 (ADR 0036)
 - reader feedback (reports, sense verdicts) → triage + issues: `.claude/rules/feedback.md`
 
 ## Load-bearing paths — never move/rename

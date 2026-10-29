@@ -9,7 +9,7 @@ flowchart LR
   subgraph mac["Your machine"]
     app["Wird app<br/>fvm flutter run"]
     db[("wird.db<br/>corpus + your data")]
-    api["wird-api<br/>WIRD_DEV=1 go run ./server/cmd/api<br/>:8080"]
+    api["wird-api<br/>WIRD_DEV=1 go -C server run ./cmd/api<br/>:8080"]
     rootd["jidhr rootd<br/>:8081"]
     json["jidhr/testdata/quran.json"]
     subgraph compose["docker compose"]
@@ -86,7 +86,7 @@ The API needs Postgres and an OIDC issuer. Both come from [docker-compose.yml](.
 
 ```bash
 docker compose up -d postgres oidc-stub
-WIRD_DEV=1 go run ./server/cmd/api
+WIRD_DEV=1 go -C server run ./cmd/api
 ```
 
 The API runs its migrations at startup, so there is no separate step. Without `WIRD_DEV=1` it refuses to start until `DATABASE_URL`, `OIDC_ISSUER` and `OIDC_AUDIENCE` are all set, and says which are missing in one `config refused` line. `WIRD_DEV=1` fills the ones you leave unset with the compose stack's ([config.go:72-90](../../server/cmd/api/config.go#L72-L90)):
@@ -107,11 +107,11 @@ Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.
 jidhr needs no database and no network. `ROOTD_DEV=1` lets it serve without a key; without it, rootd refuses to start until `ROOTD_API_KEY` is set.
 
 ```bash
-ROOTD_DEV=1 go run ./jidhr/cmd/rootd
+go build -C jidhr -o ../bin/ ./cmd/rootd && ROOTD_DEV=1 bin/rootd
 curl -sG localhost:8081/v1/root --data-urlencode 'word=صَبَرُوا'
 ```
 
-It serves `jidhr/testdata/quran.json` from memory. The [rootd README](../../jidhr/cmd/rootd/README.md) is the whole HTTP contract. To rebuild the file against the local compose database, run `WIRD_DEV=1 go run ./server/cmd/jidhrcorpus`; give it `DATABASE_URL` for any other. It reads the roots from the app's **corpus** and the meanings from that Postgres, so the meanings are whatever that database last had seeded ([config.go:25-67](../../server/cmd/jidhrcorpus/config.go#L25-L67)).
+It serves `jidhr/testdata/quran.json` from memory. The [rootd README](../../jidhr/cmd/rootd/README.md) is the whole HTTP contract. To rebuild the file against the local compose database, run `go build -C server -o ../bin/ ./cmd/jidhrcorpus && WIRD_DEV=1 bin/jidhrcorpus`; give it `DATABASE_URL` for any other. It reads the roots from the app's **corpus** and the meanings from that Postgres, so the meanings are whatever that database last had seeded ([config.go:25-67](../../server/cmd/jidhrcorpus/config.go#L25-L67)).
 
 ## 6. Run the tests
 
@@ -128,10 +128,11 @@ cd app && fvm flutter analyze && fvm flutter test
 DEV=$(../scripts/device.sh) && fvm flutter test integration_test/ -d "$DEV"
 ```
 
-Two habits save time here:
+These habits save time here:
 
 - Never use `./...` at the repo root. The root is not a module, and Go rejects the pattern.
-- Keep `GOWORK=off` on these commands, and only on these. The committed `go.work` would hide a missing require in `server/go.mod`. The `go run ./server/cmd/...` commands above run from the root, so they still need the workspace: do not export `GOWORK=off` in your shell.
+- There is no `go.work` in git. `GOWORK=off` keeps one you made yourself from hiding a missing require in `server/go.mod`.
+- Tools that read files take paths relative to the repo root, so build them into `bin/` and run them from the root: `go build -C server -o ../bin/ ./cmd/etl && bin/etl`. `go -C server run` would run them inside `server/`, where those paths point at nothing. The API reads no files, so `go -C server run ./cmd/api` is fine.
 - Keep `-p 1`. The server tests share one Postgres.
 
 Test names state the failure they prevent. [CONTRIBUTING.md](../../CONTRIBUTING.md) has the rest of the conventions. For any change you can see on screen, the gate also asks you to look at it: [the visual gate](gate-visual.md).

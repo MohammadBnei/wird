@@ -4,33 +4,31 @@
 # docs/adr/0005-deploying-the-api.md records why, and ADR 0026 records why
 # adminweb now is.
 #
-# `COPY . . && go build ./...` does not work in this repo and is not a style
-# preference: the root is a go.work workspace that is not itself a module, so
-# `go build ./...` from here fails with "directory prefix . does not contain
-# modules listed in go.work". Both modules are named explicitly, the way
-# README.md and scripts/qa.sh already name them.
+# The build runs inside server/, the module both binaries belong to. The repo
+# root is not a module, and there is no go.work, so `go build ./...` from the
+# root does not work. server/go.mod replaces jidhr with ../jidhr (ADR 0035),
+# so jidhr's go.mod is copied next to it.
 #
-# `COPY . .` is also 21 GB — app/ carries Flutter build output. .dockerignore
+# `COPY . .` would be 21 GB — app/ carries Flutter build output. .dockerignore
 # covers it, but the copies below are explicit anyway so a stale ignore file
 # cannot quietly put the Qur'an corpus into a server image.
 FROM golang:1.27-alpine AS build
 
-WORKDIR /src
+WORKDIR /src/server
 
-# Dependency layer. jidhr's go.sum came with ukubi-go (docs/adr/0040), and the
-# workspace refuses to load without either module's go.mod on disk.
-COPY go.work go.work.sum ./
-COPY server/go.mod server/go.sum server/
-COPY jidhr/go.mod jidhr/go.sum jidhr/
+# Dependency layer. The replace => ../jidhr does not load without jidhr's
+# go.mod on disk. Its go.sum is not needed: Go reads only server/go.sum.
+COPY server/go.mod server/go.sum ./
+COPY jidhr/go.mod /src/jidhr/
 RUN go mod download
 
-COPY server/ server/
-COPY jidhr/ jidhr/
+# No jidhr source: neither binary imports it, so jidhr edits keep this cache.
+COPY server/ ./
 
 # CGO off: modernc.org/sqlite is pure Go and nothing else here needs a C
 # toolchain, so the binary is static and the final stage needs no libc match.
-RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-api ./server/cmd/api \
- && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-adminweb ./server/cmd/adminweb
+RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-api ./cmd/api \
+ && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-adminweb ./cmd/adminweb
 
 # Alpine rather than distroless/static. ca-certificates is the load-bearing
 # part — go-oidc fetches the issuer's discovery document and JWKS over HTTPS at
