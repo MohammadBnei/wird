@@ -18,7 +18,8 @@ The app branches only on HTTP status and op status. The public page branches on 
 - Every key is a constant in `server/internal/keys/keys.go`. `server/errkeys_test.go` runs ukubi-go's `errkeys` analyzer over the module. A key made anywhere else fails it, and so does a registry with no key.
 - `/models/` and `/download/android` use the same JSON body. Their presign failures move from 502 to 500, keyed `models.unreachable` and `apk.unreachable`. Presigning fails only when the configured endpoint does not parse, which is this server misconfigured. 503 stays "nothing published here", because the public page reads it that way.
 - Each refused or failed op result gains a `key` beside `reason`. `reason` stays a string with the same words, except that a body the decoder refuses now says "the op body is not shaped like this kind" instead of the decoder's text.
-- The sign-in page, the static 404s and adminweb's gate refusals stay plain text, as the standard allows.
+- The sign-in page, the static 404s, the router's own 404 and 405 (Go's `ServeMux` answers a path or method no route serves before any handler runs) and adminweb's gate refusals stay plain text, as the standard allows.
+- adminweb's triage stays plain text, but a JSON body its decoder refuses is answered "the body is not a triage" rather than the decoder's text, which quoted the caller's fields back.
 
 ## Alternatives
 

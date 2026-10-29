@@ -65,7 +65,7 @@ There are two groups. The open group needs no token, because the app is fully us
 
 The last column comes from the app's code. The app calls only [`/v1/sync`](../../app/lib/data/sync.dart#L59), [`/v1/changes`](../../app/lib/data/sync.dart#L77), [`/v1/senses`](../../app/lib/data/senses.dart#L94), [`DELETE /v1/me`](../../app/lib/data/auth.dart#L275) and [`/models/`](../../app/lib/data/speech.dart#L65). The other bearer routes are served and tested, but no screen reads them today.
 
-Errors have one shape, ukubi-go's `{"code", "key", "message", "source", "detail"}`, with the HTTP status that the code maps to:
+Every error a wird-api handler writes has one shape, ukubi-go's `{"code", "key", "message", "source", "detail"}`, with the HTTP status that the code maps to:
 
 ```json
 {"code":"unauthenticated","key":"auth.token_rejected","message":"token rejected","source":"","detail":""}
@@ -73,7 +73,7 @@ Errors have one shape, ukubi-go's `{"code", "key", "message", "source", "detail"
 
 `message` is for a person to read. It says what the caller did wrong, never which table or statement failed, and it may be reworded. `key` is what a client branches on, and it never changes meaning. Every key lives in one file, [keys.go](../../server/internal/keys/keys.go), and a test runs ukubi-go's `errkeys` analyzer to fail any key made anywhere else ([errkeys_test.go](../../server/errkeys_test.go)). A 500 carries ukubi-go's own key, `internal`. `source` and `detail` are always empty here, because wird-api passes on no other service's errors. ADR [0038](../adr/0038-api-errors-carry-a-key.md) records the choice.
 
-`/models/` and `/download/android` use the same JSON body. A presign failure on either answers 500, not 503, because the public page reads a 503 as "not published yet". Three answers stay plain text: the app-link files' 404, `/models/` with an empty key or one holding `..` (a static 404), and the sign-in page at `/auth/callback`.
+`/models/` and `/download/android` use the same JSON body. A presign failure on either answers 500, not 503, because the public page reads a 503 as "not published yet". Four answers stay plain text: the app-link files' 404, `/models/` with an empty key or one holding `..` (a static 404), the sign-in page at `/auth/callback`, and the router's own 404 and 405 for a path or method no route serves (for example `POST /v1/me`), which Go's `ServeMux` writes before any handler runs.
 
 ## White box
 

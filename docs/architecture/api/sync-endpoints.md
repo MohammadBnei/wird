@@ -130,14 +130,14 @@ The same lock makes the server-assigned set `ordinal` safe: `MAX(ordinal) + 1` c
 
 | Kind | What it writes | Rule |
 |---|---|---|
-| `ayah_understood` | One row per aya in `ayah_understood` | Each aya id must fold into a sūra from 1 to 114; already-understood ayas are skipped. [L230](../../../server/internal/store/sync.go#L267) |
-| `kept_upsert` | A `kept_items` row | Last write wins on `updated_at`; another reader's item never moves. [L277](../../../server/internal/store/sync.go#L314) |
-| `kept_delete` | Sets `deleted_at` on a `kept_items` row | A tombstone, never a delete. [L301](../../../server/internal/store/sync.go#L338) |
-| `set_prayed` | The set, if the body carries its range, and the prayer | With a range, the set id is recomputed and must match. Either way the set must exist. [L427](../../../server/internal/store/sync.go#L464) |
-| `set_recorded` | A set | Old shape, kept so old phones can drain their queue. [L398](../../../server/internal/store/sync.go#L435) |
-| `prefs_set` | The reader's `user_prefs` | Reading order must be `mushaf` or `nuzul`; last write wins. [L604](../../../server/internal/store/sync.go#L641) |
-| `position_moved` | The reader's `reading_positions` row for that sūra | The word must belong to the sūra; the time must be set and no more than five minutes ahead of the server; last write wins. [L632](../../../server/internal/store/sync.go#L669) |
-| `report_written` | A row in `report_inbox`, with no reader attached | Swept into `reports` later, on a clock. An over-long `sense_version` or `sense_hash`, or a `locale` other than `en` or `fr`, is blanked, not refused, so the words survive. [L498](../../../server/internal/store/sync.go#L535) |
+| `ayah_understood` | One row per aya in `ayah_understood` | Each aya id must fold into a sūra from 1 to 114; already-understood ayas are skipped. [L267](../../../server/internal/store/sync.go#L267) |
+| `kept_upsert` | A `kept_items` row | Last write wins on `updated_at`; another reader's item never moves. [L314](../../../server/internal/store/sync.go#L314) |
+| `kept_delete` | Sets `deleted_at` on a `kept_items` row | A tombstone, never a delete. [L338](../../../server/internal/store/sync.go#L338) |
+| `set_prayed` | The set, if the body carries its range, and the prayer | With a range, the set id is recomputed and must match. Either way the set must exist. [L464](../../../server/internal/store/sync.go#L464) |
+| `set_recorded` | A set | Old shape, kept so old phones can drain their queue. [L435](../../../server/internal/store/sync.go#L435) |
+| `prefs_set` | The reader's `user_prefs` | Reading order must be `mushaf` or `nuzul`; last write wins. [L641](../../../server/internal/store/sync.go#L641) |
+| `position_moved` | The reader's `reading_positions` row for that sūra | The word must belong to the sūra; the time must be set and no more than five minutes ahead of the server; last write wins. [L669](../../../server/internal/store/sync.go#L669) |
+| `report_written` | A row in `report_inbox`, with no reader attached | Swept into `reports` later, on a clock. An over-long `sense_version` or `sense_hash`, or a `locale` other than `en` or `fr`, is blanked, not refused, so the words survive. [L535](../../../server/internal/store/sync.go#L535) |
 
 Every body is decoded strictly. One unknown field refuses the op. [store/sync.go:257-265](../../../server/internal/store/sync.go#L257-L265) So a server has to ship before an app that sends a new key: an older server refuses it, and a refusal is permanent. `locale` and `sense_hash` on `report_written` were added that way ([ADR 0026](../../adr/0026-reports-are-triaged-and-turned-into-issues.md#consequences)).
 
