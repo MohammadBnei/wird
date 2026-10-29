@@ -204,7 +204,7 @@ Each section is read separately. A section that could not be read says so, inste
 
 [main.go:159-170](../../server/cmd/adminweb/main.go#L159-L170) · corpus and health above it [main.go:147-156](../../server/cmd/adminweb/main.go#L147-L156)
 
-Each report row shows the build, the screen, the corpus and sense versions, the language and the sense hash, and a small triage form ([dashboard.html:94-124](../../server/cmd/adminweb/dashboard.html#L94-L124)). The page is rendered by `html/template` from an embedded file ([main.go:290-300](../../server/cmd/adminweb/main.go#L290-L300)), which links the stylesheet served in step 2 ([dashboard.html:7](../../server/cmd/adminweb/dashboard.html#L7)).
+Each report row shows the build, the screen, the corpus and sense versions, the language and the sense hash, and a small triage form ([dashboard.html:94-124](../../server/cmd/adminweb/dashboard.html#L94-L124)). The page is rendered by `html/template` from an embedded file ([main.go:291-301](../../server/cmd/adminweb/main.go#L291-L301)), which links the stylesheet served in step 2 ([dashboard.html:7](../../server/cmd/adminweb/dashboard.html#L7)).
 
 ### 5. Sense verdicts are counted, not listed
 
@@ -217,7 +217,7 @@ const isVerdict = `r.kind = 'improvement'
 
 [admin.go:148-149](../../server/internal/store/admin.go#L148-L149)
 
-It is applied once, by the report sweep in `wird-api`, when a report first arrives. The sweep stores the matching root in the report's `verdict_root`, judged against the roots served at that moment, and carries it unchanged on every later sweep ([sync.go:569-588](../../server/internal/store/sync.go#L569-L588)). The report list and the export leave out every report with a `verdict_root`, and the tally counts exactly those, so no report can fall between them ([admin.go:173](../../server/internal/store/admin.go#L173)).
+It is applied once, by the report sweep in `wird-api`, when a report first arrives. The sweep stores the matching root in the report's `verdict_root`, judged against the roots served at that moment, and carries it unchanged on every later sweep ([sync.go:590-609](../../server/internal/store/sync.go#L590-L609)). The report list and the export leave out every report with a `verdict_root`, and the tally counts exactly those, so no report can fall between them ([admin.go:173](../../server/internal/store/admin.go#L173)).
 
 The tally groups them by root and language:
 
@@ -248,7 +248,7 @@ A report's `locale` is `en`, `fr` or empty. The API blanks any other value on ar
 
 ### 6. Triage: the one write
 
-A triage is three values written together: a category (`sense`, `bug`, `ux`, `content`, `request`, `noise`, or none), a status (`new`, `issued`, `dismissed`), and an optional link to a GitHub issue. The page sends it as a form; the agent sends JSON, and an unknown key is a 400. Each value is checked against the column's own rule first, so a bad value is answered with its reason rather than read as the server failing ([main.go:229-243](../../server/cmd/adminweb/main.go#L229-L243)). The issue link must start with `https://github.com/`, because it is drawn as a link on the operator's page. One rule is stricter than the columns: a report marked `issued` must name its issue, or the request is a 400. The id in the path is parsed as a UUID and passed to the store in its canonical form, because the parser accepts spellings Postgres refuses ([main.go:266-272](../../server/cmd/adminweb/main.go#L266-L272)).
+A triage is three values written together: a category (`sense`, `bug`, `ux`, `content`, `request`, `noise`, or none), a status (`new`, `issued`, `dismissed`), and an optional link to a GitHub issue. The page sends it as a form; the agent sends JSON, and an unknown key is a 400. Each value is checked against the column's own rule first, so a bad value is answered with its reason rather than read as the server failing ([main.go:229-243](../../server/cmd/adminweb/main.go#L229-L243)). The issue link must start with `https://github.com/`, because it is drawn as a link on the operator's page. One rule is stricter than the columns: a report marked `issued` must name its issue, or the request is a 400. The id in the path is parsed as a UUID and passed to the store in its canonical form, because the parser accepts spellings Postgres refuses ([main.go:267-273](../../server/cmd/adminweb/main.go#L267-L273)).
 
 The store retries the write once, and the retry is not a hedge:
 
@@ -322,8 +322,8 @@ Tests hold the rule, not habit:
 
 - The package may call only `Health`, `Reports`, `SenseVerdicts`, `CorpusVersion`, `TriageReport` and `Close`, and holds no SQL of its own ([adminweb_test.go:145](../../server/cmd/adminweb/adminweb_test.go#L145)). `TriageReport` takes a report's id, which no column joins to a reader.
 - Every aggregate the dashboard can run, the verdict tally included, has no argument that could bind it to one reader ([admin_test.go:48](../../server/internal/store/admin_test.go#L48)).
-- The page, rendered from a real database with two readers, never contains their ids or subjects ([adminweb_test.go:233](../../server/cmd/adminweb/adminweb_test.go#L233)). Neither do the exports, and both are never cached ([adminweb_test.go:484](../../server/cmd/adminweb/adminweb_test.go#L484)).
-- A valid token outside the group, and a token that cannot be proven, are both served nothing ([adminweb_test.go:80](../../server/cmd/adminweb/adminweb_test.go#L80), [adminweb_test.go:116](../../server/cmd/adminweb/adminweb_test.go#L116)). A triage posted from another site is refused ([adminweb_test.go:408](../../server/cmd/adminweb/adminweb_test.go#L408)).
+- The page, rendered from a real database with two readers, never contains their ids or subjects ([adminweb_test.go:233](../../server/cmd/adminweb/adminweb_test.go#L233)). Neither do the exports, and both are never cached ([adminweb_test.go:475](../../server/cmd/adminweb/adminweb_test.go#L475)).
+- A valid token outside the group, and a token that cannot be proven, are both served nothing ([adminweb_test.go:80](../../server/cmd/adminweb/adminweb_test.go#L80), [adminweb_test.go:116](../../server/cmd/adminweb/adminweb_test.go#L116)). A triage posted from another site is refused ([adminweb_test.go:399](../../server/cmd/adminweb/adminweb_test.go#L399)).
 - A verdict on a root Wird never wrote never reaches the tally, and a bad verdict on corrected text does not count against today's ([triage_test.go:78](../../server/internal/store/triage_test.go#L78), [triage_test.go:42](../../server/internal/store/triage_test.go#L42)).
 - A reseed that drops a root leaves its votes counted and out of the list ([triage_test.go:100](../../server/internal/store/triage_test.go#L100)).
 - A triage written while the sweep rewrites the table still lands, and the sweep keeps it ([triage_test.go:174](../../server/internal/store/triage_test.go#L174), [triage_test.go:234](../../server/internal/store/triage_test.go#L234)).

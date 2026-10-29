@@ -167,33 +167,33 @@ func New(ctx context.Context, issuer, audience string, users *store.Store, log *
 }
 ```
 
-[auth.go:29-39](../../../server/internal/auth/auth.go#L29-L39)
+[auth.go:31-41](../../../server/internal/auth/auth.go#L31-L41)
 
 Both values come from the environment, `OIDC_ISSUER` and `OIDC_AUDIENCE`, both required unless `WIRD_DEV=1` points them at the local stub ([config.go:82-83](../../../server/cmd/api/config.go#L82-L83)). Swapping the local stub for the real Authentik is those two values, and no code on this path knows which it talks to.
 
 ### 6. The middleware checks, then finds the reader
 
-The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:62-101](../../../server/internal/api/api.go#L62-L101)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
+The middleware wraps the whole `v1` mux, which answers every path the open routes do not claim ([api.go:64-103](../../../server/internal/api/api.go#L64-L103)). It refuses a missing bearer, then verifies signature, issuer, audience and expiry. Only a verified token's subject is trusted.
 
 ```go
 		token, err := a.verifier.Verify(r.Context(), raw)
 		if err != nil {
 			a.log.Info("token refused", "err", err)
-			httpx.Error(w, http.StatusUnauthorized, "token rejected")
+			httpx.Error(w, errs.Unauthenticated, keys.TokenRejected, "token rejected")
 			return
 		}
 		if token.Subject == "" {
-			httpx.Error(w, http.StatusUnauthorized, "token rejected")
+			httpx.Error(w, errs.Unauthenticated, keys.TokenRejected, "token rejected")
 			return
 		}
 		user, err := a.users.ReaderFor(r.Context(), token.Subject, signedIn(token))
 ```
 
-[auth.go:53-63](../../../server/internal/auth/auth.go#L53-L63)
+[auth.go:55-65](../../../server/internal/auth/auth.go#L55-L65)
 
-`ReaderFor` finds the reader by subject, or creates one on first contact, and handlers read it back with `auth.User` ([store.go:100](../../../server/internal/store/store.go#L100), [auth.go:108](../../../server/internal/auth/auth.go#L108)).
+`ReaderFor` finds the reader by subject, or creates one on first contact, and handlers read it back with `auth.User` ([store.go:100](../../../server/internal/store/store.go#L100), [auth.go:110](../../../server/internal/auth/auth.go#L110)).
 
-It also refuses an account that was deleted. `DELETE /v1/me` removes the reader (every owned row cascades) and records the moment in `deleted_readers`, under a SHA-256 of the subject ([store.go:130](../../../server/internal/store/store.go#L130)). Without that record, the next request from any phone still holding a token would create the reader again, and its outbox would refill the account. A deleted subject's token passes only if its `auth_time` is after the deletion. `iat` would not do: a refresh mints a new `iat` and keeps `auth_time` ([auth.go:87](../../../server/internal/auth/auth.go#L87)). A token with no `auth_time` is refused. The app asks for `prompt=login`, so signing in again after a deletion carries a fresh `auth_time` and starts an empty account.
+It also refuses an account that was deleted. `DELETE /v1/me` removes the reader (every owned row cascades) and records the moment in `deleted_readers`, under a SHA-256 of the subject ([store.go:130](../../../server/internal/store/store.go#L130)). Without that record, the next request from any phone still holding a token would create the reader again, and its outbox would refill the account. A deleted subject's token passes only if its `auth_time` is after the deletion. `iat` would not do: a refresh mints a new `iat` and keeps `auth_time` ([auth.go:89](../../../server/internal/auth/auth.go#L89)). A token with no `auth_time` is refused. The app asks for `prompt=login`, so signing in again after a deletion carries a fresh `auth_time` and starts an empty account.
 
 The check and the creation run in one transaction, under a lock on the subject that the deletion also takes. A request already past the token check therefore cannot create the reader again in the middle of a deletion. A repeated `DELETE /v1/me` with the old sign-in answers 204 rather than 401, so a phone whose first answer was lost still empties itself.
 

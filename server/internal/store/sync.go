@@ -6,11 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/MohammadBnei/ukubi-go/errs"
+	"github.com/MohammadBnei/wird/server/internal/keys"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -40,14 +43,25 @@ type OpResult struct {
 	ClientOpID string `json:"client_op_id"`
 	Status     string `json:"status"`
 	Reason     string `json:"reason,omitempty"`
+	// Key is what a client branches on (internal/keys' op.*); Reason stays
+	// the words a person reads, as installed apps parse it.
+	Key errs.Key `json:"key,omitempty"`
 }
 
-// errRefused marks a write that will never succeed however often it is sent.
-// Anything else is this server having a bad minute, and is worth retrying.
-var errRefused = errors.New("refused")
+// A refusal marks a write that will never succeed however often it is sent,
+// with the key a client branches on and the reason a person reads. Anything
+// else is this server having a bad minute, and is worth retrying. cause is
+// what the server logs and the device never sees.
+type refusal struct {
+	key    errs.Key
+	reason string
+	cause  error
+}
 
-func refuse(format string, a ...any) error {
-	return fmt.Errorf("%w: %s", errRefused, fmt.Sprintf(format, a...))
+func (r *refusal) Error() string { return "refused: " + r.reason }
+
+func refuse(key errs.Key, format string, a ...any) error {
+	return &refusal{key: key, reason: fmt.Sprintf(format, a...)}
 }
 
 // Apply lands a batch one op at a time, each in its own transaction, and
@@ -106,6 +120,12 @@ func applyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) OpResult {
 		return classify(op, err)
 	}
 	first, err := recordOp(ctx, tx, userID, op.ClientOpID)
+	// The only value here the device chose is its op id; a class 22 is that
+	// id, not the body.
+	var pg *pgconn.PgError
+	if errors.As(err, &pg) && strings.HasPrefix(pg.Code, "22") {
+		return classify(op, refuse(keys.OpBadValue, "the op id is not a uuid"))
+	}
 	if err != nil {
 		return classify(op, err)
 	}
@@ -144,34 +164,32 @@ func lockReader(ctx context.Context, tx pgx.Tx, userID string) error {
 // will be. A malformed body, an id that is not a uuid and a prayer against a
 // set that is not there are all the device's to fix; everything else is ours.
 func classify(op Op, err error) OpResult {
-	var pg *pgconn.PgError
-	refused := errors.Is(err, errRefused) ||
-		(errors.As(err, &pg) && (strings.HasPrefix(pg.Code, "22") || strings.HasPrefix(pg.Code, "23")))
-	if refused {
-		return OpResult{ClientOpID: op.ClientOpID, Status: OpRefused, Reason: reason(err)}
+	refused := func(key errs.Key, reason string) OpResult {
+		return OpResult{ClientOpID: op.ClientOpID, Status: OpRefused, Reason: reason, Key: key}
 	}
-	return OpResult{ClientOpID: op.ClientOpID, Status: OpFailed, Reason: "not applied, try again"}
-}
-
-// reason says what the device did wrong without saying which statement or
-// which table said so.
-func reason(err error) string {
+	// A Postgres refusal says what the device did wrong without saying which
+	// statement or which table said so.
+	var r *refusal
 	var pg *pgconn.PgError
-	if errors.As(err, &pg) {
-		switch {
-		case strings.HasPrefix(pg.Code, "22"):
-			return "the op body is not shaped like this kind"
-		case pg.Code == "23503":
-			return "it refers to something that is not here"
-		default:
-			return "it does not fit what is already recorded"
+	switch {
+	case errors.As(err, &r):
+		if r.cause != nil {
+			// The kind only: nothing here names the reader.
+			slog.Default().Warn("op refused", "kind", op.Kind, "reason", r.reason, "cause", r.cause)
 		}
+		return refused(r.key, r.reason)
+	case !errors.As(err, &pg):
+	case strings.HasPrefix(pg.Code, "22"):
+		return refused(keys.OpBadBody, "the op body is not shaped like this kind")
+	case pg.Code == "23503":
+		return refused(keys.OpNotFound, "it refers to something that is not here")
+	// NOT NULL and CHECK reject the value itself, whatever is recorded.
+	case pg.Code == "23502" || pg.Code == "23514":
+		return refused(keys.OpBadValue, "it does not fit what is already recorded")
+	case strings.HasPrefix(pg.Code, "23"):
+		return refused(keys.OpConflict, "it does not fit what is already recorded")
 	}
-	if errors.Is(err, errRefused) {
-		_, msg, _ := strings.Cut(err.Error(), ": ")
-		return msg
-	}
-	return "refused"
+	return OpResult{ClientOpID: op.ClientOpID, Status: OpFailed, Reason: "not applied, try again", Key: keys.OpRetry}
 }
 
 func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
@@ -193,7 +211,7 @@ func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 	case "report_written":
 		return applyReport(ctx, tx, op)
 	default:
-		return refuse("unknown kind %q", op.Kind)
+		return refuse(keys.OpUnknownKind, "unknown kind %q", op.Kind)
 	}
 }
 
@@ -221,8 +239,11 @@ func (s *Store) countOutcome(ctx context.Context, kind, status string) {
 func decode(body json.RawMessage, into any) error {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
+	// Fixed words, not the decoder's: its text names Go types and fields. The
+	// decoder's text goes to the log, so a field the server does not know yet
+	// is still named somewhere.
 	if err := decoder.Decode(into); err != nil {
-		return refuse("%s", err)
+		return &refusal{key: keys.OpBadBody, reason: "the op body is not shaped like this kind", cause: err}
 	}
 	return nil
 }
@@ -236,7 +257,7 @@ func applyAyahUnderstood(ctx context.Context, tx pgx.Tx, userID string, body jso
 		return err
 	}
 	if len(b.AyahIDs) == 0 {
-		return refuse("no ayas to mark")
+		return refuse(keys.OpBadValue, "no ayas to mark")
 	}
 	// A device that queued this op before it carried a time would otherwise
 	// record the reader's understanding in year one. The flush's own time is
@@ -250,7 +271,7 @@ func applyAyahUnderstood(ctx context.Context, tx pgx.Tx, userID string, body jso
 	// to show, so it is refused rather than stored.
 	for _, id := range b.AyahIDs {
 		if !isAya(id) {
-			return refuse("%d is not an aya", id)
+			return refuse(keys.OpBadValue, "%d is not an aya", id)
 		}
 	}
 	_, err := tx.Exec(ctx, `
@@ -316,7 +337,7 @@ func applyKeptDelete(ctx context.Context, tx pgx.Tx, userID string, body json.Ra
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return refuse("no kept item %s", b.ID)
+		return refuse(keys.OpNotFound, "no kept item %s", b.ID)
 	}
 	return nil
 }
@@ -346,7 +367,7 @@ var readingOrders = []string{"mushaf", "nuzul"}
 
 func checkReadingOrder(order string) error {
 	if !slices.Contains(readingOrders, order) {
-		return refuse("%q is not a reading order", order)
+		return refuse(keys.OpBadValue, "%q is not a reading order", order)
 	}
 	return nil
 }
@@ -369,7 +390,7 @@ func upsertSet(ctx context.Context, tx pgx.Tx, userID, setID string,
 	startAyahID, endAyahID int, readingOrder string, createdAt time.Time,
 ) error {
 	if !isAya(startAyahID) || !isAya(endAyahID) || endAyahID < startAyahID {
-		return refuse("%d to %d is not a range of ayas", startAyahID, endAyahID)
+		return refuse(keys.OpBadValue, "%d to %d is not a range of ayas", startAyahID, endAyahID)
 	}
 	if err := checkReadingOrder(readingOrder); err != nil {
 		return err
@@ -378,7 +399,7 @@ func upsertSet(ctx context.Context, tx pgx.Tx, userID, setID string,
 	// differently from this server is a bug that would otherwise surface
 	// months later as two sets for one range.
 	if want := SetID(readingOrder, startAyahID, endAyahID); want != setID {
-		return refuse("the set id does not match the range and order it carries")
+		return refuse(keys.OpBadValue, "the set id does not match the range and order it carries")
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO sets (id, user_id, ordinal, start_ayah_id, end_ayah_id, reading_order, created_at)
@@ -450,7 +471,7 @@ func applySetPrayed(ctx context.Context, tx pgx.Tx, userID string, op Op) error 
 		return err
 	}
 	if !belongs {
-		return refuse("no set %s", b.SetID)
+		return refuse(keys.OpNotFound, "no set %s", b.SetID)
 	}
 	// The op id is the prayer's id when the device does not name one, so a
 	// replay lands on the same row even after the op log has been pruned.
@@ -639,19 +660,19 @@ func applyPositionMoved(ctx context.Context, tx pgx.Tx, userID string, body json
 		return err
 	}
 	if b.SurahID < 1 || b.SurahID > 114 {
-		return refuse("%d is not a sūra", b.SurahID)
+		return refuse(keys.OpBadValue, "%d is not a sūra", b.SurahID)
 	}
 	// Word ids are aya*1000 + position, and aya ids are sūra*1000 + number.
 	if b.WordID/1_000_000 != int64(b.SurahID) || !isAya(int(b.WordID/1000)) || b.WordID%1000 < 1 {
-		return refuse("%d is not a word of sūra %d", b.WordID, b.SurahID)
+		return refuse(keys.OpBadValue, "%d is not a word of sūra %d", b.WordID, b.SurahID)
 	}
 	// Unlike an understood aya, a position with no time is not given the
 	// flush's: last-write-wins would let a stale move beat a newer one.
 	if b.UpdatedAt.IsZero() {
-		return refuse("a position needs the time it was moved")
+		return refuse(keys.OpBadValue, "a position needs the time it was moved")
 	}
 	if b.UpdatedAt.After(time.Now().Add(clockSkew)) {
-		return refuse("a position moved at %s is in the future", b.UpdatedAt.UTC().Format(time.RFC3339))
+		return refuse(keys.OpBadValue, "a position moved at %s is in the future", b.UpdatedAt.UTC().Format(time.RFC3339))
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO reading_positions (user_id, surah_id, word_id, updated_at)

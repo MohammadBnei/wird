@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MohammadBnei/ukubi-go/errs"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
@@ -165,5 +166,5 @@ func unchanged(w http.ResponseWriter, r *http.Request, version string) bool {
 // wrapping ErrNotFound is not a promise.
 func (h *Handler) unavailable(w http.ResponseWriter, what string, err error) {
 	h.log.Error(what, "err", err)
-	httpx.Error(w, http.StatusInternalServerError, "unavailable")
+	httpx.Error(w, errs.Internal, errs.KeyInternal, "unavailable")
 }

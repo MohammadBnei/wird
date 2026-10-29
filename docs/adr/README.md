@@ -31,6 +31,7 @@ flowchart LR
   A34 -. amends .-> A26
   A36[0036 each binary refuses a partial configuration] -. amends .-> A8
   A37[0037 each CLI refuses a partial configuration] -. amends .-> A36
+  A38[0038 API errors carry a key]
 ```
 
 | File | Decision | Status |
@@ -73,3 +74,4 @@ flowchart LR
 | [0035-server-takes-jidhr-from-the-same-commit.md](0035-server-takes-jidhr-from-the-same-commit.md) | Server takes jidhr from the same commit, through a require and a local replace | accepted |
 | [0036-each-binary-refuses-a-partial-configuration.md](0036-each-binary-refuses-a-partial-configuration.md) | Each binary refuses a partial configuration | accepted, amended by 0037 |
 | [0037-each-cli-refuses-a-partial-configuration.md](0037-each-cli-refuses-a-partial-configuration.md) | Each CLI refuses a partial configuration | accepted |
+| [0038-api-errors-carry-a-key.md](0038-api-errors-carry-a-key.md) | API errors carry a key from one registry | accepted |

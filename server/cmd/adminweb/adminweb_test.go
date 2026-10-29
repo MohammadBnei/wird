@@ -239,6 +239,8 @@ func TestNothingHereCanAskTheStoreAboutOneReader(t *testing.T) {
 	allowed := map[string]bool{
 		"Health": true, "Reports": true, "CorpusVersion": true, "Close": true,
 		"SenseVerdicts": true, "TriageReport": true,
+		// A refused op's Error: it takes no reader and reaches here only as an error.
+		"Error": true,
 	}
 	reader := storeMethods(t)
 	if len(reader) == 0 {
@@ -551,6 +553,12 @@ func TestATriageTheColumnsWouldRefuseIsAnsweredAsTheCallersMistake(t *testing.T)
 	}
 	if got := h.statusOf(t, id); got != "new" {
 		t.Fatalf("a refused triage changed the report to %s", got)
+	}
+
+	// A body the decoder refuses is named, not quoted: the decoder's text
+	// would echo the caller's own field names back.
+	if w := h.post(t, "/reports/"+id, "application/json", `{"status":"issued","reader":"x"}`, nil); strings.TrimSpace(w.Body.String()) != "the body is not a triage" {
+		t.Fatalf("a malformed triage answered %q", w.Body.String())
 	}
 
 	// An id in a spelling Postgres refuses is still that report, not a 500.

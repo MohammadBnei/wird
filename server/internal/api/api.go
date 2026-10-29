@@ -9,8 +9,10 @@ import (
 	"strconv"
 	"unicode"
 
+	"github.com/MohammadBnei/ukubi-go/errs"
 	"github.com/MohammadBnei/wird/server/internal/auth"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
+	"github.com/MohammadBnei/wird/server/internal/keys"
 	"github.com/MohammadBnei/wird/server/internal/site"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
@@ -140,7 +142,7 @@ var keptKinds = map[string]bool{"": true, "aya": true, "root": true, "note": tru
 func (h *Handler) kept(w http.ResponseWriter, r *http.Request) {
 	kind := r.URL.Query().Get("kind")
 	if !keptKinds[kind] {
-		httpx.Error(w, http.StatusBadRequest, "kind must be aya, root or note")
+		httpx.Error(w, errs.InvalidArgument, keys.BadKind, "kind must be aya, root or note")
 		return
 	}
 	items, err := h.store.Kept(r.Context(), auth.User(r.Context()).ID, kind)
@@ -180,7 +182,7 @@ func (h *Handler) irab(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) lexicon(w http.ResponseWriter, r *http.Request) {
 	letters := r.PathValue("letters")
 	if !arabicRoot(letters) {
-		httpx.Error(w, http.StatusBadRequest, "letters must be the joined Arabic form of a root")
+		httpx.Error(w, errs.InvalidArgument, keys.BadRoot, "letters must be the joined Arabic form of a root")
 		return
 	}
 	entries, err := h.store.Lexicon(r.Context(), letters)
@@ -200,7 +202,7 @@ func ayahID(w http.ResponseWriter, r *http.Request) (int, bool) {
 	surah, errS := strconv.Atoi(r.PathValue("surah"))
 	ayah, errA := strconv.Atoi(r.PathValue("ayah"))
 	if errS != nil || errA != nil || surah < 1 || surah > surahs || ayah < 1 || ayah > 999 {
-		httpx.Error(w, http.StatusBadRequest, "no such aya")
+		httpx.Error(w, errs.InvalidArgument, keys.BadAyah, "no such aya")
 		return 0, false
 	}
 	return surah*1000 + ayah, true
@@ -224,9 +226,9 @@ func arabicRoot(letters string) bool {
 // there, or that something broke — never which statement or which table.
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 	if errors.Is(err, store.ErrNotFound) {
-		httpx.Error(w, http.StatusNotFound, "nothing here yet")
+		httpx.Error(w, errs.NotFound, keys.NotFound, "nothing here yet")
 		return
 	}
 	h.log.Error(what, "err", err)
-	httpx.Error(w, http.StatusInternalServerError, "unavailable")
+	httpx.Error(w, errs.Internal, errs.KeyInternal, "unavailable")
 }

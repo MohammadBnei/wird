@@ -65,7 +65,15 @@ There are two groups. The open group needs no token, because the app is fully us
 
 The last column comes from the app's code. The app calls only [`/v1/sync`](../../app/lib/data/sync.dart#L59), [`/v1/changes`](../../app/lib/data/sync.dart#L77), [`/v1/senses`](../../app/lib/data/senses.dart#L94), [`DELETE /v1/me`](../../app/lib/data/auth.dart#L275) and [`/models/`](../../app/lib/data/speech.dart#L65). The other bearer routes are served and tested, but no screen reads them today.
 
-Errors from the JSON endpoints have one shape, `{"error": "<reason>"}`. The reason says what the caller did wrong, never which table or statement failed. The voice model and app-link routes answer errors in plain text.
+Every error a wird-api handler writes has one shape, ukubi-go's `{"code", "key", "message", "source", "detail"}`, with the HTTP status that the code maps to:
+
+```json
+{"code":"unauthenticated","key":"auth.token_rejected","message":"token rejected","source":"","detail":""}
+```
+
+`message` is for a person to read. It says what the caller did wrong, never which table or statement failed, and it may be reworded. `key` is what a client branches on, and it never changes meaning. Every key lives in one file, [keys.go](../../server/internal/keys/keys.go), and a test runs ukubi-go's `errkeys` analyzer to fail any key made anywhere else ([errkeys_test.go](../../server/errkeys_test.go)). A 500 carries ukubi-go's own key, `internal`. `source` and `detail` are always empty here, because wird-api passes on no other service's errors. ADR [0038](../adr/0038-api-errors-carry-a-key.md) records the choice.
+
+`/models/` and `/download/android` use the same JSON body. A presign failure on either answers 500, not 503, because the public page reads a 503 as "not published yet". Four answers stay plain text: the app-link files' 404, `/models/` with an empty key or one holding `..` (a static 404), the sign-in page at `/auth/callback`, and the router's own 404 and 405 for a path or method no route serves (for example `POST /v1/me`), which Go's `ServeMux` writes before any handler runs.
 
 ## White box
 
@@ -113,9 +121,9 @@ It fails closed. A deployment that is missing a value refuses to start rather th
 | `WIRD_MODELS_S3_ENDPOINT` | unset | The store's S3 endpoint. |
 | `WIRD_MODELS_S3_ACCESS_KEY` | unset | The store's access key. |
 | `WIRD_MODELS_S3_SECRET` | unset | The store's secret key. |
-| `WIRD_MODELS_S3_REGION` | `garage` | The region the signature is computed over; a wrong one is a 403. Set alone, it is refused like the other four. [models.go:58](../../server/internal/api/models.go#L58) |
-| `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. Refused without a store. [apk.go:22](../../server/internal/api/apk.go#L22) |
-| `WIRD_APK_VERSION` | unset, so `/download/android/version` answers 204 and the page prints plain "APK" | The release that key is, printed beside the page's Download button. Set by `apk.yml` together with the key, and refused without it. [apk.go:47](../../server/internal/api/apk.go#L47) |
+| `WIRD_MODELS_S3_REGION` | `garage` | The region the signature is computed over; a wrong one is a 403. Set alone, it is refused like the other four. [models.go:62](../../server/internal/api/models.go#L62) |
+| `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. Refused without a store. [apk.go:26](../../server/internal/api/apk.go#L26) |
+| `WIRD_APK_VERSION` | unset, so `/download/android/version` answers 204 and the page prints plain "APK" | The release that key is, printed beside the page's Download button. Set by `apk.yml` together with the key, and refused without it. [apk.go:51](../../server/internal/api/apk.go#L51) |
 | `WIRD_ANDROID_SHA256` | unset, so 404 | Signing-key fingerprints for `assetlinks.json`, comma-separated, parsed once at start. [applinks.go:35-44](../../server/internal/api/applinks.go#L35-L44) |
 
 `TestConfigDocumented` holds this table, the variables `load` reads, and its `envVars` list to the same set, and `server/env_test.go` refuses any other code that reads the environment.
@@ -143,7 +151,7 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:47-103](../../server/internal/api/api.go#L47-L103)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. The outer mux hands any path it does not know to the auth middleware wrapped around `v1`. An open route stays open because it is registered on the outer mux, not because the middleware skips it. [api.go:49-105](../../server/internal/api/api.go#L49-L105)
 
 ```go
 	v1 := http.NewServeMux()
@@ -159,11 +167,11 @@ func Migrate(ctx context.Context, url string) error {
 	v1.HandleFunc("GET /v1/roots/{letters}/lexicon", h.lexicon)
 ```
 
-`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:92-101](../../server/internal/api/api.go#L92-L101)
+`/v1/senses` is the one `/v1/` path on the outer mux. Go's `ServeMux` picks the most specific pattern, so it wins over the catch-all and never meets the middleware. [api.go:94-103](../../server/internal/api/api.go#L94-L103)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:93-100](../../server/internal/api/api.go#L93-L100)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:95-102](../../server/internal/api/api.go#L95-L102)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 
@@ -178,26 +186,26 @@ flowchart LR
   V -->|Download| A[GET /download/android] -->|302| O[(Object store)]
 ```
 
-The middleware verifies the token, then finds the reader behind its subject, creating the row the first time. [Auth](api/auth.md) has the details. [auth.go:46](../../server/internal/auth/auth.go#L46)
+The middleware verifies the token, then finds the reader behind its subject, creating the row the first time. [Auth](api/auth.md) has the details. [auth.go:48](../../server/internal/auth/auth.go#L48)
 
 ### 3. Handlers stay thin
 
-A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes. [httpx.go:10-22](../../server/internal/httpx/httpx.go#L10-L22)
+A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes: `JSON` for an answer, and `Error(w, code, key, message)` for an error, which hands the body to ukubi-go's `errs.Write`. [httpx.go:12-27](../../server/internal/httpx/httpx.go#L12-L27)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:225-232](../../server/internal/api/api.go#L225-L232)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:227-234](../../server/internal/api/api.go#L227-L234)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 	if errors.Is(err, store.ErrNotFound) {
-		httpx.Error(w, http.StatusNotFound, "nothing here yet")
+		httpx.Error(w, errs.NotFound, keys.NotFound, "nothing here yet")
 		return
 	}
 	h.log.Error(what, "err", err)
-	httpx.Error(w, http.StatusInternalServerError, "unavailable")
+	httpx.Error(w, errs.Internal, errs.KeyInternal, "unavailable")
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:199-207](../../server/internal/api/api.go#L199-L207)), a root must be at most 32 bytes of Arabic letters ([api.go:211-221](../../server/internal/api/api.go#L211-L221)), and a kept kind must be `aya`, `root` or `note` ([api.go:138-145](../../server/internal/api/api.go#L138-L145)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:201-209](../../server/internal/api/api.go#L201-L209)), a root must be at most 32 bytes of Arabic letters ([api.go:213-223](../../server/internal/api/api.go#L213-L223)), and a kept kind must be `aya`, `root` or `note` ([api.go:140-147](../../server/internal/api/api.go#L140-L147)).
 
 ### 4. The store holds every SQL statement
 

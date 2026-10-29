@@ -144,6 +144,9 @@ POST /v1/sync, Authorization: Bearer <id_token>      -> 200 {"results":[]}
 POST /v1/sync, Authorization: Bearer <access_token>  -> 401 {"error":"token rejected"}
 ```
 
+That 401 was recorded before ADR 0038. Today the same refusal answers
+`{"code":"unauthenticated","key":"auth.token_rejected","message":"token rejected","source":"","detail":""}`.
+
 and in the server's log, the reason in full:
 
 ```

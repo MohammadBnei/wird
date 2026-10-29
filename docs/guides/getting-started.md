@@ -100,7 +100,7 @@ The API runs its migrations at startup, so there is no separate step. Without `W
 
 Moving onto the real Authentik means setting `OIDC_ISSUER` and `OIDC_AUDIENCE` and dropping `WIRD_DEV`. The audience must be the client id there. See [Authentik wiring](authentik-wiring.md). Every variable is in the [API's table](../architecture/api.md#1-start-read-the-environment-migrate-listen).
 
-Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.go:226-227](../../server/internal/api/api.go#L226-L227)). That is by design: nothing is licensed yet, and Wird never invents commentary.
+Tafsir, iʿrāb and lexicon endpoints answer 404 until someone seeds them ([api.go:228-229](../../server/internal/api/api.go#L228-L229)). That is by design: nothing is licensed yet, and Wird never invents commentary.
 
 ## 5. Run jidhr
 
