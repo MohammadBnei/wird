@@ -30,11 +30,13 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
+	"log/slog"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
 
+	"github.com/MohammadBnei/ukubi-go/telemetry"
 	"github.com/MohammadBnei/wird/server/internal/lane"
 	_ "modernc.org/sqlite"
 )
@@ -47,13 +49,18 @@ var verseRef = regexp.MustCompile(`\b\d{1,3}\s*:\s*\d{1,3}\b`)
 const draftHeader = "root\tsense_en\tsense_fr\tpoetic_en\tpoetic_fr\tlane\tprompt\tmodel"
 
 func main() {
+	// Logs on stderr, beside the run's own progress lines: stdout is free for
+	// -dry's prompts. langchaingo prints its own warnings through the log
+	// package ("[WARN] …"), so the log bridge is WARN, not INFO.
+	slog.SetDefault(telemetry.NewLogger(os.Stderr))
+	slog.SetLogLoggerLevel(slog.LevelWarn)
 	c, err := fromProcess() // ExitOnError: a bad flag exits 2
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "rootdraft: config refused:", err)
+		slog.Error("config refused", "err", err)
 		os.Exit(1)
 	}
 	if err := draftStage(c); err != nil {
-		fmt.Fprintln(os.Stderr, "rootdraft:", err)
+		slog.Error("rootdraft failed", "err", err)
 		os.Exit(1)
 	}
 }
@@ -138,10 +145,9 @@ func (t tally) report(what, where string, dry bool) error {
 }
 
 func (t *tally) blame(root string, err error, raw string) {
-	fmt.Fprintf(os.Stderr, "  %s: %v\n", root, err)
-	if raw != "" {
-		fmt.Fprintf(os.Stderr, "    %s\n", firstLine(raw))
-	}
+	// WARN: one root's provider call or reply failed; the run goes on, and
+	// the tally below names it again for the re-run.
+	slog.Warn("root not drafted", "root", root, "err", err, "reply", firstLine(raw))
 	t.failed++
 	t.fell = append(t.fell, root)
 	// No body came back at all: the request never reached a model.

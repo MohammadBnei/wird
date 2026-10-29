@@ -100,7 +100,7 @@ erDiagram
 
 ### 1. Draft one root at a time
 
-`rootdraft` reads the prompt from a file, never from code. By default it drafts every root in the corpus, commonest first, so a run cut short still covers the roots readers meet most. Roots already in the log are skipped unless `-force`, and `-dry` prints each assembled prompt and calls nothing ([config.go:48](../../../server/cmd/rootdraft/config.go#L48-L49), [main.go:253](../../../server/cmd/rootdraft/main.go#L253)).
+`rootdraft` reads the prompt from a file, never from code. By default it drafts every root in the corpus, commonest first, so a run cut short still covers the roots readers meet most. Roots already in the log are skipped unless `-force`, and `-dry` prints each assembled prompt and calls nothing ([config.go:48](../../../server/cmd/rootdraft/config.go#L48-L49), [main.go:259](../../../server/cmd/rootdraft/main.go#L259)).
 
 ```go
 	if c.Prompt == "" {
@@ -112,7 +112,7 @@ erDiagram
 ```
 [config.go:60](../../../server/cmd/rootdraft/config.go#L60-L65)
 
-The model is reached through any OpenAI-shaped endpoint, chosen with `-base-url` (else `OPENAI_BASE_URL`) and `-model`. The token comes from `HF_TOKEN`, else `OPENAI_API_KEY`, else `hf auth token`, and is never a flag, so `-h` cannot print it ([config.go:69](../../../server/cmd/rootdraft/config.go#L69), [config.go:76](../../../server/cmd/rootdraft/config.go#L76-L84)). Several roots are drafted at once, and one lock keeps each row whole in the file ([main.go:211](../../../server/cmd/rootdraft/main.go#L211-L243)).
+The model is reached through any OpenAI-shaped endpoint, chosen with `-base-url` (else `OPENAI_BASE_URL`) and `-model`. The token comes from `HF_TOKEN`, else `OPENAI_API_KEY`, else `hf auth token`, and is never a flag, so `-h` cannot print it ([config.go:69](../../../server/cmd/rootdraft/config.go#L69), [config.go:76](../../../server/cmd/rootdraft/config.go#L76-L84)). Several roots are drafted at once, and one lock keeps each row whole in the file ([main.go:217](../../../server/cmd/rootdraft/main.go#L217-L249)).
 
 ### 2. Fill the prompt with what the root is checked against
 
@@ -157,7 +157,7 @@ The model must answer with one JSON object holding four fields: the sense and th
 ```
 [draft.go:111](../../../server/cmd/rootdraft/draft.go#L111-L121)
 
-A run ends by naming the roots that failed, and whether the provider refused or the answer was wrong ([main.go:122](../../../server/cmd/rootdraft/main.go#L122-L138)).
+A run ends by naming the roots that failed, and whether the provider refused or the answer was wrong ([main.go:129](../../../server/cmd/rootdraft/main.go#L129-L145)).
 
 ### 4. Append to the drafting log
 
@@ -168,13 +168,13 @@ Each good draft becomes one line in the drafting log. The last line for a root i
 				root, tab(got.SenseEn), tab(got.SenseFr), tab(got.PoeticEn), tab(got.PoeticFr),
 				subject.LaneHow, s.prompt.sha, c.Model)
 ```
-[main.go:236](../../../server/cmd/rootdraft/main.go#L236-L238)
+[main.go:242](../../../server/cmd/rootdraft/main.go#L242-L244)
 
-The columns are `root`, `sense_en`, `sense_fr`, `poetic_en`, `poetic_fr`, `lane`, `prompt`, `model` ([main.go:47](../../../server/cmd/rootdraft/main.go#L47)).
+The columns are `root`, `sense_en`, `sense_fr`, `poetic_en`, `poetic_fr`, `lane`, `prompt`, `model` ([main.go:49](../../../server/cmd/rootdraft/main.go#L49)).
 
 ### 5. Check the log, then seed Postgres
 
-`senseseed` reads the log in file order. It skips the header and refuses the whole run if any row names a root the corpus does not record, lacks English or French, or cites a verse ([main.go:195](../../../server/cmd/senseseed/main.go#L195-L200)). It lists every bad row, not just the first. A file with no senses is refused too, because a seed of nothing would unpublish every sense ([main.go:208](../../../server/cmd/senseseed/main.go#L208-L212)).
+`senseseed` reads the log in file order. It skips the header and refuses the whole run if any row names a root the corpus does not record, lacks English or French, or cites a verse ([main.go:205](../../../server/cmd/senseseed/main.go#L205-L210)). It lists every bad row, not just the first. A file with no senses is refused too, because a seed of nothing would unpublish every sense ([main.go:218](../../../server/cmd/senseseed/main.go#L218-L222)).
 
 ```go
 		switch {
@@ -188,9 +188,9 @@ The columns are `root`, `sense_en`, `sense_fr`, `poetic_en`, `poetic_fr`, `lane`
 			errs = append(errs, fmt.Errorf("line %d: root %s has no French, and a sense ships in both languages or neither", line, s.Root))
 		}
 ```
-[main.go:185](../../../server/cmd/senseseed/main.go#L185-L194)
+[main.go:195](../../../server/cmd/senseseed/main.go#L195-L204)
 
-The known roots come from the bundled corpus ([main.go:220](../../../server/cmd/senseseed/main.go#L220-L247)). The database comes from `DATABASE_URL` only, never a flag. Left unset, the seed is refused unless `WIRD_DEV=1` names the local compose database, and `-dry` checks the file and touches no database, so needs neither. Before it writes, the seeder prints the database and host it is about to replace ([config.go:25](../../../server/cmd/senseseed/config.go#L25-L72)). The seeder does not run migrations: the deployed API does that when it starts ([main.go:69](../../../server/cmd/senseseed/main.go#L69-L80)).
+The known roots come from the bundled corpus ([main.go:230](../../../server/cmd/senseseed/main.go#L230-L257)). The database comes from `DATABASE_URL` only, never a flag. Left unset, the seed is refused unless `WIRD_DEV=1` names the local compose database, and `-dry` checks the file and touches no database, so needs neither. Before it writes, the seeder prints the database and host it is about to replace ([config.go:25](../../../server/cmd/senseseed/config.go#L25-L72)). The seeder does not run migrations: the deployed API does that when it starts ([main.go:76](../../../server/cmd/senseseed/main.go#L76-L88)).
 
 ### 6. Replace the whole table in one transaction
 
@@ -213,7 +213,7 @@ The known roots come from the bundled corpus ([main.go:220](../../../server/cmd/
 ```
 [senses.go:149](../../../server/internal/store/senses.go#L149-L161)
 
-The table has no `reviewed` column, and the poetic register is stored but never served ([00009_the_server_owns_the_senses.sql:35](../../../server/migrations/00009_the_server_owns_the_senses.sql#L35-L42)). After seeding, `senseseed` prints the new hash so the operator can compare it with what the route answers ([main.go:90](../../../server/cmd/senseseed/main.go#L90-L98)).
+The table has no `reviewed` column, and the poetic register is stored but never served ([00009_the_server_owns_the_senses.sql:35](../../../server/migrations/00009_the_server_owns_the_senses.sql#L35-L42)). After seeding, `senseseed` prints the new hash so the operator can compare it with what the route answers ([main.go:99](../../../server/cmd/senseseed/main.go#L99-L108)).
 
 ### 7. Hash only what is served
 

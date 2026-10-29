@@ -129,15 +129,15 @@ flowchart TD
 	}
 ```
 
-[main.go:35-45](../../jidhr/cmd/rootd/main.go#L35-L45)
+[main.go:43-53](../../jidhr/cmd/rootd/main.go#L43-L53)
 
-It then sets up the rate limit (`ROOTD_RATE`, 5 per second by default, with a burst of four seconds' worth) and the shared key (`ROOTD_API_KEY`) ([main.go:47-57](../../jidhr/cmd/rootd/main.go#L47-L57)). It binds the port before it logs that it is listening ([main.go:73-81](../../jidhr/cmd/rootd/main.go#L73-L81)).
+It then sets up the rate limit (`ROOTD_RATE`, 5 per second by default, with a burst of four seconds' worth) and the shared key (`ROOTD_API_KEY`) ([main.go:55-65](../../jidhr/cmd/rootd/main.go#L55-L65)). It binds the port before it logs that it is listening ([main.go:83-96](../../jidhr/cmd/rootd/main.go#L83-L96)). It logs JSON on stdout, and on SIGTERM it lets the requests in flight finish for up to 20 seconds before it exits ([main.go:108-128](../../jidhr/cmd/rootd/main.go#L108-L128), [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md)).
 
 ### 2. Routes sit behind the limit and the key
 
 The three `/v1` routes go through the rate limiter and then the key check. `/healthz` is mounted outside both, so a probe can never be throttled ([server.go:43](../../jidhr/cmd/rootd/server.go#L43-L55)). The languages offered are the ones the file actually holds, not a list kept somewhere else ([store.go:310](../../jidhr/pkg/root/store.go#L310-L321)).
 
-Callers are told apart by network address only ([server.go:291](../../jidhr/cmd/rootd/server.go#L291-L297)). Behind a proxy, every caller looks like the proxy.
+Callers are told apart by network address only ([server.go:297](../../jidhr/cmd/rootd/server.go#L297-L303)). Behind a proxy, every caller looks like the proxy.
 
 ### 3. The word is checked, then keyed
 
@@ -259,7 +259,7 @@ If nothing is attested, the templates in `pattern.go` propose readings ([pattern
 
 ### 10. How the file is rebuilt
 
-`server/cmd/jidhrcorpus` reads the roots and word forms from `app/assets/corpus.db`, and the senses from the API's Postgres through the same read `GET /v1/senses` uses ([jidhrcorpus/main.go:77](../../server/cmd/jidhrcorpus/main.go#L77)). Its flags are `-db` and `-out`; the database is `DATABASE_URL` only, never a flag, and an unset one is refused unless `WIRD_DEV=1` names the local compose database ([jidhrcorpus/config.go:25](../../server/cmd/jidhrcorpus/config.go#L25-L67)). It refuses a sense written for a root the morphology does not record.
+`server/cmd/jidhrcorpus` reads the roots and word forms from `app/assets/corpus.db`, and the senses from the API's Postgres through the same read `GET /v1/senses` uses ([jidhrcorpus/main.go:84](../../server/cmd/jidhrcorpus/main.go#L84)). Its flags are `-db` and `-out`; the database is `DATABASE_URL` only, never a flag, and an unset one is refused unless `WIRD_DEV=1` names the local compose database ([jidhrcorpus/config.go:25](../../server/cmd/jidhrcorpus/config.go#L25-L67)). It refuses a sense written for a root the morphology does not record.
 
 ```go
 	for _, sn := range senses {
@@ -279,9 +279,9 @@ If nothing is attested, the templates in `pattern.go` propose readings ([pattern
 	}
 ```
 
-[jidhrcorpus/main.go:206](../../server/cmd/jidhrcorpus/main.go#L206-L220)
+[jidhrcorpus/main.go:218](../../server/cmd/jidhrcorpus/main.go#L218-L232)
 
-The file checked in today holds 1,642 roots, 17,934 attested forms, 1,189 rootless forms, and senses in `en` and `fr` for all 1,642 roots, all in the plain register. The file carries a `note` saying the senses are drafts written by a language model and checked by no person ([jidhrcorpus/main.go:41](../../server/cmd/jidhrcorpus/main.go#L41-L46)). Editing the JSON by hand is undone by the next rebuild.
+The file checked in today holds 1,642 roots, 17,934 attested forms, 1,189 rootless forms, and senses in `en` and `fr` for all 1,642 roots, all in the plain register. The file carries a `note` saying the senses are drafts written by a language model and checked by no person ([jidhrcorpus/main.go:43](../../server/cmd/jidhrcorpus/main.go#L43-L48)). Editing the JSON by hand is undone by the next rebuild.
 
 ## Why it is this way
 

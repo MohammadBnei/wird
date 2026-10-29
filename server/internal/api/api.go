@@ -113,7 +113,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 // itself is the bnei.dev sign-in, which is not ours to delete.
 func (h *Handler) deleteMe(w http.ResponseWriter, r *http.Request) {
 	if err := h.store.DeleteReader(r.Context(), auth.User(r.Context()).OIDCSubject); err != nil {
-		h.fail(w, "delete reader", err)
+		h.fail(w, r, "delete reader", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -122,7 +122,7 @@ func (h *Handler) deleteMe(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) corpusVersion(w http.ResponseWriter, r *http.Request) {
 	version, err := h.store.CorpusVersion(r.Context())
 	if err != nil {
-		h.fail(w, "corpus version", err)
+		h.fail(w, r, "corpus version", err)
 		return
 	}
 	httpx.JSON(w, http.StatusOK, version)
@@ -131,7 +131,7 @@ func (h *Handler) corpusVersion(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) progress(w http.ResponseWriter, r *http.Request) {
 	p, err := h.store.Progress(r.Context(), auth.User(r.Context()).ID)
 	if err != nil {
-		h.fail(w, "progress", err)
+		h.fail(w, r, "progress", err)
 		return
 	}
 	httpx.JSON(w, http.StatusOK, p)
@@ -147,7 +147,7 @@ func (h *Handler) kept(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.store.Kept(r.Context(), auth.User(r.Context()).ID, kind)
 	if err != nil {
-		h.fail(w, "kept", err)
+		h.fail(w, r, "kept", err)
 		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"items": items})
@@ -160,7 +160,7 @@ func (h *Handler) tafsir(w http.ResponseWriter, r *http.Request) {
 	}
 	entries, err := h.store.Tafsir(r.Context(), ayahID)
 	if err != nil {
-		h.fail(w, "tafsir", err)
+		h.fail(w, r, "tafsir", err)
 		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"ayah_id": ayahID, "entries": entries})
@@ -173,7 +173,7 @@ func (h *Handler) irab(w http.ResponseWriter, r *http.Request) {
 	}
 	entries, err := h.store.Irab(r.Context(), ayahID)
 	if err != nil {
-		h.fail(w, "irab", err)
+		h.fail(w, r, "irab", err)
 		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"ayah_id": ayahID, "entries": entries})
@@ -187,7 +187,7 @@ func (h *Handler) lexicon(w http.ResponseWriter, r *http.Request) {
 	}
 	entries, err := h.store.Lexicon(r.Context(), letters)
 	if err != nil {
-		h.fail(w, "lexicon", err)
+		h.fail(w, r, "lexicon", err)
 		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"root_letters": letters, "entries": entries})
@@ -224,11 +224,11 @@ func arabicRoot(letters string) bool {
 
 // fail keeps the reason in the log. The caller learns that the row is not
 // there, or that something broke — never which statement or which table.
-func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
+func (h *Handler) fail(w http.ResponseWriter, r *http.Request, what string, err error) {
 	if errors.Is(err, store.ErrNotFound) {
 		httpx.Error(w, errs.NotFound, keys.NotFound, "nothing here yet")
 		return
 	}
-	h.log.Error(what, "err", err)
+	httpx.Failed(r, h.log, what, "err", err)
 	httpx.Error(w, errs.Internal, errs.KeyInternal, "unavailable")
 }

@@ -4,31 +4,47 @@ package main
 import (
 	"context"
 	"log/slog"
-	"net/http"
+	"net"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
+
+	"github.com/MohammadBnei/ukubi-go/telemetry"
 
 	"github.com/MohammadBnei/wird/server/internal/api"
 	"github.com/MohammadBnei/wird/server/internal/auth"
+	"github.com/MohammadBnei/wird/server/internal/httpx"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
 func main() {
-	log := slog.Default()
-	ctx := context.Background()
+	slog.SetDefault(telemetry.NewLogger(os.Stdout))
+	os.Exit(run(slog.Default()))
+}
+
+// run is main with an exit code, so the deferred db.Close runs before the
+// process exits.
+func run(log *slog.Logger) int {
+	// SIGTERM is how Kubernetes stops a pod: it cancels ctx, the server drains
+	// and the maintenance loops stop. A second signal kills at once (stop).
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer stop()
+	go func() { <-ctx.Done(); stop() }()
 
 	// Every problem with the configuration at once, before anything is opened:
 	// a deployment missing a value never starts half-configured.
 	cfg, err := fromProcess()
 	if err != nil {
 		log.Error("config refused", "err", err)
-		os.Exit(1)
+		return 1
 	}
 
 	db, err := store.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Error("database unavailable", "err", err)
-		os.Exit(1)
+		return 1
 	}
 	defer db.Close()
 
@@ -38,17 +54,48 @@ func main() {
 	authenticator, err := auth.New(ctx, issuer, cfg.OIDCAudience, db, log)
 	if err != nil {
 		log.Error("issuer unavailable", "issuer", issuer, "err", err)
-		os.Exit(1)
+		return 1
 	}
 
-	go maintain(ctx, db, log)
-	go sweep(ctx, db, log)
-
-	addr := cfg.Addr
-	log.Info("wird-api listening", "addr", addr, "issuer", issuer, "dev", cfg.Dev)
-	if err := http.ListenAndServe(addr, api.Routes(db, authenticator, log, cfg.API)); err != nil {
+	// Bind before announcing it, and before the loops start: a port already in
+	// use logs only the listen error, and never exits mid-sweep.
+	ln, err := net.Listen("tcp", cfg.Addr)
+	if err != nil {
 		log.Error("wird-api stopped", "err", err)
-		os.Exit(1)
+		return 1
+	}
+
+	var loops sync.WaitGroup
+	loops.Go(func() { maintain(ctx, db, log) })
+	loops.Go(func() { sweep(ctx, db, log) })
+	// Before db.Close: a sweep in flight commits. stop first, or a Serve that
+	// failed without a signal would wait on loops that never end.
+	defer func() { stop(); loops.Wait() }()
+
+	log.Info("wird-api listening", "addr", ln.Addr().String(), "issuer", issuer, "dev", cfg.Dev)
+	if err := httpx.Serve(ctx, ln, api.Routes(db, authenticator, log, cfg.API), log); err != nil {
+		if ctx.Err() != nil {
+			log.Error("wird-api shutdown failed", "err", err)
+		} else {
+			log.Error("wird-api stopped", "err", err)
+		}
+		return 1
+	}
+	log.Info("wird-api drained")
+	return 0
+}
+
+// every runs work now and then once per interval until ctx is cancelled. The
+// work itself runs on a context that SIGTERM does not cancel, so a sweep in
+// flight commits rather than rolling back into a false ERROR.
+func every(ctx context.Context, interval time.Duration, work func(context.Context)) {
+	for {
+		work(context.WithoutCancel(ctx))
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(interval):
+		}
 	}
 }
 
@@ -58,15 +105,14 @@ func main() {
 // ponytail: a ticker in the process. Move it to a cron job if the API ever
 // runs as more than one replica.
 func maintain(ctx context.Context, db *store.Store, log *slog.Logger) {
-	for {
+	every(ctx, 24*time.Hour, func(ctx context.Context) {
 		dropped, err := db.PruneOpLog(ctx)
 		if err != nil {
 			log.Error("op log prune", "err", err)
 		} else if dropped > 0 {
 			log.Info("op log pruned", "rows", dropped)
 		}
-		time.Sleep(24 * time.Hour)
-	}
+	})
 }
 
 // sweepInterval is the only clock a report is ever written on, and it is two
@@ -90,10 +136,9 @@ const sweepInterval = 10 * time.Minute
 // so two of these racing could lose or double a report. Move it to a cron job
 // if the API ever runs as more than one replica, the same as the prune above.
 func sweep(ctx context.Context, db *store.Store, log *slog.Logger) {
-	for {
+	every(ctx, sweepInterval, func(ctx context.Context) {
 		if err := db.SweepReports(ctx); err != nil {
 			log.Error("report sweep", "err", err)
 		}
-		time.Sleep(sweepInterval)
-	}
+	})
 }

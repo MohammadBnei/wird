@@ -160,7 +160,7 @@ String setIdFor(ReadingOrder order, int startAyahId, int endAyahId) =>
     _uuidV5(_setNamespace, '${order.name}:$startAyahId:$endAyahId');
 ```
 
-[sets.dart:28](../../../app/lib/data/sets.dart#L28-L39). A set asks for its id through [`StudySet.id`](../../../app/lib/data/sets.dart#L196). The server recomputes the same id and refuses a mismatch ([sync.go:401](../../../server/internal/store/sync.go#L401)). Shared test vectors keep both sides honest: see [ADR 0002](../../adr/0002-set-identity.md#the-vectors).
+[sets.dart:28](../../../app/lib/data/sets.dart#L28-L39). A set asks for its id through [`StudySet.id`](../../../app/lib/data/sets.dart#L196). The server recomputes the same id and refuses a mismatch ([sync.go:414](../../../server/internal/store/sync.go#L414)). Shared test vectors keep both sides honest: see [ADR 0002](../../adr/0002-set-identity.md#the-vectors).
 
 ### 4. A passage: what is read versus what is acted on
 

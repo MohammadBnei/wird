@@ -174,8 +174,9 @@ func classify(op Op, err error) OpResult {
 	switch {
 	case errors.As(err, &r):
 		if r.cause != nil {
-			// The kind only: nothing here names the reader.
-			slog.Default().Warn("op refused", "kind", op.Kind, "reason", r.reason, "cause", r.cause)
+			// The kind only: nothing here names the reader. INFO: what the
+			// device sent was refused, which is client input, not our failure.
+			slog.Default().Info("op refused", "kind", op.Kind, "reason", r.reason, "cause", r.cause)
 		}
 		return refused(r.key, r.reason)
 	case !errors.As(err, &pg):
@@ -189,7 +190,19 @@ func classify(op Op, err error) OpResult {
 	case strings.HasPrefix(pg.Code, "23"):
 		return refused(keys.OpConflict, "it does not fit what is already recorded")
 	}
+	// The kind only, as above.
+	slog.Default().Log(context.Background(), failedLevel(err), "op not applied", "kind", op.Kind, "err", err)
 	return OpResult{ClientOpID: op.ClientOpID, Status: OpFailed, Reason: "not applied, try again", Key: keys.OpRetry}
+}
+
+// failedLevel is ERROR for an op that failed on our side, and WARN when the
+// reader went away mid-sync and the cancelled context is the cause: a closed
+// connection is not our failure (standard §7).
+func failedLevel(err error) slog.Level {
+	if errors.Is(err, context.Canceled) {
+		return slog.LevelWarn
+	}
+	return slog.LevelError
 }
 
 func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {

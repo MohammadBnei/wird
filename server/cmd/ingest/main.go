@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/MohammadBnei/ukubi-go/telemetry"
 )
 
 const (
@@ -54,12 +56,16 @@ var defaultRecitations = []string{
 var sourceURLs = []string{chaptersURL, versesURL, alignURL, corpusPage, tldIndexURL}
 
 func main() {
+	// Logs on stderr: stdout is the report.
+	slog.SetDefault(telemetry.NewLogger(os.Stderr))
 	c, err := fromProcess() // ExitOnError: a bad flag exits 2
 	if err != nil {
-		log.Fatalf("config refused: %v", err)
+		slog.Error("config refused", "err", err)
+		os.Exit(1)
 	}
 	if err := run(c); err != nil {
-		log.Fatal(err)
+		slog.Error("ingest failed", "err", err)
+		os.Exit(1)
 	}
 }
 

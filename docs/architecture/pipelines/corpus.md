@@ -133,7 +133,7 @@ if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
 }
 ```
 
-[ingest/main.go:69](../../../server/cmd/ingest/main.go#L69-L72) · [the copyright check](../../../server/cmd/ingest/verify.go#L118-L149)
+[ingest/main.go:75](../../../server/cmd/ingest/main.go#L75-L78) · [the copyright check](../../../server/cmd/ingest/verify.go#L118-L149)
 
 ### 2. Timings come from the quran-align release
 
@@ -148,7 +148,7 @@ if err := extractTimings(filepath.Join(dir, alignZip), dir, recitations); err !=
 }
 ```
 
-[ingest/main.go:78](../../../server/cmd/ingest/main.go#L78-L83) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
+[ingest/main.go:84](../../../server/cmd/ingest/main.go#L84-L89) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
 
 ### 3. Sūras and ayas, one file each
 
@@ -162,7 +162,7 @@ if len(suras) != 114 {
 }
 ```
 
-[ingest/main.go:99](../../../server/cmd/ingest/main.go#L99-L103) · [the refusal](../../../server/cmd/ingest/main.go#L157-L170)
+[ingest/main.go:105](../../../server/cmd/ingest/main.go#L105-L109) · [the refusal](../../../server/cmd/ingest/main.go#L163-L176)
 
 ### 3b. The French under each word, from The Last Dialogue
 

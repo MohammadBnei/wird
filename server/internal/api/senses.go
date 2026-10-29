@@ -107,7 +107,7 @@ func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodHead {
 		digest, err := h.store.SensesVersion(r.Context())
 		if err != nil {
-			h.unavailable(w, "senses version", err)
+			h.unavailable(w, r, "senses version", err)
 			return
 		}
 		if unchanged(w, r, packVersion(digest)) {
@@ -120,7 +120,7 @@ func (h *Handler) senses(w http.ResponseWriter, r *http.Request) {
 
 	pack, err := h.store.Senses(r.Context())
 	if err != nil {
-		h.unavailable(w, "senses", err)
+		h.unavailable(w, r, "senses", err)
 		return
 	}
 	if unchanged(w, r, packVersion(pack.Version)) {
@@ -164,7 +164,7 @@ func unchanged(w http.ResponseWriter, r *http.Request, version string) bool {
 // unavailable is h.fail without the 404 branch. The senses route promises it
 // never answers 404, and a promise that depends on no store function ever
 // wrapping ErrNotFound is not a promise.
-func (h *Handler) unavailable(w http.ResponseWriter, what string, err error) {
-	h.log.Error(what, "err", err)
+func (h *Handler) unavailable(w http.ResponseWriter, r *http.Request, what string, err error) {
+	httpx.Failed(r, h.log, what, "err", err)
 	httpx.Error(w, errs.Internal, errs.KeyInternal, "unavailable")
 }

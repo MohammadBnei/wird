@@ -103,11 +103,12 @@ fs.StringVar(&c.Out, "out", "", "rows land here, for a person to read and promot
 
 ```go
 if err := db.ReplaceSenses(ctx, senses); err != nil {
-	log.Fatalf("write the senses: %v", err)
+	slog.Error("write the senses", "err", err)
+	os.Exit(1)
 }
 ```
 
-[senseseed/main.go:87](../../server/cmd/senseseed/main.go#L87-L89)
+[senseseed/main.go:95](../../server/cmd/senseseed/main.go#L95-L98)
 
 ### 4. jidhr gets both halves in one file
 
@@ -116,15 +117,19 @@ if err := db.ReplaceSenses(ctx, senses); err != nil {
 ```go
 pack, err := store.New(pool).Senses(ctx)
 if err != nil {
-	log.Fatalf("read the senses from the Wird database: %v", err) // never the DSN: it carries the password
+	// never the DSN: it carries the password
+	slog.Error("read the senses from the Wird database", "err", err)
+	os.Exit(1)
 }
 ```
 
-[jidhrcorpus/main.go:77](../../server/cmd/jidhrcorpus/main.go#L77-L80) · [its flags](../../server/cmd/jidhrcorpus/config.go#L25-L42) · [why no migration](../../server/cmd/jidhrcorpus/main.go#L61-L65)
+[jidhrcorpus/main.go:84](../../server/cmd/jidhrcorpus/main.go#L84-L89) · [its flags](../../server/cmd/jidhrcorpus/config.go#L25-L42) · [why no migration](../../server/cmd/jidhrcorpus/main.go#L67-L71)
 
 ## Configuration
 
-Each of the six tools has one `Config`, built in its `config.go` from its flags and, for the three that need one, the environment. It is checked once, before anything is read or fetched, and every problem is reported together: the tool prints `config refused:` with the list and exits 1. A bad flag still exits 2, and `-h` exits 0. A refusal names a flag or a variable and never prints a secret ([ADR 0037](../adr/0037-each-cli-refuses-a-partial-configuration.md)).
+Each of the six tools has one `Config`, built in its `config.go` from its flags and, for the three that need one, the environment. It is checked once, before anything is read or fetched, and every problem is reported together: the tool logs one `config refused` line with the list and exits 1. A bad flag still exits 2, and `-h` exits 0. A refusal names a flag or a variable and never prints a secret ([ADR 0037](../adr/0037-each-cli-refuses-a-partial-configuration.md)).
+
+Each tool logs JSON lines on stderr, one per event, because its stdout is its report; a failure is an ERROR line and exit 1 ([ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md)).
 
 The tables below are checked by each tool's `TestConfigDocumented`: every flag with its effective default, and every variable the tool reads. Paths are relative to the repository root, where the tools are run from.
 

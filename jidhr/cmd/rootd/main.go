@@ -2,10 +2,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/MohammadBnei/wird/jidhr/pkg/root"
@@ -17,7 +21,11 @@ import (
 const burstPerRate = 4
 
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	// JSON on stdout for Alloy to tail (docs/adr/0039). The handler shape of
+	// ukubi-go's telemetry.NewLogger without its trace ids: rootd has no spans,
+	// and the jidhr module stays free of dependencies.
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	log := slog.Default()
 
 	// Every problem with the configuration at once, before anything is opened.
 	cfg, err := fromProcess()
@@ -66,6 +74,8 @@ func main() {
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
+		// net/http's own lines (a handler panic, an Accept error) are ERROR.
+		ErrorLog: slog.NewLogLogger(log.Handler(), slog.LevelError),
 	}
 
 	// Bind before announcing it. Logging the line first means a port already in
@@ -76,11 +86,43 @@ func main() {
 		os.Exit(1)
 	}
 
+	// SIGTERM drains the requests in flight; a second signal kills at once.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer stop()
+	go func() { <-ctx.Done(); stop() }()
+
 	log.Info("rootd listening",
 		"addr", ln.Addr().String(), "corpus", corpusPath, "languages", srv.langs,
 		"authenticated", srv.apiKey != "", "rate_per_second", rate, "dev", cfg.Dev)
-	if err := httpd.Serve(ln); err != nil {
-		log.Error("rootd stopped", "err", err)
+	if err := serve(ctx, httpd, ln); err != nil {
+		if ctx.Err() != nil {
+			log.Error("rootd shutdown failed", "err", err)
+		} else {
+			log.Error("rootd stopped", "err", err)
+		}
 		os.Exit(1)
 	}
+	log.Info("rootd drained")
+}
+
+// drain is how long serve gives requests in flight after ctx is cancelled:
+// under Kubernetes' default 30s grace.
+const drain = 20 * time.Second
+
+// serve is server/internal/httpx.Serve over rootd's own http.Server (jidhr
+// cannot import server's internal packages): it answers on ln until ctx is
+// cancelled, then lets the requests in flight finish, for up to drain, and
+// returns nil after a clean drain. A request's context is never tied to ctx.
+func serve(ctx context.Context, httpd *http.Server, ln net.Listener) error {
+	done := make(chan error, 1)
+	go func() {
+		<-ctx.Done()
+		shut, cancel := context.WithTimeout(context.WithoutCancel(ctx), drain)
+		defer cancel()
+		done <- httpd.Shutdown(shut)
+	}()
+	if err := httpd.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return <-done
 }

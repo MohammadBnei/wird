@@ -25,7 +25,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -36,21 +36,28 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/MohammadBnei/wird/server/internal/store"
+
+	"github.com/MohammadBnei/ukubi-go/telemetry"
 )
 
 func main() {
+	// Logs on stderr: stdout is the report.
+	slog.SetDefault(telemetry.NewLogger(os.Stderr))
 	c, err := fromProcess() // ExitOnError: a bad flag exits 2
 	if err != nil {
-		log.Fatalf("config refused: %v", err)
+		slog.Error("config refused", "err", err)
+		os.Exit(1)
 	}
 
 	known, err := knownRoots(c.Roots)
 	if err != nil {
-		log.Fatalf("read the roots from %s: %v", c.Roots, err)
+		slog.Error("read the roots", "path", c.Roots, "err", err)
+		os.Exit(1)
 	}
 	senses, err := load(c.TSV, known)
 	if err != nil {
-		log.Fatalf("read %s:\n%v", c.TSV, err)
+		slog.Error("read", "path", c.TSV, "err", err)
+		os.Exit(1)
 	}
 
 	distinct := map[string]bool{}
@@ -75,7 +82,8 @@ func main() {
 	// production is not.
 	pool, err := pgxpool.New(ctx, c.DSN)
 	if err != nil {
-		log.Fatalf("database unavailable: %v", err)
+		slog.Error("database unavailable", "err", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 	db := store.New(pool)
@@ -85,13 +93,15 @@ func main() {
 	fmt.Println(target(pool.Config()))
 
 	if err := db.ReplaceSenses(ctx, senses); err != nil {
-		log.Fatalf("write the senses: %v", err)
+		slog.Error("write the senses", "err", err)
+		os.Exit(1)
 	}
 	// The version, so whoever ran this can compare it against what the route
 	// answers with and see the new pack land rather than hope it did.
 	version, err := db.SensesVersion(ctx)
 	if err != nil {
-		log.Fatalf("read the pack version back: %v", err)
+		slog.Error("read the pack version back", "err", err)
+		os.Exit(1)
 	}
 	fmt.Printf("  written; /v1/senses now hashes to %s, and answers it as an\n"+
 		"  ETag of \"<revision>-%s\" — the revision is the provenance prose's,\n"+
