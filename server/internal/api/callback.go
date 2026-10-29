@@ -104,7 +104,9 @@ func authCallback(w http.ResponseWriter, r *http.Request) {
 	switch code := q.Get("error"); {
 	case code != "":
 		d := q.Get("error_description")
-		slog.Default().Warn("the issuer refused a sign-in", "error", code,
+		// INFO: anyone can put ?error= in a link (above), so this is client
+		// input, not a source answering no.
+		slog.Default().Info("the issuer refused a sign-in", "error", code,
 			"description", d[:min(len(d), 200)])
 		fail = "The identity server refused this sign-in."
 		if code == "access_denied" {

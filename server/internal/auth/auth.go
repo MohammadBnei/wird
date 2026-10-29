@@ -75,7 +75,7 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			httpx.Error(w, errs.Unauthenticated, keys.TokenRejected, "token rejected")
 			return
 		case err != nil:
-			a.log.Error("reader lookup", "err", err)
+			httpx.Failed(r, a.log, "reader lookup", "err", err)
 			httpx.Error(w, errs.Internal, errs.KeyInternal, "unavailable")
 			return
 		}

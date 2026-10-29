@@ -13,7 +13,9 @@ func JSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		slog.Error("response not written", "err", err)
+		// The header is sent: what failed is the write to a client that
+		// went away, not something on our side.
+		slog.Warn("response not written", "err", err)
 	}
 }
 

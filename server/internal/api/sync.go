@@ -41,7 +41,7 @@ func (h *Handler) sync(w http.ResponseWriter, r *http.Request) {
 	}
 	results, err := h.store.Apply(r.Context(), auth.User(r.Context()).ID, batch.Ops)
 	if err != nil {
-		h.fail(w, "sync", err)
+		h.fail(w, r, "sync", err)
 		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"results": results})
@@ -56,7 +56,7 @@ func (h *Handler) changes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.fail(w, "changes", err)
+		h.fail(w, r, "changes", err)
 		return
 	}
 	httpx.JSON(w, http.StatusOK, changes)

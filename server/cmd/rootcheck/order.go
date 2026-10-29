@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
@@ -54,8 +55,7 @@ func Order(w io.Writer, roots map[string]*rootsense.Root, tsv string) error {
 			if len(fr) != len(en) {
 				// One language making more claims than the other is a fault in
 				// the row, not something to permute quietly around.
-				fmt.Fprintf(os.Stderr, "%s: %d English clauses, %d French; left as written\n",
-					col[0], len(en), len(fr))
+				slog.Info("row left as written", "root", col[0], "english_clauses", len(en), "french_clauses", len(fr))
 				fmt.Fprintln(w, line)
 				continue
 			}

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -11,39 +12,58 @@ import (
 	"html/template"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/MohammadBnei/ukubi-go/telemetry"
+
+	"github.com/MohammadBnei/wird/server/internal/httpx"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
 
 func main() {
-	log := slog.Default()
-	ctx := context.Background()
+	slog.SetDefault(telemetry.NewLogger(os.Stdout))
+	os.Exit(run(slog.Default()))
+}
+
+// run is main with an exit code, so the deferred db.Close runs before the
+// process exits.
+func run(log *slog.Logger) int {
+	// SIGTERM cancels ctx and the server drains; a second signal kills at once.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer stop()
+	go func() { <-ctx.Done(); stop() }()
 
 	// Every problem with the configuration at once, before anything is opened.
 	cfg, err := fromProcess()
 	if err != nil {
 		log.Error("config refused", "err", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// store.New, not store.Open: Open runs the migrations, and goose takes no
 	// lock, so two binaries migrating the same database at once is a race. The
 	// api is the one that migrates; this reads the schema it left.
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	//
+	// Startup runs to the end even after a SIGTERM, and Serve then drains at
+	// once: a connect or discovery cancelled halfway would log a false ERROR.
+	start := context.WithoutCancel(ctx)
+	pool, err := pgxpool.New(start, cfg.DatabaseURL)
 	if err == nil {
-		err = pool.Ping(ctx)
+		err = pool.Ping(start)
 	}
 	if err != nil {
 		log.Error("database unavailable", "err", err)
-		os.Exit(1)
+		return 1
 	}
 	db := store.New(pool)
 	defer db.Close()
@@ -58,10 +78,10 @@ func main() {
 	if secret := cfg.ClientSecret; secret != "" {
 		verifier = clientSecretVerifier(issuer, audience, secret)
 	} else {
-		provider, err := oidc.NewProvider(ctx, issuer)
+		provider, err := oidc.NewProvider(start, issuer)
 		if err != nil {
 			log.Error("issuer unavailable", "issuer", issuer, "err", err)
-			os.Exit(1)
+			return 1
 		}
 		verifier = provider.Verifier(&oidc.Config{ClientID: audience})
 	}
@@ -72,16 +92,26 @@ func main() {
 	css, err := os.ReadFile(cfg.CSSPath)
 	if err != nil {
 		log.Error("stylesheet unavailable", "err", err)
-		os.Exit(1)
+		return 1
 	}
 
-	addr := cfg.Addr
-	log.Info("wird-adminweb listening", "addr", addr, "issuer", issuer, "audience", audience, "dev", cfg.Dev)
-	handler := routes(db, verifier, css, log)
-	if err := http.ListenAndServe(addr, handler); err != nil {
+	// Bind before announcing it: a port in use logs only the listen error.
+	ln, err := net.Listen("tcp", cfg.Addr)
+	if err != nil {
 		log.Error("wird-adminweb stopped", "err", err)
-		os.Exit(1)
+		return 1
 	}
+	log.Info("wird-adminweb listening", "addr", ln.Addr().String(), "issuer", issuer, "audience", audience, "dev", cfg.Dev)
+	if err := httpx.Serve(ctx, ln, routes(db, verifier, css, log), log); err != nil {
+		if ctx.Err() != nil {
+			log.Error("wird-adminweb shutdown failed", "err", err)
+		} else {
+			log.Error("wird-adminweb stopped", "err", err)
+		}
+		return 1
+	}
+	log.Info("wird-adminweb drained")
+	return 0
 }
 
 func routes(db *store.Store, verifier *oidc.IDTokenVerifier, css []byte, log *slog.Logger) http.Handler {
@@ -93,7 +123,7 @@ func routes(db *store.Store, verifier *oidc.IDTokenVerifier, css []byte, log *sl
 	mux.HandleFunc("GET /styles.css", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		if _, err := w.Write(css); err != nil {
-			log.Error("stylesheet not written", "err", err)
+			log.Warn("stylesheet not written", "err", err) // the client went away
 		}
 	})
 	// Everything past here is behind the group, and none of it is cached: an
@@ -147,12 +177,12 @@ func (s *server) dashboard(w http.ResponseWriter, r *http.Request) {
 	if page.Corpus, err = s.db.CorpusVersion(r.Context()); err == nil {
 		page.CorpusOK = true
 	} else {
-		s.log.Error("corpus version", "err", err)
+		httpx.Failed(r, s.log, "corpus version", "err", err)
 	}
 	if page.Health, err = s.db.Health(r.Context()); err == nil {
 		page.HealthOK = true
 	} else {
-		s.log.Error("health", "err", err)
+		httpx.Failed(r, s.log, "health", "err", err)
 	}
 	// Verdicts are tallied below rather than listed here, where hundreds of
 	// one-word thumbs would bury the reports somebody wrote out.
@@ -161,17 +191,25 @@ func (s *server) dashboard(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		page.ReportsOK = true
 	} else {
-		s.log.Error("reports", "err", err)
+		httpx.Failed(r, s.log, "reports", "err", err)
 	}
 	if page.Verdicts, err = s.db.SenseVerdicts(r.Context()); err == nil {
 		page.VerdictsOK = true
 	} else {
-		s.log.Error("verdicts", "err", err)
+		httpx.Failed(r, s.log, "verdicts", "err", err)
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := render(w, page); err != nil {
+	// Rendered whole before a byte is sent: a template fault is ours (ERROR),
+	// a write that fails after it is a client gone away (WARN).
+	var buf bytes.Buffer
+	if err := render(&buf, page); err != nil {
 		s.log.Error("page not written", "err", err)
+		http.Error(w, "the page could not be rendered", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := buf.WriteTo(w); err != nil {
+		s.log.Warn("page not written", "err", err)
 	}
 }
 
@@ -187,7 +225,7 @@ func (s *server) reportsJSON(w http.ResponseWriter, r *http.Request) {
 	reports, truncated, err := s.db.Reports(r.Context(),
 		store.ReportFilter{Status: status, ExcludeVerdicts: true, Limit: store.ReportExport})
 	if err != nil {
-		s.log.Error("reports", "err", err)
+		httpx.Failed(r, s.log, "reports", "err", err)
 		http.Error(w, "the reports could not be read", http.StatusInternalServerError)
 		return
 	}
@@ -200,7 +238,7 @@ func (s *server) reportsJSON(w http.ResponseWriter, r *http.Request) {
 func (s *server) verdictsJSON(w http.ResponseWriter, r *http.Request) {
 	verdicts, err := s.db.SenseVerdicts(r.Context())
 	if err != nil {
-		s.log.Error("verdicts", "err", err)
+		httpx.Failed(r, s.log, "verdicts", "err", err)
 		http.Error(w, "the verdicts could not be read", http.StatusInternalServerError)
 		return
 	}
@@ -210,7 +248,7 @@ func (s *server) verdictsJSON(w http.ResponseWriter, r *http.Request) {
 func (s *server) writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		s.log.Error("export not written", "err", err)
+		s.log.Warn("export not written", "err", err) // the client went away
 	}
 }
 
@@ -252,7 +290,7 @@ func (s *server) triage(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&f); err != nil {
-			s.log.Warn("triage body refused", "err", err)
+			s.log.Info("triage body refused", "err", err) // client input
 			http.Error(w, "the body is not a triage", http.StatusBadRequest)
 			return
 		}
@@ -279,7 +317,7 @@ func (s *server) triage(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, store.ErrReportNotFound):
 		http.Error(w, "no report has that id", http.StatusNotFound)
 	case err != nil:
-		s.log.Error("triage", "err", err)
+		httpx.Failed(r, s.log, "triage", "err", err)
 		http.Error(w, "the triage could not be written", http.StatusInternalServerError)
 	case isJSON:
 		w.WriteHeader(http.StatusNoContent)

@@ -21,12 +21,15 @@ ROOTD_API_KEY=… go run ./jidhr/cmd/rootd       # the same, with every /v1 call
 A listener with no key is asked for by name: without `ROOTD_DEV=1`, an unset
 `ROOTD_API_KEY` refuses to start, so a deployed rootd never serves `/v1` open by
 accident. Every problem with the settings is reported at once, in one
-`config refused` line, and the process exits 1.
+`config refused` line, and the process exits 1. On SIGTERM it stops accepting,
+lets the requests in flight finish for up to 20 seconds, logs `rootd drained`
+and exits 0.
 
-It logs what it loaded, including the languages that corpus holds meanings in:
+It logs one JSON line per event on stdout, starting with what it loaded,
+including the languages that corpus holds meanings in:
 
 ```json
-{"level":"INFO","msg":"rootd listening","addr":":8081","corpus":"jidhr/testdata/quran.json","languages":["en","fr"],"authenticated":false,"rate_per_second":5,"dev":true}
+{"time":"2026-10-29T09:00:00.000+00:00","level":"INFO","msg":"rootd listening","addr":"[::]:8081","corpus":"jidhr/testdata/quran.json","languages":["en","fr"],"authenticated":false,"rate_per_second":5,"dev":true}
 ```
 
 Five questions, five different answers — this is the whole service:

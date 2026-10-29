@@ -75,3 +75,4 @@ flowchart LR
 | [0036-each-binary-refuses-a-partial-configuration.md](0036-each-binary-refuses-a-partial-configuration.md) | Each binary refuses a partial configuration | accepted, amended by 0037 |
 | [0037-each-cli-refuses-a-partial-configuration.md](0037-each-cli-refuses-a-partial-configuration.md) | Each CLI refuses a partial configuration | accepted |
 | [0038-api-errors-carry-a-key.md](0038-api-errors-carry-a-key.md) | API errors carry a key from one registry | accepted |
+| [0039-logs-are-json-on-stdout-and-sigterm-drains.md](0039-logs-are-json-on-stdout-and-sigterm-drains.md) | Logs are JSON lines on stdout, and a SIGTERM drains | accepted |

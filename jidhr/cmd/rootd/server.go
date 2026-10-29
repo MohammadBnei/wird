@@ -215,7 +215,13 @@ func (s *server) writeResolveError(w http.ResponseWriter, r *http.Request, err e
 // writeInternal keeps the detail in the log and hands the caller an opaque
 // status, so a corpus outage never leaks its shape to the outside.
 func (s *server) writeInternal(w http.ResponseWriter, r *http.Request, what string, err error) {
-	s.log.Error(what, "path", r.URL.Path, "err", err)
+	// ERROR is ours failing; WARN when the caller went away and the cancelled
+	// request context is the cause (a closed connection is not our failure).
+	level := slog.LevelError
+	if r.Context().Err() != nil {
+		level = slog.LevelWarn
+	}
+	s.log.Log(r.Context(), level, what, "path", r.URL.Path, "err", err)
 	writeError(w, apiError{Status: http.StatusInternalServerError, Code: "internal",
 		Message: "the root engine could not answer"})
 }
@@ -230,7 +236,7 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(body); err != nil {
-		slog.Error("write a response", "err", err)
+		slog.Warn("write a response", "err", err) // the client went away
 	}
 }
 

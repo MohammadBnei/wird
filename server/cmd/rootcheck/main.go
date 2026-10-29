@@ -10,17 +10,23 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/MohammadBnei/wird/server/internal/lane"
-	"github.com/MohammadBnei/wird/server/internal/rootsense"
+	"log/slog"
 	"os"
 	"sort"
 	"text/tabwriter"
+
+	"github.com/MohammadBnei/ukubi-go/telemetry"
+
+	"github.com/MohammadBnei/wird/server/internal/lane"
+	"github.com/MohammadBnei/wird/server/internal/rootsense"
 )
 
 func main() {
+	// Logs on stderr: stdout is the report.
+	slog.SetDefault(telemetry.NewLogger(os.Stderr))
 	c, err := fromProcess() // ExitOnError: a bad flag exits 2, -h exits 0
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "rootcheck: config refused:", err)
+		slog.Error("config refused", "err", err)
 		os.Exit(1)
 	}
 	args, threshold, laneDir := c.Args, c.Threshold, c.LaneDir
@@ -31,7 +37,7 @@ func main() {
 
 	roots, err := rootsense.LoadRoots(c.DB)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "rootcheck:", err)
+		slog.Error("rootcheck failed", "err", err)
 		os.Exit(1)
 	}
 
@@ -44,7 +50,7 @@ func main() {
 			os.Exit(2)
 		}
 		if err := lane.Print(os.Stdout, laneDir, args[1]); err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 		return
@@ -55,12 +61,13 @@ func main() {
 		}
 		bar, err := barFor(roots, threshold)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 		root, ok := roots[args[1]]
 		if !ok {
-			fmt.Fprintf(os.Stderr, "rootcheck: root %q has no glossed words in the corpus\n", args[1])
+			// INFO: an answer about the caller's own input, not a failure.
+			slog.Info("root has no glossed words in the corpus", "root", args[1])
 			os.Exit(1)
 		}
 		reportCheck(os.Stdout, rootsense.Check(root, args[2]), bar)
@@ -68,7 +75,7 @@ func main() {
 	case "calibrate":
 		sep, err := rootsense.Calibrate(roots)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 		sep.Report(os.Stdout, roots)
@@ -76,7 +83,7 @@ func main() {
 	case "scan":
 		bar, err := barFor(roots, threshold)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 		Scan(os.Stdout, roots, bar)
@@ -88,11 +95,11 @@ func main() {
 		}
 		bar, err := barFor(roots, threshold)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 		if err := Cost(os.Stdout, roots, args[1], bar); err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 
@@ -102,7 +109,7 @@ func main() {
 			os.Exit(2)
 		}
 		if err := Order(os.Stdout, roots, args[1]); err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 
@@ -116,11 +123,11 @@ func main() {
 		}
 		bar, err := barFor(roots, threshold)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 		if err := Build(os.Stdout, roots, args[1], args[2], bar); err != nil {
-			fmt.Fprintln(os.Stderr, "rootcheck:", err)
+			slog.Error("rootcheck failed", "err", err)
 			os.Exit(1)
 		}
 

@@ -18,7 +18,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -28,6 +28,8 @@ import (
 	"github.com/MohammadBnei/wird/jidhr/pkg/root"
 	"github.com/MohammadBnei/wird/server/internal/store"
 	_ "modernc.org/sqlite"
+
+	"github.com/MohammadBnei/ukubi-go/telemetry"
 )
 
 // note travels with the corpus because a caller outside Wird has no other place to
@@ -46,14 +48,18 @@ const note = "The corpus rootd serves, written by server/cmd/jidhrcorpus. The ro
 	"hand puts it out of step with the corpus and with the server."
 
 func main() {
+	// Logs on stderr: stdout is the report.
+	slog.SetDefault(telemetry.NewLogger(os.Stderr))
 	cfg, err := fromProcess() // ExitOnError: a bad flag exits 2
 	if err != nil {
-		log.Fatalf("config refused: %v", err)
+		slog.Error("config refused", "err", err)
+		os.Exit(1)
 	}
 
 	db, err := sql.Open("sqlite", "file:"+filepath.Clean(cfg.In)+"?mode=ro")
 	if err != nil {
-		log.Fatalf("open %s: %v", cfg.In, err)
+		slog.Error("open", "path", cfg.In, "err", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
@@ -64,7 +70,8 @@ func main() {
 	// senseseed makes the same choice for the same reason.
 	pool, err := pgxpool.New(ctx, cfg.DSN)
 	if err != nil {
-		log.Fatalf("database unavailable: %v", err)
+		slog.Error("database unavailable", "err", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -76,20 +83,25 @@ func main() {
 	// does not select those columns at all.
 	pack, err := store.New(pool).Senses(ctx)
 	if err != nil {
-		log.Fatalf("read the senses from the Wird database: %v", err) // never the DSN: it carries the password
+		// never the DSN: it carries the password
+		slog.Error("read the senses from the Wird database", "err", err)
+		os.Exit(1)
 	}
 
 	c, err := build(db, pack.Senses)
 	if err != nil {
-		log.Fatalf("read %s: %v", cfg.In, err)
+		slog.Error("read", "path", cfg.In, "err", err)
+		os.Exit(1)
 	}
 	if err := write(cfg.Out, c); err != nil {
-		log.Fatalf("write %s: %v", cfg.Out, err)
+		slog.Error("write", "path", cfg.Out, "err", err)
+		os.Exit(1)
 	}
 
 	fi, err := os.Stat(cfg.Out)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("read back the output", "path", cfg.Out, "err", err)
+		os.Exit(1)
 	}
 	fmt.Printf("%s\n  roots %d  attested forms %d  rootless forms %d  roots with a meaning %d  languages %v\n  %.2f MB\n",
 		cfg.Out, len(c.Roots), len(c.Attested), len(c.Rootless), len(c.Meanings), languages(c), float64(fi.Size())/(1<<20))
