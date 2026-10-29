@@ -45,6 +45,7 @@ There are two groups. The open group needs no token, because the app is fully us
 | Endpoint | Token | What it answers | Called by the app |
 |---|---|---|---|
 | `GET /healthz` | no | 200, for the liveness probe | no |
+| `GET /version` | no | `{"version":"X.Y.Z"}`, the release this binary was built as ([ADR 0041](../adr/0041-one-version-line-cut-by-git-cliff.md)) | no |
 | `GET /auth/callback` | no | A page that hands the sign-in code back to the app | through the browser |
 | `GET /.well-known/assetlinks.json` | no | Android's proof that the app owns `/auth/callback` | by Android |
 | `GET /.well-known/apple-app-site-association` | no | iOS's proof that the app owns `/auth/callback` | by iOS |
@@ -87,7 +88,7 @@ flowchart TB
   routes["api.Routes"]
   outer{"outer mux"}
   span["one span per route, named by its pattern<br/>(off unless OTEL_EXPORTER_OTLP_TRACES_ENDPOINT)"]
-  openh["open handlers<br/>callback, assetlinks,<br/>models, senses, the page"]
+  openh["open handlers<br/>version, callback, assetlinks,<br/>models, senses, the page"]
   health["/healthz<br/>untraced"]
   mw["auth middleware: the one gate<br/>verify token, find or mint reader"]
   v1{"v1 mux"}
@@ -111,7 +112,7 @@ flowchart TB
 
 ### 1. Start: read the environment, migrate, listen
 
-`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:58-136](../../server/cmd/api/config.go#L58-L136), [main.go:36-42](../../server/cmd/api/main.go#L36-L42)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:58-76](../../server/cmd/api/main.go#L58-L76)
+`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:58-136](../../server/cmd/api/config.go#L58-L136), [main.go:37-43](../../server/cmd/api/main.go#L37-L43)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:59-77](../../server/cmd/api/main.go#L59-L77)
 
 It fails closed. A deployment that is missing a value refuses to start rather than starting against `localhost`, and a store that is half configured refuses rather than silently answering 503 ([ADR 0036](../adr/0036-each-binary-refuses-a-partial-configuration.md)). `WIRD_DEV=1` is the one switch for a local run: it fills the three required values with the compose stack's and changes nothing else.
 
@@ -158,7 +159,7 @@ func Migrate(ctx context.Context, url string) error {
 
 ### 2. Routes: two muxes, one gate
 
-`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. Both are built from one table, `gated`: each gated route is registered on `v1`, where its handler lives, and on the outer mux as the same gate, the auth middleware wrapped around `v1`. There is one gate value, so no handler is reachable except through it. A request no outer pattern takes, such as another method on a `/v1/` path or a path no route knows, falls through `"/"` to that same gate, and `v1` answers its 404 or 405 after it, as it always has. An open route stays open because it is registered on the outer mux by itself, not because the middleware skips it. [api.go:48-131](../../server/internal/api/api.go#L48-L131)
+`Routes` builds a `v1` mux for everything that needs a reader, and an outer mux for everything that does not. Both are built from one table, `gated`: each gated route is registered on `v1`, where its handler lives, and on the outer mux as the same gate, the auth middleware wrapped around `v1`. There is one gate value, so no handler is reachable except through it. A request no outer pattern takes, such as another method on a `/v1/` path or a path no route knows, falls through `"/"` to that same gate, and `v1` answers its 404 or 405 after it, as it always has. An open route stays open because it is registered on the outer mux by itself, not because the middleware skips it. [api.go:49-136](../../server/internal/api/api.go#L49-L136)
 
 ```go
 func (h *Handler) gated() []route {
@@ -185,15 +186,15 @@ func (h *Handler) gated() []route {
 	mux.Handle("/", gate)
 ```
 
-[api.go:123-129](../../server/internal/api/api.go#L123-L129)
+[api.go:128-134](../../server/internal/api/api.go#L128-L134)
 
 Registering each gated route on the outer mux is for its span: the outer mux knows the pattern, so the span is named by it and sits outside the gate, and a 401 is traced like a 200 (see Traces below). `TestEveryGatedRouteRefusesNoTokenUnderItsOwnSpan` walks the whole table with no token and wants a 401 under one span for each.
 
-`/v1/senses` is the one open `/v1/` path. It is on the outer mux and not in `gated`, so it never meets the middleware. [api.go:110](../../server/internal/api/api.go#L110)
+`/v1/senses` is the one open `/v1/` path. It is on the outer mux and not in `gated`, so it never meets the middleware. [api.go:115](../../server/internal/api/api.go#L115)
 
 ### The public page
 
-The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:111-118](../../server/internal/api/api.go#L111-L118)
+The page sits on the same outer mux. Its files are one path segment deep, or under `_ds/`, and every API route is two segments or more, so `GET /{file}` never reaches `v1`. `/healthz` is matched exactly and wins over it. An unknown one-segment path now answers 404 rather than 401. [api.go:116-123](../../server/internal/api/api.go#L116-L123)
 
 The files are embedded with `//go:embed all:static`. A plain `static` would leave out `_ds/`, because embed skips names that start with an underscore, and the page would render unstyled. Every response carries `Cache-Control: no-cache`, because embedded files have no modification time to revalidate against. [site.go](../../server/internal/site/site.go)
 
@@ -214,7 +215,7 @@ The middleware verifies the token, then finds the reader behind its subject, cre
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes: `JSON` for an answer, and `Error(w, code, key, message)` for an error, which hands the body to ukubi-go's `errs.Write`. [httpx.go:12-29](../../server/internal/httpx/httpx.go#L12-L29)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:254-261](../../server/internal/api/api.go#L254-L261)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:265-272](../../server/internal/api/api.go#L265-L272)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -227,7 +228,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:228-236](../../server/internal/api/api.go#L228-L236)), a root must be at most 32 bytes of Arabic letters ([api.go:240-250](../../server/internal/api/api.go#L240-L250)), and a kept kind must be `aya`, `root` or `note` ([api.go:167-174](../../server/internal/api/api.go#L167-L174)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:239-247](../../server/internal/api/api.go#L239-L247)), a root must be at most 32 bytes of Arabic letters ([api.go:251-261](../../server/internal/api/api.go#L251-L261)), and a kept kind must be `aya`, `root` or `note` ([api.go:178-185](../../server/internal/api/api.go#L178-L185)).
 
 ### 4. The store holds every SQL statement
 
@@ -268,7 +269,7 @@ No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold 
 
 ### 6. Two loops run beside the server
 
-`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:129-138](../../server/cmd/api/main.go#L129-L138), [store.go:411-420](../../server/internal/store/store.go#L411-L420)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:151-166](../../server/cmd/api/main.go#L151-L166)). [main.go:86-88](../../server/cmd/api/main.go#L86-L88)
+`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:130-139](../../server/cmd/api/main.go#L130-L139), [store.go:411-420](../../server/internal/store/store.go#L411-L420)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:152-167](../../server/cmd/api/main.go#L152-L167)). [main.go:87-89](../../server/cmd/api/main.go#L87-L89)
 
 ```go
 	var loops sync.WaitGroup
@@ -276,13 +277,15 @@ No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold 
 	loops.Go(func() { sweep(ctx, db, log) })
 ```
 
-Both are marked as deliberate ceilings: they assume one replica ([main.go:127-128](../../server/cmd/api/main.go#L127-L128)). Two replicas racing the report sweep could lose or double a report. [main.go:157-159](../../server/cmd/api/main.go#L157-L159)
+Both are marked as deliberate ceilings: they assume one replica ([main.go:128-129](../../server/cmd/api/main.go#L128-L129)). Two replicas racing the report sweep could lose or double a report. [main.go:158-160](../../server/cmd/api/main.go#L158-L160)
 
 ### 7. Logs and shutdown
 
 The first line of `main` installs ukubi-go's JSON logger on stdout, so every line is one JSON object with `time`, `level` and `msg`, which is what Loki reads. ERROR means something on our side failed. When a request fails because its caller hung up, `httpx.Failed` logs the same words at WARN instead, so a phone dropping mid-sync never counts toward the error-rate alert ([serve.go:68](../../server/internal/httpx/serve.go#L68)). `server/logs_test.go` pins every ERROR line with its words.
 
-The server runs through `httpx.Serve`: timeouts on reading and writing, net/http's own lines at ERROR, and a drain on SIGTERM. It keeps answering for 5 seconds, while Traefik learns the pod is going, then stops accepting and gives the requests in flight up to 20 seconds to finish. The two loops stop, a sweep already running commits or is cancelled 20 seconds after the signal, and the database closes last ([main.go:94](../../server/cmd/api/main.go#L94), [main.go:111](../../server/cmd/api/main.go#L111)). Tracing shuts down after that, so the spans of the requests the drain waited for are sent ([main.go:44-56](../../server/cmd/api/main.go#L44-L56)). [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md) has the why.
+Its start line, `wird-api listening`, names the version it was built as, the same one `/version` answers: the Dockerfile writes the release into an embedded file, and a local build says `dev` ([main.go:94](../../server/cmd/api/main.go#L94), [api.go:88](../../server/internal/api/api.go#L88)).
+
+The server runs through `httpx.Serve`: timeouts on reading and writing, net/http's own lines at ERROR, and a drain on SIGTERM. It keeps answering for 5 seconds, while Traefik learns the pod is going, then stops accepting and gives the requests in flight up to 20 seconds to finish. The two loops stop, a sweep already running commits or is cancelled 20 seconds after the signal, and the database closes last ([main.go:95](../../server/cmd/api/main.go#L95), [main.go:112](../../server/cmd/api/main.go#L112)). Tracing shuts down after that, so the spans of the requests the drain waited for are sent ([main.go:45-57](../../server/cmd/api/main.go#L45-L57)). [ADR 0039](../adr/0039-logs-are-json-on-stdout-and-sigterm-drains.md) has the why.
 
 ### 8. Traces, off unless configured
 

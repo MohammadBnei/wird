@@ -1,7 +1,10 @@
-# Push to main -> checks.yml (the Go half of the gate) -> build and push wird-api and
-# wird-adminweb -> bump both helm values files so ArgoCD reconciles. Same
-# shape and the same hard-won details as editable-blog's and ukubi-stt's
-# workflows; where this one differs, the comment says why.
+# Push to main -> checks.yml (the Go half of the gate) -> ukubi-ci release.yml
+# (git-cliff: next vX.Y.Z from Conventional Commits, CHANGELOG.md, a
+# `chore(release)` commit and the tag, pushed atomically) -> build wird-api and
+# wird-adminweb from that release commit with the version as a build-arg ->
+# bump both helm values files to its SHA so ArgoCD reconciles. Same shape and
+# the same hard-won details as editable-blog's and drop's workflows; where this
+# one differs, the comment says why.
 #
 # WHAT THE GATE IS, AND WHICH HALF RUNS HERE. `./scripts/qa.sh` is Wird's gate
 # and its exit code is the verdict — but it cannot run on a GitHub runner, and
@@ -21,14 +24,24 @@
 # on a developer's machine before the push. A macOS runner is what would change
 # that, and nothing here pretends otherwise.
 #
-# WHY THERE IS NO RELEASE JOB. editable-blog and ukubi-stt cut a semver with
-# release-it and tag the image with it. Wird has no version to cut: nothing
-# consumes a wird-api version number, the Flutter app is versioned in its own
-# pubspec, and adding a root package.json to a Go+Flutter repo to run a Node
-# release tool is a lot of machinery for a string. The image tag is the short
-# commit SHA, which is unique, ordered by history, and cannot disagree with the
-# code it was built from. Swap in release-it the day something outside this
-# repo needs to name a wird-api release.
+# ONE VERSION LINE (ADR 0041). The release job cuts the version; the image
+# keeps its SHA tag (the helm values pin it) and carries the version as
+# org.opencontainers.image.version and in what both binaries say on their start
+# line and at /version. The Flutter app ships the same tags: release-app.yml
+# builds the latest one and never tags. The tags stay `v*`, which the app
+# workflows' Infisical identities are bound to.
+#
+# WHAT THE PATH FILTERS COST. A push touching only Markdown or helm/ gets no
+# run, so nothing releases it. And when one lands while a code commit's run is
+# in flight, that run sees a human commit past its own and releases nothing
+# (ukubi-ci: "the run for the newer commits releases them"), which never comes.
+# Either way the next code push releases it all, or now, by hand:
+#
+#   gh workflow run release.yml --ref main
+#
+# A dispatch on main releases, builds AND deploys, like a push. A dispatch on
+# any other branch is a dry run: it builds that branch's image with version
+# X.Y.Z-dev+<sha> and neither tags nor deploys.
 name: release
 
 on:
@@ -46,9 +59,11 @@ on:
       - '*'
 
 # Two pushes racing would build two images and bump values.yaml twice, and the
-# loser's bump would point at the older of the two. Keep the newest.
+# loser's bump would point at the older of the two. Keep the newest. Keyed on
+# the ref: a dry-run dispatch on a branch must not cancel main's run after its
+# release is tagged, leaving a release nobody built.
 concurrency:
-  group: release-main
+  group: release-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -76,8 +91,17 @@ jobs:
   checks:
     uses: ./.github/workflows/checks.yml
 
-  build-push:
+  # A real release only on main (push or dispatch); anywhere else a dry run
+  # whose summary says what it would release. Its failure stops the build: an
+  # image with no version to name is not shipped.
+  release:
     needs: checks
+    permissions:
+      contents: write # pushes the chore(release) commit and the tag
+    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+
+  build-push:
+    needs: release
     # NOT `ukubi` — that label belongs to the runner holding a ServiceAccount
     # token with cluster access. This one has none, which is exactly why builds
     # belong on it (infra-bootstrap ADR-0034).
@@ -91,7 +115,11 @@ jobs:
     outputs:
       tag: ${{ steps.tag.outputs.value }}
     steps:
+      # The release commit. The tag is empty on a dry run, or when nothing was
+      # released and the tip is untagged; then this is the triggering commit.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.release.outputs.tag }}
 
       - name: Compute the image tag
         id: tag
@@ -149,8 +177,26 @@ jobs:
       - name: Build and push
         env:
           TAG: ${{ steps.tag.outputs.value }}
+          VERSION: ${{ needs.release.outputs.version }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
         run: |
           set -euo pipefail
+          # An empty or misnamed output would ship version "" silently. Empty
+          # is valid only untagged: no release exists yet and main moved on.
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ( -z "$VERSION" && -z "$RELEASE_TAG" ) ]] \
+            || { echo "::error::bad VERSION '$VERSION' from release; rerun: gh workflow run release.yml --ref main"; exit 1; }
+          # No release tag: this commit is not a release. On main VERSION is the
+          # last release (main moved on mid-release, or nothing releasable), so
+          # X.Y.Z+<sha>, or 0.0.0+<sha> before the first. Elsewhere it is a dry
+          # run and VERSION the release it would cut, so X.Y.Z-dev+<sha>.
+          if [ -z "$RELEASE_TAG" ]; then
+            if [ "$GITHUB_REF" = refs/heads/main ]; then
+              VERSION="${VERSION:-0.0.0}+$TAG"
+            else
+              VERSION="${VERSION:-0.0.0}-dev+$TAG"
+            fi
+          fi
+          echo "Building $TAG as version $VERSION." >> "$GITHUB_STEP_SUMMARY"
           # chroot isolation only. The storage driver is deliberately NOT named
           # here: it is pinned to overlay on the build box itself, so this
           # build, the cleanup below and the weekly prune timer cannot end up
@@ -168,6 +214,7 @@ jobs:
               --isolation chroot \
               --format docker \
               --target "$target" \
+              --build-arg "VERSION=$VERSION" \
               -t "$REGISTRY/$image:$TAG" \
               .
             sudo buildah push --tls-verify=false "$REGISTRY/$image:$TAG"
@@ -186,9 +233,13 @@ jobs:
   # is the failure ukubi-stt recorded for real: ArgoCD syncs main within
   # seconds of the merge, the image only exists minutes later, and the pod goes
   # ImagePullBackOff against a tag still being pushed.
+  #
+  # Push or dispatch, on main only: a dispatch on main cut a release above, and
+  # a release built but never deployed would leave /version naming an older
+  # one than the newest tag.
   deploy:
     needs: build-push
-    if: github.event_name == 'push'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # contents: write to push the values bump. This commit is what ArgoCD
     # actually reads; the image existing in the registry is not a deployment.

@@ -400,6 +400,23 @@ func preview(t *testing.T, body string) {
 	t.Logf("rendered page: %s", filepath.Join(dir, "index.html"))
 }
 
+// An operator reading the page can tell which release served it. Mutation:
+// the handler leaves Version unset, and the footer names no release.
+func TestTheDashboardFooterDoesNotLeaveTheReleaseUnnamed(t *testing.T) {
+	h := newHarness(t)
+
+	w := h.get(t, "/", h.operator(t))
+
+	// Positive control: the page was served at all.
+	if w.Code != http.StatusOK {
+		t.Fatalf("answered %d, wanted 200", w.Code)
+	}
+	// "dev": a test binary is built from the committed version.txt.
+	if !strings.Contains(w.Body.String(), ">wird-adminweb dev</p>") {
+		t.Errorf("the footer does not name the release:\n%s", w.Body.String())
+	}
+}
+
 // A device that did not say which corpus it had sends a zero. Printed as
 // "corpus v0" it reads as a build that exists, and the bug gets tied to it.
 func TestADeviceThatDidNotSayItsCorpusIsNotShownAsVersionZero(t *testing.T) {

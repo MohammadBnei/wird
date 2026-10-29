@@ -12,6 +12,7 @@ import (
 	"github.com/MohammadBnei/ukubi-go/errs"
 	"github.com/MohammadBnei/ukubi-go/telemetry"
 	"github.com/MohammadBnei/wird/server/internal/auth"
+	"github.com/MohammadBnei/wird/server/internal/buildinfo"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
 	"github.com/MohammadBnei/wird/server/internal/keys"
 	"github.com/MohammadBnei/wird/server/internal/site"
@@ -81,6 +82,10 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger, c Config, t
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	// The release this server is, for whoever asks which build is live. Open:
+	// a version names no reader. JSON, the shape /download/android/version
+	// already answers in. Matched exactly, so it wins over the page's {file}.
+	handle(versionPath, http.HandlerFunc(serverVersion))
 	// Beside /healthz and for the same reason: a reader arriving from the
 	// identity server holds an authorization code and no bearer token, so
 	// behind the middleware this answered 401 and sign-in could never finish.
@@ -128,6 +133,12 @@ func Routes(s *store.Store, a *auth.Authenticator, log *slog.Logger, c Config, t
 	}
 	mux.Handle("/", gate)
 	return mux
+}
+
+const versionPath = "GET /version"
+
+func serverVersion(w http.ResponseWriter, _ *http.Request) {
+	httpx.JSON(w, http.StatusOK, map[string]string{"version": buildinfo.Version()})
 }
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {

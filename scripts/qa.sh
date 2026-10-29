@@ -58,8 +58,8 @@ todo_marker='TO'"DO"
 
 todos_carry_an_issue() {
 	local hits
-	# CONTRIBUTING.md states the rule; stating it is not an instance of breaking it.
-	hits=$(git grep -I -n --untracked -F -e "$todo_marker" -- . ':!CONTRIBUTING.md' 2>/dev/null | grep -vF "$todo_marker(#")
+	# CONTRIBUTING.md states the rule, and CHANGELOG.md is git-cliff's copy of commit subjects: neither breaks it.
+	hits=$(git grep -I -n --untracked -F -e "$todo_marker" -- . ':!CONTRIBUTING.md' ':!CHANGELOG.md' 2>/dev/null | grep -vF "$todo_marker(#")
 	[ -z "$hits" ] && return 0
 	printf 'a marker with no issue number behind it never comes back:\n%s\n' "$hits"
 	return 1

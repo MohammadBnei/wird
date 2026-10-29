@@ -283,7 +283,7 @@ void main() {
   // The failure: a build run from a laptop reports itself as the last
   // release, and a bug seen on a walk build is filed against a version that
   // never had it. Only the release build names a version (apk.yml passes the
-  // pubspec's); everything else is `dev`.
+  // release tag's); everything else is `dev`.
   test('a build nobody released reports a released version', () {
     expect(appVersion, 'dev');
   });

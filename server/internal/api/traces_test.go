@@ -86,6 +86,7 @@ func TestEveryRouteButHealthzIsTraced(t *testing.T) {
 		apkPath[4:]:                 apkPath,
 		apkVersionPath[4:]:          apkVersionPath,
 		sensesPath[4:]:              sensesPath,
+		versionPath[4:]:             versionPath,
 		"/":                         "GET /{$}",
 		"/privacy.html":             "GET /{file}",
 		"/_ds/x.css":                "GET /_ds/",

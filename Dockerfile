@@ -12,6 +12,12 @@
 # `COPY . .` would be 21 GB — app/ carries Flutter build output. .dockerignore
 # covers it, but the copies below are explicit anyway so a stale ignore file
 # cannot quietly put the Qur'an corpus into a server image.
+
+# The release this build is (release.yml's --build-arg VERSION). Declared
+# before the first FROM so both the build stage and the label can take it;
+# "dev" when nobody passes one, as in a local `docker build .`.
+ARG VERSION=dev
+
 FROM golang:1.27-alpine AS build
 
 WORKDIR /src/server
@@ -24,6 +30,12 @@ RUN go mod download
 
 # No jidhr source: neither binary imports it, so jidhr edits keep this cache.
 COPY server/ ./
+
+# The binaries read their version from an embedded file, not a linker -X var
+# (internal/buildinfo says why). After the source COPY, so a new version
+# rebuilds only from here. release.yml has already checked its shape.
+ARG VERSION
+RUN printf '%s\n' "$VERSION" > internal/buildinfo/version.txt
 
 # CGO off: modernc.org/sqlite is pure Go and nothing else here needs a C
 # toolchain, so the binary is static and the final stage needs no libc match.
@@ -40,6 +52,10 @@ FROM alpine:3.22 AS base
 RUN apk add --no-cache ca-certificates \
  && adduser -D -u 10001 wird
 USER wird
+# In base, so both images carry it; the image TAG stays the commit SHA. Last
+# here, so a new version does not re-run the apk add above.
+ARG VERSION
+LABEL org.opencontainers.image.version=$VERSION
 
 FROM base AS adminweb
 COPY --from=build /out/wird-adminweb /usr/local/bin/wird-adminweb

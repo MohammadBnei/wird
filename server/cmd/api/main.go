@@ -15,6 +15,7 @@ import (
 
 	"github.com/MohammadBnei/wird/server/internal/api"
 	"github.com/MohammadBnei/wird/server/internal/auth"
+	"github.com/MohammadBnei/wird/server/internal/buildinfo"
 	"github.com/MohammadBnei/wird/server/internal/httpx"
 	"github.com/MohammadBnei/wird/server/internal/store"
 )
@@ -90,7 +91,7 @@ func run(log *slog.Logger) int {
 	// failed without a signal would wait on loops that never end.
 	defer func() { stop(); loops.Wait() }()
 
-	log.Info("wird-api listening", "addr", ln.Addr().String(), "issuer", issuer, "dev", cfg.Dev)
+	log.Info("wird-api listening", "addr", ln.Addr().String(), "issuer", issuer, "dev", cfg.Dev, "version", buildinfo.Version())
 	if err := httpx.Serve(ctx, ln, api.Routes(db, authenticator, log, cfg.API, tel), log); err != nil {
 		if ctx.Err() != nil {
 			log.Error("wird-api shutdown failed", "err", err)
