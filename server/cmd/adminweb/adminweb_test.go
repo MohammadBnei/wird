@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"html/template"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -647,5 +648,43 @@ func TestTheExportsCarryReportsAndTalliesButNoReaderAndAreNeverCached(t *testing
 
 	if w := h.get(t, "/reports.json?status=whatever", h.operator(t)); w.Code != http.StatusBadRequest {
 		t.Errorf("an unknown status filter answered %d, wanted 400", w.Code)
+	}
+}
+
+// The page is rendered whole before a byte goes out, so a template fault is a
+// 500 and an ERROR "page not written", never a 200 page cut off mid-table that
+// an operator reads as complete. Positive control first: the real template
+// answers 200 with the page and logs no ERROR.
+func TestATemplateFaultIsA500AndAnErrorNotATruncatedPage(t *testing.T) {
+	db, _ := testenv.Postgres(t)
+	serve := func() (*httptest.ResponseRecorder, string) {
+		var logs strings.Builder
+		s := &server{db: db, log: slog.New(slog.NewJSONHandler(&logs, nil))}
+		w := httptest.NewRecorder()
+		s.dashboard(w, httptest.NewRequest(http.MethodGet, "/", nil))
+		return w, logs.String()
+	}
+
+	w, logs := serve()
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "</html>") {
+		t.Fatalf("the real template: %d, want 200 and the whole page:\n%s", w.Code, w.Body)
+	}
+	if strings.Contains(logs, `"level":"ERROR"`) {
+		t.Fatalf("an ERROR on a page that rendered:\n%s", logs)
+	}
+
+	real := tmpl
+	t.Cleanup(func() { tmpl = real })
+	tmpl = template.Must(template.New("broken").Parse(`<table>{{.NoSuchField}}</table>`))
+
+	w, logs = serve()
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("a template fault answered %d, want 500", w.Code)
+	}
+	if strings.Contains(w.Body.String(), "<table>") {
+		t.Errorf("part of the page went out:\n%s", w.Body)
+	}
+	if !strings.Contains(logs, `"level":"ERROR","msg":"page not written"`) {
+		t.Errorf(`no ERROR "page not written":\n%s`, logs)
 	}
 }
