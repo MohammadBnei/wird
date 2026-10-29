@@ -111,18 +111,18 @@ flowchart TB
 
 ### 1. Start: read the environment, migrate, listen
 
-`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:56-134](../../server/cmd/api/config.go#L56-L134), [main.go:36-42](../../server/cmd/api/main.go#L36-L42)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:58-76](../../server/cmd/api/main.go#L58-L76)
+`main` reads its whole configuration once, through `load` in `config.go`, before it opens anything. `load` reports every problem in one `config refused` line and the process exits 1; a refusal names variables, never their values ([config.go:58-136](../../server/cmd/api/config.go#L58-L136), [main.go:36-42](../../server/cmd/api/main.go#L36-L42)). Then it opens Postgres, which also applies every migration not yet run, and asks the identity server to describe itself. If either step fails, the process exits. [main.go:58-76](../../server/cmd/api/main.go#L58-L76)
 
 It fails closed. A deployment that is missing a value refuses to start rather than starting against `localhost`, and a store that is half configured refuses rather than silently answering 503 ([ADR 0036](../adr/0036-each-binary-refuses-a-partial-configuration.md)). `WIRD_DEV=1` is the one switch for a local run: it fills the three required values with the compose stack's and changes nothing else.
 
 | Variable | Default | What it sets |
 |---|---|---|
-| `WIRD_DEV` | unset | `1` lets the three required values below default to the local compose Postgres and OIDC stub. Any other value is refused. [config.go:59-65](../../server/cmd/api/config.go#L59-L65) |
-| `DATABASE_URL` | required; with `WIRD_DEV=1`, the local compose Postgres | The database. [config.go:84](../../server/cmd/api/config.go#L84) |
-| `OIDC_ISSUER` | required; with `WIRD_DEV=1`, the local OIDC stub | Where tokens come from, passed through byte for byte (production's trailing slash matters). [config.go:87](../../server/cmd/api/config.go#L87) |
-| `OIDC_AUDIENCE` | required; with `WIRD_DEV=1`, `wird` | The `aud` a token must carry; in production, the app's client id. [config.go:88](../../server/cmd/api/config.go#L88) |
-| `API_ADDR` | `:8080` | The listen address. [config.go:66-68](../../server/cmd/api/config.go#L66-L68) |
-| `WIRD_MODELS_S3_BUCKET` | unset, so `/models/` and `/download/android` answer 503 | The bucket of the voice model store. The four store values come together: one set without the others is refused. [config.go:93-112](../../server/cmd/api/config.go#L93-L112) |
+| `WIRD_DEV` | unset | `1` lets the three required values below default to the local compose Postgres and OIDC stub. Any other value is refused. [config.go:61-67](../../server/cmd/api/config.go#L61-L67) |
+| `DATABASE_URL` | required; with `WIRD_DEV=1`, the local compose Postgres | The database. [config.go:86](../../server/cmd/api/config.go#L86) |
+| `OIDC_ISSUER` | required; with `WIRD_DEV=1`, the local OIDC stub | Where tokens come from, passed through byte for byte (production's trailing slash matters). [config.go:89](../../server/cmd/api/config.go#L89) |
+| `OIDC_AUDIENCE` | required; with `WIRD_DEV=1`, `wird` | The `aud` a token must carry; in production, the app's client id. [config.go:90](../../server/cmd/api/config.go#L90) |
+| `API_ADDR` | `:8080` | The listen address. [config.go:68-70](../../server/cmd/api/config.go#L68-L70) |
+| `WIRD_MODELS_S3_BUCKET` | unset, so `/models/` and `/download/android` answer 503 | The bucket of the voice model store. The four store values come together: one set without the others is refused. [config.go:95-114](../../server/cmd/api/config.go#L95-L114) |
 | `WIRD_MODELS_S3_ENDPOINT` | unset | The store's S3 endpoint. |
 | `WIRD_MODELS_S3_ACCESS_KEY` | unset | The store's access key. |
 | `WIRD_MODELS_S3_SECRET` | unset | The store's secret key. |
@@ -130,7 +130,7 @@ It fails closed. A deployment that is missing a value refuses to start rather th
 | `WIRD_APK_KEY` | unset, so the download answers 503 | The object key of the published APK in that same store, named by its digest. Refused without a store. [apk.go:26](../../server/internal/api/apk.go#L26) |
 | `WIRD_APK_VERSION` | unset, so `/download/android/version` answers 204 and the page prints plain "APK" | The release that key is, printed beside the page's Download button. Set by `apk.yml` together with the key, and refused without it. [apk.go:51](../../server/internal/api/apk.go#L51) |
 | `WIRD_ANDROID_SHA256` | unset, so 404 | Signing-key fingerprints for `assetlinks.json`, comma-separated, parsed once at start. [applinks.go:35-44](../../server/internal/api/applinks.go#L35-L44) |
-| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | unset, so no tracing at all | The OTLP/HTTP traces URL in full, `/v1/traces` included. A value that is not an http(s) URL with a host is refused. **Do not set it for production wird-api yet:** a span records the reader's IP address, user agent and path, which the privacy page does not cover ([ADR 0040](../adr/0040-opt-in-traces.md)). [config.go:125-128](../../server/cmd/api/config.go#L125-L128) |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | unset, so no tracing at all | The OTLP/HTTP traces URL in full, `/v1/traces` included. A value that is not an http(s) URL with a host is refused. **Do not set it for production wird-api yet:** a span records the reader's IP address, user agent and path, which the privacy page does not cover ([ADR 0040](../adr/0040-opt-in-traces.md)). [config.go:127-130](../../server/cmd/api/config.go#L127-L130) |
 
 `TestConfigDocumented` holds this table, the variables `load` reads, and its `envVars` list to the same set, and `server/env_test.go` refuses any other code that reads the environment.
 
@@ -214,7 +214,7 @@ The middleware verifies the token, then finds the reader behind its subject, cre
 
 A handler checks what came off the wire, calls the store once, and writes JSON. Two helpers in `httpx` write the only two response shapes: `JSON` for an answer, and `Error(w, code, key, message)` for an error, which hands the body to ukubi-go's `errs.Write`. [httpx.go:12-29](../../server/internal/httpx/httpx.go#L12-L29)
 
-When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:253-260](../../server/internal/api/api.go#L253-L260)
+When the store fails, `fail` decides what the caller may learn. A missing row is a 404. Anything else is a 500 that says only `unavailable`, and the real reason goes to the log. [api.go:254-261](../../server/internal/api/api.go#L254-L261)
 
 ```go
 func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
@@ -227,7 +227,7 @@ func (h *Handler) fail(w http.ResponseWriter, what string, err error) {
 }
 ```
 
-Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:227-235](../../server/internal/api/api.go#L227-L235)), a root must be at most 32 bytes of Arabic letters ([api.go:239-249](../../server/internal/api/api.go#L239-L249)), and a kept kind must be `aya`, `root` or `note` ([api.go:166-173](../../server/internal/api/api.go#L166-L173)).
+Input checks are small and local. An aya path must name a sūra from 1 to 114 and an aya from 1 to 999, folded into a `surah*1000 + ayah` key ([api.go:228-236](../../server/internal/api/api.go#L228-L236)), a root must be at most 32 bytes of Arabic letters ([api.go:240-250](../../server/internal/api/api.go#L240-L250)), and a kept kind must be `aya`, `root` or `note` ([api.go:167-174](../../server/internal/api/api.go#L167-L174)).
 
 ### 4. The store holds every SQL statement
 
@@ -258,17 +258,17 @@ The tables come from nine migrations in `server/migrations`:
 | [00010](../../server/migrations/00010_reading_positions.sql) | `reading_positions`, the reader's place in each sūra |
 | [00011](../../server/migrations/00011_report_triage.sql) | A report's `locale` and `sense_hash`, the `verdict_root` the sweep settles for a sense verdict, and the operator's triage: `category`, `status`, `issue_url` |
 
-Read endpoints are pure queries. Progress is counted on each request, never stored; `percent` is understood ayas over 6236, as a fraction. [store.go:187-238](../../server/internal/store/store.go#L187-L238)
+Read endpoints are pure queries. Progress is counted on each request, never stored; `percent` is understood ayas over 6236, as a fraction. [store.go:189-240](../../server/internal/store/store.go#L189-L240)
 
 ### 5. Placeholders answer honestly
 
-No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold a few rows marked `is_placeholder`, and the payload carries `"placeholder": true`. An aya or root with no row is a 404, never an invented answer. [00002_content.sql:3-8](../../server/migrations/00002_content.sql#L3-L8), [store.go:293-317](../../server/internal/store/store.go#L293-L317)
+No licensed tafsir, iʿrāb or lexicon text exists yet. The content tables hold a few rows marked `is_placeholder`, and the payload carries `"placeholder": true`. An aya or root with no row is a 404, never an invented answer. [00002_content.sql:3-8](../../server/migrations/00002_content.sql#L3-L8), [store.go:295-319](../../server/internal/store/store.go#L295-L319)
 
 `corpus_meta` is seeded once by that migration and nothing updates it, so `/v1/corpus/version` does not follow the corpus the app ships. [00002_content.sql:41](../../server/migrations/00002_content.sql#L41)
 
 ### 6. Two loops run beside the server
 
-`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:129-138](../../server/cmd/api/main.go#L129-L138), [store.go:409-418](../../server/internal/store/store.go#L409-L418)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:151-166](../../server/cmd/api/main.go#L151-L166)). [main.go:86-88](../../server/cmd/api/main.go#L86-L88)
+`main` starts two goroutines. One prunes `op_log` rows older than 90 days, once a day ([main.go:129-138](../../server/cmd/api/main.go#L129-L138), [store.go:411-420](../../server/internal/store/store.go#L411-L420)). The other moves anonymous reports from the inbox into the table the operations view reads, every ten minutes ([main.go:151-166](../../server/cmd/api/main.go#L151-L166)). [main.go:86-88](../../server/cmd/api/main.go#L86-L88)
 
 ```go
 	var loops sync.WaitGroup

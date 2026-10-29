@@ -44,6 +44,8 @@ const (
 // Abdul Basit Mujawwad, both Minshawy and Tablaway split a word into three,
 // Sudais's file opens with the aligner's crash log, and Shuraym and Minshawy
 // Mujawwad each leave an aya with no timing at all.
+//
+//ukubicheck:table the recitations that pass verification
 var defaultRecitations = []string{
 	"Husary_Muallim_128kbps",
 	"Husary_64kbps",
@@ -53,6 +55,7 @@ var defaultRecitations = []string{
 	"Hani_Rifai_192kbps",
 }
 
+//ukubicheck:table the sources ingest fetches
 var sourceURLs = []string{chaptersURL, versesURL, alignURL, corpusPage, tldIndexURL}
 
 func main() {

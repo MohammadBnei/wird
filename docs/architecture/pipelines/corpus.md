@@ -133,7 +133,7 @@ if err := requireCorpusMorphology(filepath.Join(dir, corpusFile)); err != nil {
 }
 ```
 
-[ingest/main.go:75](../../../server/cmd/ingest/main.go#L75-L78) · [the copyright check](../../../server/cmd/ingest/verify.go#L118-L149)
+[ingest/main.go:75](../../../server/cmd/ingest/main.go#L78-L81) · [the copyright check](../../../server/cmd/ingest/verify.go#L121-L152)
 
 ### 2. Timings come from the quran-align release
 
@@ -148,7 +148,7 @@ if err := extractTimings(filepath.Join(dir, alignZip), dir, recitations); err !=
 }
 ```
 
-[ingest/main.go:84](../../../server/cmd/ingest/main.go#L84-L89) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
+[ingest/main.go:84](../../../server/cmd/ingest/main.go#L87-L92) · [the release URL](../../../server/cmd/ingest/align.go#L17-L21)
 
 ### 3. Sūras and ayas, one file each
 
@@ -162,7 +162,7 @@ if len(suras) != 114 {
 }
 ```
 
-[ingest/main.go:105](../../../server/cmd/ingest/main.go#L105-L109) · [the refusal](../../../server/cmd/ingest/main.go#L163-L176)
+[ingest/main.go:105](../../../server/cmd/ingest/main.go#L108-L112) · [the refusal](../../../server/cmd/ingest/main.go#L166-L179)
 
 ### 3b. The French under each word, from The Last Dialogue
 
@@ -196,7 +196,7 @@ flowchart LR
 func verify(dir string, suras []int, chapters []chapter, recitations []string, now time.Time) (*manifest, error) {
 ```
 
-[ingest/verify.go:177](../../../server/cmd/ingest/verify.go#L177-L180) · [the word counts compared](../../../server/cmd/ingest/verify.go#L221-L231)
+[ingest/verify.go:177](../../../server/cmd/ingest/verify.go#L180-L183) · [the word counts compared](../../../server/cmd/ingest/verify.go#L224-L234)
 
 ### 5. Load with natural keys
 
@@ -209,7 +209,7 @@ func ayahID(surah, ayah int) int   { return surah*1000 + ayah }
 func wordID(ayahID, pos int) int64 { return int64(ayahID)*1000 + int64(pos) }
 ```
 
-[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L320-L323)
+[etl/load.go:21](../../../server/cmd/etl/load.go#L21-L24) · [the segmentation guard](../../../server/cmd/etl/load.go#L322-L325)
 
 ### 6. Check: refuse a corpus that would mislead
 

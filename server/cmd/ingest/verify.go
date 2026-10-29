@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -69,12 +70,12 @@ type reconciliation struct {
 	// several words where the text keeps one. Reconciled, not dropped — every
 	// index after the split names the word before the one it looks like.
 	AyahsWhereTheAlignerSplitsAWord int `json:"ayahs_where_the_aligner_splits_a_word"`
-	MultiWordSegmentSpans            int `json:"multi_word_segment_spans"`
-	WordsTimedOnlyByAMultiWordSpan   int `json:"words_timed_only_by_a_multi_word_span"`
-	WordsWithNoTiming                int `json:"words_with_no_timing"`
-	AyahsWithAnUntimedWord           int `json:"ayahs_with_an_untimed_word"`
-	OverlappingSegmentPairs          int `json:"overlapping_segment_pairs"`
-	SegmentsEndingBeforeTheyStart    int `json:"segments_ending_before_they_start"`
+	MultiWordSegmentSpans           int `json:"multi_word_segment_spans"`
+	WordsTimedOnlyByAMultiWordSpan  int `json:"words_timed_only_by_a_multi_word_span"`
+	WordsWithNoTiming               int `json:"words_with_no_timing"`
+	AyahsWithAnUntimedWord          int `json:"ayahs_with_an_untimed_word"`
+	OverlappingSegmentPairs         int `json:"overlapping_segment_pairs"`
+	SegmentsEndingBeforeTheyStart   int `json:"segments_ending_before_they_start"`
 }
 
 type fileSum struct {
@@ -108,6 +109,8 @@ type manifest struct {
 // nothing else, and require the notice to travel with the data; a fork that drops
 // the block breaks both at once, which is the mistake this ingest exists to not
 // repeat.
+//
+//ukubicheck:table the copyright notice lines the data must carry
 var copyrightMarkers = []string{
 	"Quranic Arabic Corpus",
 	"Copyright (C) 2011 Kais Dukes",
@@ -199,7 +202,7 @@ func verify(dir string, suras []int, chapters []chapter, recitations []string, n
 		GeneratedAt: now.UTC().Format(time.RFC3339),
 		Complete:    complete,
 		Suras:       suras,
-		Sources:     sourceURLs,
+		Sources:     slices.Clone(sourceURLs),
 		Counts:      counts{Surahs: len(suras), MorphologySegments: morphSegs, Roots: roots},
 	}
 

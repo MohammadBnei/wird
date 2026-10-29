@@ -18,8 +18,6 @@ import (
 // held across the cancel must finish with its 200, its context still live,
 // and Serve must return nil.
 func TestServeDrainsInFlightOnCancel(t *testing.T) {
-	defer func(s time.Duration) { Settle = s }(Settle)
-	Settle = 0
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +34,7 @@ func TestServeDrainsInFlightOnCancel(t *testing.T) {
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	served := make(chan error, 1)
-	go func() { served <- Serve(ctx, ln, h, slog.New(slog.DiscardHandler)) }()
+	go func() { served <- Serve(ctx, ln, h, slog.New(slog.DiscardHandler), 0) }()
 
 	got := make(chan int, 1)
 	go func() {
@@ -83,8 +81,6 @@ func TestServeDrainsInFlightOnCancel(t *testing.T) {
 // Traefik routes here until it notices: a listener closed at the signal turns
 // those requests into 502s. A request just after the cancel is still answered.
 func TestServeAnswersWhileEndpointsSettle(t *testing.T) {
-	defer func(s time.Duration) { Settle = s }(Settle)
-	Settle = time.Second
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +88,7 @@ func TestServeAnswersWhileEndpointsSettle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	served := make(chan error, 1)
 	go func() {
-		served <- Serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), slog.New(slog.DiscardHandler))
+		served <- Serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), slog.New(slog.DiscardHandler), time.Second)
 	}()
 	cancel()
 	resp, err := http.Get("http://" + ln.Addr().String())
@@ -117,7 +113,7 @@ func TestServeErrorLogIsError(t *testing.T) {
 	log := slog.New(slog.NewJSONHandler(lockedWriter{&mu, &buf}, nil))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go Serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("boom") }), log)
+	go Serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("boom") }), log, 0)
 
 	if resp, err := http.Get("http://" + ln.Addr().String()); err == nil {
 		io.Copy(io.Discard, resp.Body)

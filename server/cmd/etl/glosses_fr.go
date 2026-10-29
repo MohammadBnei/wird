@@ -33,6 +33,8 @@ var (
 
 // The labels a card opens with, lowercased. The pages were written over time and
 // spell them several ways; a label outside this set is not a card.
+//
+//ukubicheck:table the labels a card opens with
 var tldLabels = map[string]bool{
 	"nom": true, "nom propre": true, "nom / pronom": true, "pronom": true,
 	"adjectif": true, "verbe": true, "particule": true, "particule (harf)": true,

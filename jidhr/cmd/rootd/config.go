@@ -10,6 +10,8 @@ import (
 
 // envVars is every variable load reads. TestConfigDocumented holds it, the
 // reads load makes, and the table in README.md to the same set.
+//
+//ukubicheck:table every variable load reads
 var envVars = []string{
 	"ROOTD_DEV",
 	"ROOTD_ADDR",

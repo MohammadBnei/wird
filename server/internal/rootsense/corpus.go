@@ -41,18 +41,21 @@ type Support struct {
 type Root struct {
 	Letters string
 	Slots   []Slot
-	Words   int // glossed word occurrences, all slots
+	Words   int    // glossed word occurrences, all slots
+	ix      *index // the corpus Bucket built this root from
 }
 
-// dispersion counts, for each gloss stem, how many distinct roots the corpus
-// glosses with it. It is how the check tells generic English apart from a word
-// that belongs to somebody else: "bring" and "down" are spread over twenty
-// roots and carry no claim, while "unseen" and "believers" sit on one or two
-// and naming them inside another root's sense is a claim about those roots.
-//
-// ponytail: package-level because this is a single-corpus CLI; make it a field
-// on a corpus struct if a second corpus ever has to be open at once.
-var dispersion = map[string]map[string]bool{}
+// index is one corpus's view across its roots, which Bucket builds once and
+// every Root it returns shares.
+type index struct {
+	// dispersion counts, for each gloss stem, how many distinct roots the corpus
+	// glosses with it. It is how the check tells generic English apart from a word
+	// that belongs to somebody else: "bring" and "down" are spread over twenty
+	// roots and carry no claim, while "unseen" and "believers" sit on one or two
+	// and naming them inside another root's sense is a claim about those roots.
+	dispersion map[string]map[string]bool
+	cache      map[string]map[string]bool // rootsOf, memoised
+}
 
 // Markers holds the English a wazn contributes to a gloss regardless of the
 // root. Those words are removed from a gloss before matching so a sense cannot
@@ -64,6 +67,8 @@ var dispersion = map[string]map[string]bool{}
 // under 3% of its glosses; III and VIII contribute no distinctive English at
 // all; VII's "become" never appears; V's reflexives are enriched but fire in
 // about 2% of its glosses, too rare to be a rule.
+//
+//ukubicheck:table the English each wazn adds to a gloss
 var Markers = map[string][]string{
 	"form-X":    {"seek", "ask"},
 	"form-VI":   {"each", "other", "another"},
@@ -156,11 +161,10 @@ func LoadRoots(dbPath string) (map[string]*Root, error) {
 }
 
 // Bucket groups words by root and morphological slot, counting how many
-// occurrences carry each distinct gloss, and rebuilds the corpus-wide index of
-// which roots each gloss word appears under.
+// occurrences carry each distinct gloss, and builds the corpus-wide index of
+// which roots each gloss word appears under, which every Root it returns shares.
 func Bucket(words []WordRow) map[string]*Root {
-	dispersion = map[string]map[string]bool{}
-	rootsCache = map[string]map[string]bool{}
+	ix := &index{dispersion: map[string]map[string]bool{}, cache: map[string]map[string]bool{}}
 
 	type key struct{ root, slot string }
 	type tally struct {
@@ -186,10 +190,10 @@ func Bucket(words []WordRow) map[string]*Root {
 		t.n++
 		counts[w.Root]++
 		for _, tok := range tokens(g) {
-			if dispersion[tok] == nil {
-				dispersion[tok] = map[string]bool{}
+			if ix.dispersion[tok] == nil {
+				ix.dispersion[tok] = map[string]bool{}
 			}
-			dispersion[tok][w.Root] = true
+			ix.dispersion[tok][w.Root] = true
 		}
 	}
 
@@ -197,7 +201,7 @@ func Bucket(words []WordRow) map[string]*Root {
 	for k, gs := range seen {
 		r := out[k.root]
 		if r == nil {
-			r = &Root{Letters: k.root, Words: counts[k.root]}
+			r = &Root{Letters: k.root, Words: counts[k.root], ix: ix}
 			out[k.root] = r
 		}
 		list := make([]Gloss, 0, len(gs))

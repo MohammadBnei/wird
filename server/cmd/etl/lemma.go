@@ -16,6 +16,8 @@ import (
 // table and joined, give the word's own Arabic for 66,667 of 77,429 words with
 // tatweel set aside. The rest differ only in the pause marks and small letters
 // the Quran Foundation text carries and the annotation does not.
+//
+//ukubicheck:table the Buckwalter letters of the Quran text
 var quranBuckwalter = map[rune]rune{
 	'\'': 'ء', '|': 'آ', '>': 'أ', '&': 'ؤ', '<': 'إ', '}': 'ئ', 'A': 'ا',
 	'b': 'ب', 'p': 'ة', 't': 'ت', 'v': 'ث', 'j': 'ج', 'H': 'ح', 'x': 'خ',

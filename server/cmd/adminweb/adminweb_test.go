@@ -404,7 +404,7 @@ func preview(t *testing.T, body string) {
 // "corpus v0" it reads as a build that exists, and the bug gets tied to it.
 func TestADeviceThatDidNotSayItsCorpusIsNotShownAsVersionZero(t *testing.T) {
 	var out strings.Builder
-	err := render(&out, dashboard{ReportsOK: true, Reports: []store.Report{{
+	err := parseDashboard().Execute(&out, dashboard{ReportsOK: true, Reports: []store.Report{{
 		Kind: "bug", Body: "the audio stops", CorpusVersion: 0, WrittenOn: time.Now(),
 	}}})
 	if err != nil {
@@ -422,7 +422,7 @@ func TestADeviceThatDidNotSayItsCorpusIsNotShownAsVersionZero(t *testing.T) {
 
 func TestReportsThatCouldNotBeReadSaySoRatherThanReadAsNone(t *testing.T) {
 	var out strings.Builder
-	if err := render(&out, dashboard{ReportsOK: false}); err != nil {
+	if err := parseDashboard().Execute(&out, dashboard{ReportsOK: false}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	body := out.String()
@@ -439,7 +439,7 @@ func TestReportsThatCouldNotBeReadSaySoRatherThanReadAsNone(t *testing.T) {
 // page. Nothing in it may become part of that page.
 func TestAReportCannotWriteMarkupIntoTheOperatorsPage(t *testing.T) {
 	var out strings.Builder
-	err := render(&out, dashboard{ReportsOK: true, Reports: []store.Report{{
+	err := parseDashboard().Execute(&out, dashboard{ReportsOK: true, Reports: []store.Report{{
 		Kind:      "bug",
 		Body:      `<script>alert(1)</script>`,
 		Platform:  "android",
@@ -657,15 +657,15 @@ func TestTheExportsCarryReportsAndTalliesButNoReaderAndAreNeverCached(t *testing
 // answers 200 with the page and logs no ERROR.
 func TestATemplateFaultIsA500AndAnErrorNotATruncatedPage(t *testing.T) {
 	db, _ := testenv.Postgres(t)
-	serve := func() (*httptest.ResponseRecorder, string) {
+	serve := func(tmpl *template.Template) (*httptest.ResponseRecorder, string) {
 		var logs strings.Builder
-		s := &server{db: db, log: slog.New(slog.NewJSONHandler(&logs, nil))}
+		s := &server{db: db, log: slog.New(slog.NewJSONHandler(&logs, nil)), tmpl: tmpl}
 		w := httptest.NewRecorder()
 		s.dashboard(w, httptest.NewRequest(http.MethodGet, "/", nil))
 		return w, logs.String()
 	}
 
-	w, logs := serve()
+	w, logs := serve(parseDashboard())
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "</html>") {
 		t.Fatalf("the real template: %d, want 200 and the whole page:\n%s", w.Code, w.Body)
 	}
@@ -673,11 +673,7 @@ func TestATemplateFaultIsA500AndAnErrorNotATruncatedPage(t *testing.T) {
 		t.Fatalf("an ERROR on a page that rendered:\n%s", logs)
 	}
 
-	real := tmpl
-	t.Cleanup(func() { tmpl = real })
-	tmpl = template.Must(template.New("broken").Parse(`<table>{{.NoSuchField}}</table>`))
-
-	w, logs = serve()
+	w, logs = serve(template.Must(template.New("broken").Parse(`<table>{{.NoSuchField}}</table>`)))
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("a template fault answered %d, want 500", w.Code)
 	}

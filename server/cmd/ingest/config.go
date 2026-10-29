@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -32,7 +33,7 @@ func loadConfig(fs *flag.FlagSet, args []string) (Config, error) {
 	fs.StringVar(&c.Out, "out", "./data/raw/", "directory the downloads land in; gitignored")
 	fs.StringVar(&c.Manifest, "manifest", "./data/manifest.json", "manifest to write; this is what git holds")
 	fs.StringVar(&only, "suras", "", "suras to fetch, e.g. 1,2,103,112 or 1-5 (default: all 114)")
-	fs.StringVar(&recitations, "recitations", strings.Join(defaultRecitations, ","),
+	fs.StringVar(&recitations, "recitations", strings.Join(slices.Clone(defaultRecitations), ","),
 		"which of quran-align's 12 recitations to take word timings from, comma-separated")
 	fs.DurationVar(&c.Delay, "delay", 200*time.Millisecond, "pause between requests")
 	fs.IntVar(&c.Retries, "retries", 5, "retries per request before giving up")

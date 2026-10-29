@@ -15,6 +15,8 @@ const minStem = 3
 // stripPrefixes and stripSuffixes are written in normalised orthography — no
 // diacritics, bare alef, ha for ta marbuta — because that is how the word arrives
 // here and how the store is keyed.
+//
+//ukubicheck:table the clitic prefixes
 var stripPrefixes = []struct {
 	text string
 	// before, when set, lists the letters this prefix may sit on. A particle that
@@ -30,6 +32,7 @@ var stripPrefixes = []struct {
 	{text: "ي"}, {text: "ت"}, {text: "ن"}, {text: "ا"},
 }
 
+//ukubicheck:table the clitic suffixes
 var stripSuffixes = []string{
 	"هما", "كما", "تما",
 	"ها", "هم", "هن", "كم", "كن", "نا", "ني", "تم", "تن",

@@ -164,6 +164,8 @@ const AyasInTheQuran = 6236
 // Where each juz starts, as an ayah id. The corpus is on the device, so the
 // server buckets by the boundaries themselves — the thirty printed in every
 // Ḥafṣ muṣḥaf, which is why they can be a constant rather than a join.
+//
+//ukubicheck:table the first ayah of each juz
 var juzStarts = [30]int{
 	1001, 2142, 2253, 3092, 4024, 4148, 5082, 6111, 7088, 8041,
 	9093, 11006, 12053, 15001, 17001, 18075, 21001, 23001, 25021, 27056,

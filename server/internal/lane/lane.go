@@ -29,8 +29,11 @@ import (
 // Perseus writes Lane's Arabic in a Buckwalter variant: A^ is hamza seated on
 // alef, y^ on ya, w^ on waw, A a bare alef, Y alef maqsura, the rest the usual
 // 28 letters.
+//
+//ukubicheck:table Buckwalter digraphs
 var two = map[string]rune{"A^": 'أ', "y^": 'ئ', "w^": 'ؤ'}
 
+//ukubicheck:table Buckwalter letters
 var one = map[byte]rune{
 	'A': 'ا', 'Y': 'ى', 'b': 'ب', 't': 'ت', 'v': 'ث', 'j': 'ج', 'H': 'ح',
 	'x': 'خ', 'd': 'د', '*': 'ذ', 'r': 'ر', 'z': 'ز', 's': 'س', '$': 'ش',
@@ -42,9 +45,11 @@ var one = map[byte]rune{
 // Every hamza folds onto أ and alef maqsura onto ي, on both sides. The published
 // root alphabet folds hamza the same way, so a join has to fold rather than
 // assume — see the note in data/SOURCES.md about قرأ and لؤلؤ.
-var hamza = strings.NewReplacer(
-	"ا", "أ", "إ", "أ", "آ", "أ", "ؤ", "أ", "ئ", "أ", "ء", "أ", "ى", "ي",
-)
+//
+// ponytail: the Replacer is built per call; Fold runs only in CLIs.
+func Fold(root string) string {
+	return strings.NewReplacer("ا", "أ", "إ", "أ", "آ", "أ", "ؤ", "أ", "ئ", "أ", "ء", "أ", "ى", "ي").Replace(root)
+}
 
 func arabic(key string) string {
 	var b strings.Builder
@@ -66,8 +71,6 @@ func arabic(key string) string {
 	return b.String()
 }
 
-func Fold(root string) string { return hamza.Replace(root) }
-
 // Prefix for the second index: every division is also held under its raw @n key,
 // because a key Lane vocalised is a key no Arabic fold can reach. The prefix
 // cannot collide with a folded root, which is Arabic letters only.
@@ -84,6 +87,8 @@ const rawKey = "@"
 // Hand-written because it was hand-measured. A rule that found these would have
 // to guess at Lane's filing, and the guess is what docs/research/lane-lexicon.md warns
 // against: do not key an implementation on the division index.
+//
+//ukubicheck:table the roots Lane files under another heading
 var filedElsewhere = map[string]string{
 	"بقل": "baqala", "تيه": "tyn", "جحد": "Hd", "جحم": "jHfl", "جهز": "Hhz",
 	"جهل": "jahila", "حرث": "Hrb", "حوج": "HaAja", "خبت": "xbv", "دبر": "dbx",

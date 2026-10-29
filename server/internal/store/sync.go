@@ -233,6 +233,8 @@ func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
 // a kind is whatever the device said it was. Counting an outcome under an
 // unrecognised word would let one device gone wrong grow sync_outcomes without
 // bound, so anything not in this list is counted as "unknown".
+//
+//ukubicheck:table the sync op kinds counted by name
 var opKinds = []string{
 	"ayah_understood", "kept_upsert", "kept_delete",
 	"set_recorded", "set_prayed", "prefs_set", "position_moved", "report_written",
@@ -359,7 +361,7 @@ func applyKeptDelete(ctx context.Context, tx pgx.Tx, userID string, body json.Ra
 // setNamespace is the uuidv5 namespace a set id is derived in. It is itself
 // uuidv5(NameSpaceURL, "https://wird.bnei.dev/set") so that the value can be
 // recomputed rather than trusted, and every device must use this same literal.
-var setNamespace = uuid.MustParse("302f8902-5d26-53eb-bfc6-b45ac9fff0c5")
+const setNamespace = "302f8902-5d26-53eb-bfc6-b45ac9fff0c5"
 
 // SetID is a set's identity, and it is a pure function of what the set is:
 // the range of ayas and the order they are read in. Nothing about where the
@@ -368,7 +370,7 @@ var setNamespace = uuid.MustParse("302f8902-5d26-53eb-bfc6-b45ac9fff0c5")
 // ever speaking, and the prayers on one set can be counted.
 func SetID(readingOrder string, startAyahID, endAyahID int) string {
 	key := fmt.Sprintf("%s:%d:%d", readingOrder, startAyahID, endAyahID)
-	return uuid.NewSHA1(setNamespace, []byte(key)).String()
+	return uuid.NewSHA1(uuid.MustParse(setNamespace), []byte(key)).String()
 }
 
 // readingOrders are the only two words a reading order is ever spelled with.
@@ -377,6 +379,8 @@ func SetID(readingOrder string, startAyahID, endAyahID int) string {
 // "it does not fit what is already recorded" — true, and no help to the
 // device that sent it. A set id is derived from this word, so a wrong
 // spelling is not a bad value: it is a set no other device can name.
+//
+//ukubicheck:table the reading orders a set id may name
 var readingOrders = []string{"mushaf", "nuzul"}
 
 func checkReadingOrder(order string) error {
@@ -604,7 +608,7 @@ func applyReport(ctx context.Context, tx pgx.Tx, op Op) error {
 // verdict_root is settled here for an arrived row, by isVerdict against the
 // roots served now, and carried for a held one, so a reseed that later drops a
 // root leaves the votes on it counted as votes.
-var sweepReportsSQL = `
+const sweepReportsSQL = `
 WITH arrived AS (DELETE FROM report_inbox RETURNING *),
      held AS (DELETE FROM reports RETURNING *),
      all_of_them AS (

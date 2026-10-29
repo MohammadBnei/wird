@@ -113,7 +113,7 @@ flowchart TD
 
 ### 1. rootd loads the file and serves it
 
-`main` reads its whole configuration once, through `load` in `config.go`, and refuses to start with every problem in one `config refused` line: an unset `ROOTD_API_KEY` without `ROOTD_DEV=1`, or a `ROOTD_RATE` that is not `0` or a finite rate of at least `0.25` ([config.go:40-91](../../jidhr/cmd/rootd/config.go#L40-L91)). The [README's table](../../jidhr/cmd/rootd/README.md) lists every variable. `ROOTD_CORPUS` defaults to `jidhr/testdata/quran.json` ([config.go:58-60](../../jidhr/cmd/rootd/config.go#L58-L60)). It loads the whole file into a `MemoryStore`. If the file is missing or broken, the process stops rather than serving empty answers.
+`main` reads its whole configuration once, through `load` in `config.go`, and refuses to start with every problem in one `config refused` line: an unset `ROOTD_API_KEY` without `ROOTD_DEV=1`, or a `ROOTD_RATE` that is not `0` or a finite rate of at least `0.25` ([config.go:42-93](../../jidhr/cmd/rootd/config.go#L42-L93)). The [README's table](../../jidhr/cmd/rootd/README.md) lists every variable. `ROOTD_CORPUS` defaults to `jidhr/testdata/quran.json` ([config.go:60-62](../../jidhr/cmd/rootd/config.go#L60-L62)). It loads the whole file into a `MemoryStore`. If the file is missing or broken, the process stops rather than serving empty answers.
 
 ```go
 	f, err := os.Open(corpusPath)
@@ -226,7 +226,7 @@ The Qur'anic file has no lexicon entries, so these rungs only hit for a file tha
 
 ### 6. Rung four: peel affixes
 
-`stripAffixes` peels known prefixes and suffixes off the key and returns candidate stems, most likely first ([strip.go:69](../../jidhr/pkg/root/strip.go#L69)). It never goes below three letters ([strip.go:13](../../jidhr/pkg/root/strip.go#L13)). Each stem goes back through rungs one to three ([root.go:146](../../jidhr/pkg/root/root.go#L146-L160)).
+`stripAffixes` peels known prefixes and suffixes off the key and returns candidate stems, most likely first ([strip.go:72](../../jidhr/pkg/root/strip.go#L72)). It never goes below three letters ([strip.go:13](../../jidhr/pkg/root/strip.go#L13)). Each stem goes back through rungs one to three ([root.go:146](../../jidhr/pkg/root/root.go#L146-L160)).
 
 ### 7. Rung five: what the corpus records for this spelling
 
@@ -253,7 +253,7 @@ When several roots share the key, the caller's own diacritics can settle it. `ق
 
 ### 8. A miss reports what it tried
 
-If nothing is attested, the templates in `pattern.go` propose readings ([pattern.go:252](../../jidhr/pkg/root/pattern.go#L252-L277)). They never decide the answer. They only fill the `candidates` list of the 404, with roots the file knows listed first ([root.go:212](../../jidhr/pkg/root/root.go#L212-L231)). So `باريس` stays a 404 however well it fits a shape.
+If nothing is attested, the templates in `pattern.go` propose readings ([pattern.go:252](../../jidhr/pkg/root/pattern.go#L259-L284)). They never decide the answer. They only fill the `candidates` list of the 404, with roots the file knows listed first ([root.go:212](../../jidhr/pkg/root/root.go#L212-L231)). So `باريس` stays a 404 however well it fits a shape.
 
 ### 9. Errors become HTTP codes in one place
 
