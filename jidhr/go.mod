@@ -3,7 +3,7 @@ module github.com/MohammadBnei/wird/jidhr
 go 1.27.1
 
 require (
-	github.com/MohammadBnei/ukubi-go v0.0.0-20261028220812-cb6b357f2366
+	github.com/MohammadBnei/ukubi-go v0.1.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 )
 
