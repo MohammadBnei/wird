@@ -114,7 +114,7 @@ on:
       - '*'
 ```
 
-[release.yml:34-46](../../.github/workflows/release.yml#L34-L46) · concurrency at [release.yml:50-51](../../.github/workflows/release.yml#L50-L51)
+[release.yml:34-46](../../.github/workflows/release.yml#L34-L46) · concurrency at [release.yml:50-52](../../.github/workflows/release.yml#L50-L52)
 
 ### 2. The checks: the Go half of the gate
 
@@ -132,7 +132,7 @@ on:
         echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
 ```
 
-[checks.yml:22-30](../../.github/workflows/checks.yml#L22-L30) · gates job [checks.yml:41-61](../../.github/workflows/checks.yml#L41-L61) · image builds on pull requests [checks.yml:63-77](../../.github/workflows/checks.yml#L63-L77)
+[checks.yml:22-30](../../.github/workflows/checks.yml#L22-L30) · gates job [checks.yml:42-61](../../.github/workflows/checks.yml#L42-L61) · image builds on pull requests [checks.yml:65-77](../../.github/workflows/checks.yml#L65-L77)
 
 On a pull request the two images are also built, without pushing, on GitHub-hosted runners, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
 
@@ -168,7 +168,7 @@ Both images are built from the same Dockerfile, one target each, in one job and 
           done
 ```
 
-[release.yml:166-176](../../.github/workflows/release.yml#L166-L176) · job guard [release.yml:78-86](../../.github/workflows/release.yml#L78-L86) · password step [release.yml:110-121](../../.github/workflows/release.yml#L110-L121)
+[release.yml:166-176](../../.github/workflows/release.yml#L166-L176) · job guard [release.yml:79-86](../../.github/workflows/release.yml#L79-L86) · password step [release.yml:110-121](../../.github/workflows/release.yml#L110-L121)
 
 ### 4. One binary per image
 
