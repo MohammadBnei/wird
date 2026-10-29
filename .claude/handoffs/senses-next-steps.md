@@ -44,7 +44,7 @@ fvm flutter run -d <android device id> --dart-define=WIRD_ORIGIN=https://wird.bn
 ## Loose ends (none block 2-4)
 - Finding 9 open: matcher margin rule pins cursor (27/48 windows refused, median margin 0.158 vs `followMargin` 0.32). `docs/journal/voice-follow-walk.md`. Another session owns it.
 - `LoadSenses` in `server/cmd/etl/senses.go`: zero callers, not even own test (assigns `c.Senses` directly). Delete. Keep `checkSenses` in `server/cmd/etl/check.go` (`Corpus.Check` calls it) — inert while nothing assigns `c.Senses`; re-arms when a sense file loads.
-- Reviewer flag, NOT investigated: regenerated `data/root_senses.json` + `server/cmd/rootcheck/build.go` may leave ETL byline gate fatal. Verify: `go run ./server/cmd/etl -in <abs path>/data/raw/ -out /tmp/corpus.db -corpus-version 4`. `data/raw` gitignored, owner's machine only. Never overwrite `app/assets/corpus.db`.
+- Reviewer flag, NOT investigated: regenerated `data/root_senses.json` + `server/cmd/rootcheck/build.go` may leave ETL byline gate fatal. Verify: `go build -C server -o ../bin/ ./cmd/etl && bin/etl -in <abs path>/data/raw/ -out /tmp/corpus.db -corpus-version 4`. `data/raw` gitignored, owner's machine only. Never overwrite `app/assets/corpus.db`.
 - Served senses carry no evidence words → "words this was read from" section never draws (test pins loss). Basis prose English only (no `basis_fr`). `note_fr` is drawn for a reader in French, with the English as the fallback.
 - ~15 wide roots draft long (عرف 36 clauses, حقق 33). 40 rows unequal en/fr clause counts. Seeder never reorders.
 - `data/root_senses.tsv` + `.json` stay → future signed pass promotes 523 curated senses.
@@ -56,5 +56,5 @@ fvm flutter run -d <android device id> --dart-define=WIRD_ORIGIN=https://wird.bn
 - Never silence `the_app_calls_what_it_ships` with `excused_doors` row when real caller about to land.
 - Goldens never refreshed inside gate.
 - Bump `provenanceRevision` in `server/internal/api/senses.go` by hand whenever `sensesAttribution|sensesBasis|sensesSource` change, or installed devices never learn.
-- Prod seed/re-seed: DSN via env only (`DATABASE_URL=... go run ./server/cmd/senseseed -tsv data/root_senses_draft.tsv -roots app/assets/corpus.db`), no DSN flag exists (would be visible in `ps`, `-h`). `-dry` first. Ask owner for DSN, never guess. Same file re-seeded → version unchanged.
+- Prod seed/re-seed: DSN via env only (`go build -C server -o ../bin/ ./cmd/senseseed && DATABASE_URL=... bin/senseseed -tsv data/root_senses_draft.tsv -roots app/assets/corpus.db`), no DSN flag exists (would be visible in `ps`, `-h`). `-dry` first. Ask owner for DSN, never guess. Same file re-seeded → version unchanged.
 - Merge to `main` deploys. Open PR; only `checks` runs on it.
