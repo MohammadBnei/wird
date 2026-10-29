@@ -17,7 +17,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 | jidhr | `jidhr/` | Standalone Arabic root engine, own Go module. `rootd` serves `jidhr/testdata/quran.json` in memory: no DB, no network; key required unless `ROOTD_DEV=1`. ✗ not deployed (no caller). |
 | adminweb | `server/cmd/adminweb` | Ops view: totals, report triage, sense verdict tally, JSON export for agent (`.claude/rules/feedback.md`). Own image, `helm/adminweb-values.yaml` inert until infra-bootstrap (groups claim, forwardAuth, service account, restricted DB role). ADR 0004, 0026. |
 | CLI tools | `server/cmd/{ingest,etl,rootcheck,rootdraft,jidhrcorpus,senseseed}` | Dev-machine only. Never in image. |
-- `server/go.mod` requires jidhr + `replace => ../jidhr` (ADR 0035); `jidhrcorpus` imports its types. `go.work` still unions both for root commands. CI + qa.sh: `GOWORK=off`, `GOTOOLCHAIN=local` (CI), each module alone: `go -C server build ./...` (`./...` at root fails).
+- `server/go.mod` requires jidhr + `replace => ../jidhr` (ADR 0035); `jidhrcorpus` imports its types. `go.work` still unions both for root commands. CI + qa.sh: `GOWORK=off`, `GOTOOLCHAIN=local` (CI), each module alone: `go -C server build ./...` (`./...` at root fails). CI exception: gofmt + vet in go.work mode (ukubi-ci go-checks, no env input); build (pre-test) + test GOWORK=off.
 - `server/internal/rootsense` is only SQLite reader in server tree; importers = CLI tools only. `corpus.db` never in image.
 
 ## Data
@@ -120,11 +120,11 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Lexicon section removed from app; iʿrāb real from bundled `irab`; tafsir shows honest notice.
 
 ## Deploy
-- Merge to `main` deploys. PR runs `checks` only.
-- `.github/workflows/release.yml`: Go half of gate (build/vet/test `-p 1` on Postgres 18, issue-marker rule, corpus budget) → image build on self-hosted runner → bump `image.tag` in `helm/values.yaml` → ArgoCD (infra-bootstrap) syncs. Tag = short SHA, no semver.
+- Merge to `main` deploys. PR runs `.github/workflows/checks.yml` (Go gate, image builds no push), `trailers.yml` (commit rules), `app-checks.yml` (Flutter, app/** only). Shared jobs from `MohammadBnei/ukubi-ci`, pinned by sha.
+- `.github/workflows/release.yml` (push/dispatch only): calls `checks.yml` (gofmt/vet/test `-p 1` on Postgres 18, issue-marker rule, corpus budget) → image build on self-hosted runner → bump `image.tag` in `helm/values.yaml` → ArgoCD (infra-bootstrap) syncs. Tag = short SHA, no semver.
 - One image = `server/cmd/api` only. `Dockerfile` copies workspace.
 - `DATABASE_URL` from Secret assembled in infra-bootstrap; direct 5432, never pgbouncer (pgx prepared stmts + goose advisory lock break under txn pooling). DB role `connlimit` 20.
-- Flutter half (analyze, test, e2e) never runs in CI → run `scripts/qa.sh` locally before push.
+- Flutter in CI = `app-checks.yml` only (analyze + test minus goldens). Goldens, e2e, audits never in CI → run `scripts/qa.sh` locally before push.
 - Host: `https://wird.bnei.dev`.
 
 ## Gate: `scripts/qa.sh`

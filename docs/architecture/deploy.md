@@ -4,12 +4,12 @@
 
 ## Black box
 
-A merge to `main` is a release. Nobody cuts a version or presses a button. CI runs the Go half of **the gate**, builds two container images from one Dockerfile, `wird-api` and `wird-adminweb`, and writes their tag into this repo. ArgoCD sees the new tag and rolls the pod. A pull request runs the checks and stops there.
+A merge to `main` is a release. Nobody cuts a version or presses a button. CI runs the Go half of **the gate**, builds two container images from one Dockerfile, `wird-api` and `wird-adminweb`, and writes their tag into this repo. ArgoCD sees the new tag and rolls the pod. A pull request runs the checks, builds both images without pushing them, and stops there.
 
 | In | Out | Depends on |
 |---|---|---|
 | A push to `main` | A new `wird-api` pod answering on `https://wird.bnei.dev` | GitHub Actions, a self-hosted build runner, the cluster's image registry |
-| A pull request | A pass or fail on the Go checks, nothing deployed | A GitHub-hosted runner and a throwaway Postgres 18 |
+| A pull request | A pass or fail on the Go checks, both image builds and the commit rules, nothing deployed | GitHub-hosted runners, a throwaway Postgres 18, and the shared workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci) |
 | The database address and object store keys | Environment variables in the pod | A Kubernetes Secret assembled outside this repo, from Infisical |
 | Any pull request or push to `main` | A pass or fail on doc links and diagrams | The `docs` workflow |
 
@@ -18,14 +18,14 @@ sequenceDiagram
   autonumber
   participant Dev as Developer
   participant GH as GitHub main
-  participant CI as release workflow
+  participant CI as release workflow, calling checks
   participant Reg as Image registry
   participant Argo as ArgoCD
   participant Pod as wird-api pod
   Dev->>Dev: run the full gate locally
   Dev->>GH: merge
   GH->>CI: push event
-  CI->>CI: Go build, vet, test, marker and size checks
+  CI->>CI: checks.yml: gofmt, vet, test, marker and size checks
   CI->>Reg: push wird-api and wird-adminweb, tagged with the commit
   CI->>GH: commit the new tag into helm values
   Argo->>GH: notice the new tag
@@ -57,20 +57,21 @@ flowchart LR
 ```mermaid
 flowchart TD
   ev{"event"}
-  checks["checks<br/>GitHub-hosted runner"]
-  gate{"pull request?"}
+  pr["checks.yml<br/>go-checks x2, gates,<br/>image-build x2 (no push)"]
+  tr["trailers.yml<br/>base..head only"]
+  rel["release.yml"]
+  checks["checks job<br/>calls checks.yml"]
   build["build-push<br/>self-hosted build runner"]
   push{"push to main?"}
   deploy["deploy<br/>bump helm values"]
   argo["ArgoCD sync"]
-  stop(["stop after checks"])
   done(["image in registry only"])
-  ev -->|pull_request| checks
-  ev -->|push to main| checks
-  ev -->|workflow_dispatch| checks
-  checks --> gate
-  gate -->|yes| stop
-  gate -->|no| build
+  ev -->|pull_request| pr
+  ev -->|pull_request| tr
+  ev -->|push to main| rel
+  ev -->|workflow_dispatch| rel
+  rel --> checks
+  checks --> build
   build --> push
   push -->|"no, manual run"| done
   push -->|yes| deploy
@@ -93,12 +94,13 @@ flowchart LR
 
 ### 1. What triggers a release
 
-The workflow runs on pull requests, on pushes to `main`, and by hand. Pushes that only touch markdown or `helm/` are ignored. That stops the deploy job's own commit from starting another release. Two releases in flight cancel the older one, so the newest tag always wins. A pull request runs in a group of its own, so a push to `main` no longer cancels its checks.
+`release.yml` runs on pushes to `main` and by hand. Pushes that only touch markdown or `helm/` are ignored. That stops the deploy job's own commit from starting another release. Two releases in flight cancel the older one, so the newest tag always wins.
+
+Pull requests do not run `release.yml`. They run `checks.yml` (the Go half of the gate and two image builds) and `trailers.yml` (the commit rules). Both are short callers of the reusable workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci), pinned by commit hash.
 
 ```yaml
 on:
   workflow_dispatch:
-  pull_request:
   push:
     branches:
       - main
@@ -112,24 +114,35 @@ on:
       - '*'
 ```
 
-[release.yml:34-47](../../.github/workflows/release.yml#L34-L47) · concurrency at [release.yml:53-55](../../.github/workflows/release.yml#L53-L55)
+[release.yml:34-46](../../.github/workflows/release.yml#L34-L46) · concurrency at [release.yml:50-52](../../.github/workflows/release.yml#L50-L52)
 
 ### 2. The checks: the Go half of the gate
 
-`checks` starts Postgres 18 from the repo's own `docker-compose.yml`, then builds, vets and tests both Go modules. It runs with `GOWORK: 'off'` and builds each module on its own, so `go.work` cannot hide a missing require in `server/go.mod`, and with `GOTOOLCHAIN: local`, so a module asking for a newer Go fails instead of downloading one. Two shell checks follow: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
+`checks.yml` runs on every pull request, and `release.yml` calls it before it builds anything. It calls the shared `go-checks` workflow once per Go module: `gofmt`, `go vet`, then `go test -race -count=1 -p 1`. For `server` it starts Postgres 18 from the repo's own `docker-compose.yml` first. Before the tests run, it sets `GOWORK=off` and `GOTOOLCHAIN=local` and builds every package of the module, so `go.work` cannot hide a missing require in `server/go.mod`, a module asking for a newer Go fails instead of downloading one, and every binary still links. `gofmt` and `vet` still run in workspace mode. Two shell checks follow in the `gates` job: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
 
 ```yaml
-      - run: go -C jidhr build ./... && go -C server build ./...
-      - run: go -C jidhr vet ./... && go -C server vet ./...
+  server:
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    with:
+      working-directory: server
+      test-flags: '-p 1'
+      pre-test: |
+        docker compose up -d --wait postgres
+        export GOWORK=off GOTOOLCHAIN=local
+        echo GOWORK=off >> "$GITHUB_ENV"
+        echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
+        go -C server build ./...
 ```
 
-[release.yml:97-142](../../.github/workflows/release.yml#L97-L142) · marker rule [release.yml:144-152](../../.github/workflows/release.yml#L144-L152) · corpus budget [release.yml:154-160](../../.github/workflows/release.yml#L154-L160)
+[checks.yml:23-33](../../.github/workflows/checks.yml#L23-L33) · gates job [checks.yml:47-68](../../.github/workflows/checks.yml#L47-L68) · image builds on pull requests [checks.yml:72-84](../../.github/workflows/checks.yml#L72-L84)
 
-The Flutter half of the gate never runs in CI. It needs fvm and a device, and the runners have neither. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
+On a pull request the two images are also built, without pushing, on GitHub-hosted runners, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
+
+Only part of the Flutter half of the gate runs in CI: `app-checks.yml` runs `flutter analyze` and the tests minus the goldens on pull requests that touch `app/`. The goldens and the e2e journeys need fvm, a Mac and a device, and the runners have none of them. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
 
 ### 3. The image tag is the commit
 
-`build-push` never runs on a pull request, because a pull request has nothing to push. It tags the image with the first 12 characters of the commit hash. There is no semver and no `latest` tag.
+`build-push` never runs on a pull request, because a pull request has nothing to push; `release.yml` does not run on one at all. It tags the image with the first 12 characters of the commit hash. There is no semver and no `latest` tag.
 
 ```yaml
       - name: Compute the image tag
@@ -137,7 +150,7 @@ The Flutter half of the gate never runs in CI. It needs fvm and a device, and th
         run: echo "value=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
 ```
 
-[release.yml:182-184](../../.github/workflows/release.yml#L182-L184)
+[release.yml:96-98](../../.github/workflows/release.yml#L96-L98)
 
 It builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC at build time. It is never stored in the repo.
 
@@ -157,7 +170,7 @@ Both images are built from the same Dockerfile, one target each, in one job and 
           done
 ```
 
-[release.yml:250-260](../../.github/workflows/release.yml#L250-L260) · job guard [release.yml:162-170](../../.github/workflows/release.yml#L162-L170) · password step [release.yml:194-205](../../.github/workflows/release.yml#L194-L205)
+[release.yml:164-174](../../.github/workflows/release.yml#L164-L174) · build runner [release.yml:79-84](../../.github/workflows/release.yml#L79-L84) · password step [release.yml:108-119](../../.github/workflows/release.yml#L108-L119)
 
 ### 4. One binary per image
 
@@ -201,7 +214,7 @@ ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
           done
 ```
 
-[release.yml:298-304](../../.github/workflows/release.yml#L298-L304) · commit and push [release.yml:309-320](../../.github/workflows/release.yml#L309-L320) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
+[release.yml:212-218](../../.github/workflows/release.yml#L212-L218) · commit and push [release.yml:223-234](../../.github/workflows/release.yml#L223-L234) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
 A manual run builds and pushes both images but skips this job, so it never deploys.
 
