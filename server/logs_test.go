@@ -290,7 +290,7 @@ func TestErrorSites(t *testing.T) {
 		`server/internal/auth/auth.go: Middleware: Failed("reader lookup")`,
 		`server/internal/httpx/serve.go: Failed: LevelError`,
 		`server/internal/httpx/serve.go: Failed: msg`,
-		`server/internal/httpx/serve.go: Serve: LevelError`, // http.Server.ErrorLog
+		`server/internal/httpx/serve.go: serve: LevelError`, // http.Server.ErrorLog
 		`server/internal/store/sync.go: classify: "op not applied"`,
 		`server/internal/store/sync.go: failedLevel: LevelError`,
 	}

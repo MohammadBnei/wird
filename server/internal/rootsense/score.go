@@ -538,6 +538,8 @@ func (ix *index) rootsOf(stem string) map[string]bool {
 	if ix == nil {
 		return nil
 	}
+	ix.mu.Lock()
+	defer ix.mu.Unlock()
 	if rs, ok := ix.cache[stem]; ok {
 		return rs
 	}

@@ -34,7 +34,7 @@ func TestServeDrainsInFlightOnCancel(t *testing.T) {
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	served := make(chan error, 1)
-	go func() { served <- Serve(ctx, ln, h, slog.New(slog.DiscardHandler), 0) }()
+	go func() { served <- serve(ctx, ln, h, slog.New(slog.DiscardHandler), 0) }()
 
 	got := make(chan int, 1)
 	go func() {
@@ -88,7 +88,7 @@ func TestServeAnswersWhileEndpointsSettle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	served := make(chan error, 1)
 	go func() {
-		served <- Serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), slog.New(slog.DiscardHandler), time.Second)
+		served <- serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), slog.New(slog.DiscardHandler), time.Second)
 	}()
 	cancel()
 	resp, err := http.Get("http://" + ln.Addr().String())
@@ -113,7 +113,7 @@ func TestServeErrorLogIsError(t *testing.T) {
 	log := slog.New(slog.NewJSONHandler(lockedWriter{&mu, &buf}, nil))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go Serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("boom") }), log, 0)
+	go serve(ctx, ln, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("boom") }), log, 0)
 
 	if resp, err := http.Get("http://" + ln.Addr().String()); err == nil {
 		io.Copy(io.Discard, resp.Body)

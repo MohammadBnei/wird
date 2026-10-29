@@ -102,10 +102,13 @@ func TestAnAyaIsMissingFromTheMorphologyFileAndEveryWordOfItIsUnparsed(t *testin
 // A role ships in both languages or neither: half a vocabulary is a French
 // reader shown English where a word's role should be.
 func TestARoleShipsInOneLanguageOnly(t *testing.T) {
-	saved := irabRoles["POS:V"]
-	irabRoles["POS:V"] = [2]string{saved[0], "  "}
-	t.Cleanup(func() { irabRoles["POS:V"] = saved })
-	if err := load(t, fixtureDir).Check(false); err == nil {
+	roles := IrabRoles()
+	for i := range roles {
+		if roles[i].Code == "POS:V" {
+			roles[i].Fr = "  "
+		}
+	}
+	if errs := load(t, fixtureDir).checkIrab(roles); len(errs) == 0 {
 		t.Fatal("a role with no French passed the build")
 	}
 }

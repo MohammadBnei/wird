@@ -45,10 +45,16 @@ var one = map[byte]rune{
 // Every hamza folds onto أ and alef maqsura onto ي, on both sides. The published
 // root alphabet folds hamza the same way, so a join has to fold rather than
 // assume — see the note in data/SOURCES.md about قرأ and لؤلؤ.
-//
-// ponytail: the Replacer is built per call; Fold runs only in CLIs.
 func Fold(root string) string {
-	return strings.NewReplacer("ا", "أ", "إ", "أ", "آ", "أ", "ؤ", "أ", "ئ", "أ", "ء", "أ", "ى", "ي").Replace(root)
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case 'ا', 'إ', 'آ', 'ؤ', 'ئ', 'ء':
+			return 'أ'
+		case 'ى':
+			return 'ي'
+		}
+		return r
+	}, root)
 }
 
 func arabic(key string) string {

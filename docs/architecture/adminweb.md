@@ -225,12 +225,12 @@ It is applied once, by the report sweep in `wird-api`, when a report first arriv
 The tally groups them by root and language:
 
 ```go
-var senseVerdictsSQL = `
+const senseVerdictsSQL = `
 SELECT r.verdict_root, r.locale,
        count(*) FILTER (WHERE r.body = 'sense good: ' || r.verdict_root) AS good,
        count(*) FILTER (WHERE r.body = 'sense bad: ' || r.verdict_root) AS bad,
        count(*) FILTER (WHERE r.body = 'sense bad: ' || r.verdict_root AND r.sense_hash = ` +
-	senseHashSQL(`CASE WHEN r.locale = 'fr' THEN s.sense_fr ELSE s.sense_en END`) + `) AS bad_on_current
+	senseHashOpen + `CASE WHEN r.locale = 'fr' THEN s.sense_fr ELSE s.sense_en END` + senseHashClose + `) AS bad_on_current
   FROM reports r
   LEFT JOIN root_senses s ON s.root_letters = r.verdict_root
  WHERE r.verdict_root IS NOT NULL
@@ -238,7 +238,7 @@ SELECT r.verdict_root, r.locale,
  ORDER BY bad_on_current DESC, bad DESC, r.verdict_root, r.locale`
 ```
 
-[admin.go:261-271](../../server/internal/store/admin.go#L261-L271)
+[admin.go:257-267](../../server/internal/store/admin.go#L257-L267)
 
 Four choices matter here.
 
@@ -298,7 +298,7 @@ Both exports are JSON, gated and uncached like the page.
 }
 ```
 
-`GET /verdicts.json` returns the tally of step 5, worst first, as a list of `{ "root", "locale", "good", "bad", "bad_on_current" }` ([admin.go:274-280](../../server/internal/store/admin.go#L274-L280)).
+`GET /verdicts.json` returns the tally of step 5, worst first, as a list of `{ "root", "locale", "good", "bad", "bad_on_current" }` ([admin.go:270-276](../../server/internal/store/admin.go#L270-L276)).
 
 ### 8. What the agent does with them
 

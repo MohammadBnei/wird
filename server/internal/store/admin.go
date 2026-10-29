@@ -229,15 +229,11 @@ func (s *Store) TriageReport(ctx context.Context, id, category, status, issueURL
 	return ErrReportNotFound
 }
 
-// senseHashSQL is the sense_hash of a text, in SQL: the first twelve hex
-// characters of the sha256 of its UTF-8 bytes. The app computes the same thing
-// in Dart, and both sides are held to one shared vector, because a hash that
-// differs by one byte of encoding makes every verdict read as cast against
-// text since corrected.
-func senseHashSQL(text string) string { return senseHashOpen + text + senseHashClose }
-
-// senseHashOpen and senseHashClose are senseHashSQL around its text, as
-// constants so a constant statement can hash a column too.
+// senseHashOpen + text + senseHashClose is the sense_hash of a text, in SQL:
+// the first twelve hex characters of the sha256 of its UTF-8 bytes. The app
+// computes the same thing in Dart, and both sides are held to one shared
+// vector, because a hash that differs by one byte of encoding makes every
+// verdict read as cast against text since corrected.
 const senseHashOpen, senseHashClose = `left(encode(sha256(convert_to(`, `, 'UTF8')), 'hex'), 12)`
 
 // senseVerdictsSQL tallies the thumbs per root and language. A verdict is

@@ -115,7 +115,7 @@ func run(log *slog.Logger) int {
 		return 1
 	}
 	log.Info("wird-adminweb listening", "addr", ln.Addr().String(), "issuer", issuer, "audience", audience, "dev", cfg.Dev)
-	if err := httpx.Serve(ctx, ln, routes(db, verifier, css, log, tel), log, httpx.Settle); err != nil {
+	if err := httpx.Serve(ctx, ln, routes(db, verifier, css, log, tel), log); err != nil {
 		if ctx.Err() != nil {
 			log.Error("wird-adminweb shutdown failed", "err", err)
 		} else {

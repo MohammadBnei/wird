@@ -25,4 +25,4 @@ var SweepReportsSQL = sweepReportsSQL
 
 // SenseHashSQL is the sense_hash expression, so a test can hold it to the
 // vector the app is held to.
-var SenseHashSQL = senseHashSQL
+func SenseHashSQL(text string) string { return senseHashOpen + text + senseHashClose }

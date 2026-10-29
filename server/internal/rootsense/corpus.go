@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	_ "modernc.org/sqlite"
 )
@@ -54,6 +55,7 @@ type index struct {
 	// roots and carry no claim, while "unseen" and "believers" sit on one or two
 	// and naming them inside another root's sense is a claim about those roots.
 	dispersion map[string]map[string]bool
+	mu         sync.Mutex                 // guards cache: Check on two Roots of one Bucket may run at once
 	cache      map[string]map[string]bool // rootsOf, memoised
 }
 

@@ -91,7 +91,7 @@ func run(log *slog.Logger) int {
 	defer func() { stop(); loops.Wait() }()
 
 	log.Info("wird-api listening", "addr", ln.Addr().String(), "issuer", issuer, "dev", cfg.Dev)
-	if err := httpx.Serve(ctx, ln, api.Routes(db, authenticator, log, cfg.API, tel), log, httpx.Settle); err != nil {
+	if err := httpx.Serve(ctx, ln, api.Routes(db, authenticator, log, cfg.API, tel), log); err != nil {
 		if ctx.Err() != nil {
 			log.Error("wird-api shutdown failed", "err", err)
 		} else {
