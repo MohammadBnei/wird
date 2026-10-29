@@ -1,0 +1,18 @@
+# Commit rules over base..head only: Conventional subjects, no AI attribution
+# of any kind (CLAUDE.md). Re-runs when the PR title or body changes.
+name: trailers
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  trailers:
+    uses: MohammadBnei/ukubi-ci/.github/workflows/trailers.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    with:
+      conventional: true
+      agent-trailers: forbid
+      extra-banned: 'generated with'

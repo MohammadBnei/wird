@@ -1,0 +1,77 @@
+# The Go half of the gate. PRs run it directly; release.yml calls it before
+# building an image. The Flutter half is app-checks.yml; the commit-message
+# rules are trailers.yml. Reusable jobs live in MohammadBnei/ukubi-ci, pinned
+# by sha (v0.2.1).
+name: checks
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ponytail: gofmt and vet run in go.work workspace mode here; the go test step
+  # runs with GOWORK=off and GOTOOLCHAIN=local (set in pre-test) so a missing
+  # require still fails. Upgrade: an env input in ukubi-ci.
+  server:
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    with:
+      working-directory: server
+      test-flags: '-p 1'
+      pre-test: |
+        docker compose up -d --wait postgres
+        echo GOWORK=off >> "$GITHUB_ENV"
+        echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
+
+  jidhr:
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    with:
+      working-directory: jidhr
+      test-flags: '-p 1'
+      pre-test: |
+        echo GOWORK=off >> "$GITHUB_ENV"
+        echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
+
+  # Gate 7's shell-only half, lifted from scripts/qa.sh.
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The marker is assembled from two pieces so this file is not its own
+      # first hit.
+      - name: Every marker carries an issue number
+        run: |
+          set -uo pipefail
+          marker='TO'"DO"
+          hits=$(git grep -I -n --untracked -F -e "$marker" -- . ':!CONTRIBUTING.md' | grep -vF "$marker(#") || true
+          [ -z "$hits" ] || { echo "::error::a marker with no issue number behind it never comes back"; echo "$hits"; exit 1; }
+
+      # The 60 MB budget decides whether the bundled-corpus split works at all.
+      - name: corpus.db under budget
+        run: |
+          set -euo pipefail
+          bytes=$(wc -c <app/assets/corpus.db)
+          [ "$bytes" -le $((60 * 1024 * 1024)) ] || { echo "::error::corpus.db is $bytes bytes, over the 60 MB release budget"; exit 1; }
+
+  # Build only, no push, on GitHub-hosted runners. On a push to main
+  # release.yml's build-push job builds and pushes the same two targets.
+  image-api:
+    if: github.event_name == 'pull_request'
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    with:
+      image: wird-api
+      target: api
+
+  image-adminweb:
+    if: github.event_name == 'pull_request'
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    with:
+      image: wird-adminweb
+      target: adminweb

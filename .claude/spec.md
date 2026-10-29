@@ -120,8 +120,8 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Lexicon section removed from app; iʿrāb real from bundled `irab`; tafsir shows honest notice.
 
 ## Deploy
-- Merge to `main` deploys. PR runs `checks` only.
-- `.github/workflows/release.yml`: Go half of gate (build/vet/test `-p 1` on Postgres 18, issue-marker rule, corpus budget) → image build on self-hosted runner → bump `image.tag` in `helm/values.yaml` → ArgoCD (infra-bootstrap) syncs. Tag = short SHA, no semver.
+- Merge to `main` deploys. PR runs `.github/workflows/checks.yml` (Go gate, image builds no push), `trailers.yml` (commit rules), `app-checks.yml` (Flutter, app/** only). Shared jobs from `MohammadBnei/ukubi-ci`, pinned by sha.
+- `.github/workflows/release.yml` (push/dispatch only): calls `checks.yml` (gofmt/vet/test `-p 1` on Postgres 18, issue-marker rule, corpus budget) → image build on self-hosted runner → bump `image.tag` in `helm/values.yaml` → ArgoCD (infra-bootstrap) syncs. Tag = short SHA, no semver.
 - One image = `server/cmd/api` only. `Dockerfile` copies workspace.
 - `DATABASE_URL` from Secret assembled in infra-bootstrap; direct 5432, never pgbouncer (pgx prepared stmts + goose advisory lock break under txn pooling). DB role `connlimit` 20.
 - Flutter half (analyze, test, e2e) never runs in CI → run `scripts/qa.sh` locally before push.

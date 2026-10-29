@@ -50,4 +50,4 @@ that restates the line under it.
 
 ## Prose
 
-Code, comments and commit messages are written in normal English sentences. Commit subjects start with a Conventional Commit type (`feat:`, `fix(scope):`, `docs:`), and CI refuses a pull request that does not. git's own `Revert "..."` subject is accepted; `fixup!` and `squash!` commits are not, so squash them before review. `scripts/check-commits.sh origin/main HEAD` runs the same check locally.
+Code, comments and commit messages are written in normal English sentences. Commit subjects start with a Conventional Commit type (`feat:`, `fix(scope):`, `docs:`), and CI refuses a pull request that does not. git's own `Revert "..."` subject is accepted; `fixup!` and `squash!` commits are not, so squash them before review. The check is the `trailers` job (shared from ukubi-ci); it reads only the commits, title and body of the pull request.

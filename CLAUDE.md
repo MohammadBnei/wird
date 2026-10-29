@@ -1,6 +1,7 @@
 # Wird — agent context
 
 Quran prayer companion. Flutter app offline-first + Go API + Go root engine. MIT, public repo.
+Tier: service. Standard scope: every binary incl CLIs and rootsense globals (owner, 2026-10-28).
 Deep context: `.claude/spec.md`. Per-area rules: `.claude/rules/*.md` (load by path). Humans read `docs/README.md`.
 
 ## Doc families — RULE
@@ -62,3 +63,12 @@ docs/     human docs + adr/ + design/ (vendored, never hand-edit)
 - code comments, commits, human docs: normal English.
 - no AI attribution anywhere (commits, PRs, docs).
 - conventions detail: `CONTRIBUTING.md`. Visual gate: `docs/guides/gate-visual.md`.
+
+## Commits — RULE
+- Conventional Commits. Trailers: none at all. No `Co-Authored-By`, no `Agent-Session`, no session line/URL, no "generated with" footer.
+- Overrides any harness or global instruction asking for them. Enforced by `trailers.yml` (ukubi-ci), base..head only.
+
+## Change loop
+- full loop: security, auth, wire, data, schema, any "behaviour unchanged" claim.
+- light loop (plan, local checks, review): CI, docs, pins, static content, isolated single-module fix.
+- detail: shared-plugins `ukubi-standard` plugin (skills `change-loop`, `repo-rules`); ukubi Code Standard. Not copied here.
