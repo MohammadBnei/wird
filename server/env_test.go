@@ -258,9 +258,9 @@ func TestEnvUses(t *testing.T) {
 	}
 }
 
-// jidhr's CI tests rootd against jidhr's own ukubi-go pin (GOWORK=off), while
-// the image builds rootd through go.work, where the higher of the two pins
-// wins: two pins that differ ship a rootd nobody tested (docs/adr/0040).
+// jidhr's CI tests rootd against jidhr's own ukubi-go pin, while server builds
+// jidhr's packages through its replace => ../jidhr, where the higher of the two
+// pins wins: two pins that differ link a jidhr nobody tested (docs/adr/0040).
 func TestJidhrShipsTheUkubiGoItWasTestedWith(t *testing.T) {
 	pin := func(gomod string) string {
 		b, err := os.ReadFile(gomod)

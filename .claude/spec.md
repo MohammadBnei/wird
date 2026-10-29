@@ -17,7 +17,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 | jidhr | `jidhr/` | Standalone Arabic root engine, own Go module. `rootd` serves `jidhr/testdata/quran.json` in memory: no DB, no network; key required unless `ROOTD_DEV=1`. ✗ not deployed (no caller). |
 | adminweb | `server/cmd/adminweb` | Ops view: totals, report triage, sense verdict tally, JSON export for agent (`.claude/rules/feedback.md`). Own image, `helm/adminweb-values.yaml` inert until infra-bootstrap (groups claim, forwardAuth, service account, restricted DB role). ADR 0004, 0026. |
 | CLI tools | `server/cmd/{ingest,etl,rootcheck,rootdraft,jidhrcorpus,senseseed}` | Dev-machine only. Never in image. |
-- `server/go.mod` requires jidhr + `replace => ../jidhr` (ADR 0035); `jidhrcorpus` imports its types. `go.work` still unions both for root commands. CI + qa.sh: `GOWORK=off`, `GOTOOLCHAIN=local` (CI), each module alone: `go -C server build ./...` (`./...` at root fails). CI exception: gofmt + vet in go.work mode (ukubi-ci go-checks, no env input); build (pre-test) + test GOWORK=off.
+- `server/go.mod` requires jidhr + `replace => ../jidhr` (ADR 0035); `jidhrcorpus` imports its types. No go.work in git (gitignored); root-run CLIs → `go build -C server -o ../bin/ ./cmd/<x> && bin/<x>`. CI + qa.sh: `GOWORK=off`, `GOTOOLCHAIN=local` (CI), each module alone: `go -C server build ./...` (`./...` at root fails). CI: ukubi-ci go-checks per module; build (pre-test) + test GOWORK=off.
 - `server/internal/rootsense` is only SQLite reader in server tree; importers = CLI tools only. `corpus.db` never in image.
 
 ## Data
@@ -29,7 +29,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - `surahs.revelation_order` = Egyptian standard chronology.
 - Sources + licences per table: `data/SOURCES.md`. Morphology = Quranic Arabic Corpus (GPL + written grant of free usage). Repo = MIT (was AGPL-3.0). Timings = quran-align (CC BY 4.0), notice in `corpus_meta.notice`; ETL refuses build without it. Gloss/translit/Maash fr = Quran Foundation API; written grant of free use → one-week rule not binding. `words.gloss_fr` = The Last Dialogue pages, written grant 2026-09-30 (ADR 0012); matched by Arabic (LCS), never position; 128 words NULL → app shows `gloss_en`. `irab_roles.role_fr` drawn for French reader.
 - Exactly one agent/lane rebuilds `corpus.db` at a time.
-- ETL: `go run ./server/cmd/etl -in <abs path>/data/raw/ -out <out> -corpus-version N`. `data/raw/` gitignored → worktrees have none; pass absolute path to owner's checkout.
+- ETL: `go build -C server -o ../bin/ ./cmd/etl && bin/etl -in <abs path>/data/raw/ -out <out> -corpus-version N`. `data/raw/` gitignored → worktrees have none; pass absolute path to owner's checkout.
 - ETL hazards: word text + segment timings must come from same segmentation; overlapping segments exist → assert monotonic starts, not non-overlap.
 ### Device `wird.db`
 - One sqflite file = corpus copy + user tables (joins; no ATTACH). `openWird` (`app/lib/data/db.dart`) installs asset only when file absent; atomic via `.part` rename.
@@ -68,7 +68,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Authentik OIDC, public client, Auth Code + PKCE (S256 enforced by Authentik policy), no secret. Hand-rolled in `app/lib/data/auth.dart` (dio + `app_links`); tokens in sqflite `auth_tokens`. Issuer/client id/redirect = compile-time defines there.
 - Redirect `https://wird.bnei.dev/auth/callback` (App Link), strict match.
 - Server: `coreos/go-oidc` JWKS verify, `aud` = client id (not `wird`). Mints no tokens. Cluster shares one signing key across apps → `aud`/`iss` checks load-bearing.
-- Local: `docker compose up -d postgres oidc-stub` (mock issuer :8082). `WIRD_DEV=1 go run ./server/cmd/api`. api env: `DATABASE_URL OIDC_ISSUER OIDC_AUDIENCE` required unless `WIRD_DEV=1`, + `API_ADDR`, `WIRD_MODELS_S3_*`, `WIRD_APK_*`, `WIRD_ANDROID_SHA256`. Full table `docs/architecture/api.md`.
+- Local: `docker compose up -d postgres oidc-stub` (mock issuer :8082). `WIRD_DEV=1 go -C server run ./cmd/api`. api env: `DATABASE_URL OIDC_ISSUER OIDC_AUDIENCE` required unless `WIRD_DEV=1`, + `API_ADDR`, `WIRD_MODELS_S3_*`, `WIRD_APK_*`, `WIRD_ANDROID_SHA256`. Full table `docs/architecture/api.md`.
 - Different reader signing in clears device (`_handOver`); signing out drops tokens only.
 - Ops view auth = Authentik `platform-admins` group via forwardAuth. ADR 0004.
 
@@ -151,7 +151,7 @@ Distilled from design history + ADRs, checked against code. Code wins. ADRs in `
 - Never sign work as AI-generated (no co-author trailer, no generated-with footer, no session links).
 - Ask first: schema changes, new Flutter package, anything touching Authentik/shared Postgres, `corpus.db` > 60 MB.
 - Homebrew only, never `sudo`; installs recorded in `docs/toolchain.md`.
-- Parallel agents: own worktree each, commit own work, single-owner files (`theme/nocturne.dart`, goldens, `corpus.db`, `docs/toolchain.md`, `go.work`, `pubspec.yaml`).
+- Parallel agents: own worktree each, commit own work, single-owner files (`theme/nocturne.dart`, goldens, `corpus.db`, `docs/toolchain.md`, `pubspec.yaml`).
 
 ## Superseded plan claims (don't reintroduce)
 - `speech_to_text` platform ASR ✗ → sherpa_onnx phoneme model (ADR 0005, 0009).

@@ -16,10 +16,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ponytail: gofmt and vet run in go.work workspace mode here; the build in
-  # pre-test and the go test step run with GOWORK=off and GOTOOLCHAIN=local, so
-  # a missing require still fails and every binary still links, as qa.sh does.
-  # Upgrade: an env input in ukubi-ci.
+  # No go.work is committed, so every step runs each module on its own. The
+  # build in pre-test and the go test step also set GOWORK=off and
+  # GOTOOLCHAIN=local, as qa.sh does, so every binary still links.
   server:
     uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
     with:

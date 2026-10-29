@@ -48,7 +48,7 @@ Unknown screen → read `screenName` in `app/lib/features/report/report.dart`.
 - `/verdicts.json` per root + locale: `good`, `bad`, `bad_on_current`.
 - Act only on `bad_on_current` (votes on text served today). Old-text votes = history.
 - Sense pipeline: `server/cmd/rootdraft` (prompt `data/root-sense-prompt.md`), `server/cmd/rootcheck`, `server/cmd/senseseed`. Pipeline doc `docs/architecture/pipelines/senses.md`.
-- Proposed fix = `go run ./server/cmd/rootdraft -force -roots=<r1,r2>` → user confirms → run.
+- Proposed fix = `go build -C server -o ../bin/ ./cmd/rootdraft && bin/rootdraft -force -roots=<r1,r2>` (from root) → user confirms → run.
 
 ## 5. Issue
 - Dedupe first: `gh issue list --label from-reader --search "<topic>"`. Match → comment +1 paraphrase, no new issue.

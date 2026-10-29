@@ -3,8 +3,6 @@
 # from streaming 21 GB of Flutter build output to the daemon before the first
 # instruction runs.
 *
-!go.work
-!go.work.sum
 !server/
 !jidhr/
 !docs/design/nocturne-styles.css

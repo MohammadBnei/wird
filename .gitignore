@@ -2,6 +2,10 @@ data/raw/
 qa-report.json
 
 # Go
+# No workspace in git: each module builds on its own (server takes jidhr through
+# a replace, ADR 0035). A local `go work init ./jidhr ./server` stays possible.
+/go.work
+/go.work.sum
 /bin/
 *.test
 # `go build ./server/cmd/...` names its output after the last path element and

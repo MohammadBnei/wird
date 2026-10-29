@@ -4,8 +4,9 @@
 `app/assets/corpus.db`:
 
 ```
-go run ./server/cmd/ingest                      # -suras 1,2,103,112 for a partial run
-go run ./server/cmd/etl -in ./data/raw/ -out ./app/assets/corpus.db
+go build -C server -o ../bin/ ./cmd/ingest ./cmd/etl   # from the repo root
+bin/ingest                                      # -suras 1,2,103,112 for a partial run
+bin/etl -in ./data/raw/ -out ./app/assets/corpus.db
 ```
 
 That command writes `corpus_version` 6, which is what the shipped asset carries:

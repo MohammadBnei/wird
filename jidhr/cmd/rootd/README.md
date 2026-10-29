@@ -14,8 +14,9 @@ You need Go and a clone of this repository. Nothing else — no database and no 
 The corpus is a file in the repository and is read into memory at startup.
 
 ```bash
-ROOTD_DEV=1 go run ./jidhr/cmd/rootd           # :8081, the Qur'anic corpus, no key, 5 requests a second
-ROOTD_API_KEY=… go run ./jidhr/cmd/rootd       # the same, with every /v1 call asking for the key
+go build -C jidhr -o ../bin/ ./cmd/rootd       # from the repo root
+ROOTD_DEV=1 bin/rootd                          # :8081, the Qur'anic corpus, no key, 5 requests a second
+ROOTD_API_KEY=… bin/rootd                      # the same, with every /v1 call asking for the key
 ```
 
 A listener with no key is asked for by name: without `ROOTD_DEV=1`, an unset
@@ -212,7 +213,7 @@ Flutter app bundles. Edit the database — through `server/cmd/etl`, which refus
 sense the root's own words no longer bear out — then rebuild:
 
 ```bash
-WIRD_DEV=1 go run ./server/cmd/jidhrcorpus
+go build -C server -o ../bin/ ./cmd/jidhrcorpus && WIRD_DEV=1 bin/jidhrcorpus
 # ./jidhr/testdata/quran.json
 #   roots 1642  attested forms 17934  rootless forms 1189  roots with a meaning 523  languages [en fr]
 #   0.80 MB

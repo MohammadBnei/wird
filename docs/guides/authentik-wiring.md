@@ -235,7 +235,7 @@ it. Ten lines of shell and one browser tab.
    # WIRD_DEV=1 only fills DATABASE_URL here: the two set below win over it.
    WIRD_DEV=1 OIDC_ISSUER=https://authentik.bnei.dev/application/o/wird/ \
    OIDC_AUDIENCE=Um9Je1MQghdZ4SqAjB7cWtGNubP64phIuGqzdzro \
-   API_ADDR=:8085 go run ./server/cmd/api &
+   API_ADDR=:8085 go -C server run ./cmd/api &
    for k in id_token access_token; do
      printf '%s -> ' "$k"
      curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:8085/v1/sync \

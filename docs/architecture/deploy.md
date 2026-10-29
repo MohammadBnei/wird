@@ -81,7 +81,7 @@ flowchart TD
 ```mermaid
 flowchart LR
   subgraph image["Dockerfile"]
-    b["golang build stage<br/>go.work + server + jidhr"] --> bin["static wird-api and<br/>wird-adminweb binaries"]
+    b["golang build stage<br/>server, with jidhr beside it"] --> bin["static wird-api and<br/>wird-adminweb binaries"]
     bin --> base["base: alpine + ca-certificates<br/>user 10001"]
     base --> a["target api<br/>wird-api, :8080"]
     base --> aw["target adminweb<br/>wird-adminweb + stylesheet, :8081"]
@@ -118,7 +118,7 @@ on:
 
 ### 2. The checks: the Go half of the gate
 
-`checks.yml` runs on every pull request, and `release.yml` calls it before it builds anything. It calls the shared `go-checks` workflow once per Go module: `gofmt`, `go vet`, then `go test -race -count=1 -p 1`. For `server` it starts Postgres 18 from the repo's own `docker-compose.yml` first. Before the tests run, it sets `GOWORK=off` and `GOTOOLCHAIN=local` and builds every package of the module, so `go.work` cannot hide a missing require in `server/go.mod`, a module asking for a newer Go fails instead of downloading one, and every binary still links. `gofmt` and `vet` still run in workspace mode. Two shell checks follow in the `gates` job: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
+`checks.yml` runs on every pull request, and `release.yml` calls it before it builds anything. It calls the shared `go-checks` workflow once per Go module: `gofmt`, `go vet`, then `go test -race -count=1 -p 1`. For `server` it starts Postgres 18 from the repo's own `docker-compose.yml` first. Before the tests run, it sets `GOWORK=off` and `GOTOOLCHAIN=local` and builds every package of the module, so a local `go.work` cannot hide a missing require in `server/go.mod`, a module asking for a newer Go fails instead of downloading one, and every binary still links. Two shell checks follow in the `gates` job: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
 
 ```yaml
   server:
@@ -134,7 +134,7 @@ on:
         go -C server build ./...
 ```
 
-[checks.yml:23-33](../../.github/workflows/checks.yml#L23-L33) · gates job [checks.yml:47-68](../../.github/workflows/checks.yml#L47-L68) · image builds on pull requests [checks.yml:72-84](../../.github/workflows/checks.yml#L72-L84)
+[checks.yml:22-32](../../.github/workflows/checks.yml#L22-L32) · gates job [checks.yml:46-67](../../.github/workflows/checks.yml#L46-L67) · image builds on pull requests [checks.yml:71-83](../../.github/workflows/checks.yml#L71-L83)
 
 On a pull request the two images are also built, without pushing, on GitHub-hosted runners, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
 
@@ -174,14 +174,14 @@ Both images are built from the same Dockerfile, one target each, in one job and 
 
 ### 4. One binary per image
 
-The Dockerfile copies the Go workspace and builds two binaries, `server/cmd/api` and `server/cmd/adminweb`. Each final image holds one of them. The public page is part of that binary: `server/internal/site/static` is embedded, so it ships with every image and needs no other workload ([ADR 0018](../adr/0018-the-public-site-is-served-by-the-api.md)). The `app/` folder is never copied, so the bundled **corpus** cannot end up in the image. CGO is off, so the binaries are static. The one file outside the Go tree that is copied is the Nocturne stylesheet, which admin web reads at start. It is copied in the admin web stage rather than the build stage, so a stylesheet edit does not rebuild both binaries ([Dockerfile:52](../../Dockerfile#L52)).
+The Dockerfile builds inside the `server` module and copies `jidhr/` beside it, because `server/go.mod` replaces jidhr with `../jidhr` ([ADR 0035](../adr/0035-server-takes-jidhr-from-the-same-commit.md)). There is no `go.work`. It builds two binaries, `server/cmd/api` and `server/cmd/adminweb`. Each final image holds one of them. The public page is part of that binary: `server/internal/site/static` is embedded, so it ships with every image and needs no other workload ([ADR 0018](../adr/0018-the-public-site-is-served-by-the-api.md)). The `app/` folder is never copied, so the bundled **corpus** cannot end up in the image. CGO is off, so the binaries are static. The one file outside the Go tree that is copied is the Nocturne stylesheet, which admin web reads at start. It is copied in the admin web stage rather than the build stage, so a stylesheet edit does not rebuild both binaries ([Dockerfile:50](../../Dockerfile#L50)).
 
 ```dockerfile
-RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-api ./server/cmd/api \
- && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-adminweb ./server/cmd/adminweb
+RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-api ./cmd/api \
+ && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/wird-adminweb ./cmd/adminweb
 ```
 
-[Dockerfile:32-33](../../Dockerfile#L32-L33)
+[Dockerfile:30-31](../../Dockerfile#L30-L31)
 
 Both final images start from one Alpine base, for two reasons. It carries CA certificates, which the OIDC client needs to fetch the issuer's keys over HTTPS. And it keeps a shell for debugging. The process runs as an unprivileged user. The `api` target comes last, so a plain `docker build .` still produces `wird-api`.
 
@@ -198,7 +198,7 @@ EXPOSE 8081
 ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
 ```
 
-[Dockerfile:46-55](../../Dockerfile#L46-L55) · the `api` target [Dockerfile:57-61](../../Dockerfile#L57-L61) · the shared base [Dockerfile:40-44](../../Dockerfile#L40-L44)
+[Dockerfile:44-53](../../Dockerfile#L44-L53) · the `api` target [Dockerfile:55-59](../../Dockerfile#L55-L59) · the shared base [Dockerfile:38-42](../../Dockerfile#L38-L42)
 
 ### 5. Bump the tag, and only after the push
 
