@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -21,17 +22,19 @@ func TestErrorKeysComeOnlyFromTheRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tool := filepath.Join(t.TempDir(), "ukubicheck")
-	run := func(args ...string) {
+	run := func(args ...string) string {
 		t.Helper()
 		cmd := exec.Command("go", args...)
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(), "GOWORK=off")
-		if out, err := cmd.CombinedOutput(); err != nil {
+		out, err := cmd.CombinedOutput()
+		if err != nil {
 			t.Fatalf("go %v: %v\n%s", args, err, out)
 		}
+		return string(out)
 	}
-	run("build", "-o", tool, "github.com/MohammadBnei/ukubi-go/cmd/ukubicheck")
+	// go.mod's tool directive: built once into the build cache, not per run.
+	tool := strings.TrimSpace(run("tool", "-n", "ukubicheck"))
 	run("vet", "-vettool="+tool, "-envban=false", "-pkgstate=false", "-loglevel=false",
 		"-errkeys.registry=internal/keys/keys.go", "./...")
 }

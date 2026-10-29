@@ -46,7 +46,7 @@ func TestAnOpVerdictNamesTheKeyAClientBranchesOn(t *testing.T) {
 		{"no such kept item", me.ID, "kept_delete", `{"id":"7f1c3e2a-0000-4000-8000-0000000000aa","deleted_at":"2026-01-01T00:00:00Z"}`, store.OpRefused, "op.not_found", "no kept item 7f1c3e2a-0000-4000-8000-0000000000aa", ""},
 		{"pg class 22", me.ID, "kept_delete", `{"id":"x","deleted_at":"2026-01-01T00:00:00Z"}`, store.OpRefused, "op.bad_body", "the op body is not shaped like this kind", ""},
 		{"pg 23503", "00000000-0000-4000-8000-0000000000ff", "ayah_understood", `{"ayah_ids":[1001]}`, store.OpRefused, "op.not_found", "it refers to something that is not here", ""},
-		{"pg other 23", me.ID, "set_recorded", `{"id":"7f1c3e2a-0000-4000-8000-000000000001","start_ayah_id":1001,"end_ayah_id":1007,"reading_order":"x","created_at":"2026-01-01T00:00:00Z"}`, store.OpRefused, "op.conflict", "it does not fit what is already recorded", ""},
+		{"pg check 23514", me.ID, "set_recorded", `{"id":"7f1c3e2a-0000-4000-8000-000000000001","start_ayah_id":1001,"end_ayah_id":1007,"reading_order":"x","created_at":"2026-01-01T00:00:00Z"}`, store.OpRefused, "op.bad_value", "it does not fit what is already recorded", ""},
 		{"server fails", me.ID, "ayah_understood", `{"ayah_ids":[1001]}`, store.OpFailed, "op.retry", "not applied, try again", "ayah_understood"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -59,5 +59,11 @@ func TestAnOpVerdictNamesTheKeyAClientBranchesOn(t *testing.T) {
 				t.Errorf("got %s %s %q, want %s %s %q", got.Status, got.Key, got.Reason, c.status, c.key, c.reason)
 			}
 		})
+	}
+
+	// An op id Postgres will not take is the id's fault, not the body's.
+	res, err := db.Apply(t.Context(), me.ID, []store.Op{{ClientOpID: "abc", Kind: "ayah_understood", Body: json.RawMessage(`{"ayah_ids":[1001]}`)}})
+	if err != nil || len(res) != 1 || res[0].Key != "op.bad_value" || res[0].Reason != "the op id is not a uuid" {
+		t.Errorf("a malformed op id answered %v %v", res, err)
 	}
 }

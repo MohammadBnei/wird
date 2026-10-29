@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -47,23 +48,20 @@ type OpResult struct {
 	Key errs.Key `json:"key,omitempty"`
 }
 
-// errRefused marks a write that will never succeed however often it is sent.
-// Anything else is this server having a bad minute, and is worth retrying.
-var errRefused = errors.New("refused")
-
-// refusal is a refused write and its key. It is errRefused underneath, so
-// errors.Is still finds it, and its text is still "refused: <reason>", which
-// reason() cuts.
+// A refusal marks a write that will never succeed however often it is sent,
+// with the key a client branches on and the reason a person reads. Anything
+// else is this server having a bad minute, and is worth retrying. cause is
+// what the server logs and the device never sees.
 type refusal struct {
-	key errs.Key
-	err error
+	key    errs.Key
+	reason string
+	cause  error
 }
 
-func (r *refusal) Error() string { return r.err.Error() }
-func (r *refusal) Unwrap() error { return r.err }
+func (r *refusal) Error() string { return "refused: " + r.reason }
 
 func refuse(key errs.Key, format string, a ...any) error {
-	return &refusal{key, fmt.Errorf("%w: %s", errRefused, fmt.Sprintf(format, a...))}
+	return &refusal{key: key, reason: fmt.Sprintf(format, a...)}
 }
 
 // Apply lands a batch one op at a time, each in its own transaction, and
@@ -122,6 +120,12 @@ func applyInTx(ctx context.Context, tx pgx.Tx, userID string, op Op) OpResult {
 		return classify(op, err)
 	}
 	first, err := recordOp(ctx, tx, userID, op.ClientOpID)
+	// The only value here the device chose is its op id; a class 22 is that
+	// id, not the body.
+	var pg *pgconn.PgError
+	if errors.As(err, &pg) && strings.HasPrefix(pg.Code, "22") {
+		return classify(op, refuse(keys.OpBadValue, "the op id is not a uuid"))
+	}
 	if err != nil {
 		return classify(op, err)
 	}
@@ -160,54 +164,32 @@ func lockReader(ctx context.Context, tx pgx.Tx, userID string) error {
 // will be. A malformed body, an id that is not a uuid and a prayer against a
 // set that is not there are all the device's to fix; everything else is ours.
 func classify(op Op, err error) OpResult {
+	refused := func(key errs.Key, reason string) OpResult {
+		return OpResult{ClientOpID: op.ClientOpID, Status: OpRefused, Reason: reason, Key: key}
+	}
+	// A Postgres refusal says what the device did wrong without saying which
+	// statement or which table said so.
+	var r *refusal
 	var pg *pgconn.PgError
-	refused := errors.Is(err, errRefused) ||
-		(errors.As(err, &pg) && (strings.HasPrefix(pg.Code, "22") || strings.HasPrefix(pg.Code, "23")))
-	if refused {
-		return OpResult{ClientOpID: op.ClientOpID, Status: OpRefused, Reason: reason(err), Key: refusedKey(err)}
+	switch {
+	case errors.As(err, &r):
+		if r.cause != nil {
+			// The kind only: nothing here names the reader.
+			slog.Default().Warn("op refused", "kind", op.Kind, "reason", r.reason, "cause", r.cause)
+		}
+		return refused(r.key, r.reason)
+	case !errors.As(err, &pg):
+	case strings.HasPrefix(pg.Code, "22"):
+		return refused(keys.OpBadBody, "the op body is not shaped like this kind")
+	case pg.Code == "23503":
+		return refused(keys.OpNotFound, "it refers to something that is not here")
+	// NOT NULL and CHECK reject the value itself, whatever is recorded.
+	case pg.Code == "23502" || pg.Code == "23514":
+		return refused(keys.OpBadValue, "it does not fit what is already recorded")
+	case strings.HasPrefix(pg.Code, "23"):
+		return refused(keys.OpConflict, "it does not fit what is already recorded")
 	}
 	return OpResult{ClientOpID: op.ClientOpID, Status: OpFailed, Reason: "not applied, try again", Key: keys.OpRetry}
-}
-
-// refusedKey is reason()'s twin: the same split, as a key.
-func refusedKey(err error) errs.Key {
-	var pg *pgconn.PgError
-	if errors.As(err, &pg) {
-		switch {
-		case strings.HasPrefix(pg.Code, "22"):
-			return keys.OpBadBody
-		case pg.Code == "23503":
-			return keys.OpNotFound
-		default:
-			return keys.OpConflict
-		}
-	}
-	var r *refusal
-	if errors.As(err, &r) {
-		return r.key
-	}
-	return keys.OpBadValue
-}
-
-// reason says what the device did wrong without saying which statement or
-// which table said so.
-func reason(err error) string {
-	var pg *pgconn.PgError
-	if errors.As(err, &pg) {
-		switch {
-		case strings.HasPrefix(pg.Code, "22"):
-			return "the op body is not shaped like this kind"
-		case pg.Code == "23503":
-			return "it refers to something that is not here"
-		default:
-			return "it does not fit what is already recorded"
-		}
-	}
-	if errors.Is(err, errRefused) {
-		_, msg, _ := strings.Cut(err.Error(), ": ")
-		return msg
-	}
-	return "refused"
 }
 
 func applyKind(ctx context.Context, tx pgx.Tx, userID string, op Op) error {
@@ -257,9 +239,11 @@ func (s *Store) countOutcome(ctx context.Context, kind, status string) {
 func decode(body json.RawMessage, into any) error {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
-	// Fixed words, not the decoder's: its text names Go types and fields.
+	// Fixed words, not the decoder's: its text names Go types and fields. The
+	// decoder's text goes to the log, so a field the server does not know yet
+	// is still named somewhere.
 	if err := decoder.Decode(into); err != nil {
-		return refuse(keys.OpBadBody, "the op body is not shaped like this kind")
+		return &refusal{key: keys.OpBadBody, reason: "the op body is not shaped like this kind", cause: err}
 	}
 	return nil
 }
