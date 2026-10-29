@@ -20,7 +20,7 @@ import (
 // with nothing beside it to say whose reading it is.
 
 const (
-	rawDir     = "../../../data/raw"
+	rawDir = "../../../data/raw"
 )
 
 var (
