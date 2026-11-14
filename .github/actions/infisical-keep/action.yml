@@ -37,7 +37,7 @@ runs:
       run: |
         set -euo pipefail
         python3 -I - <<'PY'
-        import json, os, re, secrets, sys
+        import json, os, re, secrets, sys, time
         import urllib.error, urllib.parse, urllib.request
 
         def esc(s):  # workflow-command data: % first, then CR and LF
@@ -46,14 +46,29 @@ runs:
         def fail(msg):
             print(f"::error::{msg}"); sys.exit(1)
 
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *a, **k):  # never follow: it would forward the bearer header
+                return None
+
+        opener = urllib.request.build_opener(NoRedirect)
+
         def call(req, what):
-            try:
-                with urllib.request.urlopen(req, timeout=30) as r:
-                    return json.loads(r.read().decode("utf-8"))
-            except urllib.error.HTTPError as e:  # status only: a body could echo input
-                fail(f"{what}: HTTP {e.code}")
-            except (urllib.error.URLError, ValueError, TimeoutError) as e:
-                fail(f"{what}: {type(e).__name__}")
+            # Retry only 429, 5xx and connection errors (3 tries); a 4xx is final.
+            for attempt in range(3):
+                try:
+                    with opener.open(req, timeout=30) as r:
+                        return json.loads(r.read().decode("utf-8"))
+                except urllib.error.HTTPError as e:  # status only: a body could echo input
+                    if e.code != 429 and e.code < 500:
+                        fail(f"{what}: HTTP {e.code}")
+                    err = f"HTTP {e.code}"
+                except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+                    err = type(e).__name__
+                except ValueError:
+                    fail(f"{what}: bad response")
+                if attempt < 2:
+                    time.sleep(float(os.environ.get("RETRY_SLEEP", "2")) * 2 ** attempt)
+            fail(f"{what}: {err}")
 
         env = os.environ
         keys, nomask = env["KEYS"].split(), env["NOMASK"].split()
@@ -88,13 +103,14 @@ runs:
         for key in keys:
             q = urllib.parse.urlencode({
                 "workspaceSlug": env["INFISICAL_PROJECT_SLUG"], "environment": env["INFISICAL_ENV"],
-                "secretPath": "/", "type": "shared", "expandSecretReferences": "true", "include_imports": "false"})
+                "secretPath": "/", "type": "shared", "expandSecretReferences": "true", "viewSecretValue": "true",
+                "include_imports": "true"})  # imports on, as the secrets-action defaults
             r = call(urllib.request.Request(
                 f"{domain}/api/v3/secrets/raw/{urllib.parse.quote(key, safe='')}?{q}",
                 headers={"Authorization": "Bearer " + token}), f"Infisical secret {key}")
             s = r.get("secret") or {}
             val = s.get("secretValue")
-            if s.get("secretKey") != key or not isinstance(val, str) or not val:
+            if s.get("secretValueHidden") or s.get("secretKey") != key or not isinstance(val, str) or not val:
                 fail(f"Infisical returned no {key}")
             values[key] = val
 
@@ -111,7 +127,10 @@ runs:
             masks = {val}  # the whole value, so a multi-line one is matched as such
             masks.update(l for l in re.split(r"\r\n|\r|\n", val) if len(l.strip()) >= 8)
             try:  # e.g. a service-account JSON: its inner strings appear alone in logs
-                masks.update(s for s in leaves(json.loads(val)) if len(s) >= 8)
+                for leaf in leaves(json.loads(val)):  # whole, and line by line (a decoded PEM)
+                    if len(leaf) >= 8:
+                        masks.add(leaf)
+                    masks.update(l for l in re.split(r"\r\n|\r|\n", leaf) if len(l.strip()) >= 8)
             except ValueError:
                 pass
             for m in sorted(masks):
