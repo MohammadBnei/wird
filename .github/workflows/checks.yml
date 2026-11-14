@@ -71,7 +71,8 @@ jobs:
           [ "$bytes" -le $((60 * 1024 * 1024)) ] || { echo "::error::corpus.db is $bytes bytes, over the 60 MB release budget"; exit 1; }
 
   # Build only, no push, on GitHub-hosted runners. On a push to main
-  # release.yml's build-push job builds and pushes the same two targets.
+  # release.yml's image-api and image-adminweb calls (ukubi-ci image.yml)
+  # build and push the same two targets.
   image-api:
     if: github.event_name == 'pull_request'
     uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
