@@ -154,7 +154,7 @@ After the checks, the `release` job calls ukubi-ci's `release.yml`. git-cliff re
     needs: checks
     permissions:
       contents: write # pushes the chore(release) commit and the tag
-    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@03a616159bbadc9503ed4b218659e3705c55d858 # v0.3.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
 ```
 
 [release.yml:78-82](../../.github/workflows/release.yml#L78-L82)
@@ -167,7 +167,7 @@ Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image: `image-ap
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@03a616159bbadc9503ed4b218659e3705c55d858 # v0.3.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
     with:
       runs-on: '["self-hosted","ukubi-build"]'
       image: wird-api
