@@ -1,7 +1,7 @@
 # The Go half of the gate. PRs run it directly; release.yml calls it before
 # building an image. The Flutter half is app-checks.yml; the commit-message
 # rules are trailers.yml. Reusable jobs live in MohammadBnei/ukubi-ci, pinned
-# by sha (v0.2.1).
+# by sha (v0.4.0).
 name: checks
 
 on:
@@ -22,10 +22,11 @@ jobs:
   # GOTOOLCHAIN=local, as qa.sh does, so a missing require still fails there.
   # Upgrade: an env input in ukubi-ci.
   server:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
     with:
       working-directory: server
       test-flags: '-p 1'
+      govulncheck: true
       pre-test: |
         docker compose up -d --wait postgres
         export GOWORK=off GOTOOLCHAIN=local
@@ -34,10 +35,11 @@ jobs:
         go -C server build ./...
 
   jidhr:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
     with:
       working-directory: jidhr
       test-flags: '-p 1'
+      govulncheck: true
       pre-test: |
         export GOWORK=off GOTOOLCHAIN=local
         echo GOWORK=off >> "$GITHUB_ENV"
@@ -73,14 +75,14 @@ jobs:
   # build and push the same two targets.
   image-api:
     if: github.event_name == 'pull_request'
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
     with:
       image: wird-api
       target: api
 
   image-adminweb:
     if: github.event_name == 'pull_request'
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
     with:
       image: wird-adminweb
       target: adminweb

@@ -12,22 +12,31 @@ on:
   pull_request:
     paths:
       - 'app/**'
+      - '.fvmrc'
       - '.github/workflows/app-checks.yml'
   workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-checks-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   app:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      # The version app/.fvmrc pins, so CI checks what was tested locally.
-      - uses: subosito/flutter-action@v2
+      # The version the repo-root .fvmrc pins, so CI checks what was tested locally.
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          flutter-version: 3.47.5
+          flutter-version-file: .fvmrc
           channel: stable
           cache: true
 

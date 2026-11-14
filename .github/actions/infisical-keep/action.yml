@@ -1,0 +1,143 @@
+# Export ONLY the named Infisical secrets to the job's env. Infisical/secrets-action
+# v1.0.12 has no single-secret input (a `secret-name:` is silently ignored), so
+# export-type env would put every secret in the folder into the env of all later
+# steps, and its file mode writes an unescaped KEY='value' file that cannot be
+# parsed reliably. So this logs in with the job's GitHub OIDC token (same identity,
+# same audience, same API the action uses) and fetches each named key on its own:
+# the rest of the folder is never read and nothing touches the disk.
+#
+# The job needs permissions: id-token: write. Reads INFISICAL_DOMAIN,
+# INFISICAL_PROJECT_SLUG, INFISICAL_ENV and INFISICAL_IDENTITY_ID from the
+# workflow env. Python stdlib only.
+name: infisical-keep
+description: Export only the listed Infisical secrets to the job env.
+inputs:
+  keys:
+    description: Space-separated secret names to keep.
+    required: true
+  nomask:
+    description: Space-separated subset of keys that are not secret and must not be masked (masking a short public value blanks it everywhere in the logs).
+    default: ''
+  oidc-audience:
+    description: Audience of the GitHub OIDC token (the secrets-action default for this estate).
+    default: infisical.bnei.dev
+runs:
+  using: composite
+  steps:
+    - name: Fetch and keep the named secrets
+      shell: bash
+      env:
+        KEYS: ${{ inputs.keys }}
+        NOMASK: ${{ inputs.nomask }}
+        OIDC_AUDIENCE: ${{ inputs.oidc-audience }}
+        INFISICAL_DOMAIN: ${{ env.INFISICAL_DOMAIN }}
+        INFISICAL_PROJECT_SLUG: ${{ env.INFISICAL_PROJECT_SLUG }}
+        INFISICAL_ENV: ${{ env.INFISICAL_ENV }}
+        INFISICAL_IDENTITY_ID: ${{ env.INFISICAL_IDENTITY_ID }}
+      run: |
+        set -euo pipefail
+        python3 -I - <<'PY'
+        import json, os, re, secrets, sys, time
+        import urllib.error, urllib.parse, urllib.request
+
+        def esc(s):  # workflow-command data: % first, then CR and LF
+            return s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+        def fail(msg):
+            print(f"::error::{msg}"); sys.exit(1)
+
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *a, **k):  # never follow: it would forward the bearer header
+                return None
+
+        opener = urllib.request.build_opener(NoRedirect)
+
+        def call(req, what):
+            # Retry only 429, 5xx and connection errors (3 tries); a 4xx is final.
+            for attempt in range(3):
+                try:
+                    with opener.open(req, timeout=30) as r:
+                        return json.loads(r.read().decode("utf-8"))
+                except urllib.error.HTTPError as e:  # status only: a body could echo input
+                    if e.code != 429 and e.code < 500:
+                        fail(f"{what}: HTTP {e.code}")
+                    err = f"HTTP {e.code}"
+                except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+                    err = type(e).__name__
+                except ValueError:
+                    fail(f"{what}: bad response")
+                if attempt < 2:
+                    time.sleep(float(os.environ.get("RETRY_SLEEP", "2")) * 2 ** attempt)
+            fail(f"{what}: {err}")
+
+        env = os.environ
+        keys, nomask = env["KEYS"].split(), env["NOMASK"].split()
+        domain = env["INFISICAL_DOMAIN"].rstrip("/")
+        if not keys:
+            fail("no keys requested")
+
+        # 1. The job's GitHub OIDC token, for the audience the action used (needs
+        #    id-token: write on the job). Masked at once, as is everything fetched.
+        if not env.get("ACTIONS_ID_TOKEN_REQUEST_URL"):
+            fail("no OIDC token endpoint: the job needs permissions: id-token: write")
+        url = env["ACTIONS_ID_TOKEN_REQUEST_URL"] + "&" + urllib.parse.urlencode({"audience": env["OIDC_AUDIENCE"]})
+        jwt = call(urllib.request.Request(url, headers={"Authorization": "bearer " + env["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]}), "GitHub OIDC token").get("value")
+        if not jwt:
+            fail("GitHub returned no OIDC token")
+        print(f"::add-mask::{esc(jwt)}")
+
+        # 2. Log in as the machine identity.
+        login = call(urllib.request.Request(
+            domain + "/api/v1/auth/oidc-auth/login",
+            data=json.dumps({"identityId": env["INFISICAL_IDENTITY_ID"], "jwt": jwt}).encode(),
+            headers={"Content-Type": "application/json"}), "Infisical login")
+        token = login.get("accessToken")
+        if not token:
+            fail("Infisical login returned no access token")
+        print(f"::add-mask::{esc(token)}")
+
+        # 3. One request per named key: the rest of the folder is never read, and
+        #    nothing is written to disk. Every key must exist and be non-empty before
+        #    anything reaches GITHUB_ENV.
+        values = {}
+        for key in keys:
+            q = urllib.parse.urlencode({
+                "workspaceSlug": env["INFISICAL_PROJECT_SLUG"], "environment": env["INFISICAL_ENV"],
+                "secretPath": "/", "type": "shared", "expandSecretReferences": "true", "viewSecretValue": "true",
+                "include_imports": "true"})  # imports on, as the secrets-action defaults
+            r = call(urllib.request.Request(
+                f"{domain}/api/v3/secrets/raw/{urllib.parse.quote(key, safe='')}?{q}",
+                headers={"Authorization": "Bearer " + token}), f"Infisical secret {key}")
+            s = r.get("secret") or {}
+            val = s.get("secretValue")
+            if s.get("secretValueHidden") or s.get("secretKey") != key or not isinstance(val, str) or not val:
+                fail(f"Infisical returned no {key}")
+            values[key] = val
+
+        def leaves(o):
+            if isinstance(o, str): yield o
+            elif isinstance(o, dict):
+                for v in o.values(): yield from leaves(v)
+            elif isinstance(o, list):
+                for v in o: yield from leaves(v)
+
+        for key, val in values.items():
+            if key in nomask:
+                continue
+            masks = {val}  # the whole value, so a multi-line one is matched as such
+            masks.update(l for l in re.split(r"\r\n|\r|\n", val) if len(l.strip()) >= 8)
+            try:  # e.g. a service-account JSON: its inner strings appear alone in logs
+                for leaf in leaves(json.loads(val)):  # whole, and line by line (a decoded PEM)
+                    if len(leaf) >= 8:
+                        masks.add(leaf)
+                    masks.update(l for l in re.split(r"\r\n|\r|\n", leaf) if len(l.strip()) >= 8)
+            except ValueError:
+                pass
+            for m in sorted(masks):
+                print(f"::add-mask::{esc(m)}")
+
+        with open(env["GITHUB_ENV"], "a", encoding="utf-8", newline="") as out:
+            for key, val in values.items():
+                d = "EOF_" + secrets.token_hex(16)
+                out.write(f"{key}<<{d}\n{val}\n{d}\n")
+        PY

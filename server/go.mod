@@ -1,6 +1,6 @@
 module github.com/MohammadBnei/wird/server
 
-go 1.27.1
+go 1.27.4
 
 require (
 	github.com/MohammadBnei/ukubi-go v0.1.0
@@ -46,7 +46,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
