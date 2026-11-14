@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 - 2026-11-14
+
+### Fixes
+
+- **ci:** Send an explicit User-Agent from infisical-keep (#58)
+
 ## 0.1.2 - 2026-11-14
 
 ### Other
