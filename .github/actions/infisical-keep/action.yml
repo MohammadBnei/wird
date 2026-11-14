@@ -51,6 +51,8 @@ runs:
                 return None
 
         opener = urllib.request.build_opener(NoRedirect)
+        # Cloudflare in front of Infisical 403s urllib's default User-Agent.
+        opener.addheaders = [("User-Agent", "wird-ci-infisical-keep/1"), ("Accept", "application/json")]
 
         def call(req, what):
             # Retry only 429, 5xx and connection errors (3 tries); a 4xx is final.
