@@ -62,7 +62,7 @@ jobs:
       id-token: write
     steps:
       # Full history: the tag check below asks whether the tag is on main.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
 
@@ -84,13 +84,13 @@ jobs:
           set -euo pipefail
           scripts/app-version.sh | tee -a "$GITHUB_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
           java-version: '17'
 
       # The version app/.fvmrc pins, so CI builds what was tested locally.
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: 3.47.5
           channel: stable
@@ -99,7 +99,7 @@ jobs:
       # One step per secret, so the job holds only what it uses even if the
       # project grows rows for other Wird jobs.
       - name: Keystore
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -111,7 +111,7 @@ jobs:
           secret-name: WIRD_ANDROID_KEYSTORE_P12
           export-type: env
       - name: Keystore password
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -123,7 +123,7 @@ jobs:
           secret-name: WIRD_ANDROID_KEYSTORE_PASSWORD
           export-type: env
       - name: Key alias
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -135,7 +135,7 @@ jobs:
           secret-name: WIRD_ANDROID_KEY_ALIAS
           export-type: env
       - name: Key password
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -147,7 +147,7 @@ jobs:
           secret-name: WIRD_ANDROID_KEY_PASSWORD
           export-type: env
       - name: Store access key
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -159,7 +159,7 @@ jobs:
           secret-name: WIRD_MODELS_S3_ACCESS_KEY
           export-type: env
       - name: Store secret
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -309,7 +309,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
 
@@ -325,19 +325,19 @@ jobs:
         id: version
         run: scripts/app-version.sh >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: 3.47.5
           channel: stable
           cache: true
 
       - name: Upload key
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -349,7 +349,7 @@ jobs:
           secret-name: WIRD_ANDROID_UPLOAD_P12
           export-type: env
       - name: Upload key password
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -361,7 +361,7 @@ jobs:
           secret-name: WIRD_ANDROID_UPLOAD_PASSWORD
           export-type: env
       - name: Upload key alias
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -373,7 +373,7 @@ jobs:
           secret-name: WIRD_ANDROID_UPLOAD_ALIAS
           export-type: env
       - name: Play service account
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -436,7 +436,7 @@ jobs:
 
       # Kept for the first upload, which Play only takes by hand in the
       # Console: the API cannot create the app's first release.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wird-aab
           path: app/build/app/outputs/bundle/release/app-release.aab
@@ -471,15 +471,15 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Keystore
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -491,7 +491,7 @@ jobs:
           secret-name: WIRD_ANDROID_KEYSTORE_P12
           export-type: env
       - name: Keystore password
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -503,7 +503,7 @@ jobs:
           secret-name: WIRD_ANDROID_KEYSTORE_PASSWORD
           export-type: env
       - name: Key alias
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -515,7 +515,7 @@ jobs:
           secret-name: WIRD_ANDROID_KEY_ALIAS
           export-type: env
       - name: Key password
-        uses: Infisical/secrets-action@v1.0.12
+        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -546,7 +546,7 @@ jobs:
             --include-cert --rsa-aes-encryption --encryption-key-path="$pem"
           rm -f "$RUNNER_TEMP/release.p12"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: play-app-signing-key
           path: ${{ runner.temp }}/wird-signing-key.zip
