@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 - 2026-11-14
+
+### Other
+
+- Build and deploy through ukubi-ci image.yml v0.3.0 (#56)
+
 ## 0.1.0 - 2026-10-29
 
 ### Features
