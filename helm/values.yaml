@@ -21,7 +21,7 @@ image:
   # the registry entry in infra-bootstrap belongs after this repo's first CI
   # run has replaced this line, or the first sync is an ImagePullBackOff
   # against a tag that was never built.
-  tag: "0cf997fb6566@sha256:55b0d8858776186c2f35163a97f17d71b629d7c961f90a319685d310eede8058"
+  tag: "1616780a9fdf@sha256:d38175eb8c4046745501081866f2679a83c83b2a6a2d71a94b47aeb96389b45a"
 
 # API_ADDR defaults to :8080 in server/cmd/api/config.go and nothing overrides it.
 service:
