@@ -11,8 +11,9 @@ image:
   # Let's Encrypt cannot issue for `.lan`, so there is no TLS and containerd is
   # configured to trust this host. Nodes pull over gigabit LAN.
   repository: registry.bnei.lan:5000/wird-api
-  # The commit the image was built from, not a semver. .github/workflows/
-  # release.yml writes this line after the push and never before — bumping it
+  # The commit the image was built from (`<short sha>@sha256:<digest>`), not a
+  # semver. ukubi-ci image.yml, called from .github/workflows/release.yml,
+  # writes this line after the push and never before — bumping it
   # in a PR looks equivalent and is not: ArgoCD syncs main within seconds of a
   # merge, while the image only exists minutes later.
   #
