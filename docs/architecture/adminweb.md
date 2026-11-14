@@ -132,7 +132,7 @@ It reads the vendored Nocturne stylesheet and refuses to start without it ([main
 
 Traces are off unless `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set, and then they work as they do in `wird-api` ([its Traces section](api.md#8-traces-off-unless-configured), [ADR 0040](../adr/0040-opt-in-traces.md)): one span per route but `/healthz`, named by its pattern and outside the gate, so a refused operator is traced too. Tracing is built before the pool and shut down last, after the drain ([main.go:53-65](../../server/cmd/adminweb/main.go#L53-L65)).
 
-### 2. Six routes, four of them gated
+### 2. Seven routes, four of them gated
 
 ```go
 	gated := func(h http.HandlerFunc) http.Handler { return noStore(operators(verifier, log, h)) }
@@ -146,18 +146,19 @@ Traces are off unless `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set, and then they
 	handle("POST /reports/{id}", http.NewCrossOriginProtection().Handler(gated(s.triage)))
 ```
 
-[main.go:150-158](../../server/cmd/adminweb/main.go#L150-L158). `handle` registers each route under its span, outermost; `/healthz` alone is registered bare.
+[main.go:151-159](../../server/cmd/adminweb/main.go#L151-L159). `handle` registers each route under its span, outermost; `/healthz` alone is registered bare.
 
 | Route | Gate | Answers |
 |---|---|---|
 | `GET /healthz` | none | 200 |
 | `GET /styles.css` | none | the Nocturne stylesheet |
+| `GET /icons/` | none | embedded favicons |
 | `GET /` | group | the dashboard |
 | `GET /reports.json` | group | written reports, newest first; `?status=new` narrows them |
 | `GET /verdicts.json` | group | the sense verdict tally |
 | `POST /reports/{id}` | cross-origin check, then group | 204 for JSON, a redirect to `/` for the form |
 
-Every gated answer carries `Cache-Control: no-store` ([main.go:162-167](../../server/cmd/adminweb/main.go#L162-L167)). A page or export kept by a proxy or a shared browser would be reports read by whoever opens that cache next.
+Every gated answer carries `Cache-Control: no-store` ([main.go:163-168](../../server/cmd/adminweb/main.go#L163-L168)). A page or export kept by a proxy or a shared browser would be reports read by whoever opens that cache next.
 
 ### 3. The group gate
 
@@ -205,11 +206,11 @@ Each section is read separately. A section that could not be read says so, inste
 	}
 ```
 
-[main.go:210-221](../../server/cmd/adminweb/main.go#L210-L221) · corpus and health above it [main.go:198-207](../../server/cmd/adminweb/main.go#L198-L207)
+[main.go:211-222](../../server/cmd/adminweb/main.go#L211-L222) · corpus and health above it [main.go:199-208](../../server/cmd/adminweb/main.go#L199-L208)
 
 The footer names the release serving the page, `wird-adminweb X.Y.Z`, or `dev` from a local build ([dashboard.html:180](../../server/cmd/adminweb/dashboard.html#L180)).
 
-Each report row shows the build, the screen, the corpus and sense versions, the language and the sense hash, and a small triage form ([dashboard.html:94-124](../../server/cmd/adminweb/dashboard.html#L94-L124)). The page is rendered by `html/template` from an embedded file ([main.go:350-360](../../server/cmd/adminweb/main.go#L350-L360)), which links the stylesheet served in step 2 ([dashboard.html:7](../../server/cmd/adminweb/dashboard.html#L7)).
+Each report row shows the build, the screen, the corpus and sense versions, the language and the sense hash, and a small triage form ([dashboard.html:97-127](../../server/cmd/adminweb/dashboard.html#L97-L127)). The page is rendered by `html/template` from an embedded file ([main.go:351-364](../../server/cmd/adminweb/main.go#L351-L364)), which links the stylesheet served in step 2 ([dashboard.html:10](../../server/cmd/adminweb/dashboard.html#L10)).
 
 ### 5. Sense verdicts are counted, not listed
 
@@ -253,7 +254,7 @@ A report's `locale` is `en`, `fr` or empty. The API blanks any other value on ar
 
 ### 6. Triage: the one write
 
-A triage is three values written together: a category (`sense`, `bug`, `ux`, `content`, `request`, `noise`, or none), a status (`new`, `issued`, `dismissed`), and an optional link to a GitHub issue. The page sends it as a form; the agent sends JSON, and an unknown key is a 400. Each value is checked against the column's own rule first, so a bad value is answered with its reason rather than read as the server failing ([main.go:288-302](../../server/cmd/adminweb/main.go#L288-L302)). The issue link must start with `https://github.com/`, because it is drawn as a link on the operator's page. One rule is stricter than the columns: a report marked `issued` must name its issue, or the request is a 400. The id in the path is parsed as a UUID and passed to the store in its canonical form, because the parser accepts spellings Postgres refuses ([main.go:326-332](../../server/cmd/adminweb/main.go#L326-L332)).
+A triage is three values written together: a category (`sense`, `bug`, `ux`, `content`, `request`, `noise`, or none), a status (`new`, `issued`, `dismissed`), and an optional link to a GitHub issue. The page sends it as a form; the agent sends JSON, and an unknown key is a 400. Each value is checked against the column's own rule first, so a bad value is answered with its reason rather than read as the server failing ([main.go:289-303](../../server/cmd/adminweb/main.go#L289-L303)). The issue link must start with `https://github.com/`, because it is drawn as a link on the operator's page. One rule is stricter than the columns: a report marked `issued` must name its issue, or the request is a 400. The id in the path is parsed as a UUID and passed to the store in its canonical form, because the parser accepts spellings Postgres refuses ([main.go:327-333](../../server/cmd/adminweb/main.go#L327-L333)).
 
 The store retries the write once, and the retry is not a hedge:
 
@@ -284,7 +285,7 @@ A triage is the operator's words about a report. Nothing in it travels back to a
 
 Both exports are JSON, gated and uncached like the page.
 
-`GET /reports.json` returns written reports, newest first, verdicts left out. `?status=new` (or `issued`, `dismissed`) narrows them; any other status is a 400 ([main.go:240-257](../../server/cmd/adminweb/main.go#L240-L257)). One export holds at most 5,000 reports, and `truncated` says when the cap cut it short ([admin.go:124-128](../../server/internal/store/admin.go#L124-L128)).
+`GET /reports.json` returns written reports, newest first, verdicts left out. `?status=new` (or `issued`, `dismissed`) narrows them; any other status is a 400 ([main.go:241-258](../../server/cmd/adminweb/main.go#L241-L258)). One export holds at most 5,000 reports, and `truncated` says when the cap cut it short ([admin.go:124-128](../../server/internal/store/admin.go#L124-L128)).
 
 ```json
 {
