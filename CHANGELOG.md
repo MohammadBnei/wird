@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 - 2026-11-14
+
+### Other
+
+- Pin actions by sha, add timeouts and concurrency, bump x/net (#57)
+
 ## 0.1.1 - 2026-11-14
 
 ### Other
