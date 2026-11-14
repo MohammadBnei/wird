@@ -88,10 +88,16 @@ jobs:
   # bump and its Infisical OIDC login). The identity binds the caller's claims;
   # this repo is already on its repository allowlist.
   #
-  # The second call needs the first: the api image and adminweb share a build
-  # stage, and --layers lets the second reuse it instead of compiling twice
-  # (and the two deploy bumps never race on main). Only main deploys; a
-  # dispatch on another branch is a dry run that builds and pushes only.
+  # NOT atomic, an accepted trade-off: image.yml cannot build both images and
+  # then deploy both, so wird-api is built, bumped and rolled by ArgoCD first
+  # and adminweb follows (about 4.5 minutes later). If adminweb fails or the
+  # run is cancelled, api ships alone: the two images then run different
+  # versions until the next release.
+  #
+  # image-adminweb needs image-api so the shared build stage is reused from the
+  # --layers cache instead of compiling twice, and it sets pull-newer: false to
+  # reuse the base image api just refreshed rather than pulling again. Only
+  # main deploys; a dispatch on another branch builds and pushes only.
   image-api:
     needs: release
     permissions:
@@ -124,4 +130,5 @@ jobs:
       version: ${{ needs.release.outputs.version }}
       version-arg: true
       cancel-in-progress: false
+      pull-newer: false
       values-file: helm/adminweb-values.yaml

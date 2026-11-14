@@ -63,9 +63,9 @@ flowchart TD
   rel["release.yml"]
   checks["checks job<br/>calls checks.yml"]
   release["release job<br/>ukubi-ci release.yml, git-cliff"]
-  build["build-push<br/>self-hosted build runner"]
+  build["image-api, then image-adminweb<br/>ukubi-ci image.yml, self-hosted build runner"]
   push{"on main?"}
-  deploy["deploy<br/>bump helm values"]
+  deploy["deploy job of each call<br/>bump helm values"]
   argo["ArgoCD sync"]
   done(["image in registry only"])
   ev -->|pull_request| pr
@@ -119,7 +119,7 @@ on:
       - '*'
 ```
 
-[release.yml:47-59](../../.github/workflows/release.yml#L47-L59) · concurrency at [release.yml:65-67](../../.github/workflows/release.yml#L65-L67)
+[release.yml:48-60](../../.github/workflows/release.yml#L48-L60) · concurrency at [release.yml:66-68](../../.github/workflows/release.yml#L66-L68)
 
 ### 2. The checks: the Go half of the gate
 
@@ -157,38 +157,33 @@ After the checks, the `release` job calls ukubi-ci's `release.yml`. git-cliff re
     uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
 ```
 
-[release.yml:97-101](../../.github/workflows/release.yml#L97-L101)
+[release.yml:78-82](../../.github/workflows/release.yml#L78-L82)
 
-`build-push` never runs on a pull request, because a pull request has nothing to push; `release.yml` does not run on one at all. It checks out the release commit and tags the image with the first 12 characters of its hash. There is no `latest` tag. The version goes in as a build-arg instead, checked first: `X.Y.Z` for a release, `X.Y.Z+<sha>` on `main` when nothing was released, `X.Y.Z-dev+<sha>` on a branch ([release.yml:184-199](../../.github/workflows/release.yml#L184-L199)).
-
-```yaml
-      - name: Compute the image tag
-        id: tag
-        run: echo "value=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
-```
-
-[release.yml:124-126](../../.github/workflows/release.yml#L124-L126)
-
-It builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC at build time. It is never stored in the repo.
-
-Both images are built from the same Dockerfile, one target each, in one job and from one commit. `--layers` lets the second build reuse the first one's build stage instead of compiling both binaries again; the cached layers are left to the build box's weekly prune.
+Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image: `image-api` builds `--target api` as `wird-api`, `image-adminweb` builds `--target adminweb` as `wird-adminweb`. Each call checks out the release commit and tags the image with the first 12 characters of its hash; there is no `latest` tag. The version goes in as a build-arg instead (`version-arg: true`, with the release's version as input), checked first: `X.Y.Z` for a release, `X.Y.Z+<sha>` on `main` when nothing was released, `X.Y.Z-dev+<sha>` on a branch. Neither call runs on a pull request: a pull request has nothing to push, and `release.yml` does not run on one at all.
 
 ```yaml
-          for target in api adminweb; do
-            image="$IMAGE"; [ "$target" = adminweb ] && image="$ADMIN_IMAGE"
-            sudo buildah bud \
-              --layers \
-              --isolation chroot \
-              --format docker \
-              --target "$target" \
-              --build-arg "VERSION=$VERSION" \
-              -t "$REGISTRY/$image:$TAG" \
-              .
-            sudo buildah push --tls-verify=false "$REGISTRY/$image:$TAG"
-          done
+  image-api:
+    needs: release
+    permissions:
+      contents: write
+      id-token: write
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@03a616159bbadc9503ed4b218659e3705c55d858 # v0.3.0
+    with:
+      runs-on: '["self-hosted","ukubi-build"]'
+      image: wird-api
+      target: api
+      ref: ${{ needs.release.outputs.tag }}
+      version: ${{ needs.release.outputs.version }}
+      version-arg: true
+      cancel-in-progress: false
+      values-file: helm/values.yaml
 ```
 
-[release.yml:210-221](../../.github/workflows/release.yml#L210-L221) · build runner [release.yml:103-108](../../.github/workflows/release.yml#L103-L108) · password step [release.yml:136-147](../../.github/workflows/release.yml#L136-L147)
+[release.yml:101-117](../../.github/workflows/release.yml#L101-L117) · `image-adminweb` [release.yml:119-134](../../.github/workflows/release.yml#L119-L134)
+
+`image.yml` builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC after the build, so it is never in the environment while the Dockerfile's `RUN` steps execute. It is never stored in the repo.
+
+The two images come from the same Dockerfile and the same commit, but in two calls, one after the other: `image-adminweb` needs `image-api`. `--layers` lets the second build reuse the first one's build stage instead of compiling both binaries again, and `pull-newer: false` on the second makes it reuse the base image the first just refreshed. The cached layers are left to the build box's weekly prune.
 
 ### 4. One binary per image
 
@@ -220,21 +215,17 @@ ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
 
 ### 5. Bump the tag, and only after the push
 
-`deploy` runs on `main`, from a push or a dispatch, once both images exist. It rewrites the tag line of `helm/values.yaml` and of `helm/adminweb-values.yaml`, to the same commit, and commits both. Bumping earlier would let ArgoCD pull a tag that is still being built. If the edit silently matches nothing, the job fails instead of going green.
+Each `image.yml` call ends with its own deploy job. It runs on `main`, from a push or a dispatch, once that call's image is pushed. It rewrites the tag line of one values file, `helm/values.yaml` for `wird-api` and `helm/adminweb-values.yaml` for `wird-adminweb`, to `<12-character sha>@sha256:<digest>`, and commits it as `chore(deploy): bump <image> image to <tag>`. Bumping earlier would let ArgoCD pull a tag that is still being built. The digest makes a rebuild of the same commit (a base-image fix) roll out. If the edit changes anything other than exactly one line, the job fails instead of going green.
+
+This is not atomic, and that is accepted. `image.yml` cannot build both images and then deploy both, so `wird-api` is bumped and rolled out by ArgoCD before `wird-adminweb` is even built, about four and a half minutes later. If the adminweb build fails or the run is cancelled, the API ships alone and the two run different versions until the next release.
 
 ```yaml
-          for f in helm/values.yaml helm/adminweb-values.yaml; do
-            sed -i -E "s/^(  tag: \")[^\"]+(\")/\1${TAG}\2/" "$f"
-            grep -q "^  tag: \"${TAG}\"$" "$f" || {
-              echo "::error::image.tag was not bumped in $f — check the sed against the file's actual indentation"
-              exit 1
-            }
-          done
+      values-file: helm/values.yaml
 ```
 
-[release.yml:263-269](../../.github/workflows/release.yml#L263-L269) · commit and push [release.yml:274-285](../../.github/workflows/release.yml#L274-L285) · the lines it edits [values.yaml:23](../../helm/values.yaml#L23), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
+[release.yml:117](../../.github/workflows/release.yml#L117) · adminweb [release.yml:134](../../.github/workflows/release.yml#L134) · the lines it edits [values.yaml:24](../../helm/values.yaml#L24), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
-A dispatch on `main` deploys like a push, because it cut a release. A dispatch on another branch builds and pushes both images but skips this job, so it never deploys.
+A dispatch on `main` deploys like a push, because it cut a release. A dispatch on another branch builds and pushes both images but skips the deploy jobs, so it never deploys.
 
 ### 6. What the pod is told
 
