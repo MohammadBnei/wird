@@ -2,10 +2,10 @@
 # (git-cliff: next vX.Y.Z from Conventional Commits, CHANGELOG.md, a
 # `chore(release)` commit and the tag, pushed atomically) -> build wird-api and
 # wird-adminweb from that release commit with the version as a build-arg ->
-# bump both helm values files to <sha>@<digest> so ArgoCD reconciles. Same shape and
+# pin both helm values files to <sha>@<digest> in one commit so ArgoCD reconciles. Same shape and
 # the same hard-won details as editable-blog's and drop's workflows, now kept in
-# ukubi-ci's image.yml (buildah via sudo -n, Infisical OIDC password, digest-pinned
-# bump, stale-run guard). Registry, runner and tag handling live there.
+# ukubi-ci's image.yml and deploy.yml (buildah via sudo -n, Infisical OIDC password,
+# digest-pinned bump, stale-run guard). Registry, runner and tag handling live there.
 #
 # WHAT THE GATE IS, AND WHICH HALF RUNS HERE. `./scripts/qa.sh` is Wird's gate
 # and its exit code is the verdict — but it cannot run on a GitHub runner, and
@@ -81,29 +81,25 @@ jobs:
       contents: write # pushes the chore(release) commit and the tag
     uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
 
-  # Build, push and deploy live in ukubi-ci's image.yml, once per image (one
-  # values file per call: each file pins its own image's digest). Both build
-  # from the release commit (`ref`) with the version as the VERSION build arg.
-  # The caller grants contents: write + id-token: write (image.yml's deploy
-  # bump and its Infisical OIDC login). The identity binds the caller's claims;
-  # this repo is already on its repository allowlist.
+  # Build and push live in ukubi-ci's image.yml, once per image, with
+  # deploy: false; one deploy.yml job then pins both digests in ONE commit, so
+  # ArgoCD rolls wird-api and wird-adminweb out together and only when both
+  # builds succeeded. Both build from the release commit (`ref`) with the
+  # version as the VERSION build arg. image.yml's nested jobs check
+  # contents: write + id-token: write on the caller even with deploy: false
+  # (the Infisical OIDC login); deploy.yml needs contents: write for the bump.
+  # Only main deploys; a dispatch on another branch builds and pushes only.
   #
-  # NOT atomic, an accepted trade-off: image.yml cannot build both images and
-  # then deploy both, so wird-api is built, bumped and rolled by ArgoCD first
-  # and adminweb follows (about 4.5 minutes later). If adminweb fails or the
-  # run is cancelled, api ships alone: the two images then run different
-  # versions until the next release.
-  #
-  # image-adminweb needs image-api so the shared build stage is reused from the
-  # --layers cache instead of compiling twice, and it sets pull-newer: false to
-  # reuse the base image api just refreshed rather than pulling again. Only
-  # main deploys; a dispatch on another branch builds and pushes only.
+  # image-adminweb still needs image-api: the shared build stage is reused from
+  # the --layers cache instead of compiling twice, and pull-newer: false reuses
+  # the base image api just refreshed rather than pulling again. The deploy
+  # waits for both anyway, so the chain costs only wall time, not atomicity.
   image-api:
     needs: release
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
     with:
       # NOT `ukubi`: that label belongs to the runner holding a ServiceAccount
       # token with cluster access. This one has none (infra-bootstrap ADR-0034).
@@ -114,14 +110,14 @@ jobs:
       version: ${{ needs.release.outputs.version }}
       version-arg: true
       cancel-in-progress: false
-      values-file: helm/values.yaml
+      deploy: false
 
   image-adminweb:
     needs: [release, image-api]
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
     with:
       runs-on: '["self-hosted","ukubi-build"]'
       image: wird-adminweb
@@ -131,4 +127,17 @@ jobs:
       version-arg: true
       cancel-in-progress: false
       pull-newer: false
-      values-file: helm/adminweb-values.yaml
+      deploy: false
+
+  # Skipped unless both builds succeed: never one image without the other.
+  # Both build the same ref, so api's commit is the built commit of both.
+  deploy:
+    needs: [image-api, image-adminweb]
+    permissions:
+      contents: write
+    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
+    with:
+      built-commit: ${{ needs.image-api.outputs.commit }}
+      pins: |
+        helm/values.yaml ${{ needs.image-api.outputs.tag }}@${{ needs.image-api.outputs.digest }}
+        helm/adminweb-values.yaml ${{ needs.image-adminweb.outputs.tag }}@${{ needs.image-adminweb.outputs.digest }}

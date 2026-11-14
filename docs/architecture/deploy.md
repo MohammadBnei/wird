@@ -63,9 +63,9 @@ flowchart TD
   rel["release.yml"]
   checks["checks job<br/>calls checks.yml"]
   release["release job<br/>ukubi-ci release.yml, git-cliff"]
-  build["image-api, then image-adminweb<br/>ukubi-ci image.yml, self-hosted build runner"]
+  build["image-api, then image-adminweb<br/>ukubi-ci image.yml (deploy: false), self-hosted build runner"]
   push{"on main?"}
-  deploy["deploy job of each call<br/>bump helm values"]
+  deploy["deploy job<br/>ukubi-ci deploy.yml, one bump commit"]
   argo["ArgoCD sync"]
   done(["image in registry only"])
   ev -->|pull_request| pr
@@ -159,7 +159,7 @@ After the checks, the `release` job calls ukubi-ci's `release.yml`. git-cliff re
 
 [release.yml:78-82](../../.github/workflows/release.yml#L78-L82)
 
-Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image: `image-api` builds `--target api` as `wird-api`, `image-adminweb` builds `--target adminweb` as `wird-adminweb`. Each call checks out the release commit and tags the image with the first 12 characters of its hash; there is no `latest` tag. The version goes in as a build-arg instead (`version-arg: true`, with the release's version as input), checked first: `X.Y.Z` for a release, `X.Y.Z+<sha>` on `main` when nothing was released, `X.Y.Z-dev+<sha>` on a branch. Neither call runs on a pull request: a pull request has nothing to push, and `release.yml` does not run on one at all.
+Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image, both with `deploy: false`: `image-api` builds `--target api` as `wird-api`, `image-adminweb` builds `--target adminweb` as `wird-adminweb`. Each call checks out the release commit and tags the image with the first 12 characters of its hash; there is no `latest` tag. The version goes in as a build-arg instead (`version-arg: true`, with the release's version as input), checked first: `X.Y.Z` for a release, `X.Y.Z+<sha>` on `main` when nothing was released, `X.Y.Z-dev+<sha>` on a branch. Neither call runs on a pull request: a pull request has nothing to push, and `release.yml` does not run on one at all.
 
 ```yaml
   image-api:
@@ -176,10 +176,10 @@ Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image: `image-ap
       version: ${{ needs.release.outputs.version }}
       version-arg: true
       cancel-in-progress: false
-      values-file: helm/values.yaml
+      deploy: false
 ```
 
-[release.yml:101-117](../../.github/workflows/release.yml#L101-L117) · `image-adminweb` [release.yml:119-134](../../.github/workflows/release.yml#L119-L134)
+[release.yml:97-113](../../.github/workflows/release.yml#L97-L113) · `image-adminweb` [release.yml:115-132](../../.github/workflows/release.yml#L115-L132)
 
 `image.yml` builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC after the build, so it is never in the environment while the Dockerfile's `RUN` steps execute. It is never stored in the repo.
 
@@ -215,17 +215,24 @@ ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
 
 ### 5. Bump the tag, and only after the push
 
-Each `image.yml` call ends with its own deploy job. It runs on `main`, from a push or a dispatch, once that call's image is pushed. It rewrites the tag line of one values file, `helm/values.yaml` for `wird-api` and `helm/adminweb-values.yaml` for `wird-adminweb`, to `<12-character sha>@sha256:<digest>`, and commits it as `chore(deploy): bump <image> image to <tag>`. Bumping earlier would let ArgoCD pull a tag that is still being built. The digest makes a rebuild of the same commit (a base-image fix) roll out. If the edit changes anything other than exactly one line, the job fails instead of going green.
+One `deploy` job calls ukubi-ci's `deploy.yml`, after both image calls succeeded. It runs on `main`, from a push or a dispatch. It rewrites the tag line of both values files, `helm/values.yaml` for `wird-api` and `helm/adminweb-values.yaml` for `wird-adminweb`, to `<12-character sha>@sha256:<digest>`, and commits both in one `chore(deploy): bump wird images` commit, so ArgoCD rolls the two out together. Bumping earlier would let ArgoCD pull a tag that is still being built. The digest makes a rebuild of the same commit (a base-image fix) roll out. `deploy.yml` refuses a missing file, a pin from another commit than `built-commit`, and an edit that changes anything other than exactly one line per file.
 
-This is not atomic, and that is accepted. `image.yml` cannot build both images and then deploy both, so `wird-api` is bumped and rolled out by ArgoCD before `wird-adminweb` is even built, about four and a half minutes later. If the adminweb build fails or the run is cancelled, the API ships alone and the two run different versions until the next release.
+If either build fails or the run is cancelled, nothing is bumped and the running pair stays as it was. `image-adminweb` still waits for `image-api` so the shared build stage comes from the layer cache; the chain costs wall time only.
 
 ```yaml
-      values-file: helm/values.yaml
+  deploy:
+    needs: [image-api, image-adminweb]
+    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
+    with:
+      built-commit: ${{ needs.image-api.outputs.commit }}
+      pins: |
+        helm/values.yaml ${{ needs.image-api.outputs.tag }}@${{ needs.image-api.outputs.digest }}
+        helm/adminweb-values.yaml ${{ needs.image-adminweb.outputs.tag }}@${{ needs.image-adminweb.outputs.digest }}
 ```
 
-[release.yml:117](../../.github/workflows/release.yml#L117) · adminweb [release.yml:134](../../.github/workflows/release.yml#L134) · the lines it edits [values.yaml:24](../../helm/values.yaml#L24), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
+[release.yml:134-143](../../.github/workflows/release.yml#L134-L143) · the lines it edits [values.yaml:24](../../helm/values.yaml#L24), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
-A dispatch on `main` deploys like a push, because it cut a release. A dispatch on another branch builds and pushes both images but skips the deploy jobs, so it never deploys.
+A dispatch on `main` deploys like a push, because it cut a release. A dispatch on another branch builds and pushes both images but skips the deploy job, so it never deploys.
 
 ### 6. What the pod is told
 
