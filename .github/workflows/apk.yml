@@ -105,9 +105,6 @@ jobs:
         with:
           keys: WIRD_ANDROID_KEYSTORE_P12 WIRD_ANDROID_KEYSTORE_PASSWORD WIRD_ANDROID_KEY_ALIAS WIRD_ANDROID_KEY_PASSWORD WIRD_MODELS_S3_ACCESS_KEY WIRD_MODELS_S3_SECRET
           nomask: WIRD_ANDROID_KEY_ALIAS
-      - name: Remove the Infisical secrets file
-        if: always()
-        run: rm -f "$GITHUB_WORKSPACE/.infisical-secrets"
 
       # GitHub masks only `secrets.*`. An unmasked Infisical value has leaked
       # in this estate before.
@@ -280,9 +277,6 @@ jobs:
         uses: ./.github/actions/infisical-keep
         with:
           keys: WIRD_ANDROID_UPLOAD_P12 WIRD_ANDROID_UPLOAD_PASSWORD WIRD_ANDROID_UPLOAD_ALIAS PLAY_SERVICE_ACCOUNT_JSON
-      - name: Remove the Infisical secrets file
-        if: always()
-        run: rm -f "$GITHUB_WORKSPACE/.infisical-secrets"
 
       # Same file, same reader, as the apk job: build.gradle.kts signs the
       # release with whatever key.properties names, here the upload key.
@@ -384,9 +378,6 @@ jobs:
         with:
           keys: WIRD_ANDROID_KEYSTORE_P12 WIRD_ANDROID_KEYSTORE_PASSWORD WIRD_ANDROID_KEY_ALIAS WIRD_ANDROID_KEY_PASSWORD
           nomask: WIRD_ANDROID_KEY_ALIAS
-      - name: Remove the Infisical secrets file
-        if: always()
-        run: rm -f "$GITHUB_WORKSPACE/.infisical-secrets"
 
       - name: Export for Play App Signing
         run: |

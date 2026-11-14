@@ -67,9 +67,6 @@ jobs:
         with:
           keys: ASC_KEY_P8 ASC_KEY_ID ASC_ISSUER_ID
           nomask: ASC_KEY_ID ASC_ISSUER_ID
-      - name: Remove the Infisical secrets file
-        if: always()
-        run: rm -f "$GITHUB_WORKSPACE/.infisical-secrets"
 
       - name: Key file
         run: |
