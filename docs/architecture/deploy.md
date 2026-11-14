@@ -154,7 +154,7 @@ After the checks, the `release` job calls ukubi-ci's `release.yml`. git-cliff re
     needs: checks
     permissions:
       contents: write # pushes the chore(release) commit and the tag
-    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@03a616159bbadc9503ed4b218659e3705c55d858 # v0.3.0
 ```
 
 [release.yml:78-82](../../.github/workflows/release.yml#L78-L82)
