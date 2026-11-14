@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   trailers:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/trailers.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/trailers.yml@03a616159bbadc9503ed4b218659e3705c55d858 # v0.3.0
     with:
       conventional: true
       agent-trailers: forbid

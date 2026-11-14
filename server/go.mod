@@ -1,6 +1,6 @@
 module github.com/MohammadBnei/wird/server
 
-go 1.27.1
+go 1.27.4
 
 require (
 	github.com/MohammadBnei/ukubi-go v0.1.0
