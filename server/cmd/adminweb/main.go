@@ -144,6 +144,7 @@ func routes(db *store.Store, verifier *oidc.IDTokenVerifier, css []byte, log *sl
 			log.WarnContext(r.Context(), "stylesheet not written", "err", err) // the client went away
 		}
 	}))
+	handle("GET /icons/", http.FileServerFS(icons)) // the favicon, like styles.css: no session needed
 	// Everything past here is behind the group, and none of it is cached: an
 	// operator's page or export kept by a proxy or a shared browser is reports
 	// read by whoever opens that cache next.
@@ -349,6 +350,9 @@ func (s *server) triage(w http.ResponseWriter, r *http.Request) {
 
 //go:embed dashboard.html
 var templates embed.FS
+
+//go:embed icons
+var icons embed.FS // served at /icons/
 
 // parseDashboard is the dashboard template. It is embedded, so a fault in it is
 // a build that should never have shipped: it panics at routes, before a request.
