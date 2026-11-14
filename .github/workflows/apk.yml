@@ -55,6 +55,7 @@ jobs:
   apk:
     if: ${{ !inputs.pepk }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     # contents: write to push the WIRD_APK_KEY bump, the way release.yml
     # pushes its image tag. id-token mints the OIDC token Infisical checks.
     permissions:
@@ -89,10 +90,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # The version app/.fvmrc pins, so CI builds what was tested locally.
+      # The version the repo-root .fvmrc pins, so CI builds what was tested locally.
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          flutter-version: 3.47.5
+          flutter-version-file: .fvmrc
           channel: stable
           cache: true
 
@@ -305,6 +306,7 @@ jobs:
   aab:
     if: ${{ !inputs.pepk && vars.PLAY_RELEASE_ENABLED == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: read
       id-token: write
@@ -332,7 +334,7 @@ jobs:
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          flutter-version: 3.47.5
+          flutter-version-file: .fvmrc
           channel: stable
           cache: true
 
@@ -467,6 +469,7 @@ jobs:
   pepk:
     if: ${{ inputs.pepk && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: read
       id-token: write
