@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4 - 2026-11-14
+
+### Other
+
+- Roll wird-api and wird-adminweb out atomically with ukubi-ci v0.5.0 deploy.yml (#59)
+
 ## 0.1.3 - 2026-11-14
 
 ### Fixes
