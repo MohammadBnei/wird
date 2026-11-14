@@ -12,6 +12,7 @@ on:
   pull_request:
     paths:
       - 'app/**'
+      - '.fvmrc'
       - '.github/workflows/app-checks.yml'
   workflow_call:
 

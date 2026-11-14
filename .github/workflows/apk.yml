@@ -99,78 +99,15 @@ jobs:
 
       # One step per secret, so the job holds only what it uses even if the
       # project grows rows for other Wird jobs.
-      - name: Keystore
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
+      # Only these keys leave the Infisical folder (see the action).
+      - name: Secrets
+        uses: ./.github/actions/infisical-keep
         with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_KEYSTORE_P12
-          export-type: env
-      - name: Keystore password
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_KEYSTORE_PASSWORD
-          export-type: env
-      - name: Key alias
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_KEY_ALIAS
-          export-type: env
-      - name: Key password
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_KEY_PASSWORD
-          export-type: env
-      - name: Store access key
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_MODELS_S3_ACCESS_KEY
-          export-type: env
-      - name: Store secret
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_MODELS_S3_SECRET
-          export-type: env
+          keys: WIRD_ANDROID_KEYSTORE_P12 WIRD_ANDROID_KEYSTORE_PASSWORD WIRD_ANDROID_KEY_ALIAS WIRD_ANDROID_KEY_PASSWORD WIRD_MODELS_S3_ACCESS_KEY WIRD_MODELS_S3_SECRET
+          nomask: WIRD_ANDROID_KEY_ALIAS
+      - name: Remove the Infisical secrets file
+        if: always()
+        run: rm -f "$GITHUB_WORKSPACE/.infisical-secrets"
 
       # GitHub masks only `secrets.*`. An unmasked Infisical value has leaked
       # in this estate before.
@@ -338,54 +275,14 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Upload key
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
+      # Only these keys leave the Infisical folder (see the action).
+      - name: Secrets
+        uses: ./.github/actions/infisical-keep
         with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_UPLOAD_P12
-          export-type: env
-      - name: Upload key password
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_UPLOAD_PASSWORD
-          export-type: env
-      - name: Upload key alias
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_UPLOAD_ALIAS
-          export-type: env
-      - name: Play service account
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: PLAY_SERVICE_ACCOUNT_JSON
-          export-type: env
+          keys: WIRD_ANDROID_UPLOAD_P12 WIRD_ANDROID_UPLOAD_PASSWORD WIRD_ANDROID_UPLOAD_ALIAS PLAY_SERVICE_ACCOUNT_JSON
+      - name: Remove the Infisical secrets file
+        if: always()
+        run: rm -f "$GITHUB_WORKSPACE/.infisical-secrets"
 
       # Same file, same reader, as the apk job: build.gradle.kts signs the
       # release with whatever key.properties names, here the upload key.
@@ -481,54 +378,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Keystore
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
+      # Only these keys leave the Infisical folder (see the action).
+      - name: Secrets
+        uses: ./.github/actions/infisical-keep
         with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_KEYSTORE_P12
-          export-type: env
-      - name: Keystore password
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_KEYSTORE_PASSWORD
-          export-type: env
-      - name: Key alias
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_KEY_ALIAS
-          export-type: env
-      - name: Key password
-        uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
-        with:
-          method: oidc
-          identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
-          oidc-audience: infisical.bnei.dev
-          domain: ${{ env.INFISICAL_DOMAIN }}
-          project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ env.INFISICAL_ENV }}
-          secret-path: /
-          secret-name: WIRD_ANDROID_KEY_PASSWORD
-          export-type: env
+          keys: WIRD_ANDROID_KEYSTORE_P12 WIRD_ANDROID_KEYSTORE_PASSWORD WIRD_ANDROID_KEY_ALIAS WIRD_ANDROID_KEY_PASSWORD
+          nomask: WIRD_ANDROID_KEY_ALIAS
+      - name: Remove the Infisical secrets file
+        if: always()
+        run: rm -f "$GITHUB_WORKSPACE/.infisical-secrets"
 
       - name: Export for Play App Signing
         run: |

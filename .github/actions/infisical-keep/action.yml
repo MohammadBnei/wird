@@ -1,0 +1,62 @@
+# Fetch the Infisical folder to a file, then export ONLY the named keys to the
+# job's env. Infisical/secrets-action v1.0.12 has no single-secret input (a
+# `secret-name:` is silently ignored), so export-type env would put every secret
+# in the folder into the env of all later steps. Same fix as ukubi-ci #8.
+#
+# Needs actions/checkout first (file mode writes into the workspace). The caller
+# adds `if: always()` to a step that runs `rm -f "$GITHUB_WORKSPACE/.infisical-secrets"`,
+# for a cancel between fetch and keep. Reads INFISICAL_* from the workflow env.
+name: infisical-keep
+description: Export only the listed Infisical secrets to the job env.
+inputs:
+  keys:
+    description: Space-separated secret names to keep.
+    required: true
+  nomask:
+    description: Space-separated subset of keys that are not secret and must not be masked (masking a short public value blanks it everywhere in the logs).
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Fetch to a file
+      uses: Infisical/secrets-action@a663da43e1541832614bfd9dcf9ab67381ea2b98 # v1.0.12
+      with:
+        method: oidc
+        identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
+        oidc-audience: infisical.bnei.dev
+        domain: ${{ env.INFISICAL_DOMAIN }}
+        project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+        env-slug: ${{ env.INFISICAL_ENV }}
+        secret-path: /
+        export-type: file
+        file-output-path: /.infisical-secrets
+
+    # The file holds KEY='value' lines (values may span lines). Only the named
+    # keys reach GITHUB_ENV, masked line by line, and the file is deleted either way.
+    - name: Keep only the named secrets
+      shell: bash
+      env:
+        KEYS: ${{ inputs.keys }}
+        NOMASK: ${{ inputs.nomask }}
+      run: |
+        set -euo pipefail
+        f="$GITHUB_WORKSPACE/.infisical-secrets"
+        trap 'rm -f "$f"' EXIT
+        [ -f "$f" ] || { echo "::error::Infisical wrote no secrets file"; exit 1; }
+        python3 -I - "$f" <<'PY'
+        import os, re, secrets, sys
+        text = open(sys.argv[1], encoding="utf-8").read()
+        nomask = os.environ["NOMASK"].split()
+        out = open(os.environ["GITHUB_ENV"], "a", encoding="utf-8")
+        for key in os.environ["KEYS"].split():
+            m = re.search(r"^" + re.escape(key) + r"='(.*?)'$(?=\n[A-Za-z_][A-Za-z0-9_]*='|\n?\Z)", text, re.M | re.S)
+            if not m or not m.group(1):
+                print(f"::error::Infisical returned no {key}"); sys.exit(1)
+            val = m.group(1)
+            if key not in nomask:
+                for line in val.splitlines():
+                    if line.strip():
+                        print(f"::add-mask::{line}")
+            d = "EOF_" + secrets.token_hex(16)
+            out.write(f"{key}<<{d}\n{val}\n{d}\n")
+        PY
