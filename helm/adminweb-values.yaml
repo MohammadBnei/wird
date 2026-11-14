@@ -13,7 +13,7 @@ image:
   repository: registry.bnei.lan:5000/wird-adminweb
   # Written by ukubi-ci image.yml (called from .github/workflows/release.yml)
   # after the push, as `<short sha>@sha256:<digest>`. Never bumped by hand.
-  tag: "33d4f2bc6618@sha256:0527e04209dd96858e90d5b302f0723f70a55ec30939d85321a183f8c4842a6d"
+  tag: "ce68ad0ae8d0@sha256:01fbfe47fea8ae98207038f870fdb6d8daac47be095e4b25d1592d5da302e116"
 
 # ADMIN_ADDR defaults to :8081 in server/cmd/adminweb/config.go.
 service:
