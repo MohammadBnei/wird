@@ -32,7 +32,8 @@ runs:
         file-output-path: /.infisical-secrets
 
     # The file holds KEY='value' lines (values may span lines). Only the named
-    # keys reach GITHUB_ENV, masked line by line, and the file is deleted either way.
+    # keys reach GITHUB_ENV, each value masked whole (plus its long lines and,
+    # for JSON, its inner strings), and the file is deleted either way.
     - name: Keep only the named secrets
       shell: bash
       env:
@@ -44,19 +45,60 @@ runs:
         trap 'rm -f "$f"' EXIT
         [ -f "$f" ] || { echo "::error::Infisical wrote no secrets file"; exit 1; }
         python3 -I - "$f" <<'PY'
-        import os, re, secrets, sys
-        text = open(sys.argv[1], encoding="utf-8").read()
+        import json, os, re, secrets, sys
+
+        def esc(s):  # workflow-command data: % first, then CR and LF
+            return s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+        def fail(msg):
+            print(f"::error::{msg}"); sys.exit(1)
+
+        text = open(sys.argv[1], encoding="utf-8", newline="").read()
         nomask = os.environ["NOMASK"].split()
-        out = open(os.environ["GITHUB_ENV"], "a", encoding="utf-8")
+
+        # The writer emits KEY='value' joined by "\n", with no escaping, and a value may
+        # hold newlines and quotes, so the file is not strictly parseable. Parse top-down,
+        # each entry ending at the first quote followed by "\nNEXTKEY='" or the end, and
+        # fail closed on anything that could be read another way: a value containing a
+        # line that looks like an entry, a duplicate key, or a tail that is no entry.
+        head = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)='")
+        end = re.compile(r"'(?=\n[A-Za-z_][A-Za-z0-9_]*='|\n?\Z)")
+        lookalike = re.compile(r"(^|\n)[A-Za-z_][A-Za-z0-9_]*='")
+        entries, pos = {}, 0
+        while pos < len(text):
+            m = head.match(text, pos)
+            e = end.search(text, m.end()) if m else None
+            if not e:
+                fail("Infisical secrets file: unexpected format")
+            k, v = m.group(1), text[m.end():e.start()]
+            if k in entries:
+                fail(f"Infisical secrets file: duplicate key {k}")
+            if lookalike.search(v):
+                fail(f"Infisical secrets file: ambiguous value for {k}")
+            entries[k] = v
+            pos = e.end() + (1 if text.startswith("\n", e.end()) else 0)
+
+        def leaves(o):
+            if isinstance(o, str): yield o
+            elif isinstance(o, dict):
+                for v in o.values(): yield from leaves(v)
+            elif isinstance(o, list):
+                for v in o: yield from leaves(v)
+
+        out = open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="")
         for key in os.environ["KEYS"].split():
-            m = re.search(r"^" + re.escape(key) + r"='(.*?)'$(?=\n[A-Za-z_][A-Za-z0-9_]*='|\n?\Z)", text, re.M | re.S)
-            if not m or not m.group(1):
-                print(f"::error::Infisical returned no {key}"); sys.exit(1)
-            val = m.group(1)
+            val = entries.get(key)
+            if not val:
+                fail(f"Infisical returned no {key}")
             if key not in nomask:
-                for line in val.splitlines():
-                    if line.strip():
-                        print(f"::add-mask::{line}")
+                masks = {val}  # the whole value, so a multi-line one is matched as such
+                masks.update(l for l in re.split(r"\r\n|\r|\n", val) if len(l.strip()) >= 8)
+                try:  # e.g. a service-account JSON: its inner strings appear alone in logs
+                    masks.update(s for s in leaves(json.loads(val)) if len(s) >= 8)
+                except ValueError:
+                    pass
+                for s in sorted(masks):
+                    print(f"::add-mask::{esc(s)}")
             d = "EOF_" + secrets.token_hex(16)
             out.write(f"{key}<<{d}\n{val}\n{d}\n")
         PY
