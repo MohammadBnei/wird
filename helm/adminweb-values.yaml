@@ -23,14 +23,15 @@ ingress:
   # Not wird.bnei.dev: that host is compiled into the app and carries the API.
   # The operations view is a separate workload behind a separate login.
   hostname: wird-admin.bnei.dev
-  # This host's own authentik forwardAuth, appended after the chart's baseline
-  # chain (infra-bootstrap#268). It is the only one that forwards
-  # X-authentik-jwt: on the shared one, every host behind it would receive an
-  # operator's signed token. adminweb verifies that token itself
+  # Middleware/jwt-forwardauth, appended after the chart's baseline chain
+  # (infra-bootstrap#268). It forwards X-authentik-jwt, so it is shared only by
+  # hosts that verify it (wird-admin, drop). The outpost signs each host's token
+  # under that host's own provider, so sharing the object does not hand one
+  # app's token to the other; the identity-hint Middleware must not carry it. adminweb verifies that token itself
   # (server/cmd/adminweb/auth.go) and never trusts the proxy's say-so, so a
   # missing middleware fails closed: no token, 401.
   middlewares:
-    - name: wird-admin-forwardauth
+    - name: jwt-forwardauth
       namespace: default
 
 livenessProbe:
