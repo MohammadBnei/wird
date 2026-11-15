@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 - 2026-11-15
+
+### Features
+
+- **site:** Ukubi wird favicon for the public page and adminweb (#60)
+
 ## 0.1.4 - 2026-11-14
 
 ### Other
