@@ -24,12 +24,15 @@ ingress:
   # The operations view is a separate workload behind a separate login.
   hostname: wird-admin.bnei.dev
   # Middleware/jwt-forwardauth, appended after the chart's baseline chain
-  # (infra-bootstrap#268). It forwards X-authentik-jwt, so it is shared only by
-  # hosts that verify it (wird-admin, drop). The outpost signs each host's token
-  # under that host's own provider, so sharing the object does not hand one
-  # app's token to the other; the identity-hint Middleware must not carry it. adminweb verifies that token itself
-  # (server/cmd/adminweb/auth.go) and never trusts the proxy's say-so, so a
-  # missing middleware fails closed: no token, 401.
+  # (infra-bootstrap#268). It forwards X-authentik-jwt, so it is shared by
+  # wird-admin and drop, and drop verifies the token from drop-2. authentik's
+  # server issues each provider's token under that provider's own client
+  # secret, and the outpost only forwards it, so sharing the object does not
+  # hand one app's token to the other; the identity-hint Middleware must not
+  # carry it. adminweb verifies that token itself (server/cmd/adminweb/auth.go)
+  # and never trusts the proxy's say-so, so a missing middleware fails closed:
+  # no token, 401. Reverting needs a Middleware that exists: once infra-bootstrap
+  # deletes wird-admin-forwardauth (infra-D), name jwt-forwardauth.
   middlewares:
     - name: jwt-forwardauth
       namespace: default
