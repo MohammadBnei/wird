@@ -9,7 +9,7 @@ A merge to `main` is a release. Nobody types a version or presses a button. CI r
 | In | Out | Depends on |
 |---|---|---|
 | A push to `main` | A `vX.Y.Z` tag, and a new `wird-api` pod answering on `https://wird.bnei.dev` that says that version at `/version` | GitHub Actions, a self-hosted build runner, the cluster's image registry |
-| A pull request | A pass or fail on the Go checks, both image builds and the commit rules, nothing deployed | GitHub-hosted runners, a throwaway Postgres 18, and the shared workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci) |
+| A pull request | A pass or fail on the Go checks, both image builds and the commit rules, nothing deployed | The self-hosted build runner, a throwaway Postgres 18, and the shared workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci) |
 | The database address and object store keys | Environment variables in the pod | A Kubernetes Secret assembled outside this repo, from Infisical |
 | Any pull request or push to `main` | A pass or fail on doc links and diagrams | The `docs` workflow |
 
@@ -127,7 +127,7 @@ on:
 
 ```yaml
   server:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@8782d42e1d4e5cd0b8af9d1a14c9d5414976a4c9 # v0.7.0
     with:
       working-directory: server
       test-flags: '-p 1'
@@ -139,7 +139,7 @@ on:
         go -C server build ./...
 ```
 
-[checks.yml:24-34](../../.github/workflows/checks.yml#L24-L34) · gates job [checks.yml:48-69](../../.github/workflows/checks.yml#L48-L69) · image builds on pull requests [checks.yml:73-85](../../.github/workflows/checks.yml#L73-L85)
+[checks.yml:24-48](../../.github/workflows/checks.yml#L24-L48) · gates job [checks.yml:62-83](../../.github/workflows/checks.yml#L62-L83) · image builds on pull requests [checks.yml:86-101](../../.github/workflows/checks.yml#L86-L101)
 
 On a pull request the two images are also built, without pushing, on GitHub-hosted runners, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
 
@@ -154,7 +154,7 @@ After the checks, the `release` job calls ukubi-ci's `release.yml`. git-cliff re
     needs: checks
     permissions:
       contents: write # pushes the chore(release) commit and the tag
-    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@8782d42e1d4e5cd0b8af9d1a14c9d5414976a4c9 # v0.7.0
 ```
 
 [release.yml:78-82](../../.github/workflows/release.yml#L78-L82)
@@ -167,7 +167,7 @@ Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image, both with
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@8782d42e1d4e5cd0b8af9d1a14c9d5414976a4c9 # v0.7.0
     with:
       runs-on: '["self-hosted","ukubi-build"]'
       image: wird-api
@@ -222,7 +222,7 @@ If either build fails or the run is cancelled, nothing is bumped and the running
 ```yaml
   deploy:
     needs: [image-api, image-adminweb]
-    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@8782d42e1d4e5cd0b8af9d1a14c9d5414976a4c9 # v0.7.0
     with:
       built-commit: ${{ needs.image-api.outputs.commit }}
       pins: |

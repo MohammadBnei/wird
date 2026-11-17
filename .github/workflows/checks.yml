@@ -1,7 +1,7 @@
 # The Go half of the gate. PRs run it directly; release.yml calls it before
 # building an image. The Flutter half is app-checks.yml; the commit-message
 # rules are trailers.yml. Reusable jobs live in MohammadBnei/ukubi-ci, pinned
-# by sha (v0.4.0).
+# by sha (v0.7.0).
 name: checks
 
 on:
@@ -22,20 +22,33 @@ jobs:
   # GOTOOLCHAIN=local, as qa.sh does, so a missing require still fails there.
   # Upgrade: an env input in ukubi-ci.
   server:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@8782d42e1d4e5cd0b8af9d1a14c9d5414976a4c9 # v0.7.0
     with:
       working-directory: server
       test-flags: '-p 1'
       govulncheck: true
       pre-test: |
-        docker compose up -d --wait postgres
+        # The runner has no docker and its only container tool is `sudo buildah` (rootful): the compose
+        # file's postgres:18 from the ECR mirror of the Docker Hub image (Hub rate-limits the LAN's one
+        # address), on the host network, on a loopback port picked per run. ukubi-ci's go-checks has no
+        # post step, so a watchdog stops and removes the container after 25 minutes.
+        # ponytail: timed cleanup, not tied to the job; add a post-test input to ukubi-ci if it matters.
+        port=$((20000 + GITHUB_RUN_ID % 20000))
+        ctr=$(sudo buildah from public.ecr.aws/docker/library/postgres:18)
+        nohup sudo buildah run --network host --env POSTGRES_USER=wird --env POSTGRES_PASSWORD=wird --env POSTGRES_DB=wird "$ctr" -- \
+          docker-entrypoint.sh postgres -c listen_addresses=127.0.0.1 -p "$port" >"$RUNNER_TEMP/pg.log" 2>&1 </dev/null &
+        pid=$!
+        nohup bash -c 'sleep 1500; kill "$0" 2>/dev/null; sleep 5; sudo buildah rm "$1"' "$pid" "$ctr" >/dev/null 2>&1 </dev/null &
+        for _ in $(seq 60); do (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null && break; sleep 2; done
+        (exec 3<>"/dev/tcp/127.0.0.1/$port") || { cat "$RUNNER_TEMP/pg.log"; exit 1; }
+        echo "DATABASE_URL=postgres://wird:wird@127.0.0.1:$port/wird" >> "$GITHUB_ENV"
         export GOWORK=off GOTOOLCHAIN=local
         echo GOWORK=off >> "$GITHUB_ENV"
         echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
         go -C server build ./...
 
   jidhr:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@8782d42e1d4e5cd0b8af9d1a14c9d5414976a4c9 # v0.7.0
     with:
       working-directory: jidhr
       test-flags: '-p 1'
@@ -48,7 +61,7 @@ jobs:
 
   # Gate 7's shell-only half, lifted from scripts/qa.sh.
   gates:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ukubi-build]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -70,19 +83,19 @@ jobs:
           bytes=$(wc -c <app/assets/corpus.db)
           [ "$bytes" -le $((60 * 1024 * 1024)) ] || { echo "::error::corpus.db is $bytes bytes, over the 60 MB release budget"; exit 1; }
 
-  # Build only, no push, on GitHub-hosted runners. On a push to main
+  # Build only, no push, on the self-hosted build runner. On a push to main
   # release.yml's image-api and image-adminweb calls (ukubi-ci image.yml)
   # build and push the same two targets.
   image-api:
     if: github.event_name == 'pull_request'
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@8782d42e1d4e5cd0b8af9d1a14c9d5414976a4c9 # v0.7.0
     with:
       image: wird-api
       target: api
 
   image-adminweb:
     if: github.event_name == 'pull_request'
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@8782d42e1d4e5cd0b8af9d1a14c9d5414976a4c9 # v0.7.0
     with:
       image: wird-adminweb
       target: adminweb

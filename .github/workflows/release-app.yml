@@ -39,7 +39,7 @@ jobs:
   # Run from any other branch, the jobs below would be skipped and the run
   # would end green having done nothing. Say so instead.
   on-main:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ukubi-build]
     steps:
       - if: github.ref != 'refs/heads/main'
         run: |
