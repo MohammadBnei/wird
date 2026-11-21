@@ -25,7 +25,7 @@ sequenceDiagram
 
 ## Where the version lives
 
-In the tag. Every push to `main` that passes the checks is released by [`release.yml`](../../.github/workflows/release.yml): git-cliff reads the Conventional Commit subjects since the last tag, writes `CHANGELOG.md`, and tags `vX.Y.Z`. The app build takes `X.Y.Z` from that tag as its build name, and the commit count at the tag as its build number `N`, which only rises. It passes `X.Y.Z` into the app as `--dart-define=WIRD_VERSION`, which is what a bug report names ([report.dart](../../app/lib/features/report/report.dart#L16-L22)). A laptop run or a walk build reports `dev`.
+In the tag. Every push to `main` that passes the checks is released by [`release.yml`](../../.github/workflows/release.yml): git-cliff reads the Conventional Commit subjects since the last tag and tags `vX.Y.Z` on the merged commit. The app build takes `X.Y.Z` from that tag as its build name, and the commit count at the tag as its build number `N`, which only rises. It passes `X.Y.Z` into the app as `--dart-define=WIRD_VERSION`, which is what a bug report names ([report.dart](../../app/lib/features/report/report.dart#L16-L22)). A laptop run or a walk build reports `dev`.
 
 The `version:` line in [`app/pubspec.yaml`](../../app/pubspec.yaml) is what a local build uses. Releases override it, so leave it alone.
 
@@ -33,10 +33,10 @@ The `version:` line in [`app/pubspec.yaml`](../../app/pubspec.yaml) is what a lo
 
 1. Merge what should ship to `main`, after `./scripts/qa.sh` passes on a Mac.
 2. Wait for `release.yml` on that merge to finish its `release` job: it is what tags it. A `feat` raises the minor version, anything else the patch; a breaking change at `0.x` raises the minor.
-3. Open **Actions → release-app → Run workflow** and keep the branch on `main`. [`release-app.yml`](../../.github/workflows/release-app.yml) runs [`app-checks.yml`](../../.github/workflows/app-checks.yml), then picks the newest `vX.Y.Z` tag on `main`.
+3. On GitHub (the app builds still run there), open **Actions → release-app → Run workflow** and keep the branch on `main`. [`release-app.yml`](../../.github/workflows/release-app.yml) runs [`app-checks.yml`](../../.github/workflows/app-checks.yml), then picks the newest `vX.Y.Z` tag on `main`.
 4. It then starts [`apk.yml`](../../.github/workflows/apk.yml) on the tag. That run ends with a `chore(deploy)` commit on `main`, and the new build is live once ArgoCD syncs it.
 
-The button refuses in two cases. One: `main` has commits past the tag that are not the bots' own `chore(release)` or `chore(deploy)` commits, so the tag would leave them out. Usually `release.yml` is still running. If those commits touch only Markdown or `helm/`, they have no run of their own: `gh workflow run release.yml --ref main` releases them, then press the button again. Two: the tag is already published at `/download/android`. `apk.yml` refuses a tag that is not `vX.Y.Z` or is not on `main`, any missing signing value, and an APK signed with the debug key. Nothing is published then.
+The button refuses in two cases. One: `main` has commits past the tag that are not the bots' own `chore(release)` or `chore(deploy)` commits, so the tag would leave them out. Usually `release.yml` is still running. If those commits touch only Markdown or `helm/`, they have no run of their own: run `release` by hand on `main` in Forgejo's Actions tab to release them, then press the button again. Two: the tag is already published at `/download/android`. `apk.yml` refuses a tag that is not `vX.Y.Z` or is not on `main`, any missing signing value, and an APK signed with the debug key. Nothing is published then.
 
 A tag pushed by hand publishes nothing: `apk.yml` no longer starts on a tag push.
 

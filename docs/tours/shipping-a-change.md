@@ -45,13 +45,13 @@ Your pull request builds, vets and tests both Go modules against a fresh Postgre
 
 ## 4. You merge, and that is the release
 
-A merge to `main` is a release. Nobody types a version: git-cliff reads your commit subject, tags the next `vX.Y.Z` and adds it to `CHANGELOG.md`. The same checks run first, and then one container image is built holding only `wird-api`, tagged with the release commit and carrying that version.
+A merge to `main` is a release. Nobody types a version: git-cliff reads your commit subject, tags the next `vX.Y.Z` on your merge commit, the release notes in the tag's message. The same checks run first, and then one container image is built holding only `wird-api`, tagged with the release commit and carrying that version.
 
 → [Deploy: the release, then the image](../architecture/deploy.md#3-the-release-then-the-image) · [one binary per image](../architecture/deploy.md#4-one-binary-per-image)
 
 ## 5. The tag is written into helm
 
-Once the image is pushed, CI rewrites one line in `helm/values.yaml` and commits it. Bumping before the push would point at an image that does not exist yet.
+Once the image is pushed, CI writes its tag into `helm/image-api.yaml` on the `deploy` branch and commits it; `main` is never written by CI. Bumping before the push would point at an image that does not exist yet.
 
 → [Deploy: bump the tag, and only after the push](../architecture/deploy.md#5-bump-the-tag-and-only-after-the-push)
 

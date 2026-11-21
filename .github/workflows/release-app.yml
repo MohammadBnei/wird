@@ -38,7 +38,12 @@ permissions:
 jobs:
   # Run from any other branch, the jobs below would be skipped and the run
   # would end green having done nothing. Say so instead.
+  #
+  # GitHub only: it dispatches apk.yml and ipa.yml, which run on GitHub (their
+  # Infisical identities are bound to GitHub's OIDC). Forgejo skips this, and
+  # the jobs that need it with it.
   on-main:
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     steps:
       - if: github.ref != 'refs/heads/main'
@@ -52,6 +57,7 @@ jobs:
 
   release:
     needs: checks
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     # Reads tags and dispatches; writes nothing to the repository.
     permissions:

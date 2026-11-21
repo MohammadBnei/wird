@@ -36,6 +36,9 @@ env:
 
 jobs:
   ipa:
+    # GitHub only (macOS runner, GitHub-OIDC-bound Infisical identity): Forgejo
+    # skips it.
+    if: github.server_url == 'https://github.com'
     runs-on: macos-26
     timeout-minutes: 20
     permissions:

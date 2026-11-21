@@ -35,7 +35,7 @@ server/   Go. cmd/{api,adminweb,etl,ingest,jidhrcorpus,rootcheck,rootdraft,sense
 jidhr/    Go root engine, own module. cmd/rootd :8081
 data/     SOURCES.md licence record, root-sense-prompt.md (runtime input), raw/ gitignored
 scripts/  qa.sh = gate. device.sh, voice-*.py
-helm/     values.yaml, CI bumps image tag → ArgoCD
+helm/     values.yaml; CI pins the image tag in helm/image-*.yaml on the deploy branch → ArgoCD
 docs/     human docs + adr/ + design/ (vendored, never hand-edit)
 ```
 

@@ -4,12 +4,12 @@
 
 ## Black box
 
-A merge to `main` is a release. Nobody types a version or presses a button. CI runs the Go half of **the gate**, cuts the next version from the commit subjects (a `vX.Y.Z` tag and a `CHANGELOG.md` entry), builds two container images from one Dockerfile, `wird-api` and `wird-adminweb`, and writes their tag into this repo. ArgoCD sees the new tag and rolls the pod. A pull request runs the checks, builds both images without pushing them, and stops there.
+A merge to `main` is a release. Nobody types a version or presses a button. CI runs the Go half of **the gate**, cuts the next version from the commit subjects (an annotated `vX.Y.Z` tag on the merged commit; nothing is committed to `main`), builds two container images from one Dockerfile, `wird-api` and `wird-adminweb`, and pins their tag on this repo's `deploy` branch. ArgoCD sees the new tag and rolls the pod. A pull request runs the checks, builds both images without pushing them, and stops there.
 
 | In | Out | Depends on |
 |---|---|---|
-| A push to `main` | A `vX.Y.Z` tag, and a new `wird-api` pod answering on `https://wird.bnei.dev` that says that version at `/version` | GitHub Actions, a self-hosted build runner, the cluster's image registry |
-| A pull request | A pass or fail on the Go checks, both image builds and the commit rules, nothing deployed | GitHub-hosted runners, a throwaway Postgres 18, and the shared workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci) |
+| A push to `main` | A `vX.Y.Z` tag, and a new `wird-api` pod answering on `https://wird.bnei.dev` that says that version at `/version` | Forgejo Actions, the `ukubi-build` runner, the cluster's image registry |
+| A pull request | A pass or fail on the Go checks, both image builds and the commit rules, nothing deployed | Forgejo's container runner, a throwaway Postgres 18, and the shared workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci) |
 | The database address and object store keys | Environment variables in the pod | A Kubernetes Secret assembled outside this repo, from Infisical |
 | Any pull request or push to `main` | A pass or fail on doc links and diagrams | The `docs` workflow |
 
@@ -17,7 +17,7 @@ A merge to `main` is a release. Nobody types a version or presses a button. CI r
 sequenceDiagram
   autonumber
   participant Dev as Developer
-  participant GH as GitHub main
+  participant GH as Forgejo repo
   participant CI as release workflow, calling checks
   participant Reg as Image registry
   participant Argo as ArgoCD
@@ -26,9 +26,9 @@ sequenceDiagram
   Dev->>GH: merge
   GH->>CI: push event
   CI->>CI: checks.yml: gofmt, vet, test, marker and size checks
-  CI->>GH: release: CHANGELOG.md commit and vX.Y.Z tag
+  CI->>GH: release: vX.Y.Z tag on the merged commit
   CI->>Reg: push wird-api and wird-adminweb, tagged with the release commit
-  CI->>GH: commit the new tag into helm values
+  CI->>GH: commit the new pins to the deploy branch
   Argo->>GH: notice the new tag
   Argo->>Pod: roll to the new image
   Pod->>Pod: run migrations, then serve
@@ -63,9 +63,9 @@ flowchart TD
   rel["release.yml"]
   checks["checks job<br/>calls checks.yml"]
   release["release job<br/>ukubi-ci release.yml, git-cliff"]
-  build["image-api, then image-adminweb<br/>ukubi-ci image.yml (deploy: false), self-hosted build runner"]
+  build["image-api, then image-adminweb<br/>ukubi-ci image.yml (deploy: false), ukubi-build runner"]
   push{"on main?"}
-  deploy["deploy job<br/>ukubi-ci deploy.yml, one bump commit"]
+  deploy["deploy job<br/>ukubi-ci deploy.yml, one commit on deploy"]
   argo["ArgoCD sync"]
   done(["image in registry only"])
   ev -->|pull_request| pr
@@ -97,9 +97,9 @@ flowchart LR
 
 ### 1. What triggers a release
 
-`release.yml` runs on pushes to `main` and by hand. Pushes that only touch markdown or `helm/` are ignored. That stops the deploy job's own commit from starting another release. Two runs in flight on the same branch cancel the older one, so the newest tag always wins. A run on another branch never cancels `main`'s.
+`release.yml` runs on pushes to `main` and by hand. Pushes that only touch markdown or `helm/` are ignored. Runs on the same branch queue and are never cancelled, so a pushed tag is always built. A run on another branch never waits on `main`'s.
 
-The filter has a cost. A Markdown-only push is not released, and neither is a code commit whose run sees a human commit land after it: that run leaves the newer commits to their own run, which a Markdown-only push never gets. The next code push releases them all. To release now, run `gh workflow run release.yml --ref main` ([ADR 0041](../adr/0041-one-version-line-cut-by-git-cliff.md#consequences)).
+The filter has a cost. A Markdown-only push is not released, and neither is a code commit whose run sees a human commit land after it: that run leaves the newer commits to their own run, which a Markdown-only push never gets. The next code push releases them all. To release now, run the `release` workflow by hand on `main` from Forgejo's Actions tab ([ADR 0041](../adr/0041-one-version-line-cut-by-git-cliff.md#consequences)).
 
 Pull requests do not run `release.yml`. They run `checks.yml` (the Go half of the gate and two image builds) and `trailers.yml` (the commit rules). Both are short callers of the reusable workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci), pinned by commit hash.
 
@@ -110,54 +110,55 @@ on:
     branches:
       - main
     paths-ignore:
-      # The deploy job's own bump touches helm/. Pushes made with the built-in
-      # GITHUB_TOKEN do not trigger workflows either, so the loop is closed
-      # twice — the same belt and braces editable-blog uses.
+      # The bump goes to the deploy branch, and pushes made with the job token
+      # trigger no workflow, so nothing here loops.
       - '**.md'
       - 'helm/**'
     tags-ignore:
       - '*'
 ```
 
-[release.yml:48-60](../../.github/workflows/release.yml#L48-L60) · concurrency at [release.yml:66-68](../../.github/workflows/release.yml#L66-L68)
+[release.yml:49-60](../../.github/workflows/release.yml#L49-L60) · concurrency at [release.yml:65-67](../../.github/workflows/release.yml#L65-L67)
 
 ### 2. The checks: the Go half of the gate
 
-`checks.yml` runs on every pull request, and `release.yml` calls it before it builds anything. It calls the shared `go-checks` workflow once per Go module: `gofmt`, `go vet`, then `go test -race -count=1 -p 1`. For `server` it starts Postgres 18 from the repo's own `docker-compose.yml` first. Before the tests run, it sets `GOWORK=off` and `GOTOOLCHAIN=local` and builds every package of the module, so a local `go.work` cannot hide a missing require in `server/go.mod`, a module asking for a newer Go fails instead of downloading one, and every binary still links. Two shell checks follow in the `gates` job: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
+`checks.yml` runs on every pull request, and `release.yml` calls it before it builds anything. It calls the shared `go-checks` workflow once per Go module: `gofmt`, `go vet`, then `go test -race -count=1 -p 1`. For `server` it first installs and starts Postgres 18 inside the job's container (the runner has no docker daemon). Before the tests run, it sets `GOWORK=off` and `GOTOOLCHAIN=local` and builds every package of the module, so a local `go.work` cannot hide a missing require in `server/go.mod`, a module asking for a newer Go fails instead of downloading one, and every binary still links. Two shell checks follow in the `gates` job: every marker comment carries an issue number, and `corpus.db` stays under 60 MB.
 
 ```yaml
   server:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@e784a69d5fe0b258b1b6899f89d42ee87eb89d5c # v0.2.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
       working-directory: server
       test-flags: '-p 1'
+      govulncheck: true
       pre-test: |
-        docker compose up -d --wait postgres
+        apt-get update -qq
+        # ... postgresql-18 from PGDG, then the wird role and database
         export GOWORK=off GOTOOLCHAIN=local
         echo GOWORK=off >> "$GITHUB_ENV"
         echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
         go -C server build ./...
 ```
 
-[checks.yml:24-34](../../.github/workflows/checks.yml#L24-L34) · gates job [checks.yml:48-69](../../.github/workflows/checks.yml#L48-L69) · image builds on pull requests [checks.yml:73-85](../../.github/workflows/checks.yml#L73-L85)
+[checks.yml:24-44](../../.github/workflows/checks.yml#L24-L44) · gates job [checks.yml:59-80](../../.github/workflows/checks.yml#L59-L80) · image builds on pull requests [checks.yml:82-99](../../.github/workflows/checks.yml#L82-L99)
 
-On a pull request the two images are also built, without pushing, on GitHub-hosted runners, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
+On a pull request the two images are also built, without pushing, on the `ukubi-build` runner, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
 
 Only part of the Flutter half of the gate runs in CI: `app-checks.yml` runs `flutter analyze` and the tests minus the goldens on pull requests that touch `app/`. The goldens and the e2e journeys need fvm, a Mac and a device, and the runners have none of them. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
 
 ### 3. The release, then the image
 
-After the checks, the `release` job calls ukubi-ci's `release.yml`. git-cliff reads the Conventional Commit subjects since the last `vX.Y.Z` tag. A `feat` raises the minor version, anything else the patch, and a breaking change at `0.x` the minor. It writes the section into `CHANGELOG.md`, commits `chore(release): vX.Y.Z` and pushes the tag with it in one push. On a branch it is a dry run: the run summary says what it would release, and nothing is pushed. If it fails, nothing is built.
+After the checks, the `release` job calls ukubi-ci's `release.yml`. git-cliff reads the Conventional Commit subjects since the last `vX.Y.Z` tag. A `feat` raises the minor version, anything else the patch, and a breaking change at `0.x` the minor. It pushes an annotated `vX.Y.Z` tag on the commit that triggered the run, with the release notes as its message (`git tag -n99 vX.Y.Z`); nothing is committed to `main`, and `CHANGELOG.md` stays as history. On a branch it is a dry run: the run summary says what it would release, and nothing is pushed. If it fails, nothing is built.
 
 ```yaml
   release:
     needs: checks
     permissions:
-      contents: write # pushes the chore(release) commit and the tag
-    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+      contents: write # pushes the release tag
+    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
 ```
 
-[release.yml:78-82](../../.github/workflows/release.yml#L78-L82)
+[release.yml:80-84](../../.github/workflows/release.yml#L80-L84)
 
 Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image, both with `deploy: false`: `image-api` builds `--target api` as `wird-api`, `image-adminweb` builds `--target adminweb` as `wird-adminweb`. Each call checks out the release commit and tags the image with the first 12 characters of its hash; there is no `latest` tag. The version goes in as a build-arg instead (`version-arg: true`, with the release's version as input), checked first: `X.Y.Z` for a release, `X.Y.Z+<sha>` on `main` when nothing was released, `X.Y.Z-dev+<sha>` on a branch. Neither call runs on a pull request: a pull request has nothing to push, and `release.yml` does not run on one at all.
 
@@ -167,11 +168,12 @@ Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image, both with
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
-      runs-on: '["self-hosted","ukubi-build"]'
+      runs-on: '["ukubi-build"]'
       image: wird-api
       target: api
+      values-file: helm/image-api.yaml
       ref: ${{ needs.release.outputs.tag }}
       version: ${{ needs.release.outputs.version }}
       version-arg: true
@@ -179,7 +181,7 @@ Then `release.yml` calls ukubi-ci's `image.yml` twice, once per image, both with
       deploy: false
 ```
 
-[release.yml:97-113](../../.github/workflows/release.yml#L97-L113) · `image-adminweb` [release.yml:115-132](../../.github/workflows/release.yml#L115-L132)
+[release.yml:99-116](../../.github/workflows/release.yml#L99-L116) · `image-adminweb` [release.yml:118-134](../../.github/workflows/release.yml#L118-L134)
 
 `image.yml` builds with buildah on a runner that has no cluster access, then pushes to the cluster's registry. The registry password is read from Infisical over OIDC after the build, so it is never in the environment while the Dockerfile's `RUN` steps execute. It is never stored in the repo.
 
@@ -215,22 +217,22 @@ ENTRYPOINT ["/usr/local/bin/wird-adminweb"]
 
 ### 5. Bump the tag, and only after the push
 
-One `deploy` job calls ukubi-ci's `deploy.yml`, after both image calls succeeded. It runs on `main`, from a push or a dispatch. It rewrites the tag line of both values files, `helm/values.yaml` for `wird-api` and `helm/adminweb-values.yaml` for `wird-adminweb`, to `<12-character sha>@sha256:<digest>`, and commits both in one `chore(deploy): bump wird images` commit, so ArgoCD rolls the two out together. Bumping earlier would let ArgoCD pull a tag that is still being built. The digest makes a rebuild of the same commit (a base-image fix) roll out. `deploy.yml` refuses a missing file, a pin from another commit than `built-commit`, and an edit that changes anything other than exactly one line per file.
+One `deploy` job calls ukubi-ci's `deploy.yml`, after both image calls succeeded. It runs on `main`, from a push or a dispatch. It writes the tag of both pin files on the `deploy` branch, `helm/image-api.yaml` for `wird-api` and `helm/image-adminweb.yaml` for `wird-adminweb`, as `<12-character sha>@sha256:<digest>`, in one commit, so ArgoCD rolls the two out together. ArgoCD layers each pin file over the matching values file on `main` (`helm/values.yaml`, `helm/adminweb-values.yaml`); `main` itself is never written by CI. Bumping earlier would let ArgoCD pull a tag that is still being built. The digest makes a rebuild of the same commit (a base-image fix) roll out. `deploy.yml` refuses a missing file, a pin from another commit than `built-commit`, and an edit that changes anything other than exactly one line per file.
 
 If either build fails or the run is cancelled, nothing is bumped and the running pair stays as it was. `image-adminweb` still waits for `image-api` so the shared build stage comes from the layer cache; the chain costs wall time only.
 
 ```yaml
   deploy:
     needs: [image-api, image-adminweb]
-    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
       built-commit: ${{ needs.image-api.outputs.commit }}
       pins: |
-        helm/values.yaml ${{ needs.image-api.outputs.tag }}@${{ needs.image-api.outputs.digest }}
-        helm/adminweb-values.yaml ${{ needs.image-adminweb.outputs.tag }}@${{ needs.image-adminweb.outputs.digest }}
+        helm/image-api.yaml ${{ needs.image-api.outputs.tag }}@${{ needs.image-api.outputs.digest }}
+        helm/image-adminweb.yaml ${{ needs.image-adminweb.outputs.tag }}@${{ needs.image-adminweb.outputs.digest }}
 ```
 
-[release.yml:134-143](../../.github/workflows/release.yml#L134-L143) · the lines it edits [values.yaml:24](../../helm/values.yaml#L24), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
+[release.yml:138-147](../../.github/workflows/release.yml#L138-L147) · the pins they replace [values.yaml:24](../../helm/values.yaml#L24), [adminweb-values.yaml:16](../../helm/adminweb-values.yaml#L16)
 
 A dispatch on `main` deploys like a push, because it cut a release. A dispatch on another branch builds and pushes both images but skips the deploy job, so it never deploys.
 
@@ -287,7 +289,7 @@ A second workflow, `docs`, runs on every pull request and every push to `main`, 
         run: scripts/docs-check.sh
 ```
 
-[docs.yml:35-38](../../.github/workflows/docs.yml#L35-L38) · lychee step [docs.yml:18-29](../../.github/workflows/docs.yml#L18-L29)
+[docs.yml:52-55](../../.github/workflows/docs.yml#L52-L55) · lychee step [docs.yml:26-37](../../.github/workflows/docs.yml#L26-L37)
 
 ## Why it is this way
 

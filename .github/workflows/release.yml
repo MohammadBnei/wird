@@ -1,11 +1,12 @@
 # Push to main -> checks.yml (the Go half of the gate) -> ukubi-ci release.yml
-# (git-cliff: next vX.Y.Z from Conventional Commits, CHANGELOG.md, a
-# `chore(release)` commit and the tag, pushed atomically) -> build wird-api and
-# wird-adminweb from that release commit with the version as a build-arg ->
-# pin both helm values files to <sha>@<digest> in one commit so ArgoCD reconciles. Same shape and
-# the same hard-won details as editable-blog's and drop's workflows, now kept in
-# ukubi-ci's image.yml and deploy.yml (buildah via sudo -n, Infisical OIDC password,
-# digest-pinned bump, stale-run guard). Registry, runner and tag handling live there.
+# (git-cliff: next vX.Y.Z from Conventional Commits, an annotated tag on the
+# pushed commit, the notes in its message; nothing is committed to main) ->
+# build wird-api and wird-adminweb at that tag with the version as a build-arg
+# -> pin both images in helm/image-api.yaml and helm/image-adminweb.yaml on the
+# `deploy` branch in one commit, which ArgoCD layers over main's values (ukubi-ci
+# 0.11, option B). Runs on Forgejo Actions; ukubi-ci's image.yml and deploy.yml
+# hold the build and bump details (buildah via sudo -n, Infisical login,
+# digest-pinned bump, stale-run guard).
 #
 # WHAT THE GATE IS, AND WHICH HALF RUNS HERE. `./scripts/qa.sh` is Wird's gate
 # and its exit code is the verdict — but it cannot run on a GitHub runner, and
@@ -19,7 +20,7 @@
 #   gate 4-6 the per-screen, test-meaning and comment audits    -> human judgment
 #
 # Gates 2 and 3 need an fvm-managed Flutter toolchain and a device, and the
-# only self-hosted runner in this estate is a build LXC with no cluster access
+# only build runner in this estate is a build LXC with no cluster access
 # and no simulator. So the image gate is gate 1 plus the two gate-7 checks that
 # are pure shell, and the Flutter half stays what it already is: `./scripts/qa.sh`
 # on a developer's machine before the push. A macOS runner is what would change
@@ -38,7 +39,7 @@
 # (ukubi-ci: "the run for the newer commits releases them"), which never comes.
 # Either way the next code push releases it all, or now, by hand:
 #
-#   gh workflow run release.yml --ref main
+#   Actions -> release -> Run workflow, on main (Forgejo)
 #
 # A dispatch on main releases, builds AND deploys, like a push. A dispatch on
 # any other branch is a dry run: it builds that branch's image with version
@@ -51,25 +52,26 @@ on:
     branches:
       - main
     paths-ignore:
-      # The deploy job's own bump touches helm/. Pushes made with the built-in
-      # GITHUB_TOKEN do not trigger workflows either, so the loop is closed
-      # twice — the same belt and braces editable-blog uses.
+      # The bump goes to the deploy branch, and pushes made with the job token
+      # trigger no workflow, so nothing here loops.
       - '**.md'
       - 'helm/**'
     tags-ignore:
       - '*'
 
-# Two pushes racing would build two images and bump values.yaml twice, and the
-# loser's bump would point at the older of the two. Keep the newest. Keyed on
-# the ref: a dry-run dispatch on a branch must not cancel main's run after its
-# release is tagged, leaving a release nobody built.
+# Forgejo honours only this workflow-level group. main queues and never
+# cancels: a cancelled run could leave a pushed release tag nobody built. Keyed
+# on the ref, so a dry-run dispatch on a branch never waits on main.
 concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: true
+  group: app-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # The Go half of the gate, shared with PRs.
+  # Forgejo only: the GitHub mirror must not tag or build. Every later job
+  # needs this one, so they skip with it.
   checks:
+    if: github.server_url != 'https://github.com'
     uses: ./.github/workflows/checks.yml
 
   # A real release only on main (push or dispatch); anywhere else a dry run
@@ -78,8 +80,8 @@ jobs:
   release:
     needs: checks
     permissions:
-      contents: write # pushes the chore(release) commit and the tag
-    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+      contents: write # pushes the release tag
+    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
 
   # Build and push live in ukubi-ci's image.yml, once per image, with
   # deploy: false; one deploy.yml job then pins both digests in ONE commit, so
@@ -99,13 +101,14 @@ jobs:
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
       # NOT `ukubi`: that label belongs to the runner holding a ServiceAccount
       # token with cluster access. This one has none (infra-bootstrap ADR-0034).
-      runs-on: '["self-hosted","ukubi-build"]'
+      runs-on: '["ukubi-build"]'
       image: wird-api
       target: api
+      values-file: helm/image-api.yaml
       ref: ${{ needs.release.outputs.tag }}
       version: ${{ needs.release.outputs.version }}
       version-arg: true
@@ -117,11 +120,12 @@ jobs:
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
-      runs-on: '["self-hosted","ukubi-build"]'
+      runs-on: '["ukubi-build"]'
       image: wird-adminweb
       target: adminweb
+      values-file: helm/image-adminweb.yaml
       ref: ${{ needs.release.outputs.tag }}
       version: ${{ needs.release.outputs.version }}
       version-arg: true
@@ -135,9 +139,9 @@ jobs:
     needs: [image-api, image-adminweb]
     permissions:
       contents: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@83b583d56e9bda4ff04de0fcdf9c1bc20d80790c # v0.5.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
       built-commit: ${{ needs.image-api.outputs.commit }}
       pins: |
-        helm/values.yaml ${{ needs.image-api.outputs.tag }}@${{ needs.image-api.outputs.digest }}
-        helm/adminweb-values.yaml ${{ needs.image-adminweb.outputs.tag }}@${{ needs.image-adminweb.outputs.digest }}
+        helm/image-api.yaml ${{ needs.image-api.outputs.tag }}@${{ needs.image-api.outputs.digest }}
+        helm/image-adminweb.yaml ${{ needs.image-adminweb.outputs.tag }}@${{ needs.image-adminweb.outputs.digest }}

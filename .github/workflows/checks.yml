@@ -1,7 +1,7 @@
 # The Go half of the gate. PRs run it directly; release.yml calls it before
 # building an image. The Flutter half is app-checks.yml; the commit-message
 # rules are trailers.yml. Reusable jobs live in MohammadBnei/ukubi-ci, pinned
-# by sha (v0.4.0).
+# by sha (v0.11.1). Runs on Forgejo Actions.
 name: checks
 
 on:
@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: checks-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # ponytail: gofmt and vet run before pre-test with no GOWORK=off (ukubi-ci
@@ -22,20 +22,29 @@ jobs:
   # GOTOOLCHAIN=local, as qa.sh does, so a missing require still fails there.
   # Upgrade: an env input in ukubi-ci.
   server:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
       working-directory: server
       test-flags: '-p 1'
       govulncheck: true
+      # The container runner has no docker daemon, so no compose: a Postgres 18
+      # from PGDG in the job's own container, on the localhost:5432 with the
+      # wird/wird role that testenv.Postgres defaults to.
       pre-test: |
-        docker compose up -d --wait postgres
+        apt-get update -qq
+        apt-get install -y -qq postgresql-common >/dev/null
+        /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+        apt-get install -y -qq postgresql-18 >/dev/null
+        pg_ctlcluster 18 main start || true
+        pg_isready -h localhost -t 30
+        su postgres -c "psql -q -c \"CREATE ROLE wird LOGIN SUPERUSER PASSWORD 'wird'\" -c 'CREATE DATABASE wird OWNER wird'"
         export GOWORK=off GOTOOLCHAIN=local
         echo GOWORK=off >> "$GITHUB_ENV"
         echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
         go -C server build ./...
 
   jidhr:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
       working-directory: jidhr
       test-flags: '-p 1'
@@ -70,19 +79,21 @@ jobs:
           bytes=$(wc -c <app/assets/corpus.db)
           [ "$bytes" -le $((60 * 1024 * 1024)) ] || { echo "::error::corpus.db is $bytes bytes, over the 60 MB release budget"; exit 1; }
 
-  # Build only, no push, on GitHub-hosted runners. On a push to main
+  # Build only, no push, on the ukubi-build runner. On a push to main
   # release.yml's image-api and image-adminweb calls (ukubi-ci image.yml)
   # build and push the same two targets.
   image-api:
-    if: github.event_name == 'pull_request'
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    # Not github.event_name: called from release.yml, Forgejo evaluates this
+    # inside the called jobs, where it reads workflow_call.
+    if: github.event.pull_request
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
       image: wird-api
       target: api
 
   image-adminweb:
-    if: github.event_name == 'pull_request'
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@2a202d169153446bccf26ffe30dc39b3f21db273 # v0.4.0
+    if: github.event.pull_request
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
     with:
       image: wird-adminweb
       target: adminweb

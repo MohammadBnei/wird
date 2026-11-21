@@ -53,7 +53,9 @@ env:
 
 jobs:
   apk:
-    if: ${{ !inputs.pepk }}
+    # GitHub only (GitHub-OIDC-bound Infisical identity): Forgejo
+    # skips it.
+    if: github.server_url == 'https://github.com' && inputs.pepk == false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     # contents: write to push the WIRD_APK_KEY bump, the way release.yml
@@ -238,7 +240,7 @@ jobs:
   # Inert until PLAY_RELEASE_ENABLED is set, so releases stay green before the
   # Play account exists. Its own job: a Play failure never blocks the APK.
   aab:
-    if: ${{ !inputs.pepk && vars.PLAY_RELEASE_ENABLED == 'true' }}
+    if: github.server_url == 'https://github.com' && inputs.pepk == false && vars.PLAY_RELEASE_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -358,7 +360,7 @@ jobs:
   # so what leaves this job is readable by Google only, and the key itself is
   # never on a laptop (ADR 0019).
   pepk:
-    if: ${{ inputs.pepk && github.ref == 'refs/heads/main' }}
+    if: github.server_url == 'https://github.com' && inputs.pepk && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
