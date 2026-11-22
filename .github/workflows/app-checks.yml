@@ -33,13 +33,56 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
+      # Cache model (owner decision 2026-11-22): a PR restores and saves; main (the call from
+      # release-app.yml), dispatch and tags never restore (a PR job can forge the cache write key),
+      # they run cold and only save. flutter-action's own cache always restores, so it is off and
+      # the SDK and the pub cache are cached here. CACHE_EPOCH is a user-level Forgejo variable;
+      # bump it to purge every cache at once.
+      - name: Cache keys
+        id: cachekeys
+        env:
+          REF: ${{ github.ref }}
+          EPOCH: ${{ vars.CACHE_EPOCH || 'e1' }}
+        run: |
+          set -euo pipefail
+          pr=false
+          if [[ "$REF" == refs/pull/* ]]; then pr=true; fi
+          h=$(cat ../.fvmrc pubspec.lock | sha256sum | cut -c1-16)
+          {
+            echo "pr=$pr"
+            echo "base=${EPOCH}-flutter-${RUNNER_OS}-${h}"
+            echo "prefix=${EPOCH}-flutter-${RUNNER_OS}-"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Restore Flutter and pub caches
+        if: steps.cachekeys.outputs.pr == 'true'
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/flutter-sdk
+            ~/.pub-cache
+          # Never an exact hit (the run id is new): restore-keys picks the newest entry.
+          key: ${{ steps.cachekeys.outputs.base }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ steps.cachekeys.outputs.base }}-
+            ${{ steps.cachekeys.outputs.prefix }}
+
       # The version the repo-root .fvmrc pins, so CI checks what was tested locally.
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version-file: .fvmrc
           channel: stable
-          cache: true
+          cache: false
+          cache-path: ${{ runner.tool_cache }}/flutter-sdk
 
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test --exclude-tags golden
+
+      - name: Save Flutter and pub caches
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/flutter-sdk
+            ~/.pub-cache
+          key: ${{ steps.cachekeys.outputs.base }}-${{ github.run_id }}
