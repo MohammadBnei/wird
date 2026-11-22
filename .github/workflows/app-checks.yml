@@ -61,11 +61,12 @@ jobs:
           path: |
             ${{ runner.tool_cache }}/flutter-sdk
             ~/.pub-cache
+          # No bare-prefix fallback: the SDK path is unversioned and flutter-action skips the download when
+          # it already holds a flutter, so a different .fvmrc must miss rather than restore the old SDK.
           # Never an exact hit (the run id is new): restore-keys picks the newest entry.
           key: ${{ steps.cachekeys.outputs.base }}-${{ github.run_id }}
           restore-keys: |
             ${{ steps.cachekeys.outputs.base }}-
-            ${{ steps.cachekeys.outputs.prefix }}
 
       # The version the repo-root .fvmrc pins, so CI checks what was tested locally.
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
