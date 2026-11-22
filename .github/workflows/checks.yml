@@ -118,3 +118,11 @@ jobs:
           set -euo pipefail
           bytes=$(wc -c <app/assets/corpus.db)
           [ "$bytes" -le $((60 * 1024 * 1024)) ] || { echo "::error::corpus.db is $bytes bytes, over the 60 MB release budget"; exit 1; }
+
+  # hadolint on the Dockerfile; no image build on a PR (owner decision, CI/CD split).
+  dockerfile:
+    uses: MohammadBnei/ukubi-ci/.github/workflows/dockerfile-lint.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
+    with:
+      dockerfiles: Dockerfile
+      # DL3018 apk pin warning: only errors fail until they are fixed
+      failure-threshold: error
