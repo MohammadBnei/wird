@@ -109,7 +109,8 @@ jobs:
           # The packages that use the dev database run with -count=1 (Go cannot track database
           # state); every other package may come from Go's test cache. Same flags, so the
           # compiled test binaries are shared.
-          unc=(./cmd/adminweb ./cmd/api ./internal/api ./internal/store)
+          # the DB packages, plus every package whose tests read files outside server/ (docs, corpus.db, data/raw) or run vet/go subprocess guards
+          unc=(. ./cmd/adminweb ./cmd/api ./internal/api ./internal/store ./cmd/jidhrcorpus ./cmd/senseseed ./cmd/etl ./cmd/ingest ./cmd/rootcheck ./cmd/rootdraft ./internal/rootsense ./internal/site)
           go list "${unc[@]}" > "$RUNNER_TEMP/uncached.txt"
           rest=()
           while IFS= read -r pkg; do rest+=("$pkg"); done < <(go list ./... | grep -vxFf "$RUNNER_TEMP/uncached.txt" || true)
