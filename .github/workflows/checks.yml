@@ -1,7 +1,7 @@
 # The Go half of the gate. PRs run it directly; release.yml calls it before
 # building an image. The Flutter half is app-checks.yml; the commit-message
 # rules are trailers.yml. Reusable jobs live in MohammadBnei/ukubi-ci, pinned
-# by sha (v0.11.1). Runs on Forgejo Actions.
+# by sha (the PR 28 head until the release). Runs on Forgejo Actions, on the Talos runner.
 name: checks
 
 on:
@@ -16,32 +16,72 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # ponytail: gofmt and vet run before pre-test with no GOWORK=off (ukubi-ci
-  # has no env input), so a force-added go.work would put them in workspace
-  # mode. The pre-test build and go test run with GOWORK=off and
-  # GOTOOLCHAIN=local, as qa.sh does, so a missing require still fails there.
-  # Upgrade: an env input in ukubi-ci.
+  # Not ukubi-ci's go-checks: the tests need a Postgres, and the Talos runner has no apt and no
+  # service containers, so the database comes from the dev IntegreSQL (ADR-0088, ukubi-ci's dev-db
+  # action), which a reusable workflow cannot take as a step. The steps are go-checks' own
+  # (gofmt, vet, test -race, govulncheck v1.9.0). testenv.Postgres reads DATABASE_URL as the admin
+  # connection and creates a database per test in it.
+  #
+  # gofmt and vet run with no GOWORK=off, so a force-added go.work would put them in workspace
+  # mode; the build and the tests run with GOWORK=off and GOTOOLCHAIN=local, as qa.sh does, so a
+  # missing require still fails there.
   server:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
-    with:
-      working-directory: server
-      test-flags: '-p 1'
-      govulncheck: true
-      # The container runner has no docker daemon, so no compose: a Postgres 18
-      # from PGDG in the job's own container, on the localhost:5432 with the
-      # wird/wird role that testenv.Postgres defaults to.
-      pre-test: |
-        apt-get update -qq
-        apt-get install -y -qq postgresql-common >/dev/null
-        /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
-        apt-get install -y -qq postgresql-18 >/dev/null
-        pg_ctlcluster 18 main start || true
-        pg_isready -h localhost -t 30
-        su postgres -c "psql -q -c \"CREATE ROLE wird LOGIN SUPERUSER PASSWORD 'wird'\" -c 'CREATE DATABASE wird OWNER wird'"
-        export GOWORK=off GOTOOLCHAIN=local
-        echo GOWORK=off >> "$GITHUB_ENV"
-        echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
-        go -C server build ./...
+    runs-on: k8s-ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+        working-directory: server
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.*
+
+      - name: gofmt
+        run: |
+          set -euo pipefail
+          out=$(git ls-files -z -- '*.go' ':!:vendor/*' ':!:testdata/*' ':!:*/testdata/*' | xargs -0 -r gofmt -l)
+          [ -z "$out" ] || { echo "::error::not gofmt-clean:"; echo "$out"; exit 1; }
+
+      - name: go vet
+        run: go vet ./...
+
+      # An empty template: every test migrates a database of its own.
+      - name: Dev database
+        uses: MohammadBnei/ukubi-ci/actions/dev-db@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
+        with:
+          integresql-url: http://integresql.dev-services.svc.cluster.local:5000
+          postgres-host: dev-postgres.dev-services.svc.cluster.local
+          template-hash: wird-server
+          timeout-seconds: '120'
+
+      - name: go build
+        run: |
+          export GOWORK=off GOTOOLCHAIN=local
+          echo GOWORK=off >> "$GITHUB_ENV"
+          echo GOTOOLCHAIN=local >> "$GITHUB_ENV"
+          go build ./...
+
+      - name: go test
+        run: go test -race -count=1 -p 1 ./...
+
+      - name: govulncheck
+        run: |
+          set -euo pipefail
+          GOBIN="$RUNNER_TEMP/govulncheck" go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          "$RUNNER_TEMP/govulncheck/govulncheck" ./...
+
+      - name: Give the dev database back
+        if: always()
+        uses: MohammadBnei/ukubi-ci/actions/dev-db-release@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
 
   jidhr:
     uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
@@ -57,7 +97,7 @@ jobs:
 
   # Gate 7's shell-only half, lifted from scripts/qa.sh.
   gates:
-    runs-on: ubuntu-latest
+    runs-on: k8s-ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:

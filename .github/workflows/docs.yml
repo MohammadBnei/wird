@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   docs:
-    runs-on: ubuntu-latest
+    runs-on: k8s-ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -40,8 +40,8 @@ jobs:
         with:
           node-version: 22
 
-      # mermaid-cli's headless Chrome needs these; Forgejo's container image
-      # lacks them (GitHub's runner image has them).
+      # mermaid-cli's headless Chrome needs these; the CT 103 container image
+      # lack them (the Talos runner image bakes them with Playwright, so this is a no-op there).
       - name: Chrome libraries
         run: |
           ldconfig -p | grep -q libnspr4 && exit 0
