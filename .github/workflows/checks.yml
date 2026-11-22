@@ -78,22 +78,3 @@ jobs:
           set -euo pipefail
           bytes=$(wc -c <app/assets/corpus.db)
           [ "$bytes" -le $((60 * 1024 * 1024)) ] || { echo "::error::corpus.db is $bytes bytes, over the 60 MB release budget"; exit 1; }
-
-  # Build only, no push, on the ukubi-build runner. On a push to main
-  # release.yml's image-api and image-adminweb calls (ukubi-ci image.yml)
-  # build and push the same two targets.
-  image-api:
-    # Not github.event_name: called from release.yml, Forgejo evaluates this
-    # inside the called jobs, where it reads workflow_call.
-    if: github.event.pull_request
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
-    with:
-      image: wird-api
-      target: api
-
-  image-adminweb:
-    if: github.event.pull_request
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image-build.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
-    with:
-      image: wird-adminweb
-      target: adminweb

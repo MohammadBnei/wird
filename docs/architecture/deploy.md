@@ -4,12 +4,12 @@
 
 ## Black box
 
-A merge to `main` is a release. Nobody types a version or presses a button. CI runs the Go half of **the gate**, cuts the next version from the commit subjects (an annotated `vX.Y.Z` tag on the merged commit; nothing is committed to `main`), builds two container images from one Dockerfile, `wird-api` and `wird-adminweb`, and pins their tag on this repo's `deploy` branch. ArgoCD sees the new tag and rolls the pod. A pull request runs the checks, builds both images without pushing them, and stops there.
+A merge to `main` is a release. Nobody types a version or presses a button. CI runs the Go half of **the gate**, cuts the next version from the commit subjects (an annotated `vX.Y.Z` tag on the merged commit; nothing is committed to `main`), builds two container images from one Dockerfile, `wird-api` and `wird-adminweb`, and pins their tag on this repo's `deploy` branch. ArgoCD sees the new tag and rolls the pod. A pull request runs the checks and stops there; it builds no image.
 
 | In | Out | Depends on |
 |---|---|---|
 | A push to `main` | A `vX.Y.Z` tag, and a new `wird-api` pod answering on `https://wird.bnei.dev` that says that version at `/version` | Forgejo Actions, the `ukubi-build` runner, the cluster's image registry |
-| A pull request | A pass or fail on the Go checks, both image builds and the commit rules, nothing deployed | Forgejo's container runner, a throwaway Postgres 18, and the shared workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci) |
+| A pull request | A pass or fail on the Go checks and the commit rules, nothing deployed | Forgejo's container runner, a throwaway Postgres 18, and the shared workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci) |
 | The database address and object store keys | Environment variables in the pod | A Kubernetes Secret assembled outside this repo, from Infisical |
 | Any pull request or push to `main` | A pass or fail on doc links and diagrams | The `docs` workflow |
 
@@ -58,7 +58,7 @@ flowchart LR
 ```mermaid
 flowchart TD
   ev{"event"}
-  pr["checks.yml<br/>go-checks x2, gates,<br/>image-build x2 (no push)"]
+  pr["checks.yml<br/>go-checks x2, gates"]
   tr["trailers.yml<br/>base..head only"]
   rel["release.yml"]
   checks["checks job<br/>calls checks.yml"]
@@ -101,7 +101,7 @@ flowchart LR
 
 The filter has a cost. A Markdown-only push is not released, and neither is a code commit whose run sees a human commit land after it: that run leaves the newer commits to their own run, which a Markdown-only push never gets. The next code push releases them all. To release now, run the `release` workflow by hand on `main` from Forgejo's Actions tab ([ADR 0041](../adr/0041-one-version-line-cut-by-git-cliff.md#consequences)).
 
-Pull requests do not run `release.yml`. They run `checks.yml` (the Go half of the gate and two image builds) and `trailers.yml` (the commit rules). Both are short callers of the reusable workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci), pinned by commit hash.
+Pull requests do not run `release.yml`. They run `checks.yml` (the Go half of the gate) and `trailers.yml` (the commit rules). Both are short callers of the reusable workflows in [ukubi-ci](https://github.com/MohammadBnei/ukubi-ci), pinned by commit hash.
 
 ```yaml
 on:
@@ -140,9 +140,9 @@ on:
         go -C server build ./...
 ```
 
-[checks.yml:24-44](../../.github/workflows/checks.yml#L24-L44) · gates job [checks.yml:59-80](../../.github/workflows/checks.yml#L59-L80) · image builds on pull requests [checks.yml:82-99](../../.github/workflows/checks.yml#L82-L99)
+[checks.yml:24-44](../../.github/workflows/checks.yml#L24-L44) · gates job [checks.yml:59-80](../../.github/workflows/checks.yml#L59-L80)
 
-On a pull request the two images are also built, without pushing, on the `ukubi-build` runner, so a Dockerfile that no longer builds fails before the merge. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
+No image is built on a pull request (the owner's call in the CI/CD split): a Dockerfile that no longer builds fails on `main`, before anything is pinned. The commit rules live in [trailers.yml](../../.github/workflows/trailers.yml): Conventional subjects, and no AI attribution of any kind.
 
 Only part of the Flutter half of the gate runs in CI: `app-checks.yml` runs `flutter analyze` and the tests minus the goldens on pull requests that touch `app/`. The goldens and the e2e journeys need fvm, a Mac and a device, and the runners have none of them. That is why you run `./scripts/qa.sh` yourself before you push. The one Go test that drives the Flutter client skips itself when fvm is missing: [zz_gate_e2e_test.go:24](../../server/internal/api/zz_gate_e2e_test.go#L24).
 
