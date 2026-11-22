@@ -81,7 +81,7 @@ jobs:
     needs: checks
     permissions:
       contents: write # pushes the release tag
-    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/release.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
 
   # Build and push live in ukubi-ci's image.yml, once per image, with
   # deploy: false; one deploy.yml job then pins both digests in ONE commit, so
@@ -101,7 +101,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
     with:
       # NOT `ukubi`: that label belongs to the runner holding a ServiceAccount
       # token with cluster access. This one has none (infra-bootstrap ADR-0034).
@@ -120,7 +120,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/image.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
     with:
       runs-on: '["ukubi-build"]'
       image: wird-adminweb
@@ -139,7 +139,7 @@ jobs:
     needs: [image-api, image-adminweb]
     permissions:
       contents: write
-    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/deploy.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
     with:
       built-commit: ${{ needs.image-api.outputs.commit }}
       pins: |
