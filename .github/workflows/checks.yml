@@ -22,7 +22,7 @@ jobs:
   # GOTOOLCHAIN=local, as qa.sh does, so a missing require still fails there.
   # Upgrade: an env input in ukubi-ci.
   server:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
     with:
       working-directory: server
       test-flags: '-p 1'
@@ -44,7 +44,7 @@ jobs:
         go -C server build ./...
 
   jidhr:
-    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@9af316b5d779b2d5ef3f55b9f11e20b8bf3f6ce8 # v0.11.1
+    uses: MohammadBnei/ukubi-ci/.github/workflows/go-checks.yml@d683f2091575188024f7e1200e619977d9db19ae # ukubi-ci PR 28 head; re-pin to the release
     with:
       working-directory: jidhr
       test-flags: '-p 1'
