@@ -51,7 +51,7 @@ Unknown screen → read `screenName` in `app/lib/features/report/report.dart`.
 - Proposed fix = `go build -C server -o ../bin/ ./cmd/rootdraft && bin/rootdraft -force -roots=<r1,r2>` (from root) → user confirms → run.
 
 ## 5. Issue
-- Dedupe first: `fj.sh GET /repos/MohammadBnei/wird/issues?type=issues&labels=from-reader&q=<topic>` (workspace `tools/fj.sh`, inside the infisical wrapper; plain curl to `git.bnei.dev` is blocked). Match → comment +1 paraphrase, no new issue.
+- Dedupe first: `fj.sh GET '/repos/MohammadBnei/wird/issues?type=issues&labels=from-reader&q=<urlencoded-topic>'` (workspace `tools/fj.sh`, inside the infisical wrapper; plain curl to `git.bnei.dev` is blocked). Match → comment +1 paraphrase, no new issue.
 - Draft: title (what breaks), paraphrase, `path#Lnn` code context, suspected cause, labels `from-reader` + category.
 - Show all drafts to user in one list. Create only confirmed.
 

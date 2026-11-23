@@ -23,7 +23,7 @@ scripts/   qa.sh is the gate — its exit code is the verdict
 .github/   CI workflows (run by Forgejo Actions)
 ```
 
-The primary forge is Forgejo (`https://git.bnei.dev`); GitHub is a push mirror.
+The primary forge is Forgejo, with a GitHub push mirror.
 
 **Documentation:** [docs/README.md](docs/README.md) is the map: an overview,
 guided tours, architecture pages from the big picture down to the code, and
@@ -228,6 +228,7 @@ questions and not implementation ones:
 ./scripts/qa.sh                 # the gate; its exit code is the verdict, and it writes qa-report.json
 
 # one part at a time, the way CI runs it (no go.work; never ./... at the root)
+docker compose up -d postgres   # the server tests need it
 GOWORK=off go -C server test -p 1 ./...
 GOWORK=off go -C jidhr test ./...
 (cd app && fvm flutter analyze && fvm flutter test)
