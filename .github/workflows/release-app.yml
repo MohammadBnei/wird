@@ -3,7 +3,8 @@
 #
 #   app-checks (analyze + tests)
 #     -> the latest vX.Y.Z tag on main, cut by release.yml (ADR 0041)
-#     -> dispatch apk.yml (and ipa.yml) on that tag: build, sign, upload, publish
+#     -> dispatch apk.yml (and ipa.yml) on main with that tag as input: build,
+#        sign, upload, publish
 #
 # Nothing is typed and nothing is tagged here: release.yml's git-cliff job owns
 # the one version line, server and app alike, and this button ships the newest
@@ -19,9 +20,11 @@
 #
 # WHY A DISPATCH AND NOT THE TAG PUSH. A tag pushed with the built-in
 # GITHUB_TOKEN starts no workflow; a workflow_dispatch is the one event that
-# token may start. Run on the tag's ref, apk.yml sees ref_type == tag and
-# publishes, and the Infisical identity, bound to apk.yml from a tag or from
-# main, accepts it exactly as it accepted a tag push. ADR 0022.
+# token may start. Dispatched on main with the tag as the `tag` input, apk.yml
+# checks out the tag and publishes. The workflow file that runs is main's, never
+# the tag's: a tag pushed by hand on an unreviewed commit would carry its own
+# workflow and could drop the "tag is on main" checks, and the Infisical
+# identities (keystore, App Store key) accept only main's file. ADR 0022, 0042.
 name: release-app
 
 on:
@@ -96,10 +99,11 @@ jobs:
           # minutes after this button dispatched it. A run on the tag that is
           # queued, running or green means it is already shipping; only a failed
           # or cancelled one leaves it to ship again.
-          inflight=$(gh run list --workflow apk.yml --branch "$tag" --limit 20 --json conclusion \
-            --jq '[.[] | select(.conclusion != "failure" and .conclusion != "cancelled")] | length')
+          # The runs are on main now; apk.yml's run-name carries the tag.
+          inflight=$(gh run list --workflow apk.yml --branch main --limit 50 --json conclusion,displayTitle \
+            | jq --arg t "apk $tag" '[.[] | select(.displayTitle == $t and .conclusion != "failure" and .conclusion != "cancelled")] | length')
           [ "$inflight" = 0 ] \
-            || { echo "::error::apk.yml already has a run on $tag; re-run a failed one by hand instead of pressing again"; exit 1; }
+            || { echo "::error::apk.yml already has a run for $tag; re-run a failed one by hand instead of pressing again"; exit 1; }
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Build and publish
@@ -114,14 +118,14 @@ jobs:
             echo "If a build below fails, do not press this button again: it would"
             echo "dispatch both builds, and the one that passed would fail on the"
             echo "build number it already used. Re-run only the failed workflow by"
-            echo "hand with \`$TAG\` as its ref."
+            echo "hand on main with \`$TAG\` as its tag input."
           } >> "$GITHUB_STEP_SUMMARY"
-          gh workflow run apk.yml --ref "$TAG"
+          gh workflow run apk.yml --ref main -f tag="$TAG"
           echo "apk.yml is building it: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/apk.yml" >> "$GITHUB_STEP_SUMMARY"
           # iOS only once its Infisical identity and App Store Connect key
           # exist; until then every release would start a macOS job bound to
-          # fail. A failed ipa is re-run by hand on the tag, like apk.
+          # fail. A failed ipa is re-run by hand with the tag input, like apk.
           if [ "$IOS_RELEASE_ENABLED" = true ]; then
-            gh workflow run ipa.yml --ref "$TAG"
+            gh workflow run ipa.yml --ref main -f tag="$TAG"
             echo "ipa.yml is uploading it to TestFlight: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/ipa.yml" >> "$GITHUB_STEP_SUMMARY"
           fi

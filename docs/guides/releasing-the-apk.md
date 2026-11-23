@@ -16,7 +16,7 @@ sequenceDiagram
   RA->>AC: flutter analyze, app tests
   AC-->>RA: pass
   RA->>Main: latest vX.Y.Z tag, nothing unreleased past it, not yet published
-  RA->>APK: dispatch on the tag
+  RA->>APK: dispatch on main, tag as input
   APK->>APK: tag is vX.Y.Z and on main, then build and check the release key
   APK->>OS: upload android/wird-<digest>.apk
   APK->>Main: set WIRD_APK_KEY and WIRD_APK_VERSION in helm/values.yaml
@@ -34,7 +34,7 @@ The `version:` line in [`app/pubspec.yaml`](../../app/pubspec.yaml) is what a lo
 1. Merge what should ship to `main`, after `./scripts/qa.sh` passes on a Mac.
 2. Wait for `release.yml` on that merge to finish its `release` job: it is what tags it. A `feat` raises the minor version, anything else the patch; a breaking change at `0.x` raises the minor.
 3. On GitHub (the app builds still run there), open **Actions → release-app → Run workflow** and keep the branch on `main`. [`release-app.yml`](../../.github/workflows/release-app.yml) runs [`app-checks.yml`](../../.github/workflows/app-checks.yml), then picks the newest `vX.Y.Z` tag on `main`.
-4. It then starts [`apk.yml`](../../.github/workflows/apk.yml) on the tag. That run ends with a `chore(deploy)` commit on `main`, and the new build is live once ArgoCD syncs it.
+4. It then starts [`apk.yml`](../../.github/workflows/apk.yml) on `main`, with the tag as its `tag` input. The workflow file that runs is always the one on `main`, never the tag's. That run ends with a `chore(deploy)` commit on `main`, and the new build is live once ArgoCD syncs it.
 
 The button refuses in two cases. One: `main` has commits past the tag that are not the bots' own `chore(release)` or `chore(deploy)` commits, so the tag would leave them out. Usually `release.yml` is still running. If those commits touch only Markdown or `helm/`, they have no run of their own: run `release` by hand on `main` in Forgejo's Actions tab to release them, then press the button again. Two: the tag is already published at `/download/android`. `apk.yml` refuses a tag that is not `vX.Y.Z` or is not on `main`, any missing signing value, and an APK signed with the debug key. Nothing is published then.
 
@@ -46,7 +46,7 @@ When a release adds a key to the body of a sync op, release it only after the `w
 
 ## When the build fails after the tag
 
-The tag was on `main` before the button was pressed. If a build then fails — the secret store, signing, the upload — do not press the button again: it dispatches both builds, and the one that passed (TestFlight, say) fails the second time on the build number it already used. Retry only the failed workflow on the tag: **Actions → apk** (or **ipa**) **→ Run workflow**, and choose the tag `vX.Y.Z` as the ref. It is on `main`, so it builds and publishes as if the button had started it.
+The tag was on `main` before the button was pressed. If a build then fails — the secret store, signing, the upload — do not press the button again: it dispatches both builds, and the one that passed (TestFlight, say) fails the second time on the build number it already used. Retry only the failed workflow: **Actions → apk** (or **ipa**) **→ Run workflow**, keep the branch on `main`, and type the tag `vX.Y.Z` in the `tag` input. It builds and publishes as if the button had started it.
 
 The object key carries the first 12 characters of the APK's sha256. A published key is never overwritten, so a phone resuming a download never gets half of one build and half of another. The route is served by [`apk.go`](../../server/internal/api/apk.go#L26).
 
@@ -61,8 +61,8 @@ The object key carries the first 12 characters of the APK's sha256. A published 
 
 ## A build without a release
 
-Run the `apk` workflow by hand from the Actions tab, on `main`. It builds and uploads, and the run summary names the key, but it does not publish: only a release moves `/download/android`. That build reports itself as the last release plus its commit, `X.Y.Z+<sha>`, so a report from it names no release it is not.
+Run the `apk` workflow by hand from the Actions tab, on `main`, leaving `tag` empty. It builds and uploads, and the run summary names the key, but it does not publish: only a release moves `/download/android`. That build reports itself as the last release plus its commit, `X.Y.Z+<sha>`, so a report from it names no release it is not.
 
 ## Who can read the signing key
 
-The workflow reads the release keystore and the store key over OIDC, from Wird's own secret project. The machine identity it uses can read only that project, and accepts only this workflow file, run from a tag or from `main`. It is never the identity the image build uses: that one can read a project every app shares, and the keystore must never live there.
+The workflow reads the release keystore and the store key over OIDC, from Wird's own secret project. The machine identity it uses can read only that project, and accepts only this workflow file, run from `main` ([ADR 0042](../adr/0042-secret-jobs-run-main-workflow-only.md)). It is never the identity the image build uses: that one can read a project every app shares, and the keystore must never live there.

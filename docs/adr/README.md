@@ -56,16 +56,16 @@ flowchart LR
 | [0016-installed-corpora-upgrade-and-words-carry-their-lemma.md](0016-installed-corpora-upgrade-and-words-carry-their-lemma.md) | Installed corpora upgrade, and words carry their lemma | accepted |
 | [0017-ayas-are-translated-into-english-from-pickthall.md](0017-ayas-are-translated-into-english-from-pickthall.md) | Ayas are translated into English from Pickthall | accepted |
 | [0018-the-public-site-is-served-by-the-api.md](0018-the-public-site-is-served-by-the-api.md) | The public page is embedded in wird-api, and its demos run on the corpus | accepted |
-| [0019-the-apk-is-built-on-a-tag-and-published-by-ci.md](0019-the-apk-is-built-on-a-tag-and-published-by-ci.md) | A version tag builds the APK and publishes it at /download/android | proposed, amended by 0022 and 0041 |
+| [0019-the-apk-is-built-on-a-tag-and-published-by-ci.md](0019-the-apk-is-built-on-a-tag-and-published-by-ci.md) | A version tag builds the APK and publishes it at /download/android | proposed, amended by 0022, 0041 and 0042 |
 | [0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md](0020-a-prayer-is-prepared-then-recited-one-rakah-at-a-time.md) | A prayer is prepared, then recited one rakʿah at a time | accepted, amended by 0021 |
 | [0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md](0021-the-margin-is-asked-per-pair-and-repeats-are-settled-by-order.md) | The matcher's margin is asked per pair of places, and a repeated phrase is settled by order | accepted |
-| [0022-a-release-is-cut-by-one-button-from-the-pubspec.md](0022-a-release-is-cut-by-one-button-from-the-pubspec.md) | A release is cut by one button, and the pubspec holds the only version | accepted, superseded in part by 0041 |
+| [0022-a-release-is-cut-by-one-button-from-the-pubspec.md](0022-a-release-is-cut-by-one-button-from-the-pubspec.md) | A release is cut by one button, and the pubspec holds the only version | accepted, superseded in part by 0041, amended by 0042 |
 | [0023-six-reciters-and-a-word-by-word-voice.md](0023-six-reciters-and-a-word-by-word-voice.md) | The reader picks one of six reciters, and can hear each word spoken alone | accepted, amended by 0025 and 0029 |
 | [0024-the-sura-picker-turns-its-order-and-searches-the-text.md](0024-the-sura-picker-turns-its-order-and-searches-the-text.md) | The sūra picker turns its own order, and searches the text of the Qur'an in memory | accepted |
 | [0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md](0025-the-reader-recites-the-whole-sura-and-streams-what-is-not-on-disk.md) | The reader recites the whole sūra, and streams what is not on disk | accepted |
 | [0026-reports-are-triaged-and-turned-into-issues.md](0026-reports-are-triaged-and-turned-into-issues.md) | Reports are triaged on the operations view, exported to the agent, and turned into paraphrased issues | accepted, amended by 0034 |
 | [0027-wird-is-mit-licensed.md](0027-wird-is-mit-licensed.md) | Wird's own code is MIT licensed | accepted |
-| [0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md](0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md) | Wird ships through Google Play and the App Store, beside the APK | accepted, amended by 0032 |
+| [0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md](0028-wird-ships-through-play-and-the-app-store-beside-the-apk.md) | Wird ships through Google Play and the App Store, beside the APK | accepted, amended by 0032 and 0042 |
 | [0029-a-words-own-audio-is-found-by-its-position.md](0029-a-words-own-audio-is-found-by-its-position.md) | A word's own audio is found by its position, not by the API's path | accepted |
 | [0030-play-carries-on-from-what-the-reader-touched-last.md](0030-play-carries-on-from-what-the-reader-touched-last.md) | Play carries on from what the reader touched last | accepted |
 | [0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md](0031-the-reading-list-follows-the-recitation-until-the-reader-takes-it.md) | The reading list follows the recitation until the reader takes it | accepted |
@@ -79,3 +79,4 @@ flowchart LR
 | [0039-logs-are-json-on-stdout-and-sigterm-drains.md](0039-logs-are-json-on-stdout-and-sigterm-drains.md) | Logs are JSON lines on stdout, and a SIGTERM drains | accepted, amended by 0040 |
 | [0040-opt-in-traces.md](0040-opt-in-traces.md) | The servers trace each route when an endpoint is set, and nothing otherwise | accepted |
 | [0041-one-version-line-cut-by-git-cliff.md](0041-one-version-line-cut-by-git-cliff.md) | One version line, cut by git-cliff on every push to main, for the server and the app | accepted |
+| [0042-secret-jobs-run-main-workflow-only.md](0042-secret-jobs-run-main-workflow-only.md) | The jobs that read release secrets run main's workflow file only, with the tag as an input | accepted |
