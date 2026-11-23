@@ -11,14 +11,19 @@ user state and serves what changes after release, such as the meanings of
 roots. The root engine (`jidhr`) answers word → root for anyone who asks.
 
 ```
-app/       Flutter client (iOS, Android, tablet, macOS)
-server/    wird-api, the admin view and the data pipelines
-jidhr/     the Arabic root engine, a product in its own right
+app/       Flutter client (iOS, Android, tablet, macOS); fvm pins Flutter
+server/    Go module: wird-api, adminweb (the operations view), and the
+           data pipelines (etl, ingest, jidhrcorpus, rootcheck, rootdraft,
+           senseseed) under cmd/; migrations/ are embedded goose files
+jidhr/     the Arabic root engine, its own Go module, a product in its own right
 data/      ingest provenance; data/SOURCES.md is the per-table licence record
 docs/      how it all works — start at docs/README.md
 helm/      deployment values, bumped by CI
 scripts/   qa.sh is the gate — its exit code is the verdict
+.github/   CI workflows (run by Forgejo Actions)
 ```
+
+The primary forge is Forgejo (`https://git.bnei.dev`); GitHub is a push mirror.
 
 **Documentation:** [docs/README.md](docs/README.md) is the map: an overview,
 guided tours, architecture pages from the big picture down to the code, and
@@ -220,7 +225,15 @@ questions and not implementation ones:
 ## Building
 
 ```bash
-./scripts/qa.sh                 # the gate; its exit code is the verdict
+./scripts/qa.sh                 # the gate; its exit code is the verdict, and it writes qa-report.json
+
+# one part at a time, the way CI runs it (no go.work; never ./... at the root)
+GOWORK=off go -C server test -p 1 ./...
+GOWORK=off go -C jidhr test ./...
+(cd app && fvm flutter analyze && fvm flutter test)
+
+# the API locally: Postgres and the OIDC stub, then the server in dev mode
+docker compose up -d postgres oidc-stub && WIRD_DEV=1 go -C server run ./cmd/api
 ```
 
 [Getting started](docs/guides/getting-started.md) covers the app, the API, the
