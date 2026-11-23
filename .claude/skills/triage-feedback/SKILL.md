@@ -1,6 +1,6 @@
 ---
 name: triage-feedback
-description: Pull Wird reader feedback (written reports + sense verdicts) from the operations view, categorize it, draft paraphrased GitHub issues with code context, and write the triage back. Use when the user says "triage feedback", "pull reports", "check verdicts", or asks what readers reported.
+description: Pull Wird reader feedback (written reports + sense verdicts) from the operations view, categorize it, draft paraphrased Forgejo issues with code context, and write the triage back. Use when the user says "triage feedback", "pull reports", "check verdicts", or asks what readers reported.
 ---
 
 # Triage feedback
@@ -27,13 +27,13 @@ sh .claude/skills/triage-feedback/pull.sh "$SCRATCH/feedback"
 - Per report: category, `screen` → code dir (table in rule), read code, draft issue (paraphrase, `path#Lnn`, cause).
 - Verdicts: `bad_on_current > 0` roots → one issue proposing `rootdraft -force -roots=…`.
 - `locale` empty → never public; triage only.
-- Dedupe vs `gh issue list --label from-reader`.
+- Dedupe: `fj.sh GET /repos/MohammadBnei/wird/issues?type=issues&labels=from-reader&q=<topic>`. Cloudflare blocks plain curl to `git.bnei.dev`, so always use the workspace `~/Code/ukubi/tools/fj.sh METHOD PATH [json-file]`, run inside the infisical wrapper from the workspace CLAUDE.md.
 
 ## 3. Confirm
 One list to user: per report → category, status, draft title + body. Create nothing before yes.
 
 ## 4. Act + write back
-- Confirmed: `gh issue create` → url.
+- Confirmed: write title/body/labels to a JSON file in `$SCRATCH` (never inline report text in the shell), then `fj.sh POST /repos/MohammadBnei/wird/issues <file>` (same wrapper; the file is the body) → `html_url`.
 - Each report:
 ```sh
 sh .claude/skills/triage-feedback/triage.sh <id> <category> issued <issue_url>
