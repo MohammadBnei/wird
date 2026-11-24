@@ -34,8 +34,7 @@ ingress:
   # no token, 401. Reverting needs a Middleware that exists: once infra-bootstrap
   # deletes wird-admin-forwardauth (infra-D), name jwt-forwardauth.
   middlewares:
-    - name: jwt-forwardauth
-      namespace: default
+    - name: jwt-forwardauth@file
 
 livenessProbe:
   enabled: true
